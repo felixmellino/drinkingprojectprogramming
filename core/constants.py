@@ -32,6 +32,12 @@ DUPLICATE_WINDOW_SECONDS = 120
 
 GPS_MISMATCH_TOLERANCE_M = 200.0
 
+# -- photo privacy (R7 in RULES.md) -------------------------------------
+
+PHOTO_RETENTION_DAYS = 30
+# Allow a failed database save to be retried before removing its upload.
+UNLINKED_PHOTO_GRACE_HOURS = 24
+
 # -- season length (D-06 in OPEN_DECISIONS.md) ------------------------------
 # Calendar months are ambiguous; these day counts are a placeholder.
 

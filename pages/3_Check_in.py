@@ -1,21 +1,16 @@
-"""Log a drink: type/size, a required photo, and GPS.
+"""Log a drink with a required camera photo and a location check."""
 
-Photo storage and real browser geolocation are not wired up yet -- see the
-two TODOs below. Both are workarounds the team should replace:
-  - GPS: Streamlit has no native geolocation, so this page takes a manual
-    lat/lng entry for now instead of reading the device's real GPS.
-  - Photo storage: the photo's bytes aren't uploaded anywhere yet; only a
-    placeholder reference is stored. Wire up Supabase Storage before relying
-    on Memories or re-checking a submitted photo.
-"""
-
-from datetime import datetime
-from io import BytesIO
+from dataclasses import replace
+from datetime import datetime, timezone
+from uuid import uuid4
 
 import streamlit as st
-from PIL import Image, ExifTags
+from httpx import RequestError
+from postgrest.exceptions import APIError
+from storage3.utils import StorageException
 
 import data.db as db
+from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
@@ -24,6 +19,7 @@ show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
 st.title("Check in")
+st.caption("Your lobby can view saved drink photos with your username, capture time and territory.")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -42,6 +38,14 @@ if drink_type in ("beer", "wine"):
 
 photo_number = st.session_state.get("checkin_photo_number", 0)
 photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
+capture = st.session_state.get("checkin_capture")
+if photo is not None:
+    capture_key = (membership_id, season_id, photo.file_id)
+    if capture is None or capture[0] != capture_key:
+        capture = (capture_key, str(uuid4()), datetime.now(timezone.utc))
+        st.session_state["checkin_capture"] = capture
+else:
+    st.session_state.pop("checkin_capture", None)
 
 st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
 device_lat = st.number_input(
@@ -52,55 +56,34 @@ device_lng = st.number_input(
 )
 
 
-def _read_photo_gps(photo_file) -> tuple[float, float] | None:
-    """Best-effort EXIF GPS extraction. Returns None if the photo has no
-    GPS tags (very common for camera-captured photos without location
-    permission, or for this component in particular)."""
-    try:
-        image = Image.open(BytesIO(photo_file.getvalue()))
-        exif = image.getexif()
-        gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
-        if not gps_ifd:
-            return None
-
-        def to_decimal(value, ref):
-            degrees, minutes, seconds = value
-            decimal = degrees + minutes / 60 + seconds / 3600
-            return -decimal if ref in ("S", "W") else decimal
-
-        lat = to_decimal(gps_ifd[2], gps_ifd[1])
-        lng = to_decimal(gps_ifd[4], gps_ifd[3])
-        return (lat, lng)
-    except Exception:
-        return None
-
-
-if st.button("Submit", disabled=photo is None):
+if st.button("Submit", disabled=photo is None) and photo is not None and capture is not None:
     submitted_at = datetime.now().astimezone()
+    _, capture_id, captured_at = capture
     device_gps = None
     if device_lat is not None and device_lng is not None:
         device_gps = (device_lat, device_lng)
-    photo_gps = _read_photo_gps(photo) if photo else None
-    # TODO: upload photo.getvalue() to Supabase Storage and store the real
-    # URL/path here instead of this placeholder.
-    photo_ref = f"placeholder-{submitted_at.isoformat()}"
-
-    recent_entries = db.list_drink_entries_for_membership(membership_id)
-    territories = get_territories()
 
     try:
-        entry = create_drink_entry(
-            membership_id,
-            season_id,
-            drink_type,
-            amount,
-            photo_ref,
-            device_gps,
-            photo_gps,
-            submitted_at,
-            territories,
-            recent_entries,
-        )
+        recent_entries = db.list_drink_entries_for_membership(membership_id)
+        entry = next((saved for saved in recent_entries if saved.id == capture_id), None)
+        if entry is None:
+            photo_gps, clean_photo = prepare_checkin_photo(photo.getvalue())
+            entry = create_drink_entry(
+                membership_id,
+                season_id,
+                drink_type,
+                amount,
+                f"{lobby_id}/{capture_id}.jpg",
+                device_gps,
+                photo_gps,
+                submitted_at,
+                get_territories(),
+                recent_entries,
+            )
+            entry = replace(entry, id=capture_id, photo_captured_at=captured_at)
+            entry = db.save_drink_entry_photo(player_id, lobby_id, entry, clean_photo)
+    except InvalidCheckinPhoto as error:
+        st.error(str(error))
     except CheckinRejected as rejected:
         messages = {
             "missing_photo": "A photo is required.",
@@ -111,8 +94,11 @@ if st.button("Submit", disabled=photo is None):
             "location_uncertain": "We couldn't verify your location. Check your coordinates and try again.",
         }
         st.error(messages.get(rejected.reason, rejected.reason))
+    except PermissionError:
+        st.error("Choose a lobby you belong to before checking in.")
+    except (APIError, RequestError, RuntimeError, StorageException):
+        st.error("We couldn't confirm the check-in was saved. Try submitting again.")
     else:
-        db.insert_drink_entry(entry)
         st.session_state["checkin_saved_result"] = (entry.points_awarded, entry.location_check_result)
         st.session_state["checkin_photo_number"] = photo_number + 1
         st.rerun()

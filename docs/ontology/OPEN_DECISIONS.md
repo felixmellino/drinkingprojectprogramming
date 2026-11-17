@@ -18,7 +18,7 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-10 | Location acceptance | Maximum coordinate age and uncertainty, and territory edge handling. |
 | D-11 | Photo validation | How to detect reused images, supported formats and size, and how to handle false drink or size declarations. |
 | D-12 | Check-in limits | Repeat drinks, cooldowns and duplicate submissions. |
-| D-13 | Privacy | Who can delete a saved photo and what happens to its drink entry afterwards? The [photo workflow](WORKFLOWS.md#save-and-view-a-check-in-photo) defines what the server keeps and what lobby members can see. |
+| D-13 | Privacy | **Photo lifecycle decided 2026-11-17**, see R7: owner deletion preserves the score; photos expire 30 days after the season ends. The [photo workflow](WORKFLOWS.md#save-and-view-a-check-in-photo) defines stored data and lobby access. Still needed before real use: privacy contact, published notice, provider region and backup/deletion procedures, and scheduled cleanup. |
 | D-14 | Later confirmation by another player | Should R2 allow the [proposed confirmation fallback](WORKFLOWS.md#proposed-fallback-after-automatic-location-verification-fails) when automatic location verification fails? |
 
 Design consideration: an ownership reduction can make leaders harder to
