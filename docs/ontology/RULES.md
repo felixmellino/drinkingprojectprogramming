@@ -17,10 +17,11 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | ID | Rule | Allowed / rejected / boundary outcomes |
 | --- | --- | --- |
 | R1 | A city is divided into territories. An accepted check-in with a matched territory contributes its points there. | Assign a territory only when location verification identifies one. A verified location outside every territory can earn season points only, subject to the same eligibility rules. |
-| R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Photo metadata may support the device reading. |
+| R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Use photo metadata as supporting evidence and discard raw coordinates after verification. |
 | R3 | Base points depend on both drink type and size; beer earns fewer points than a longdrink in the intended comparison. | Accept only configured type/size combinations. Reject unsupported combinations. Exact table, units and comparisons between different sizes remain open. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
 | R5 | Other players earn a percentage fewer points on a drink in an owned territory than its owner. | **Proposal only, not agreed:** whether the Owner takes a share of other Players' Points or weakens their Points is still open (D-01). If agreed: apply the reduction to non-owners; percentage, rounding, unclaimed territory behavior and ownership timing remain open. |
+| R6 | All current members of a lobby can view the photos saved with that lobby's drink entries. | Before serving a photo, verify that the viewer is signed in and is a current member of the lobby that owns the entry. |
 
 ## Implementation recommendations (not yet agreed rules)
 

@@ -26,6 +26,23 @@ The preview is an estimate until accepted: another player may change
 ownership before submission. Exact modifier timing needs team agreement.
 Photo/location failures must never be represented as a successful check-in.
 
+### Save and view a check-in photo
+
+The photo storage integration should save the file in a private Supabase
+bucket and record its storage path on the drink entry. When someone opens
+the photo, the server checks that their signed-in account currently belongs
+to the lobby where the entry was logged before serving the image. For older
+entries with placeholder references, the app shows that the photo is
+unavailable.
+
+Check-in records when the app receives the camera photo separately from
+when the player submits the entry. The photo view shows this capture time,
+the submitter's username, and the verified territory name or “Outside game
+territories.” Read any photo GPS tags during verification, then remove the
+embedded metadata before saving the image. Save the verification result and
+territory match from the location check. Discard the exact coordinates from
+the phone and photo after verification.
+
 ### Duplicate check-ins in the current build
 
 Check-in records a time-zone offset and compares new and saved submission

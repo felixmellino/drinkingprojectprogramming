@@ -44,8 +44,12 @@ photo_number = st.session_state.get("checkin_photo_number", 0)
 photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
 
 st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
-device_lat = st.number_input("Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f")
-device_lng = st.number_input("Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f")
+device_lat = st.number_input(
+    "Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f", key=f"checkin_lat_{photo_number}"
+)
+device_lng = st.number_input(
+    "Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f", key=f"checkin_lng_{photo_number}"
+)
 
 
 def _read_photo_gps(photo_file) -> tuple[float, float] | None:

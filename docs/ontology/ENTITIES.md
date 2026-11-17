@@ -83,7 +83,7 @@ For the prototype, `territories.geojson` can supply the territory records. The m
 
 ### DrinkEntry
 
-One drink submission by a signed-in lobby member in a Season. The player selects a drink and its size and takes a fresh photo in Check-in. The server records the location result and assigns a territory when it finds a match. D-13 covers how long to retain location data.
+One drink submission by a signed-in lobby member in a Season. The player selects a drink and its size and takes a fresh photo in Check-in. The server records the location result and assigns a territory when it finds a match. Raw coordinates from the device and photo are used only during verification.
 
 A fresh phone reading supports the player's location at submission time. GPS tags in the photo's metadata may provide supporting evidence.
 
@@ -93,7 +93,7 @@ A fresh phone reading supports the player's location at submission time. GPS tag
 | `membership_id` | LobbyMembership ID | The member who submitted the entry. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Required reference to the uploaded photo. |
+| `photo_ref` | File reference | Reference to the photo in private storage. Current members of the entry's lobby can view it under R6. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |
 | `location_checked_at` | Timestamp, optional | When the server evaluated the location reading, if one was available. |

@@ -25,11 +25,13 @@ OUTSIDE_WINDOW_TS = datetime(2026, 11, 17, 20, 0, 0)  # a Tuesday
 
 def test_valid_check_in_scores_full_points():
     entry = create_drink_entry(
-        "membership-1", "season-1", "beer", 2, "photo-1", INSIDE, None, IN_WINDOW_TS, [TERRITORY], []
+        "membership-1", "season-1", "beer", 2, "photo-1", INSIDE, INSIDE, IN_WINDOW_TS, [TERRITORY], []
     )
     assert entry.points_awarded > 0
     assert entry.location_check_result == "matched"
     assert entry.territory_id == TERRITORY.id
+    assert entry.device_gps is None
+    assert entry.photo_gps is None
 
 
 def test_missing_photo_is_rejected():

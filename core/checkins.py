@@ -80,8 +80,9 @@ def create_drink_entry(
         drink_type=drink_type,
         amount=amount,
         photo_ref=photo_ref,
-        device_gps=device_gps,
-        photo_gps=photo_gps,
+        # The location check uses raw coordinates only as evidence.
+        device_gps=None,
+        photo_gps=None,
         territory_id=territory_id,
         location_check_result=location_check_result,
         points_awarded=points_awarded,
