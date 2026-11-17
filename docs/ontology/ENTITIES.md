@@ -6,7 +6,7 @@ An entity is a thing the game needs to identify and keep track of. Mia is a play
 
 This model gives the team a shared answer to questions like “Which player and lobby does this entry belong to?” and “Which boundary did the app match it against?” The photo flow records the answer once. The map, leaderboard, and personal history can then use the same records.
 
-This draft uses a photo upload as the only required input and can match an entry directly to a territory polygon. Exact scoring, eligibility, time windows, ownership, and status transitions belong in `RULES.md` and `LIFECYCLES.md`.
+A drink check-in requires a drink type, a size, a fresh photo and a verified location. Exact scoring, eligibility, time windows, ownership, and status transitions belong in `RULES.md` and `LIFECYCLES.md`.
 
 ## How the model fits together
 
@@ -83,9 +83,9 @@ For the prototype, `territories.geojson` can supply the territory records. The m
 
 ### DrinkEntry
 
-One drink submission by a signed-in lobby member in a Season. The uploaded photo is the only required player input. WeGoPub can request a fresh phone location with permission at submission and attach the reading if available. The server records the result, assigns a territory when it finds a match, and discards the raw coordinates and reported accuracy after the check.
+One drink submission by a signed-in lobby member in a Season. The player selects a drink and its size and takes a fresh photo in Check-in. The server records the location result and assigns a territory when it finds a match. Raw coordinates from the device and photo are used only during verification.
 
-A fresh phone reading supports the player's location at submission time. For a photo selected from the gallery, the original capture location may be different. Taking the photo inside the app during the same submission gives a closer link between the photo and the location reading. GPS tags in the photo's metadata can serve as a clue and may be missing or changed.
+A fresh phone reading supports the player's location at submission time. GPS tags in the photo's metadata may provide supporting evidence.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
@@ -93,12 +93,12 @@ A fresh phone reading supports the player's location at submission time. For a p
 | `membership_id` | LobbyMembership ID | The member who submitted the entry. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Required reference to the uploaded photo. |
+| `photo_ref` | File reference | Reference to the photo in private storage. Current members of the entry's lobby can view it under R6. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |
 | `location_checked_at` | Timestamp, optional | When the server evaluated the location reading, if one was available. |
 
-The submitter's membership and the Season belong to the same lobby. If location permission is denied or a reading is unavailable, the entry can still store the photo with an `unavailable` result and an empty `territory_id`. `RULES.md` determines whether entries without a territory can score in the Season. If the team chooses drink categories for scoring or collections, add a `drink_type` field, or a `DrinkType` entity if categories need their own configuration.
+The submitter's membership and the Season belong to the same lobby. If the location is unavailable or uncertain, the player can retry from the same form. A saved entry with a verified location outside every territory has an empty `territory_id` and can earn Season points.
 
 ## Minigames
 

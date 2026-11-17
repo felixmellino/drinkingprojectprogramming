@@ -2,7 +2,7 @@
 
 This file will hold every question the team has not decided yet, with its options.
 
-All entries below are placeholders and still to be defined. The updated direction removes buddy confirmation.
+The current check-in rules use automatic location verification. D-14 proposes a fallback for cases where that check fails.
 
 | ID | Topic | Open question |
 | --- | --- | --- |
@@ -15,10 +15,11 @@ All entries below are placeholders and still to be defined. The updated directio
 | D-07 | Minigame interruption | If a Minigame is interrupted, does it count as the Player's one play for that evening? |
 | D-08 | Ownership timing | Recommended: ownership immediately before acceptance. Define the order of concurrent check-ins. |
 | D-09 | Location source | Recommended: fresh phone location alongside the photo capture. Define the role of photo metadata, missing metadata and conflicting coordinates. |
-| D-10 | Location acceptance | Maximum coordinate age and uncertainty, territory edge handling, and submissions outside every Territory. |
-| D-11 | Photo validation | Fresh capture versus gallery uploads, reused photos, supported formats and size, and how to handle false drink or size declarations. |
+| D-10 | Location acceptance | Maximum coordinate age and uncertainty, and territory edge handling. |
+| D-11 | Photo validation | How to detect reused images, supported formats and size, and how to handle false drink or size declarations. |
 | D-12 | Check-in limits | Repeat drinks, cooldowns and duplicate submissions. |
-| D-13 | Privacy | Photo visibility, coordinate retention, image metadata removal before sharing, and deletion behavior. |
+| D-13 | Privacy | Who can delete a saved photo and what happens to its drink entry afterwards? The [photo workflow](WORKFLOWS.md#save-and-view-a-check-in-photo) defines what the server keeps and what lobby members can see. |
+| D-14 | Later confirmation by another player | Should R2 allow the [proposed confirmation fallback](WORKFLOWS.md#proposed-fallback-after-automatic-location-verification-fails) when automatic location verification fails? |
 
 Design consideration: an ownership reduction can make leaders harder to
 catch. Test the agreed percentage with sample standings before fixing it.
