@@ -84,6 +84,9 @@ def _territory_events(entries: list[DrinkEntry], territory_id: str) -> list[Scor
 
 
 def territory_owner(entries: list[DrinkEntry], territory_id: str) -> str | None:
+    if any(entry.rule_version == "v1" for entry in entries):
+        from core.scoring_v1 import replay_season
+        return replay_season(entries).owners.get(territory_id)
     return replay_leader(_territory_events(entries, territory_id))
 
 
@@ -91,6 +94,9 @@ def territory_standings(entries: list[DrinkEntry], territory_id: str) -> list[tu
     """Summed totals per membership for display, sorted descending. Only
     the top slot is guaranteed to match territory_owner()'s tie-break --
     ordering among non-leading ties is a simplification."""
+    if any(entry.rule_version == "v1" for entry in entries):
+        from core.scoring_v1 import replay_season
+        return replay_season(entries).territory_rows(territory_id)
     totals: dict[str, int] = {}
     for _ts, membership_id, points in _territory_events(entries, territory_id):
         totals[membership_id] = totals.get(membership_id, 0) + points

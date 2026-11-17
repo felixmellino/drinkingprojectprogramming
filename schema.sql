@@ -1,5 +1,7 @@
 -- WeGoPub database schema (Supabase / Postgres).
 -- Run once against your Supabase project's SQL editor.
+-- Then apply setup_checkin_photo_storage.sql and 005_scoring_v1.sql as
+-- described in README.md. The scoring migration is additive and versioned.
 
 create extension if not exists pgcrypto;
 
