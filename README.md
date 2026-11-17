@@ -46,12 +46,9 @@ Migration 004 restricts game tables, including lobby invite codes, to the
 server's service-role key. Fresh databases get these restrictions in the
 schema. All app database access continues through `data/db.py`.
 
-Set the SMTP entries shown in `.streamlit/secrets.toml.example` to enable
-Forgot password. Port 465 uses implicit TLS; other ports use STARTTLS
-(usually 587). Missing mail settings show a recovery-unavailable message;
-registration and login still work. Credentials can also be set as environment
-variables. Recovery messages require a real sender configured with your mail
-provider.
+Password recovery is currently unavailable; no SMTP configuration is needed.
+Existing databases need no migration for this removal. Historical account SQL
+still defines unused reset-code objects; the app no longer calls them.
 
 To enable check-in photos, run
 [`migrations/setup_checkin_photo_storage.sql`](migrations/setup_checkin_photo_storage.sql)
@@ -94,14 +91,14 @@ streamlit run app.py
 pytest
 ```
 
-The test suite covers pure logic and Streamlit forms with mocked database and
-email services; it needs no live Supabase connection. Run from the repository
-root. The mocks do not verify PostgreSQL migrations or real email delivery.
+The test suite covers pure logic and Streamlit forms with mocked database
+services; it needs no live Supabase connection. Run from the repository
+root. The mocks do not verify PostgreSQL migrations.
 
 ## Accounts
 
 Profile has one Create account / Log in selector; only the chosen form is shown.
-Forgot password is expandable beneath login. There is no account-upgrade screen.
+Password recovery and account upgrades are currently unavailable.
 First visit shows registration and login. Every game page requires a signed-in
 account. Registration requires first name, surname, unique username, unique
 email and a password of at least 8 characters, entered twice. Email and
@@ -122,10 +119,6 @@ without an email cannot use email login: an administrator must link the correct
 email and replace their credential hash while retaining the original player ID.
 There is no self-service PIN upgrade flow.
 
-Forgot password emails a random code valid for 15 minutes, with at most one
-request per account per minute. Paste the code and email into the reset form
-and enter the new password twice. Codes are hashed in the database and
-consumed atomically so an expired or reused code cannot reset a password.
 Logins allow ten attempts per account per 15-minute window.
 Password changes invalidate previous sessions on their next action.
 Logout clears the browser session and remembered device; accounts and progress remain in Supabase.
@@ -139,28 +132,24 @@ Logout clears the browser session and remembered device; accounts and progress r
    may need to select their active lobby again after logging in.
 3. Try a duplicate username/email with different capitalization and invalid
    or mismatched passwords. Confirm no account or points are added.
-4. Request a recovery code and check delivery. Reset once, then try reusing
-   the code and a code older than 15 minutes; both must fail. Restart the
-   app and confirm only the new password works.
-5. Tick Remember password, close and reopen the app, and confirm login is
+4. Tick Remember password, close and reopen the app, and confirm login is
    restored without entering credentials. Log out and reopen: login must be
    required. Repeat with the checkbox unticked; a fresh browser session must
-   require login. Verify a password reset also cancels remembered access.
-6. Open each game page while logged out. Confirm no game content is shown.
-   Verify an anonymous Supabase key cannot read players/recovery/remembered-device records or
+   require login. Verify an administrator password change also cancels remembered access.
+5. Open each game page while logged out. Confirm no game content is shown.
+   Verify an anonymous Supabase key cannot read players/remembered-device records or
    call the account RPCs.
 
-This live migration/restart/email check still needs the configured external
-services; the automated suite does not replace it.
+This live migration/restart check still needs the configured Supabase
+project; the automated suite does not replace it.
 
 ## Project structure
 
 - `core/` — every game rule, as plain Python with no Streamlit/database
   imports. This is what the tests cover.
 - `data/db.py` — the only file that talks to Supabase.
-- `account_ui.py` — one account form with registration, login and expandable recovery.
+- `account_ui.py` — one account form with registration and login.
 - `device_login.py` and `components/remember_device/` — persistent device login.
-- `data/mail.py` — recovery email transport using the Python standard library.
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.

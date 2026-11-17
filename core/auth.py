@@ -86,10 +86,10 @@ def authenticate(email: str, password: str, players: list[Player]) -> Player | N
     return player if valid else None
 
 
-def new_reset_code() -> tuple[str, str]:
-    code = secrets.token_urlsafe(32)
-    return code, reset_code_hash(code)
+def new_token() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, token_hash(token)
 
 
-def reset_code_hash(code: str) -> str:
-    return hashlib.sha256(code.strip().encode()).hexdigest()
+def token_hash(token: str) -> str:
+    return hashlib.sha256(token.strip().encode()).hexdigest()

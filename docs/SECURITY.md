@@ -3,7 +3,7 @@
 ## Access to photos
 
 Every photo page and check-in submission requires the account login helper.
-It checks the current credential version, including after a password reset.
+It checks the current credential version, including after an administrator password change.
 The server looks up the viewer's current lobby membership before each photo
 download. The photo path must match the entry and lobby being opened.
 The photo view displays the username, capture time and territory label.
@@ -18,7 +18,8 @@ For existing projects, `migrations/004_server_game_tables.sql` also protects
 lobby invite codes, territory definitions, arenas and minigame attempts.
 Public clients cannot bypass the app to read invites or change game state.
 Fresh databases get the same restrictions from `schema.sql`. The account
-migrations protect credentials, recovery codes and remembered sessions.
+migrations protect credentials and remembered sessions. Password recovery is currently
+unavailable; historical reset-code database objects are unused by the app.
 
 ## Image handling
 
@@ -45,8 +46,8 @@ configuration. Configure HTTPS and access to logs and backups with the
 hosting provider.
 
 Put local credentials in the ignored `.streamlit/secrets.toml`. Use the
-hosting provider's secrets settings for deployment. Store service keys,
-SMTP passwords and recovery tokens outside Git and issue descriptions.
+hosting provider's secrets settings for deployment. Store service keys and
+remembered-device tokens outside Git and issue descriptions.
 If a secret is disclosed, revoke or rotate it at its provider, replace it
 in the deployment secrets, and check access logs for misuse.
 Use an encrypted secrets transfer rather than pasting keys into chats.

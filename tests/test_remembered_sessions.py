@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 import data.db as db
-from core.auth import reset_code_hash
+from core.auth import token_hash
 from core.lobbies import create_player
 
 
@@ -64,7 +64,7 @@ def test_remembered_token_survives_new_client_and_is_not_plaintext(service):
     token = db.create_remembered_session(player)
     assert token not in str(rows)
     assert "password8" not in str(rows)
-    assert rows[0]["token_hash"] == reset_code_hash(token)
+    assert rows[0]["token_hash"] == token_hash(token)
     assert rows[0]["credential_version"] != player.pin_hash
     assert datetime.fromisoformat(rows[0]["expires_at"]) > datetime.now(timezone.utc) + timedelta(days=29)
     # Each operation receives a new client, as after an app restart.

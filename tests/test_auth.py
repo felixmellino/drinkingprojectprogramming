@@ -2,8 +2,8 @@ import hashlib
 
 import pytest
 
-from core.auth import (authenticate, hash_password, new_reset_code, normalize_email,
-                       reset_code_hash, validate_password, verify_password)
+from core.auth import (authenticate, hash_password, new_token, normalize_email,
+                       token_hash, validate_password, verify_password)
 from core.lobbies import create_player
 from core.models import Player
 
@@ -78,11 +78,11 @@ def test_legacy_player_cannot_log_in_without_email():
     assert authenticate("mia@example.com", "1234", [old]) is None
 
 
-def test_reset_codes_are_random_and_only_hash_is_stored():
-    code, stored = new_reset_code()
-    other, _ = new_reset_code()
+def test_device_tokens_are_random_and_only_hash_is_stored():
+    code, stored = new_token()
+    other, _ = new_token()
     assert code != other
     assert len(code) >= 40
     assert code != stored
-    assert reset_code_hash(code) == stored
-    assert reset_code_hash(" " + code + " ") == stored
+    assert token_hash(code) == stored
+    assert token_hash(" " + code + " ") == stored
