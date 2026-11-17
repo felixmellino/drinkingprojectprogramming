@@ -39,12 +39,13 @@ connection.
 | File | What it means, in one sentence |
 | --- | --- |
 | `models.py` | Defines the "things" in the game — Player, Lobby, Territory, DrinkEntry, etc. — just their labels and fields, nothing else. |
-| `constants.py` | Every tunable number in one place: points per drink, the GPS tolerance, the duplicate-check window. Change a rule here, nowhere else. |
+| `constants.py` | Legacy scoring/window constants plus shared GPS, minigame and photo lifecycle settings. New scoring settings live together in `scoring_v1.py` and are snapshotted per season. |
 | `auth.py` | Turns a PIN into a scrambled code so the real PIN is never stored, and checks a typed PIN against it at login. |
 | `lobbies.py` | Creating a player, creating a lobby (with an invite code), joining a lobby, and setting up that lobby's season. |
 | `game_window.py` | One job: "is this moment inside Thursday-noon-to-Sunday-evening?" Drinks only count inside that window. |
 | `location.py` | Checks whether a drink's GPS location falls inside a territory's drawn area, and whether the phone's GPS agrees with the photo's own location tag. |
-| `scoring.py` | Works out how many points a drink is worth (beer and wine scale with amount; shots and long drinks are flat). |
+| `scoring.py` | Preserves the historical beer/wine-unit and flat Shot/long-drink calculator for legacy seasons. |
+| `scoring_v1.py` | The new fixed size table, frozen season rules, lobby-time window, cooldown/correction checks and exact quarter-point ownership replay. |
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |
 | `leaderboard.py` | The same tie-breaking idea as territories, but for the whole season's ranking instead of one territory. |

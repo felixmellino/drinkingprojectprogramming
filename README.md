@@ -82,6 +82,27 @@ and monitor failures. Without `--apply`, the command only reports counts.
 It removes expired photos and abandoned uploads older than 24 hours, keeping
 all scored entries. Physical deletion happens on a successful cleanup run.
 
+### Scoring v1 setup
+
+After the base schema, account/territory migrations, server game-table security
+and photo setup, apply [`migrations/005_scoring_v1.sql`](migrations/005_scoring_v1.sql).
+Do not rerun `schema.sql` on the shared existing project. New projects also need
+migration 005 after the base schema and photo setup.
+
+Existing populated seasons remain legacy, preserving their points and rules.
+New lobbies start scoring v1 with a chosen timezone. After a season ends,
+current members can start the next season from Lobby. Its rules, timezone and
+dates are frozen; scores and territory ownership start fresh in its new ID.
+
+The new scoring provides the 1-5 category/size table, additional 25% owner
+season income, exact quarters, Thu 18:00-Sun 18:00 lobby-time eligibility,
+a shared two-minute cooldown and author corrections with downstream replay.
+History includes point breakdowns and revision records. See the
+[implementation/Data handoff](docs/SCORING_IMPLEMENTATION.md) and
+[current ontology contract](docs/ontology/SCORING_V1.md) for defaults, testing
+commands and the remaining live checks. The three-page PDF is the historical
+team-review proposal. Real device GPS integration remains Location work.
+
 ### Run the app
 
 ```bash
@@ -179,6 +200,6 @@ four building blocks, and the team's workflow rules.
 - **Map, Memories, and Minigames pages aren't built yet** — Standings shows
   territory ownership as a list for now. See the build order in
   `AGENTS.md`/the project plan for what's next.
-- Several game-rule numbers (points per drink, GPS/photo mismatch
-  tolerance, season-length day counts) are placeholders in
-  `core/constants.py` — see `docs/ontology/OPEN_DECISIONS.md`.
+- Scoring v1 has an implemented point table and weekly window. Legacy/minigame
+  constants, GPS acceptance details and calendar-month season semantics still
+  need team review; see `docs/ontology/OPEN_DECISIONS.md`.

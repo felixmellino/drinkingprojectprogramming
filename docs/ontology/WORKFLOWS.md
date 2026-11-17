@@ -1,5 +1,11 @@
 # Workflows
 
+> Scoring v1 implementation was authorised on 17 November 2026. See
+> [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
+> Earlier scoring drafts below are historical where they differ. Legacy seasons
+> retain their old behaviour; migration and teammate review are pending.
+
+
 ## Check in and score
 
 Updated direction: automatic location verification replaces buddy confirmation.
@@ -84,3 +90,7 @@ Pending, declined, and expired requests earn zero points. If the entry
 meets the other scoring rules, a confirmation awards season points once.
 The entry has no territory assignment. For a tie in the season standings,
 the points count from the moment the other player confirms.
+
+## Proposed scoring workflow - review pending
+
+The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.

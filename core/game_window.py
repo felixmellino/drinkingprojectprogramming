@@ -1,5 +1,8 @@
-"""The weekly game window: one continuous block per week, Thursday 12:00
-through Sunday 23:59:59. Drinks only count inside this window."""
+"""Legacy weekly window and existing minigame-window helper.
+
+New drink scoring uses scoring_v1.window_bounds and a frozen lobby timezone.
+The separate minigame-night definition remains a team decision.
+"""
 
 from __future__ import annotations
 

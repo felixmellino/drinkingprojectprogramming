@@ -58,6 +58,26 @@ def require_active_membership() -> tuple[str, str, str]:
     if "current_membership_id" not in st.session_state:
         st.info("Create or join a lobby on the Lobby page first.")
         st.stop()
+    try:
+        memberships = db.list_memberships_for_player(st.session_state["player_id"])
+    except (APIError, RequestError, RuntimeError):
+        st.error("Lobby access could not be checked. Try again.")
+        st.stop()
+    if not any(m.id == st.session_state["current_membership_id"]
+               and m.lobby_id == st.session_state.get("current_lobby_id") for m in memberships):
+        st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
+        st.stop()
+    if not st.session_state.get("current_season_id"):
+        st.info("Start or select a season on the Lobby page first.")
+        st.stop()
+    try:
+        seasons = db.list_seasons_for_lobby(st.session_state["current_lobby_id"])
+    except (APIError, RequestError, RuntimeError):
+        st.error("Season access could not be checked. Try again.")
+        st.stop()
+    if not any(s.id == st.session_state["current_season_id"] for s in seasons):
+        st.error("This season does not belong to the selected lobby. Choose a season again.")
+        st.stop()
     return (
         st.session_state["current_membership_id"],
         st.session_state["current_lobby_id"],

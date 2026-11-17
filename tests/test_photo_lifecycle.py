@@ -48,6 +48,9 @@ def store(monkeypatch):
             self.filters[key] = value
             return self
 
+        def range(self, *args):
+            return self
+
         def order(self, *args, **kwargs):
             return self
 

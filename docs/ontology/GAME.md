@@ -1,40 +1,70 @@
 # Game
 
-Draft, agreed in conversation on 2026-11-17. Exact numbers and rules go into [RULES.md](RULES.md), not here. Placeholders marked **TBD** are tracked in [OPEN_DECISIONS.md](OPEN_DECISIONS.md).
+Working scoring v1 was authorised by the contributor on 17 November 2026.
+It is implemented on `Scoring`, with teammate review, shared migration and
+live verification pending. [SCORING_V1.md](SCORING_V1.md) is the current scoring
+contract; [the planning record](SCORING_PROPOSAL.md) preserves the discussion.
+Existing legacy seasons retain their original rules and historical points.
 
-## Goal
-The Player with the most Points at the end of the playing period wins. Territories are an important side feature on top of that. A tie is decided by [R-R01](RULES.md).
+## Goal and accounts
 
-- **TBD, playing period:** how long it lasts and when it starts and ends ([D-06](OPEN_DECISIONS.md)).
+The main competition is individual. The player with the highest total in a
+lobby's season wins. Ties favour whoever reached the tied score first.
+A player's season account combines their own base awards and additional
+territory-owner income. Each territory has a separate account for each player,
+containing only their own base awards there. Owner income never affects
+territory ownership. Cross-lobby/lifetime rankings are outside this version.
 
-## Points
-- Every alcoholic Drink earns Points, wherever it is drunk, and counts towards the Player's total account.
-- Drink categories for now: beer, wine, shots, long drinks. Beer and wine also need an amount.
-- Drinks only count from Thursday to Sunday.
-- Nobody else has to confirm a Drink.
+## Drink entry and base points
 
-- **TBD, Points per Drink:** how many Points each category gives, and how the amount counts for beer and wine ([D-02](OPEN_DECISIONS.md)).
-- **TBD, Game Night boundaries:** when an evening starts and ends, and which evening a Drink after midnight belongs to ([D-05](OPEN_DECISIONS.md)).
+Use Beer, Wine, Shot and Mixed drink (cocktails/long drinks together). Beer and
+wine show defined Small/Medium/Large volumes; mixed sizes are trusted labels.
+A Shot uses one serving without a size step. The fixed 1-5 table and its
+embedded Large bonuses are defined in [SCORING_V1.md](SCORING_V1.md).
 
-## Territories
-- Territories are predefined areas on a map.
-- The Player's location assigns a Drink to a Territory. Bars do not matter for this.
-- Every Territory has its own account for each Player. A Drink inside a Territory earns the same Points on that Territory's account as on the total account.
-- A Drink outside every Territory only counts towards the total account.
+A fresh photo and accepted location evidence are required. A matched entry
+credits the drinker fully in season and territory. A verified outside entry
+credits the season only. Exact device/photo GPS is discarded after checking;
+the photo is stripped of embedded metadata and shared only within its lobby.
 
-- **Decided, Territory areas:** 12 hand-drawn areas in Bairro Alto, Santa Catarina and Santos. Neighbours may touch but never overlap, and gaps are allowed ([R-T01, R-T02](RULES.md#territories)).
+## Weekly eligibility and limits
 
-## Ownership
-- The Player with the most Points on a Territory's account owns it, and the map shows this.
-- Ownership lasts for the whole playing period, but any Player can take a Territory at any time by overtaking the Owner.
-- Owning a Territory gives an advantage over other Players who drink there, so that Owners can earn disproportionately many Points.
+New v1 scoring runs continuously from Thursday 18:00 inclusive to Sunday
+18:00 exclusive in the lobby season's chosen timezone, during the season's
+own start/end boundaries. The database scoring-request receipt time is
+authoritative. New entries are blocked outside the window. There is no fixed
+nightly count, but accepted entries share a two-minute cooldown per player
+and lobby across all categories. Retries return their original result once.
 
-- **TBD, owner advantage:** whether the Owner takes a small share of the Points other Players earn there, or weakens those Players' Points on that Territory ([D-01](OPEN_DECISIONS.md)).
+## Territories and owner income
+
+Territories are predefined map areas; bars are not part of scoring. The
+location assigns the territory. The shared file contains 12 Lisbon areas
+with permanent IDs and non-overlapping interiors (R-T01/R-T02).
+
+The highest territory total owns it, with earliest-reached ties. Reward the
+owner immediately before each accepted entry, then update ownership. A
+different prior owner receives an additional 25% of its base award in season
+points only. The visitor loses nothing. No self-income or fixed income cap.
+Use exact quarter-points. First positive entries claim an unowned territory
+without a first-owner bonus. New season IDs reset standings without deleting
+old history. Exact ordering/defaults are documented in the v1 contract.
+
+## Corrections and stable seasons
+
+An author can correct drink/size for two minutes, before season end. Record
+the revision and replay affected ownership and subsequent owner income from
+the original event position. An image deletion keeps points. The season's
+settings/timezone/dates are frozen; changes start in a later season.
+
+The inherited season choices remain 7, 30 and 91 elapsed days. Calendar-month
+semantics, host roles and leaving/absence workflows remain team review items.
+Device GPS capture and age/accuracy/border rules remain Location integration.
+Friend confirmation remains a separate proposal, not an active v1 fallback.
 
 ## Minigames
-- Examples: virtual beer pong, a reaction test.
-- Each Player may play one Minigame per evening.
-- Minigames give no Points. They give special items (for example a Points multiplier).
 
-- **TBD, special items:** which items exist and what each one does ([D-04](OPEN_DECISIONS.md)).
-- **TBD, interruption:** whether an interrupted Minigame counts as the Player's one play for that evening ([D-07](OPEN_DECISIONS.md)).
+Each player may play one minigame per agreed game night across all minigames.
+Minigames give special items, not direct points. Their night boundaries,
+interruptions, items and multiplier stacking are separate open team decisions
+(D-04/D-07). The continuous drink-scoring window does not decide them.

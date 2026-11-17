@@ -2,6 +2,16 @@
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 
+## Scoring v1 working implementation
+
+The contributor authorised implementation on 17 November 2026. The current
+contract is [SCORING_V1.md](SCORING_V1.md); [the handoff](../SCORING_IMPLEMENTATION.md)
+records the explicit boundary defaults and verification. It is implemented
+on `Scoring`, awaiting teammate review and shared migration. Existing seasons
+remain legacy; the new rules apply to new v1 seasons. The earlier
+[planning proposal](SCORING_PROPOSAL.md) and three-page PDF are historical
+review records, not a claim of current deployment.
+
 ## Ranking
 
 ### R-R01 Ties
@@ -56,9 +66,9 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | --- | --- | --- |
 | R1 | A city is divided into territories. An accepted check-in with a matched territory contributes its points there. | Assign a territory only when location verification identifies one. A verified location outside every territory can earn season points only, subject to the same eligibility rules. |
 | R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Use photo metadata as supporting evidence and discard raw coordinates after verification. |
-| R3 | Base points depend on both drink type and size; beer earns fewer points than a longdrink in the intended comparison. | Accept only configured type/size combinations. Reject unsupported combinations. Exact table, units and comparisons between different sizes remain open. |
+| R3 | New v1 seasons use the frozen category/size table in [SCORING_V1.md](SCORING_V1.md). | Four categories; sizes for beer/wine/mixed; one shot serving. Reject unsupported combinations. Large bonuses are already included. Legacy seasons keep their prior awards. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
-| R5 | Other players earn a percentage fewer points on a drink in an owned territory than its owner. | **Proposal only, not agreed:** whether the Owner takes a share of other Players' Points or weakens their Points is still open (D-01). If agreed: apply the reduction to non-owners; percentage, rounding, unclaimed territory behavior and ownership timing remain open. |
+| R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
 | R6 | All current members of a lobby can view the photos saved with that lobby's drink entries. | Before serving a photo, verify that the viewer is signed in and is a current member of the lobby that owns the entry. |
 | R7 | The owner can delete their photo while keeping the drink entry and its awarded points. Photos expire 30 days after their season ends. | Only the entry's author may request deletion. Remove the stored image and mark its reference as deleted, preserving the score and standings. Deny photo access at the expiry boundary and remove expired files through scheduled cleanup. |
 
