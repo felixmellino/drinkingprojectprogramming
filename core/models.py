@@ -60,6 +60,7 @@ class DrinkEntry:
     location_check_result: str  # "matched" | "uncertain" | "outside" | "unavailable"
     points_awarded: int
     submitted_at: datetime
+    photo_captured_at: datetime | None = None
 
 
 @dataclass

@@ -24,6 +24,22 @@ Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill
 in a real Supabase project's URL and key (never commit the real file — it's
 gitignored). Then apply `schema.sql` to that project via its SQL editor.
 
+To enable check-in photos, run
+[`migrations/setup_checkin_photo_storage.sql`](migrations/setup_checkin_photo_storage.sql)
+in the Supabase SQL editor after the `drink_entries` table exists. It adds the
+capture-time column and creates the private `check-in-photos` bucket. It can
+also run on a project that already has the column and a private bucket.
+
+Use a server-only Supabase secret or service role key for `SUPABASE_KEY`.
+Restrict object access to the app server, which checks lobby membership before
+serving an image. Restrict direct writes to player, membership, season, and
+drink entry records to the app server so it can rely on those records for
+authorization.
+
+In the test project, save a check-in and reopen it under **Lobby photos**
+after restarting the app. Verify access with a lobby member and an account
+outside the lobby.
+
 ### Run the app
 
 ```bash
@@ -36,8 +52,7 @@ streamlit run app.py
 pytest
 ```
 
-The test suite (`tests/`) only exercises the pure game-logic layer in
-`core/` and needs no live Supabase connection.
+The test suite (`tests/`) runs without a live Supabase connection.
 
 ## Project structure
 
@@ -58,8 +73,6 @@ four building blocks, and the team's workflow rules.
 - **No real GPS capture.** The Check-in page takes manual latitude/longitude
   input instead of reading the device's actual location — Streamlit has no
   built-in geolocation. Replace with a browser-location component.
-- **No real photo storage.** Photos aren't uploaded to Supabase Storage yet;
-  only a placeholder reference is saved.
 - **Map, Memories, and Minigames pages aren't built yet** — Standings shows
   territory ownership as a list for now. See the build order in
   `AGENTS.md`/the project plan for what's next.

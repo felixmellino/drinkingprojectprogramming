@@ -47,6 +47,7 @@ create table drink_entries (
   drink_type text not null,
   amount double precision,
   photo_ref text not null,
+  photo_captured_at timestamptz,
   device_gps_lat double precision,
   device_gps_lng double precision,
   photo_gps_lat double precision,

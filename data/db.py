@@ -9,6 +9,7 @@ SUPABASE_KEY), which is gitignored -- see .streamlit/secrets.toml.example.
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import datetime
 
 from supabase import Client, create_client
@@ -16,6 +17,7 @@ from supabase import Client, create_client
 from core.models import Arena, DrinkEntry, Lobby, LobbyMembership, MinigameAttempt, Player, Season, Territory
 
 _client: Client | None = None
+CHECKIN_PHOTO_BUCKET = "check-in-photos"
 
 
 def get_client() -> Client:
@@ -195,30 +197,113 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         location_check_result=r["location_check_result"],
         points_awarded=r["points_awarded"],
         submitted_at=datetime.fromisoformat(r["submitted_at"]),
+        photo_captured_at=datetime.fromisoformat(r["photo_captured_at"]) if r.get("photo_captured_at") else None,
     )
 
 
-def insert_drink_entry(entry: DrinkEntry) -> None:
+def _drink_entry_row(entry: DrinkEntry) -> dict:
     device_lat, device_lng = entry.device_gps if entry.device_gps else (None, None)
     photo_lat, photo_lng = entry.photo_gps if entry.photo_gps else (None, None)
-    get_client().table("drink_entries").insert(
+    row = {
+        "id": entry.id,
+        "membership_id": entry.membership_id,
+        "season_id": entry.season_id,
+        "drink_type": entry.drink_type,
+        "amount": entry.amount,
+        "photo_ref": entry.photo_ref,
+        "device_gps_lat": device_lat,
+        "device_gps_lng": device_lng,
+        "photo_gps_lat": photo_lat,
+        "photo_gps_lng": photo_lng,
+        "territory_id": entry.territory_id,
+        "location_check_result": entry.location_check_result,
+        "points_awarded": entry.points_awarded,
+        "submitted_at": entry.submitted_at.isoformat(),
+    }
+    if entry.photo_captured_at is not None:
+        row["photo_captured_at"] = entry.photo_captured_at.isoformat()
+    return row
+
+
+def insert_drink_entry(entry: DrinkEntry) -> None:
+    get_client().table("drink_entries").insert(_drink_entry_row(entry)).execute()
+
+
+def _checkin_photo_path(lobby_id: str, entry_id: str) -> str:
+    return f"{lobby_id}/{entry_id}.jpg"
+
+
+def _private_photo_bucket():
+    storage = get_client().storage
+    if storage.get_bucket(CHECKIN_PHOTO_BUCKET).public is not False:
+        raise RuntimeError("Check-in photos require a private storage bucket.")
+    return storage.from_(CHECKIN_PHOTO_BUCKET)
+
+
+def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, photo: bytes) -> DrinkEntry:
+    """Save the photo first, then record points once for this camera capture."""
+    if not any(
+        member.id == entry.membership_id and member.lobby_id == lobby_id
+        for member in list_memberships_for_player(player_id)
+    ) or not any(season.id == entry.season_id for season in list_seasons_for_lobby(lobby_id)):
+        raise PermissionError("The player and season must belong to this lobby.")
+
+    table = get_client().table("drink_entries")
+    saved = table.select("*").eq("id", entry.id).eq("membership_id", entry.membership_id).execute().data
+    if saved:
+        return _row_to_drink_entry(saved[0])
+
+    photo_path = _checkin_photo_path(lobby_id, entry.id)
+    _private_photo_bucket().upload(photo_path, photo, {"content-type": "image/jpeg", "upsert": "true"})
+    # Retrying the same capture uses the same object path and primary key.
+    saved = table.upsert(
+        _drink_entry_row(replace(entry, photo_ref=photo_path)),
+        on_conflict="id",
+        ignore_duplicates=True,
+    ).execute().data
+    if not saved:
+        saved = table.select("*").eq("id", entry.id).eq("membership_id", entry.membership_id).execute().data
+    if not saved:
+        raise RuntimeError("Could not confirm the check-in was saved.")
+    return _row_to_drink_entry(saved[0])
+
+
+def _lobby_photo_query(player_id: str, lobby_id: str):
+    if not any(member.lobby_id == lobby_id for member in list_memberships_for_player(player_id)):
+        raise PermissionError("Only members of this lobby can view its check-in photos.")
+
+    return (
+        get_client().table("drink_entries")
+        .select(
+            "id,photo_ref,photo_captured_at,submitted_at,location_check_result,territories(name),"
+            "seasons!inner(lobby_id),lobby_memberships!inner(lobby_id,players(display_name))"
+        )
+        .eq("seasons.lobby_id", lobby_id)
+        .eq("lobby_memberships.lobby_id", lobby_id)
+    )
+
+
+def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
+    rows = _lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).execute().data
+    return [
         {
-            "id": entry.id,
-            "membership_id": entry.membership_id,
-            "season_id": entry.season_id,
-            "drink_type": entry.drink_type,
-            "amount": entry.amount,
-            "photo_ref": entry.photo_ref,
-            "device_gps_lat": device_lat,
-            "device_gps_lng": device_lng,
-            "photo_gps_lat": photo_lat,
-            "photo_gps_lng": photo_lng,
-            "territory_id": entry.territory_id,
-            "location_check_result": entry.location_check_result,
-            "points_awarded": entry.points_awarded,
-            "submitted_at": entry.submitted_at.isoformat(),
+            "id": row["id"],
+            "username": row["lobby_memberships"]["players"]["display_name"],
+            "territory": row["territories"]["name"] if row["territories"] else None,
+            "location": row["location_check_result"],
+            "captured_at": row.get("photo_captured_at"),
+            "submitted_at": row["submitted_at"],
         }
-    ).execute()
+        for row in rows
+    ]
+
+
+def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> bytes | None:
+    rows = _lobby_photo_query(player_id, lobby_id).eq("id", entry_id).execute().data
+    photo_path = _checkin_photo_path(lobby_id, entry_id)
+    if not rows or rows[0]["photo_ref"] != photo_path:
+        return None
+    return _private_photo_bucket().download(photo_path)
 
 
 # -- minigame attempts ------------------------------------------------
