@@ -3,9 +3,9 @@
 Draft, agreed in conversation on 2026-11-17. Exact numbers and rules go into [RULES.md](RULES.md), not here. Placeholders marked **TBD** are tracked in [OPEN_DECISIONS.md](OPEN_DECISIONS.md).
 
 ## Goal
-The Player with the most Points at the end of the playing period wins. Territories are an important side feature on top of that. A tie is decided by [R-R01](RULES.md).
+Players compete in Lobbies: a group of Players who joined using the same invite code. Each Lobby runs its own Season. The Player with the most Points at the end of their Lobby's Season wins that Lobby. Territories are an important side feature on top of that. A tie is decided by [R-R01](RULES.md).
 
-- **TBD, playing period:** how long it lasts and when it starts and ends ([D-06](OPEN_DECISIONS.md)).
+A Season's length is chosen when its Lobby is created: one week, one month, or three months ([R-R02](RULES.md)).
 
 ## Points
 - Every alcoholic Drink earns Points, wherever it is drunk, and counts towards the Player's total account.
