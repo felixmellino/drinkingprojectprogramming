@@ -8,12 +8,44 @@ contain no game rules themselves.
 
 import streamlit as st
 
+import data.db as db
+from account_ui import show_accounts
+from device_login import sync_storage, set_identity, queue_storage
+from postgrest.exceptions import APIError
+from httpx import RequestError
+
 
 def require_login() -> str:
     """Stop the page and prompt a login if nobody is logged in. Returns
     the logged-in player's id otherwise."""
+    token = sync_storage()
+    if token is not None and not st.session_state.get("_remember_attempted"):
+        if token:
+            try:
+                player = db.get_remembered_player(token)
+            except (APIError, RuntimeError, OSError, RequestError):
+                st.error("Account service is unavailable. Please try again later.")
+                st.stop()
+            if player:
+                set_identity(player)
+                st.session_state["_device_token"] = token
+            else:
+                queue_storage("clear")
+                st.rerun()
+        st.session_state["_remember_attempted"] = True
+    if "player_id" in st.session_state:
+        try:
+            player = db.get_player(st.session_state["player_id"])
+        except (APIError, RuntimeError, OSError, RequestError):
+            st.error("Account service is unavailable. Please try again later.")
+            st.stop()
+        if not player or not player.email or player.pin_hash != st.session_state.get("credential_version"):
+            st.session_state.clear()
+            st.session_state["_remember_attempted"] = True
+            queue_storage("clear")
+            st.info("Please log in again.")
     if "player_id" not in st.session_state:
-        st.warning("Please log in on the Profile page first.")
+        show_accounts()
         st.stop()
     return st.session_state["player_id"]
 

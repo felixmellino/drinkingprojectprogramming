@@ -12,7 +12,8 @@ class Player:
     display_name: str  # public username
     first_name: str  # private
     last_name: str  # private
-    pin_hash: str
+    pin_hash: str  # credential hash; column retained to preserve existing accounts
+    email: str | None = None  # None only for legacy records
 
 
 @dataclass

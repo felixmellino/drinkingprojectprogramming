@@ -2,14 +2,16 @@
 rules here. Pages call these functions and pass plain values; everything
 else (validation, scoring, standings) lives in core/.
 
-The connection string comes from .streamlit/secrets.toml (SUPABASE_URL /
+Server-only credentials come from .streamlit/secrets.toml (SUPABASE_URL /
 SUPABASE_KEY), which is gitignored -- see .streamlit/secrets.toml.example.
 """
 
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+from core.auth import new_reset_code, reset_code_hash
 
 from supabase import Client, create_client
 
@@ -56,6 +58,7 @@ def list_players() -> list[Player]:
             first_name=r["first_name"],
             last_name=r["last_name"],
             pin_hash=r["pin_hash"],
+            email=r.get("email"),
         )
         for r in rows
     ]
@@ -69,6 +72,7 @@ def insert_player(player: Player) -> None:
             "first_name": player.first_name,
             "last_name": player.last_name,
             "pin_hash": player.pin_hash,
+            "email": player.email,
         }
     ).execute()
 
@@ -262,3 +266,57 @@ def insert_minigame_attempt(attempt: MinigameAttempt) -> None:
             "result": attempt.result,
         }
     ).execute()
+
+
+def issue_password_reset(player_id: str, code_hash: str) -> bool:
+    return bool(get_client().rpc("issue_password_reset", {
+        "target_player": player_id, "new_code_hash": code_hash,
+    }).execute().data)
+
+
+def consume_password_reset(email: str, code_hash: str, password_hash: str) -> bool:
+    return bool(get_client().rpc("consume_password_reset", {
+        "target_email": email, "supplied_code_hash": code_hash,
+        "new_password_hash": password_hash,
+    }).execute().data)
+
+
+def get_player(player_id: str) -> Player | None:
+    rows = get_client().table("players").select("*").eq("id", player_id).execute().data
+    return Player(**rows[0]) if rows else None
+
+
+def allow_login_attempt(player_id: str) -> bool:
+    return bool(get_client().rpc("allow_login_attempt", {"target_player": player_id}).execute().data)
+
+
+# The browser stores only the random token; Supabase stores only its hash.
+def create_remembered_session(player: Player) -> str:
+    token, token_hash = new_reset_code()
+    get_client().table("remembered_sessions").insert({
+        "token_hash": token_hash, "player_id": player.id,
+        "credential_version": reset_code_hash(player.pin_hash),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+    }).execute()
+    return token
+
+
+def get_remembered_player(token: str) -> Player | None:
+    if not 40 <= len(token) <= 100:
+        return None
+    rows = (get_client().table("remembered_sessions").select("*")
+            .eq("token_hash", reset_code_hash(token)).execute().data)
+    if not rows:
+        return None
+    session = rows[0]
+    player = get_player(session["player_id"])
+    if (datetime.fromisoformat(session["expires_at"]) <= datetime.now(timezone.utc)
+            or not player or not player.email
+            or session["credential_version"] != reset_code_hash(player.pin_hash)):
+        revoke_remembered_session(token)
+        return None
+    return player
+
+
+def revoke_remembered_session(token: str) -> None:
+    get_client().table("remembered_sessions").delete().eq("token_hash", reset_code_hash(token)).execute()
