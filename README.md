@@ -48,6 +48,11 @@ The test suite (`tests/`) only exercises the pure game-logic layer in
   `core`/`data`, no rules live here.
 - `tests/` — one file per `core/` module.
 
+New here, or working on a building block? Read
+[`docs/WORKING_GUIDE.md`](docs/WORKING_GUIDE.md) first — it explains every
+file in plain language, how `docs/ontology/` connects to the code, the
+four building blocks, and the team's workflow rules.
+
 ## Known gaps in this first increment
 
 - **No real GPS capture.** The Check-in page takes manual latitude/longitude

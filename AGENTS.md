@@ -87,6 +87,27 @@ an open team decision. The game definition lives in `docs/ontology/`:
 - Flag gaps that could affect the submission or walkthrough. Finish the
   core workflows and their tests before proposing extra features.
 
+## Team workflow
+
+- Nobody pushes directly to `main`. Work on your own branch, open a pull
+  request, get at least one teammate's look before merging.
+- The four building blocks (Identity & Lobbies, Location & Territories,
+  Drink Entries & Scoring, Standings & Data layer) are each owned
+  end-to-end by one person: their `core/` rule files, tests, and the page
+  that uses them. See `docs/WORKING_GUIDE.md` for the full breakdown.
+- Default to deciding and announcing, not deciding and asking: decide it,
+  build it, write it into `docs/ontology/`, post one line in the group
+  chat, then open your PR. Only ask the team *before* deciding when a
+  change touches a shared entity (`Player`, `LobbyMembership`, `Season`,
+  `Territory`, ...), changes behavior another block's code already calls,
+  or contradicts something already decided (not just open) in the
+  ontology.
+- `docs/ontology/` and the code must always agree. When you resolve an
+  open decision or change a rule, update both in the same change.
+- Full walkthrough of the codebase, the ontology-to-code mapping, and a
+  step-by-step guide for working with Claude Code with no coding
+  experience: `docs/WORKING_GUIDE.md`.
+
 ## Before submitting
 
 - [ ] Cross-check the current Moodle assignment and Class 8 materials
