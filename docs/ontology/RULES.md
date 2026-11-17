@@ -9,6 +9,14 @@ When two Players have the same Points, the Player who reached that score first r
 
 Source: team decision, 2026-11-17.
 
+## Season
+
+### R-R02 Season length
+A lobby's season length is chosen when the lobby is created, from exactly
+three options: one week, one month, or three months.
+
+Source: team decision, 2026-11-17.
+
 ## Territories
 
 ### R-T01 Territory set

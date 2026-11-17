@@ -11,7 +11,6 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-03 | Territory areas | **Decided 2026-11-17**, see [R-T01 and R-T02](RULES.md#territories). Still open: Territories around Nova SBE (Carcavelos) for demos, and possibly Praça das Flores. |
 | D-04 | Special items | Which special items do Minigames give, and what does each one do? |
 | D-05 | Game Night boundaries | When does a Game Night start and end, and which night does a Drink after midnight belong to? Exact Thursday to Sunday hours, timezone and out-of-hours behavior. |
-| D-06 | Season length | How long is the playing period, and when does it start and end? Initial ownership, scoring window and Season resets. |
 | D-07 | Minigame interruption | If a Minigame is interrupted, does it count as the Player's one play for that evening? |
 | D-08 | Ownership timing | Recommended: ownership immediately before acceptance. Define the order of concurrent check-ins. |
 | D-09 | Location source | Recommended: fresh phone location alongside the photo capture. Define the role of photo metadata, missing metadata and conflicting coordinates. |
