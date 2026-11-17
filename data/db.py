@@ -487,3 +487,48 @@ def get_remembered_player(token: str) -> Player | None:
 
 def revoke_remembered_session(token: str) -> None:
     get_client().table("remembered_sessions").delete().eq("token_hash", token_hash(token)).execute()
+
+
+# -- private friendships (call only after require_login) -----------------
+
+def list_public_usernames() -> list[dict]:
+    """Fetch no names, emails or credential hashes for friend search."""
+    # Page through the directory so search includes users beyond Supabase's
+    # default 1,000-row response limit.
+    users = []
+    offset = 0
+    while True:
+        rows = get_client().table("players").select("id,display_name").order("id").range(offset, offset + 999).execute().data
+        users.extend(rows)
+        if len(rows) < 1000:
+            return users
+        offset += 1000
+
+
+def list_friendships(player_id: str) -> list[dict]:
+    """Only this authenticated player's relationships; never another list."""
+    rows = []
+    offset = 0
+    while True:
+        page = (get_client().table("friendships").select("*")
+                .or_(f"sender_id.eq.{player_id},recipient_id.eq.{player_id}")
+                .order("pair_low").order("pair_high").range(offset, offset + 999).execute().data)
+        rows.extend(page)
+        if len(page) < 1000:
+            return rows
+        offset += 1000
+
+
+def change_friendship(player_id: str, other_id: str, action: str) -> None:
+    from core.friends import transition
+
+    low, high = sorted((player_id, other_id))
+    rows = (get_client().table("friendships").select("*")
+            .eq("pair_low", low).eq("pair_high", high).execute().data)
+    current = rows[0] if rows else None
+    next_row = transition(player_id, other_id, action, current, datetime.now(timezone.utc))
+    get_client().rpc("save_friendship", {
+        "sender": next_row["sender_id"], "recipient": next_row["recipient_id"],
+        "next_status": next_row["status"],
+        "expected_version": current["version"] if current else None,
+    }).execute()

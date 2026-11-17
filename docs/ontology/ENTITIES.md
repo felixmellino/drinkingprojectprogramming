@@ -190,3 +190,14 @@ These are candidates from the ideas list. Bring them into the diagram once the t
 | `VacationDay` | A date a player marks as away. | Player and date, with lobby or Season scope to be decided. |
 
 The rule for a shield takeover, the effect of Vacation Mode, and the timing of claims belong in `RULES.md`. Record unresolved choices in `OPEN_DECISIONS.md` when the team reviews the model.
+
+## Friendship
+
+A relationship between two existing Players, independent of Lobbies.
+One row per unordered player pair stores `sender_id`, `recipient_id`,
+`status` (`pending`, `accepted`, `declined`, `cancelled`, `removed`),
+`updated_at` and a changing `version` for concurrent updates. Canonical
+`pair_low` / `pair_high` keys prevent reverse-direction duplicates.
+No fields on Player change. Declined rows retain their timestamp so the
+10-minute wait survives restarts. Only each participant's own Profile
+reads their relationships; public search selects just player ID and username.

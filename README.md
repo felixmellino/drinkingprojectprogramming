@@ -171,3 +171,20 @@ four building blocks, and the team's workflow rules.
 - Several game-rule numbers (points per drink, GPS/photo mismatch
   tolerance, season-length day counts) are placeholders in
   `core/constants.py` — see `docs/ontology/OPEN_DECISIONS.md`.
+
+### Profile friends
+
+For existing databases, apply `migrations/005_friendships.sql` once after
+migration 004. Fresh databases running `schema.sql` already include it.
+Restart the app, log in and open **Profile**. Search any player's username
+(partial and case-insensitive), send a request, then use the recipient's
+Profile to accept or decline. Outgoing requests can be cancelled; either
+friend can remove the friendship. Friends lists are private, and a decline
+prevents either player from sending another request for that pair for ten
+minutes. Use **Refresh friends** to load actions made by another player.
+
+Tests: `python -m pytest tests/test_friends.py tests/test_friends_ui.py tests/test_friends_db.py -q`.
+The UI tests use a persistent fake repository across fresh Streamlit
+sessions. Real PostgreSQL concurrency, migration installation and saved
+state after a server restart still require verification against Supabase;
+see the Profile friends checklist in `docs/WORKING_GUIDE.md`.
