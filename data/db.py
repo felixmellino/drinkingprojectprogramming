@@ -162,6 +162,17 @@ def list_territories() -> list[Territory]:
     return [Territory(id=r["id"], name=r["name"], boundary=r["boundary"]) for r in rows]
 
 
+def upsert_territories(territories: list[Territory]) -> None:
+    """Copy territories into the table, inserting new ids and updating the
+    name and outline of existing ones. Territories removed from the file are
+    left in the table so older drink entries still point at a valid row."""
+    if not territories:
+        return
+    get_client().table("territories").upsert(
+        [{"id": t.id, "name": t.name, "boundary": t.boundary} for t in territories]
+    ).execute()
+
+
 def list_arenas() -> list[Arena]:
     rows = get_client().table("arenas").select("*").execute().data
     return [Arena(id=r["id"], name=r["name"], map_point=r["map_point"]) for r in rows]

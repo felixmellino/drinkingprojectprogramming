@@ -4,6 +4,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "57aeed24-8f46-4b69-8b22-4c164863c3b7",
         "name": "Bairro Alto – Atalaia Norte",
         "fill": "#e6194b",
         "stroke": "#e6194b",
@@ -52,6 +53,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "a18b0f5d-ffc3-4096-b8d1-c52530bab1db",
         "name": "Bairro Alto – Grémio Lusitano",
         "fill": "#3cb44b",
         "stroke": "#3cb44b",
@@ -100,6 +102,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "f8cbf806-8220-4a77-889e-a9ea09696d17",
         "name": "Bairro Alto – São Roque",
         "fill": "#4363d8",
         "stroke": "#4363d8",
@@ -140,6 +143,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "c338decf-a52d-4127-9fd5-a529cbbd8b0c",
         "name": "Bairro Alto – Rua da Rosa",
         "fill": "#f58231",
         "stroke": "#f58231",
@@ -188,6 +192,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "528ef166-0093-4c21-b476-34dc42483b2e",
         "name": "Bairro Alto – Poço da Cidade",
         "fill": "#911eb4",
         "stroke": "#911eb4",
@@ -228,6 +233,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "cf2957fc-1fac-4a66-ad30-03eed4a765ae",
         "name": "Bairro Alto – Rua do Norte",
         "fill": "#42d4f4",
         "stroke": "#42d4f4",
@@ -268,6 +274,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "944547f1-409c-4e25-b4bf-894caae423b3",
         "name": "Bairro Alto – Fiéis de Deus",
         "fill": "#f032e6",
         "stroke": "#f032e6",
@@ -308,6 +315,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "fbb93e13-81a1-41e3-9dd7-747b7be79e61",
         "name": "Bairro Alto – Rua da Barroca",
         "fill": "#bfef45",
         "stroke": "#bfef45",
@@ -360,6 +368,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "ba41b05b-d509-4cbc-a3b8-50b1e40473ad",
         "name": "Santa Catarina",
         "fill": "#469990",
         "stroke": "#469990",
@@ -412,6 +421,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "6efee536-b6da-4c18-b33c-976830cc60a7",
         "name": "Santos – Largo de Santos",
         "fill": "#9a6324",
         "stroke": "#9a6324",
@@ -460,6 +470,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "442fdf73-4272-4e37-9fd7-f5d58befa520",
         "name": "Santos – Marquês de Abrantes",
         "fill": "#800000",
         "stroke": "#800000",
@@ -504,6 +515,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "a1498283-dbbc-4c6b-b2d4-ccb8eb7b6039",
         "name": "Santos – Ribeira",
         "fill": "#000075",
         "stroke": "#000075",

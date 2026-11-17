@@ -78,11 +78,11 @@ A named area on the Lisbon map, such as Bairro Alto – Rua da Rosa or Santa Cat
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
-| `id` | ID | Stable territory identifier referenced by entries and standings. |
+| `id` | ID | Permanent UUID from `data/territories.geojson`, referenced by entries and standings. It never changes, even when the territory is renamed or reshaped. |
 | `name` | Text | Label shown on the map and in standings. |
 | `boundary` | GeoJSON polygon | Team-defined outline, loaded from the shared territory data. |
 
-`data/territories.geojson` supplies the territory records (R-T01). The map and server should read the same definitions. Adjacent territories can share a border, and gaps between them are allowed. Their interiors never overlap, so a point inside one area has a single match (R-T02). The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
+`data/territories.geojson` supplies the territory records (R-T01). The location check and the standings both read this file, and the app copies it into the `territories` table on start so drink entries can reference a territory id. Adjacent territories can share a border, and gaps between them are allowed. Their interiors never overlap, so a point inside one area has a single match (R-T02). The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
 
 ### DrinkEntry
 

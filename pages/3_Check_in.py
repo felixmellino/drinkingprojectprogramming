@@ -17,7 +17,7 @@ from PIL import Image, ExifTags
 
 import data.db as db
 from core.checkins import CheckinRejected, create_drink_entry
-from shared import require_active_membership, require_login, show_logged_in_as
+from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
@@ -86,7 +86,7 @@ if st.button("Submit", disabled=photo is None):
     photo_ref = f"placeholder-{submitted_at.isoformat()}"
 
     recent_entries = db.list_drink_entries_for_membership(membership_id)
-    territories = db.list_territories()
+    territories = get_territories()
 
     try:
         entry = create_drink_entry(

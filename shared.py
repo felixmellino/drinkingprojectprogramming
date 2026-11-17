@@ -9,6 +9,8 @@ contain no game rules themselves.
 import streamlit as st
 
 import data.db as db
+from core.models import Territory
+from data.territory_file import load_territories
 from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
@@ -61,6 +63,20 @@ def require_active_membership() -> tuple[str, str, str]:
         st.session_state["current_lobby_id"],
         st.session_state["current_season_id"],
     )
+
+
+@st.cache_resource(show_spinner=False)
+def get_territories() -> list[Territory]:
+    """The game's territories, read from data/territories.geojson (R-T01).
+
+    The first call after the app starts also copies them into the database,
+    because drink entries store a territory id that must exist there. The
+    result is cached for the whole server process, so after editing the
+    file, restart the app. If the database is unreachable the error is not
+    cached and the next page load tries again."""
+    territories = load_territories()
+    db.upsert_territories(territories)
+    return territories
 
 
 def show_logged_in_as():

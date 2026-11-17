@@ -6,7 +6,7 @@ import streamlit as st
 import data.db as db
 from core.leaderboard import season_leaderboard
 from core.territories import territory_owner, territory_standings
-from shared import require_active_membership, require_login, show_logged_in_as
+from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 require_login()
 show_logged_in_as()
@@ -34,7 +34,7 @@ else:
     )
 
 st.subheader("Territories")
-territories = db.list_territories()
+territories = get_territories()
 if not territories:
     st.info("No territories have been set up yet.")
 for territory in territories:
