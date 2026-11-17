@@ -1,4 +1,4 @@
-"""How many points a drink is worth."""
+"""Historical scoring for legacy seasons. New frozen rules are in scoring_v1."""
 
 from __future__ import annotations
 

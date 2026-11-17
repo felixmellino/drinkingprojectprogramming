@@ -1,5 +1,11 @@
 # Workflows
 
+> Scoring v1 implementation was authorised on 17 November 2026. See
+> [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
+> Earlier scoring drafts below are historical where they differ. Legacy seasons
+> retain their old behaviour; migration and teammate review are pending.
+
+
 ## Check in and score
 
 Updated direction: automatic location verification replaces buddy confirmation.
@@ -44,6 +50,23 @@ metadata before saving the image. Save the verification result and
 territory match from the location check. Discard the exact phone
 coordinates after verification.
 
+The camera upload accepts JPEG images up to 10 MiB and 20 million pixels.
+These server resource limits are checked before decoding image pixels.
+
+The photo's owner can select it in Lobby photos and confirm deletion. The
+server verifies ownership again, removes the private file, and marks its
+reference `deleted`. The drink entry, awarded points and standings remain.
+Other lobby members cannot delete it. A downloaded copy or screenshot cannot
+be recalled from another player's device.
+
+Photos stop being served at exactly 30 days after the season's end. The
+server maintenance command `python -m data.cleanup_checkin_photos --apply`
+removes expired files and marks their references `expired`. It also removes
+unlinked uploads that have had no update for 24 hours, allowing time to retry
+a failed database save. It never deletes entries or changes points. The Data
+owner must schedule this command and monitor successful runs. Access expiry
+works even if a cleanup run is delayed; physical deletion needs that job.
+
 ### Duplicate check-ins in the current build
 
 Check-in records a time-zone offset and compares new and saved submission
@@ -68,3 +91,7 @@ Pending, declined, and expired requests earn zero points. If the entry
 meets the other scoring rules, a confirmation awards season points once.
 The entry has no territory assignment. For a tie in the season standings,
 the points count from the moment the other player confirms.
+
+## Proposed scoring workflow - review pending
+
+The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.

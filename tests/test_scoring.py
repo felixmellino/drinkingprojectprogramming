@@ -1,3 +1,4 @@
+"""Preserve legacy seasons. The new fixed table/replay is in test_scoring_v1."""
 import pytest
 
 from core.constants import BEER_POINTS_PER_UNIT, LONGDRINK_POINTS, SHOT_POINTS, WINE_POINTS_PER_UNIT

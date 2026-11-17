@@ -38,6 +38,9 @@ class Season:
     starts_at: datetime
     ends_at: datetime
     length_choice: str  # "1_week" | "1_month" | "3_months"
+    timezone_name: str = "Europe/Lisbon"
+    scoring_version: str = "legacy"
+    scoring_rules: dict | None = None
 
 
 @dataclass
@@ -59,8 +62,16 @@ class DrinkEntry:
     photo_gps: tuple[float, float] | None  # (lat, lng) from photo EXIF, may be missing
     territory_id: str | None
     location_check_result: str  # "matched" | "uncertain" | "outside" | "unavailable"
-    points_awarded: int
+    points_awarded: int  # drinker's base award; additional owner income is separate
     submitted_at: datetime
+    photo_captured_at: datetime | None = None
+    size: str | None = None
+    rule_version: str = "legacy"
+    event_order: int | None = None
+    owner_membership_id: str | None = None
+    owner_bonus_quarters: int = 0
+    corrected_at: datetime | None = None
+    revision: int = 0
 
 
 @dataclass

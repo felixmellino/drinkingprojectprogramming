@@ -1,5 +1,11 @@
 # Entities
 
+> Scoring v1 implementation was authorised on 17 November 2026. See
+> [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
+> Earlier scoring drafts below are historical where they differ. Legacy seasons
+> retain their old behaviour; migration and teammate review are pending.
+
+
 ## What an entity is and why it matters
 
 An entity is a thing the game needs to identify and keep track of. Mia is a player. Bairro Alto East is a territory. The photo submission Mia makes on Friday is a drink entry. An **attribute** describes one record, such as the name of a territory. A **relationship** connects records, such as the link from Mia's entry to Bairro Alto East.
@@ -96,7 +102,8 @@ A fresh phone reading taken at submission is the player's location (R-L01). GPS 
 | `membership_id` | LobbyMembership ID | The member who submitted the entry. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Reference to the photo in private storage. Current members of the entry's lobby can view it under R6. |
+| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos under R6. Photo removal preserves the scored entry. |
+| `photo_captured_at` | Timestamp, optional | When Check-in received the camera photo. Older entries may only have a submission time. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |
 | `location_checked_at` | Timestamp, optional | When the server evaluated the location reading, if one was available. |
@@ -189,3 +196,36 @@ These are candidates from the ideas list. Bring them into the diagram once the t
 | `VacationDay` | A date a player marks as away. | Player and date, with lobby or Season scope to be decided. |
 
 The rule for a shield takeover, the effect of Vacation Mode, and the timing of claims belong in `RULES.md`. Record unresolved choices in `OPEN_DECISIONS.md` when the team reviews the model.
+
+## Scoring planning record and shared-model review
+
+See [P-S05/P-S06](SCORING_PROPOSAL.md#p-s05) for separate season/territory totals and owner-income recipients, [P-S12](SCORING_PROPOSAL.md#p-s12) for revision/audit/replay needs and [P-S13](SCORING_PROPOSAL.md#p-s13) for frozen season settings and lobby timezone. The implementation below records the resulting fields; teammate review and shared database migration remain pending.
+
+## Scoring v1 data additions
+
+These fields are implemented in the local models and prepared in
+`migrations/005_scoring_v1.sql`; they are not a claim that the shared database
+has already been migrated.
+
+| Record | Fields / meaning |
+| --- | --- |
+| Season | `timezone_name`, `scoring_version`, `scoring_rules`: complete frozen timezone/rule snapshot; existing rows are legacy. |
+| DrinkEntry | `size`, `rule_version`, `event_order`: explicit size and authoritative accepted order. `amount` is defined ml for v1 beer/wine, legacy units on historical rows. |
+| DrinkEntry | `owner_membership_id`, `owner_bonus_quarters`: additional recipient and exact quarter-point income from this source entry. |
+| DrinkEntry | `revision`, `corrected_at`: optimistic correction version and latest correction time. |
+| drink_entry_revisions | Author, source entry, old/new drink/size, revision and time; server-only audit. |
+
+Season leaderboard and territory standings derive from the same corrected source
+history. An owner's extra award belongs only to that lobby/season. Photo removal
+preserves all scoring fields. See [the implemented rules](SCORING_V1.md).
+
+## Friendship
+
+A relationship between two existing Players, independent of Lobbies.
+One row per unordered player pair stores `sender_id`, `recipient_id`,
+`status` (`pending`, `accepted`, `declined`, `cancelled`, `removed`),
+`updated_at` and a changing `version` for concurrent updates. Canonical
+`pair_low` / `pair_high` keys prevent reverse-direction duplicates.
+No fields on Player change. Declined rows retain their timestamp so the
+10-minute wait survives restarts. Only each participant's own Profile
+reads their relationships; public search selects just player ID and username.

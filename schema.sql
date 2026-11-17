@@ -1,5 +1,7 @@
 -- WeGoPub database schema (Supabase / Postgres).
 -- Run once against your Supabase project's SQL editor.
+-- Then apply setup_checkin_photo_storage.sql and 005_scoring_v1.sql as
+-- described in README.md. The scoring migration is additive and versioned.
 
 create extension if not exists pgcrypto;
 
@@ -49,6 +51,7 @@ create table drink_entries (
   drink_type text not null,
   amount double precision,
   photo_ref text not null,
+  photo_captured_at timestamptz,
   device_gps_lat double precision,
   device_gps_lng double precision,
   photo_gps_lat double precision,
@@ -85,6 +88,22 @@ create table minigame_attempts (
 
 create index minigame_attempts_window
   on minigame_attempts (membership_id, game_window_id);
+
+-- Public clients cannot read invite codes or change game state. The app
+-- validates its custom player sessions before using its server service key.
+alter table public.lobbies enable row level security;
+alter table public.lobby_memberships enable row level security;
+alter table public.seasons enable row level security;
+alter table public.territories enable row level security;
+alter table public.drink_entries enable row level security;
+alter table public.arenas enable row level security;
+alter table public.minigame_attempts enable row level security;
+revoke all on public.lobbies, public.lobby_memberships, public.seasons,
+  public.territories, public.drink_entries, public.arenas, public.minigame_attempts
+  from public, anon, authenticated;
+grant all on public.lobbies, public.lobby_memberships, public.seasons,
+  public.territories, public.drink_entries, public.arenas, public.minigame_attempts
+  to service_role;
 
 -- Personal account support (also provided separately for existing databases).
 -- Apply ONCE to an existing database. All player IDs and game records survive.
@@ -183,4 +202,50 @@ create index remembered_sessions_player on remembered_sessions(player_id);
 alter table remembered_sessions enable row level security;
 revoke all on remembered_sessions from anon, authenticated;
 grant all on remembered_sessions to service_role;
+commit;
+
+-- Friend requests and accepted friends (migration 005).
+-- Apply once in Supabase SQL editor. Custom login is enforced by the
+-- Streamlit server; browsers never receive the service role key.
+begin;
+create table public.friendships (
+  sender_id uuid not null references public.players(id) on delete cascade,
+  recipient_id uuid not null references public.players(id) on delete cascade,
+  pair_low uuid generated always as (least(sender_id, recipient_id)) stored,
+  pair_high uuid generated always as (greatest(sender_id, recipient_id)) stored,
+  status text not null check (status in ('pending', 'accepted', 'declined', 'cancelled', 'removed')),
+  updated_at timestamptz not null default now(),
+  version uuid not null default gen_random_uuid(),
+  primary key (pair_low, pair_high),
+  check (sender_id <> recipient_id)
+);
+create index friendships_recipient on public.friendships (recipient_id);
+alter table public.friendships enable row level security;
+revoke all on public.friendships from public, anon, authenticated;
+grant all on public.friendships to service_role;
+
+-- Rules are evaluated in core/friends.py. Compare-and-swap prevents two
+-- server sessions from overwriting a request/response they have not seen.
+-- Database time is used for the decline timer, including across restarts.
+create function public.save_friendship(
+  sender uuid, recipient uuid, next_status text, expected_version uuid
+) returns void language plpgsql set search_path = public as $$
+declare actual_version uuid;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(
+    least(sender, recipient)::text || ':' || greatest(sender, recipient)::text, 0));
+  select version into actual_version from friendships
+    where pair_low = least(sender, recipient) and pair_high = greatest(sender, recipient);
+  if actual_version is distinct from expected_version then
+    raise exception 'Friendship changed. Refresh and try again.' using errcode = '40001';
+  end if;
+  insert into friendships (sender_id, recipient_id, status)
+    values (sender, recipient, next_status)
+    on conflict (pair_low, pair_high) do update set
+      sender_id = excluded.sender_id, recipient_id = excluded.recipient_id,
+      status = excluded.status, updated_at = clock_timestamp(), version = gen_random_uuid();
+end;
+$$;
+revoke all on function public.save_friendship(uuid, uuid, text, uuid) from public, anon, authenticated;
+grant execute on function public.save_friendship(uuid, uuid, text, uuid) to service_role;
 commit;

@@ -1,4 +1,7 @@
-"""Creating and validating drink entries."""
+"""Legacy check-in creation, preserved for existing seasons.
+
+New seasons use core.scoring_v1.create_scored_entry and database acceptance.
+"""
 
 from __future__ import annotations
 

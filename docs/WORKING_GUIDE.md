@@ -39,12 +39,13 @@ connection.
 | File | What it means, in one sentence |
 | --- | --- |
 | `models.py` | Defines the "things" in the game — Player, Lobby, Territory, DrinkEntry, etc. — just their labels and fields, nothing else. |
-| `constants.py` | Every tunable number in one place: points per drink, the GPS tolerance, the duplicate-check window. Change a rule here, nowhere else. |
+| `constants.py` | Legacy scoring/window constants plus shared GPS, minigame and photo lifecycle settings. New scoring settings live together in `scoring_v1.py` and are snapshotted per season. |
 | `auth.py` | Turns a PIN into a scrambled code so the real PIN is never stored, and checks a typed PIN against it at login. |
 | `lobbies.py` | Creating a player, creating a lobby (with an invite code), joining a lobby, and setting up that lobby's season. |
 | `game_window.py` | One job: "is this moment inside Thursday-noon-to-Sunday-evening?" Drinks only count inside that window. |
 | `location.py` | Checks whether the phone's GPS reading is accurate enough (50 m) and which territory's drawn area it falls inside. |
-| `scoring.py` | Works out how many points a drink is worth (beer and wine scale with amount; shots and long drinks are flat). |
+| `scoring.py` | Preserves the historical beer/wine-unit and flat Shot/long-drink calculator for legacy seasons. |
+| `scoring_v1.py` | The new fixed size table, frozen season rules, lobby-time window, cooldown/correction checks and exact quarter-point ownership replay. |
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |
 | `leaderboard.py` | The same tie-breaking idea as territories, but for the whole season's ranking instead of one territory. |
@@ -204,3 +205,21 @@ own block from the table above):
    it's merged into main.
 
 Repeat from step 4 for the next small piece of your block.
+
+## Profile friends (Identity block)
+
+`pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
+contains search and request rules and needs no database. `data/db.py`
+fetches only public usernames for search, loads the current player's
+relationships, validates an action, then calls `save_friendship` to save
+it only if the relationship version has not changed. The SQL transaction
+serializes updates for a player pair, including the first request.
+Apply `migrations/005_friendships.sql` once to an existing database.
+No Player fields or lobby behavior change. See RULES.md F1–F5.
+
+Verify with `python -m pytest tests/test_friends.py tests/test_friends_ui.py tests/test_friends_db.py -q`. With a configured database,
+use two accounts: search, request, accept, check both lists, remove,
+request again, cancel, request again and decline. Try again immediately
+(rejected), then at ten minutes (allowed). A third account must see
+neither friendship nor requests. Restart Streamlit and log back into both
+accounts to confirm saved requests/friends and decline timestamps survive.
