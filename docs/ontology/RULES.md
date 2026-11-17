@@ -9,6 +9,36 @@ When two Players have the same Points, the Player who reached that score first r
 
 Source: team decision, 2026-11-17.
 
+## Territories
+
+### R-T01 Territory set
+The game starts with 12 hand-drawn Territories in Lisbon: 8 in Bairro Alto,
+Santa Catarina, and 3 in Santos. Their outlines live in one shared file,
+`data/territories.geojson`, as GeoJSON Polygons with a `name`. The file is
+drawn and edited in geojson.io. Every lobby plays on the same Territories;
+each lobby's Seasons have their own Owners.
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | Adding, removing or reshaping a Territory by editing the file, as long as R-T02 still holds. |
+| Rejected | A Territory without a `name`, or an outline that is not a closed Polygon. |
+| Boundary | Changing an outline mid-Season does not move drinks that were already saved; their stored Territory stays. |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
+### R-T02 Territories never overlap
+Neighbouring Territories may share a border but must never overlap, so a
+location lies inside at most one Territory. Gaps between Territories are
+allowed. A drink in a gap counts as outside every Territory (see R1).
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | Two Territories sharing an edge; empty space between Territories. |
+| Rejected | Any area that lies inside two Territories. |
+| Boundary | A location exactly on a shared border is still open under D-10 (territory edge handling). |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
 ## Direction agreed on 17 November 2026
 
 The user's updated direction replaces buddy confirmation. Exact values and

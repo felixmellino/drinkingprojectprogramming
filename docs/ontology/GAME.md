@@ -22,7 +22,7 @@ The Player with the most Points at the end of the playing period wins. Territori
 - Every Territory has its own account for each Player. A Drink inside a Territory earns the same Points on that Territory's account as on the total account.
 - A Drink outside every Territory only counts towards the total account.
 
-- **TBD, Territory areas:** how the areas are drawn and stored on the map ([D-03](OPEN_DECISIONS.md)).
+- **Decided, Territory areas:** 12 hand-drawn areas in Bairro Alto, Santa Catarina and Santos. Neighbours may touch but never overlap, and gaps are allowed ([R-T01, R-T02](RULES.md#territories)).
 
 ## Ownership
 - The Player with the most Points on a Territory's account owns it, and the map shows this.
