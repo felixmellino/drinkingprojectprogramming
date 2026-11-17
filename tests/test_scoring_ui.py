@@ -30,7 +30,7 @@ def radio(page, label):
 @pytest.fixture
 def ui(monkeypatch):
     game = season()
-    state = {"now": START, "entries": [], "lose_reply": False, "calls": 0, "photo": None}
+    state = {"now": START, "entries": [], "lose_reply": False, "calls": 0, "photo": None, "location": None}
     camera = BytesIO()
     Image.new("RGB", (12, 6)).save(camera, "JPEG")
     camera.file_id = "fresh-camera-capture"
@@ -44,6 +44,9 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr(st, "camera_input", lambda label, key: state["photo"] if key.endswith("_0") else None)
+    # The "Use my location" button is a browser component AppTest can't click;
+    # this returns what the browser would send after a tap (None = not tapped).
+    monkeypatch.setattr("phone_location.phone_location_button", lambda key: state["location"])
 
     def save(player, lobby, model, photo):
         state["calls"] += 1
@@ -64,9 +67,10 @@ def open_checkin():
     return AppTest.from_file(ROOT / "pages/3_Check_in.py", default_timeout=10).run()
 
 
-def set_location(page):
-    next(item for item in page.number_input if item.label == "Latitude").set_value(INSIDE[0])
-    next(item for item in page.number_input if item.label == "Longitude").set_value(INSIDE[1])
+def set_location(page, state, accuracy_m=10):
+    """Simulate tapping "Use my location" while standing inside TERRITORY."""
+    state["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": accuracy_m}
+    page.run()
 
 
 def test_quick_controls_preview_save_and_owner_income(ui):
@@ -78,7 +82,7 @@ def test_quick_controls_preview_save_and_owner_income(ui):
     radio(page, "Drink").set_value("wine").run()
     radio(page, "Size").set_value("large").run()
     assert any("+4 season" in item.value for item in page.info)
-    set_location(page)
+    set_location(page, state)
     button(page, "Submit").click().run()
     assert not page.exception and any("Logged! +4" in item.value for item in page.success)
     assert state["entries"][0].points_awarded == 4
@@ -110,6 +114,7 @@ def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
     state["now"] = START + timedelta(seconds=60)
     state["entries"] = [entry("saved", "member", "shot", None, 0)]
     page = open_checkin()
+    set_location(page, state)
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
     assert button(page, "Submit").disabled
@@ -127,7 +132,7 @@ def test_lost_save_reply_recovers_without_a_second_award(ui):
     state, _ = ui
     state["lose_reply"] = True
     page = open_checkin()
-    set_location(page)
+    set_location(page, state)
     button(page, "Submit").click().run()
     assert not page.exception and page.error
     assert state["calls"] == 1 and len(state["entries"]) == 1
@@ -228,3 +233,23 @@ def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     page.run()
     assert not page.exception and any("membership is no longer" in item.value for item in page.error)
     records.assert_not_called()
+
+
+def test_submit_needs_the_phone_location_first(ui):
+    state, _ = ui
+    page = open_checkin()
+    assert button(page, "Submit").disabled
+    assert any("Tap the button" in item.value for item in page.caption)
+    set_location(page, state)
+    assert not button(page, "Submit").disabled
+    assert any("Location found, accurate to about 10 m" in item.value for item in page.caption)
+
+
+def test_inaccurate_phone_location_warns_and_saves_nothing(ui):
+    state, _ = ui
+    page = open_checkin()
+    set_location(page, state, accuracy_m=80)
+    assert any("only accurate to about 80 m" in item.value for item in page.warning)
+    button(page, "Submit").click().run()
+    assert not page.exception and any("isn't accurate enough" in item.value for item in page.error)
+    assert state["calls"] == 0 and state["entries"] == []

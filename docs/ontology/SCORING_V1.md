@@ -105,8 +105,9 @@ after existing location evaluation and image metadata is stripped.
 
 ## Remaining dependencies
 
-Migration 005 and shared-project/live verification remain pending. Actual
-device GPS and acceptance/edge rules remain D-09/D-10; later confirmation
+Migration 005 and shared-project/live verification remain pending. Phone
+GPS, the 50 m accuracy limit and border handling are decided (R-L01–R-L03);
+only the maximum age of a reading remains open (D-10). Later confirmation
 remains D-14. Minigame nights, multipliers and interruptions remain separate.
 No leaving/absence or exceptional moderation workflow is introduced. The
 historical three-page PDF and its original source snapshot are kept for

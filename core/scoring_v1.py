@@ -117,7 +117,7 @@ def can_correct(entry: DrinkEntry, season: Season, now: datetime) -> bool:
 
 
 def create_scored_entry(membership_id: str, season: Season, drink_type: str, size: str | None,
-                        photo_ref: str, device_gps, photo_gps, submitted_at: datetime,
+                        photo_ref: str, device_gps, accuracy_m: float | None, submitted_at: datetime,
                         territories: list[Territory], recent_entries: list[DrinkEntry], *, entry_id: str) -> DrinkEntry:
     if not photo_ref:
         raise CheckinRejected("missing_photo")
@@ -130,16 +130,23 @@ def create_scored_entry(membership_id: str, season: Season, drink_type: str, siz
         raise CheckinRejected("scoring_closed")
     if cooldown_remaining(membership_id, submitted_at, recent_entries, rules["cooldown_seconds"]):
         raise CheckinRejected("cooldown")
-    for coordinates in (device_gps, photo_gps):
-        if coordinates is not None:
-            try:
-                lat, lng = coordinates
-                valid = isfinite(lat) and isfinite(lng) and abs(lat) <= 90 and abs(lng) <= 180
-            except (TypeError, ValueError, OverflowError):
-                valid = False
-            if not valid:
-                raise CheckinRejected("location_uncertain")
-    location, territory_id = evaluate_location(device_gps, photo_gps, territories)
+    # Only the phone's GPS reading counts (R-L01); its accuracy decides R-L02.
+    if device_gps is not None:
+        try:
+            lat, lng = device_gps
+            valid = isfinite(lat) and isfinite(lng) and abs(lat) <= 90 and abs(lng) <= 180
+        except (TypeError, ValueError, OverflowError):
+            valid = False
+        if not valid:
+            raise CheckinRejected("location_uncertain")
+    if accuracy_m is not None:
+        try:
+            valid = isfinite(accuracy_m) and accuracy_m >= 0
+        except TypeError:
+            valid = False
+        if not valid:
+            raise CheckinRejected("location_uncertain")
+    location, territory_id = evaluate_location(device_gps, accuracy_m, territories)
     if location in ("uncertain", "unavailable"):
         raise CheckinRejected(f"location_{location}")
     return DrinkEntry(entry_id, membership_id, season.id, drink_type, volume_for(drink_type, size, rules),

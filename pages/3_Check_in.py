@@ -1,4 +1,9 @@
-"""Log a drink with a required camera photo and a location check."""
+"""Log a drink with a required camera photo and the phone's GPS.
+
+The location comes from the "Use my location" button (phone_location.py),
+which asks the browser for the phone's GPS and its accuracy (R-L01, R-L02).
+GPS stored in the photo is not used.
+"""
 
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -16,7 +21,9 @@ from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
-from core.location import evaluate_location
+from core.constants import MAX_GPS_ACCURACY_M
+from core.location import evaluate_location, parse_phone_reading
+from phone_location import phone_location_button
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -77,18 +84,32 @@ if photo is not None:
 else:
     st.session_state.pop("checkin_capture", None)
 
-st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
-device_lat = st.number_input(
-    "Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f", key=f"checkin_lat_{photo_number}"
+st.write("Your location")
+device_gps, accuracy_m, location_problem = parse_phone_reading(
+    phone_location_button(key=f"checkin_location_{photo_number}")
 )
-device_lng = st.number_input(
-    "Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f", key=f"checkin_lng_{photo_number}"
-)
+location_messages = {
+    "not_requested": "Tap the button so we can check which territory you're in.",
+    "denied": "Location access is blocked. Allow location for this site in your browser settings, then tap the button again.",
+    "unavailable": "Your phone couldn't find its position. Move closer to a window or outside and tap the button again.",
+    "timeout": "Finding your position took too long. Tap the button again.",
+    "unsupported": "This browser can't share its location. Try another browser on your phone.",
+    "invalid": "Something went wrong reading your location. Tap the button again.",
+}
+if location_problem:
+    st.caption(location_messages[location_problem])
+elif accuracy_m > MAX_GPS_ACCURACY_M:
+    st.warning(
+        f"Your location is only accurate to about {accuracy_m:.0f} m (we need {MAX_GPS_ACCURACY_M:.0f} m or better). "
+        "Step outside or wait a moment, then tap the button again."
+    )
+else:
+    st.caption(f"Location found, accurate to about {accuracy_m:.0f} m.")
 
-if modern and device_lat is not None and device_lng is not None:
+if modern and device_gps is not None and accuracy_m <= MAX_GPS_ACCURACY_M:
     try:
         territories = get_territories()
-        preview_result, preview_territory = evaluate_location((device_lat, device_lng), None, territories)
+        preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
         if preview_result == "matched":
             name = next(t.name for t in territories if t.id == preview_territory)
             owner = replay_season(db.list_drink_entries(season_id)).owners.get(preview_territory)
@@ -131,21 +152,18 @@ if waiting:
     st.warning(f"Wait {waiting // 60}:{waiting % 60:02d} before your next check-in. Your photo and selections stay here.")
     st.button("Refresh remaining wait")
 
-if st.button("Submit", disabled=photo is None or closed or bool(waiting)) and photo is not None and capture is not None:
+if st.button("Submit", disabled=photo is None or device_gps is None or closed or bool(waiting)) and photo is not None and capture is not None:
     submitted_at = current_time() if modern else datetime.now().astimezone()
     _, capture_id, captured_at = capture
-    device_gps = None
-    if device_lat is not None and device_lng is not None:
-        device_gps = (device_lat, device_lng)
 
     try:
         recent_entries = db.list_drink_entries_for_membership(membership_id)
         entry = next((saved for saved in recent_entries if saved.id == capture_id), None)
         if entry is None:
-            photo_gps, clean_photo = prepare_checkin_photo(photo.getvalue())
+            _photo_gps, clean_photo = prepare_checkin_photo(photo.getvalue())  # photo GPS is not used (R-L01)
             if modern:
                 entry = create_scored_entry(membership_id, season, drink_type, size, f"{lobby_id}/{capture_id}.jpg",
-                    device_gps, photo_gps, submitted_at, get_territories(), recent_entries, entry_id=capture_id)
+                    device_gps, accuracy_m, submitted_at, get_territories(), recent_entries, entry_id=capture_id)
             else:
                 entry = create_drink_entry(
                     membership_id,
@@ -154,7 +172,7 @@ if st.button("Submit", disabled=photo is None or closed or bool(waiting)) and ph
                     amount,
                     f"{lobby_id}/{capture_id}.jpg",
                     device_gps,
-                    photo_gps,
+                    accuracy_m,
                     submitted_at,
                     get_territories(),
                     recent_entries,
@@ -174,8 +192,8 @@ if st.button("Submit", disabled=photo is None or closed or bool(waiting)) and ph
             "unknown_drink_type": "Unrecognized drink type.",
             "missing_amount": "Enter an amount for this drink.",
             "duplicate_check_in": "You already logged this drink a moment ago.",
-            "location_unavailable": "Enter your latitude and longitude, then try again.",
-            "location_uncertain": "We couldn't verify your location. Check your coordinates and try again.",
+            "location_unavailable": "We need your location. Tap “Use my location”, then submit again.",
+            "location_uncertain": "Your location isn't accurate enough yet. Tap “Update my location”, then submit again.",
         }
         st.error(messages.get(rejected.reason, rejected.reason))
     except PermissionError:

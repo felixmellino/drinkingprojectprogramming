@@ -88,7 +88,7 @@ def test_next_opening_after_sunday_close_is_next_thursday():
 
 def test_new_entry_checks_window_cooldown_and_location_and_discards_gps():
     game = season()
-    accepted = create_scored_entry("A", game, "beer", "small", "photo", INSIDE, INSIDE,
+    accepted = create_scored_entry("A", game, "beer", "small", "photo", INSIDE, 10.0,
                                    START, [TERRITORY], [], entry_id="one")
     assert accepted.points_awarded == 1 and accepted.amount == 250
     assert accepted.device_gps is None and accepted.photo_gps is None
@@ -174,3 +174,15 @@ def test_replay_cannot_mix_seasons():
 def test_invalid_coordinates_do_not_become_verified_outside_entries(gps):
     with pytest.raises(CheckinRejected, match="location_uncertain"):
         create_scored_entry("A", season(), "shot", None, "photo", gps, None, START, [TERRITORY], [], entry_id="invalid")
+
+
+@pytest.mark.parametrize("accuracy", [80.0, 50.1, float("nan"), float("inf"), -1.0])
+def test_inaccurate_or_invalid_gps_accuracy_is_rejected(accuracy):
+    """R-L02: a reading worse than 50 m (or a malformed accuracy) is uncertain."""
+    with pytest.raises(CheckinRejected, match="location_uncertain"):
+        create_scored_entry("A", season(), "shot", None, "photo", INSIDE, accuracy, START, [TERRITORY], [], entry_id="acc")
+
+
+def test_gps_accuracy_of_exactly_50_m_is_accepted():
+    entry = create_scored_entry("A", season(), "shot", None, "photo", INSIDE, 50.0, START, [TERRITORY], [], entry_id="ok")
+    assert entry.location_check_result == "matched"

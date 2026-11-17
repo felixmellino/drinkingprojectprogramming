@@ -94,7 +94,7 @@ A named area on the Lisbon map, such as Shortys or Santa Catarina. A polygon is 
 
 One drink submission by a signed-in lobby member in a Season. The player selects a drink and its size and takes a fresh photo in Check-in. The server records the location result and assigns a territory when it finds a match. Raw coordinates from the device and photo are used only during verification.
 
-A fresh phone reading supports the player's location at submission time. GPS tags in the photo's metadata may provide supporting evidence.
+A fresh phone reading taken at submission is the player's location (R-L01). GPS tags in the photo are not used.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
