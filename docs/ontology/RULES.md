@@ -37,3 +37,19 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 
 Location evidence can support a location check; it does not automatically
 verify that the selected drink type/size is accurate or that it was consumed.
+
+## Accounts (agreed 17 November 2026)
+
+| ID | Rule | Allowed / rejected / boundary outcomes |
+| --- | --- | --- |
+| A1 | Game pages require authentication; first visit offers registration and login. | A returning player logs in without recreating an account. Logged-out access stops before any game content or actions. |
+| A2 | Registration requires first name, surname, username, email and a personally chosen password entered twice. | Reject empty names, malformed email, mismatched passwords and passwords shorter than 8 characters. Eight characters are accepted; implementation also rejects whitespace-only passwords and bounds input length. |
+| A3 | Username and email must each be unique, ignoring case and surrounding whitespace. | Duplicate submissions cannot create another account, including concurrent submissions. Only username is public; name and email stay private. |
+| A4 | Login uses email and password, without registration email verification. Forgot password is available by email. | Incorrect credentials, invalid/expired/reused reset codes leave credentials and game points unchanged. A successful reset replaces the password and requires existing sessions to log in again. |
+| A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
+| A6 | Profile offers one Create account / Log in selector, with recovery beneath login. | Only the selected account form is shown. No separate upgrade or recovery tabs. |
+| A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
+
+Recovery code lifetime (15 minutes), request cooldown (one minute), and login
+throttling (ten attempts per account per 15 minutes) are security implementation
+settings, not scoring rules. Recovery requires configured SMTP delivery.

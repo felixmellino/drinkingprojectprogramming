@@ -15,7 +15,15 @@ other detailed design choices remain undecided. Gameplay rules belong in
 
 ## First opening: Profile creation
 
-- Required fields: real first name, real surname and username.
+- Required fields: real first name, real surname, unique username, unique
+  login email, password of at least 8 characters and password confirmation.
+- Returning users log in with email and password. Forgot password sends
+  an expiring code by email; registration does not require email verification.
+- A single Create account / Log in selector shows one form at a time.
+- Forgot password is an expandable section beneath login; no upgrade option.
+- Login includes an optional Remember password checkbox, keeping the device
+  signed in for 30 days. Logout cancels remembered access on that device.
+- All game pages require authentication. Account rules are in `RULES.md` (A1–A7).
 - A note explains that only the username is visible to other players;
   real names and other personal information remain private.
 - Create profile button.

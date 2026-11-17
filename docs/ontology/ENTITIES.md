@@ -29,7 +29,10 @@ One record per person who plays WeGoPub. The same player can participate in many
 | Attribute | Type | Meaning |
 | --- | --- | --- |
 | `id` | ID | Stable internal player identifier. |
-| `display_name` | Text | Name shown on the profile and rankings. |
+| `display_name` | Text | Unique public username; case-insensitive uniqueness. |
+| `first_name`, `last_name` | Text | Required private first name and surname. |
+| `email` | Text | Unique private login email, normalized to lowercase. Null only for legacy records awaiting administrator migration. |
+| `pin_hash` | Text | Salted password hash. The old column name is retained to preserve existing data; legacy records are retained but have no self-service upgrade screen. |
 
 ### Lobby
 

@@ -7,7 +7,7 @@ import string
 import uuid
 from datetime import datetime, timedelta
 
-from core.auth import hash_pin
+from core.auth import hash_password, validate_account
 from core.constants import SEASON_LENGTH_DAYS
 from core.models import Lobby, LobbyMembership, Player, Season
 
@@ -19,15 +19,14 @@ def generate_invite_code(length: int = 6) -> str:
     return "".join(random.choice(_INVITE_CODE_ALPHABET) for _ in range(length))
 
 
-def create_player(display_name: str, first_name: str, last_name: str, pin: str) -> Player:
-    if not display_name:
-        raise ValueError("display_name is required")
+def create_player(display_name: str, first_name: str, last_name: str, email: str,
+                  password: str, confirmation: str, players: list[Player]) -> Player:
+    first_name, last_name, display_name, email = validate_account(
+        first_name, last_name, display_name, email, password, confirmation, players
+    )
     return Player(
-        id=str(uuid.uuid4()),
-        display_name=display_name,
-        first_name=first_name,
-        last_name=last_name,
-        pin_hash=hash_pin(pin),
+        id=str(uuid.uuid4()), display_name=display_name, first_name=first_name,
+        last_name=last_name, email=email, pin_hash=hash_password(password),
     )
 
 
