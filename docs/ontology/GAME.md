@@ -8,8 +8,13 @@ Existing legacy seasons retain their original rules and historical points.
 
 ## Goal and accounts
 
+Players compete in lobbies: groups joined using the same invite code. Each
+lobby runs its own season. Its length is chosen when the lobby is created:
+one week, one month or three months ([R-R02](RULES.md#r-r02-season-length)).
+
 The main competition is individual. The player with the highest total in a
-lobby's season wins. Ties favour whoever reached the tied score first.
+lobby's season wins. Ties favour whoever reached the tied score first
+([R-R01](RULES.md#r-r01-ties)).
 A player's season account combines their own base awards and additional
 territory-owner income. Each territory has a separate account for each player,
 containing only their own base awards there. Owner income never affects

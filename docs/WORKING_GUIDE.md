@@ -205,3 +205,21 @@ own block from the table above):
    it's merged into main.
 
 Repeat from step 4 for the next small piece of your block.
+
+## Profile friends (Identity block)
+
+`pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
+contains search and request rules and needs no database. `data/db.py`
+fetches only public usernames for search, loads the current player's
+relationships, validates an action, then calls `save_friendship` to save
+it only if the relationship version has not changed. The SQL transaction
+serializes updates for a player pair, including the first request.
+Apply `migrations/005_friendships.sql` once to an existing database.
+No Player fields or lobby behavior change. See RULES.md F1–F5.
+
+Verify with `python -m pytest tests/test_friends.py tests/test_friends_ui.py tests/test_friends_db.py -q`. With a configured database,
+use two accounts: search, request, accept, check both lists, remove,
+request again, cancel, request again and decline. Try again immediately
+(rejected), then at ten minutes (allowed). A third account must see
+neither friendship nor requests. Restart Streamlit and log back into both
+accounts to confirm saved requests/friends and decline timestamps survive.

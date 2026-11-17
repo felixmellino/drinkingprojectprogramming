@@ -14,6 +14,11 @@ editor. Do not rerun `schema.sql` on an existing project. New projects apply
 `schema.sql`, photo setup and migration 005 in that order. Migration 005 can
 be run again safely; it does not delete old entries or re-score old seasons.
 
+`005_friendships.sql`, merged from the Identity block, is a separate migration
+for Profile friends. Both files use the prefix `005`; identify them by their
+complete filenames. Existing databases need the friendship migration as well
+for that feature. It is already included in `schema.sql` for fresh databases.
+
 Keep the server service-role credential in local/deployment secrets. The new
 functions and revision table deny public/anonymous clients. Migration 005 adds:
 
@@ -105,6 +110,14 @@ and health endpoint passed. The dependency audit checked 70 installed packages
 and reported no known advisories. `git diff --check` and local documentation
 link checks passed. These are local results, not deployment or live Supabase
 verification.
+
+After integrating the latest `main` (including Profile friends and removal of
+password recovery), the combined suite passed **231 tests**. The verification
+blocked unmocked Supabase client creation, preserving the real HTTPS validation
+test and leaving the shared database untouched. The PostgreSQL harness also
+passed against the combined fresh schema, with scoring migration repeat and
+saved state after restart. The four documentation conflicts were reconciled
+without dropping the Identity block's features or decided season choices.
 
 The additional PostgreSQL harness uses an isolated PGlite database. Install
 PGlite as a temporary development tool, not an app runtime dependency:

@@ -197,16 +197,35 @@ These are candidates from the ideas list. Bring them into the diagram once the t
 
 The rule for a shield takeover, the effect of Vacation Mode, and the timing of claims belong in `RULES.md`. Record unresolved choices in `OPEN_DECISIONS.md` when the team reviews the model.
 
-## Scoring proposal: shared-model review pending
+## Scoring planning record and shared-model review
 
-See [P-S05/P-S06](SCORING_PROPOSAL.md#p-s05) for separate season/territory totals and owner-income recipients, [P-S12](SCORING_PROPOSAL.md#p-s12) for revision/audit/replay needs and [P-S13](SCORING_PROPOSAL.md#p-s13) for frozen season settings and lobby timezone. These are proposed requirements, not fields already added to the dataclasses or database. The Data owner must agree how source entries, exact awards, recipients, rule versions and authoritative order are represented.
+See [P-S05/P-S06](SCORING_PROPOSAL.md#p-s05) for separate season/territory totals and owner-income recipients, [P-S12](SCORING_PROPOSAL.md#p-s12) for revision/audit/replay needs and [P-S13](SCORING_PROPOSAL.md#p-s13) for frozen season settings and lobby timezone. The implementation below records the resulting fields; teammate review and shared database migration remain pending.
 
 ## Scoring v1 data additions
 
-These fields are implemented in the local models and prepared in migration 005;
+These fields are implemented in the local models and prepared in
+`migrations/005_scoring_v1.sql`; they are not a claim that the shared database
+has already been migrated.
+
+| Record | Fields / meaning |
+| --- | --- |
+| Season | `timezone_name`, `scoring_version`, `scoring_rules`: complete frozen timezone/rule snapshot; existing rows are legacy. |
+| DrinkEntry | `size`, `rule_version`, `event_order`: explicit size and authoritative accepted order. `amount` is defined ml for v1 beer/wine, legacy units on historical rows. |
+| DrinkEntry | `owner_membership_id`, `owner_bonus_quarters`: additional recipient and exact quarter-point income from this source entry. |
 | DrinkEntry | `revision`, `corrected_at`: optimistic correction version and latest correction time. |
 | drink_entry_revisions | Author, source entry, old/new drink/size, revision and time; server-only audit. |
 
 Season leaderboard and territory standings derive from the same corrected source
 history. An owner's extra award belongs only to that lobby/season. Photo removal
 preserves all scoring fields. See [the implemented rules](SCORING_V1.md).
+
+## Friendship
+
+A relationship between two existing Players, independent of Lobbies.
+One row per unordered player pair stores `sender_id`, `recipient_id`,
+`status` (`pending`, `accepted`, `declined`, `cancelled`, `removed`),
+`updated_at` and a changing `version` for concurrent updates. Canonical
+`pair_low` / `pair_high` keys prevent reverse-direction duplicates.
+No fields on Player change. Declined rows retain their timestamp so the
+10-minute wait survives restarts. Only each participant's own Profile
+reads their relationships; public search selects just player ID and username.

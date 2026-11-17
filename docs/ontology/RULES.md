@@ -19,6 +19,14 @@ When two Players have the same Points, the Player who reached that score first r
 
 Source: team decision, 2026-11-17.
 
+## Season
+
+### R-R02 Season length
+A lobby's season length is chosen when the lobby is created, from exactly
+three options: one week, one month, or three months.
+
+Source: team decision, 2026-11-17.
+
 ## Territories
 
 ### R-T01 Territory set
@@ -95,11 +103,25 @@ verify that the selected drink type/size is accurate or that it was consumed.
 | A1 | Game pages require authentication; first visit offers registration and login. | A returning player logs in without recreating an account. Logged-out access stops before any game content or actions. |
 | A2 | Registration requires first name, surname, username, email and a personally chosen password entered twice. | Reject empty names, malformed email, mismatched passwords and passwords shorter than 8 characters. Eight characters are accepted; implementation also rejects whitespace-only passwords and bounds input length. |
 | A3 | Username and email must each be unique, ignoring case and surrounding whitespace. | Duplicate submissions cannot create another account, including concurrent submissions. Only username is public; name and email stay private. |
-| A4 | Login uses email and password, without registration email verification. Forgot password is available by email. | Incorrect credentials, invalid/expired/reused reset codes leave credentials and game points unchanged. A successful reset replaces the password and requires existing sessions to log in again. |
+| A4 | Login uses email and password, without registration email verification. Password recovery is currently unavailable (removed 17 November 2026). | Incorrect credentials leave credentials and game points unchanged. No reset-code request or password-reset form is offered. |
 | A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
-| A6 | Profile offers one Create account / Log in selector, with recovery beneath login. | Only the selected account form is shown. No separate upgrade or recovery tabs. |
+| A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade or password-recovery controls. |
 | A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
 
-Recovery code lifetime (15 minutes), request cooldown (one minute), and login
-throttling (ten attempts per account per 15 minutes) are security implementation
-settings, not scoring rules. Recovery requires configured SMTP delivery.
+Login throttling (ten attempts per account per 15 minutes) is a security
+implementation setting, not a scoring rule. SMTP is not required.
+
+## Friends (agreed 17 November 2026)
+
+| ID | Rule | Allowed / rejected / boundary outcomes |
+| --- | --- | --- |
+| F1 | Signed-in players search all app usernames, independent of lobbies. | Search is partial, ignores case and surrounding whitespace, and returns at most 20 results sorted by username. Empty search returns none. Search excludes yourself and exposes only username, never name, email or credentials. No profile pictures or new profile fields. |
+| F2 | Friendship requires an explicit request and acceptance by the recipient. | Only the recipient may accept or decline a pending request; only the sender may cancel it. Reject self-requests, duplicate requests, requests between existing friends, and responses to non-pending requests. An opposite-direction request does not automatically accept. |
+| F3 | Declining a request starts a 10-minute waiting period. | Neither player can create a new request for that pair before 10 minutes have elapsed; exactly 10 minutes is allowed. This pair-wide interpretation prevents reversing a request to bypass the wait. Cancellation does not start a waiting period. |
+| F4 | Accepted friends appear in both players' private lists. | Each player can see only their own relationships. Either friend may remove the friendship, removing it from both lists. Removal allows a new request, which again needs acceptance. No friendship changes points, lobby membership or photo access. |
+| F5 | Requests are managed on Profile and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; no email notifications. Concurrent actions cannot overwrite an unseen change. |
+
+Implementation: `core/friends.py` holds validation and search rules;
+`friends_ui.py` renders controls using the authenticated session's player ID;
+`data/db.py` stores state through a version-checked database function. The
+server service key is the only database role with friendship access.

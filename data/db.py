@@ -13,7 +13,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
-from core.auth import new_reset_code, reset_code_hash
+from core.auth import new_token, token_hash
 from core.checkin_photo import photo_expires_at
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
 
@@ -541,19 +541,6 @@ def insert_minigame_attempt(attempt: MinigameAttempt) -> None:
     ).execute()
 
 
-def issue_password_reset(player_id: str, code_hash: str) -> bool:
-    return bool(get_client().rpc("issue_password_reset", {
-        "target_player": player_id, "new_code_hash": code_hash,
-    }).execute().data)
-
-
-def consume_password_reset(email: str, code_hash: str, password_hash: str) -> bool:
-    return bool(get_client().rpc("consume_password_reset", {
-        "target_email": email, "supplied_code_hash": code_hash,
-        "new_password_hash": password_hash,
-    }).execute().data)
-
-
 def get_player(player_id: str) -> Player | None:
     rows = get_client().table("players").select("*").eq("id", player_id).execute().data
     return Player(**rows[0]) if rows else None
@@ -565,10 +552,10 @@ def allow_login_attempt(player_id: str) -> bool:
 
 # The browser stores only the random token; Supabase stores only its hash.
 def create_remembered_session(player: Player) -> str:
-    token, token_hash = new_reset_code()
+    token, stored_hash = new_token()
     get_client().table("remembered_sessions").insert({
-        "token_hash": token_hash, "player_id": player.id,
-        "credential_version": reset_code_hash(player.pin_hash),
+        "token_hash": stored_hash, "player_id": player.id,
+        "credential_version": token_hash(player.pin_hash),
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
     }).execute()
     return token
@@ -578,18 +565,63 @@ def get_remembered_player(token: str) -> Player | None:
     if not 40 <= len(token) <= 100:
         return None
     rows = (get_client().table("remembered_sessions").select("*")
-            .eq("token_hash", reset_code_hash(token)).execute().data)
+            .eq("token_hash", token_hash(token)).execute().data)
     if not rows:
         return None
     session = rows[0]
     player = get_player(session["player_id"])
     if (datetime.fromisoformat(session["expires_at"]) <= datetime.now(timezone.utc)
             or not player or not player.email
-            or session["credential_version"] != reset_code_hash(player.pin_hash)):
+            or session["credential_version"] != token_hash(player.pin_hash)):
         revoke_remembered_session(token)
         return None
     return player
 
 
 def revoke_remembered_session(token: str) -> None:
-    get_client().table("remembered_sessions").delete().eq("token_hash", reset_code_hash(token)).execute()
+    get_client().table("remembered_sessions").delete().eq("token_hash", token_hash(token)).execute()
+
+
+# -- private friendships (call only after require_login) -----------------
+
+def list_public_usernames() -> list[dict]:
+    """Fetch no names, emails or credential hashes for friend search."""
+    # Page through the directory so search includes users beyond Supabase's
+    # default 1,000-row response limit.
+    users = []
+    offset = 0
+    while True:
+        rows = get_client().table("players").select("id,display_name").order("id").range(offset, offset + 999).execute().data
+        users.extend(rows)
+        if len(rows) < 1000:
+            return users
+        offset += 1000
+
+
+def list_friendships(player_id: str) -> list[dict]:
+    """Only this authenticated player's relationships; never another list."""
+    rows = []
+    offset = 0
+    while True:
+        page = (get_client().table("friendships").select("*")
+                .or_(f"sender_id.eq.{player_id},recipient_id.eq.{player_id}")
+                .order("pair_low").order("pair_high").range(offset, offset + 999).execute().data)
+        rows.extend(page)
+        if len(page) < 1000:
+            return rows
+        offset += 1000
+
+
+def change_friendship(player_id: str, other_id: str, action: str) -> None:
+    from core.friends import transition
+
+    low, high = sorted((player_id, other_id))
+    rows = (get_client().table("friendships").select("*")
+            .eq("pair_low", low).eq("pair_high", high).execute().data)
+    current = rows[0] if rows else None
+    next_row = transition(player_id, other_id, action, current, datetime.now(timezone.utc))
+    get_client().rpc("save_friendship", {
+        "sender": next_row["sender_id"], "recipient": next_row["recipient_id"],
+        "next_status": next_row["status"],
+        "expected_version": current["version"] if current else None,
+    }).execute()
