@@ -21,3 +21,13 @@ Updated direction: automatic location verification replaces buddy confirmation.
 The preview is an estimate until accepted: another player may change
 ownership before submission. Exact modifier timing needs team agreement.
 Photo/location failures must never be represented as a successful check-in.
+
+### Duplicate check-ins in the current build
+
+Check-in records a time-zone offset and compares new and saved submission
+times in UTC. If a lobby member submits the same drink type within two
+minutes of a saved entry, the page shows “You already logged this drink a
+moment ago.” The app saves no second entry and awards zero extra points.
+At exactly two minutes, the submission can continue through the other checks.
+
+The final repeat-drink and duplicate rules are still open under D-12.

@@ -61,11 +61,12 @@ def _read_photo_gps(photo_file) -> tuple[float, float] | None:
 
 
 if st.button("Submit", disabled=photo is None):
+    submitted_at = datetime.now().astimezone()
     device_gps = (device_lat, device_lng)
     photo_gps = _read_photo_gps(photo) if photo else None
     # TODO: upload photo.getvalue() to Supabase Storage and store the real
     # URL/path here instead of this placeholder.
-    photo_ref = f"placeholder-{datetime.now().isoformat()}"
+    photo_ref = f"placeholder-{submitted_at.isoformat()}"
 
     recent_entries = db.list_drink_entries_for_membership(membership_id)
     territories = db.list_territories()
@@ -79,7 +80,7 @@ if st.button("Submit", disabled=photo is None):
             photo_ref,
             device_gps,
             photo_gps,
-            datetime.now(),
+            submitted_at,
             territories,
             recent_entries,
         )

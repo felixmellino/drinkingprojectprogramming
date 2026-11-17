@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core.constants import ALLOWED_DRINK_TYPES, AMOUNT_SCALED_DRINK_TYPES, DUPLICATE_WINDOW_SECONDS
 from core.game_window import is_in_game_window
@@ -37,11 +37,12 @@ def is_duplicate(
     recent_entries: list[DrinkEntry],
 ) -> bool:
     window = timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    submitted_at_utc = submitted_at.astimezone(timezone.utc)
     for entry in recent_entries:
         if (
             entry.membership_id == membership_id
             and entry.drink_type == drink_type
-            and abs(entry.submitted_at - submitted_at) < window
+            and abs(entry.submitted_at.astimezone(timezone.utc) - submitted_at_utc) < window
         ):
             return True
     return False
@@ -71,7 +72,8 @@ def create_drink_entry(
         raise CheckinRejected("duplicate_check_in")
 
     location_check_result, territory_id = evaluate_location(device_gps, photo_gps, territories)
-    in_window = is_in_game_window(submitted_at)
+    # Game-window boundaries use the submission's local clock time.
+    in_window = is_in_game_window(submitted_at.replace(tzinfo=None))
     base_points = calculate_base_points(drink_type, amount)
 
     if not in_window or location_check_result == "unavailable":

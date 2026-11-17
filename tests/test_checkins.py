@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -45,25 +46,33 @@ def test_missing_amount_for_beer_is_rejected():
     assert exc.value.reason == "missing_amount"
 
 
-def test_duplicate_within_window_is_rejected():
+@pytest.mark.parametrize(
+    "submitted_at",
+    [IN_WINDOW_TS, IN_WINDOW_TS.replace(hour=12, tzinfo=timezone(timedelta(hours=1)))],
+    ids=["local-time", "explicit-offset-at-game-window-start"],
+)
+def test_duplicate_with_stored_utc_timestamp_is_rejected(submitted_at):
     first = create_drink_entry(
-        "membership-1", "season-1", "beer", 1, "photo-1", INSIDE, None, IN_WINDOW_TS, [TERRITORY], []
+        "membership-1", "season-1", "beer", 1, "photo-1", INSIDE, None, submitted_at, [TERRITORY], []
     )
-    second_ts = IN_WINDOW_TS + timedelta(minutes=1)
+    assert first.points_awarded > 0
+    saved_entry = replace(first, submitted_at=first.submitted_at.astimezone(timezone.utc))
+    second_ts = submitted_at + timedelta(minutes=1)
     with pytest.raises(CheckinRejected) as exc:
         create_drink_entry(
-            "membership-1", "season-1", "beer", 1, "photo-2", INSIDE, None, second_ts, [TERRITORY], [first]
+            "membership-1", "season-1", "beer", 1, "photo-2", INSIDE, None, second_ts, [TERRITORY], [saved_entry]
         )
     assert exc.value.reason == "duplicate_check_in"
 
 
-def test_same_drink_after_window_is_allowed():
+def test_same_drink_at_duplicate_window_boundary_is_allowed():
     first = create_drink_entry(
         "membership-1", "season-1", "beer", 1, "photo-1", INSIDE, None, IN_WINDOW_TS, [TERRITORY], []
     )
-    later_ts = IN_WINDOW_TS + timedelta(minutes=5)
+    saved_entry = replace(first, submitted_at=first.submitted_at.astimezone(timezone.utc))
+    later_ts = IN_WINDOW_TS + timedelta(minutes=2)
     second = create_drink_entry(
-        "membership-1", "season-1", "beer", 1, "photo-2", INSIDE, None, later_ts, [TERRITORY], [first]
+        "membership-1", "season-1", "beer", 1, "photo-2", INSIDE, None, later_ts, [TERRITORY], [saved_entry]
     )
     assert second.points_awarded > 0
 
