@@ -9,6 +9,8 @@ two TODOs below. Both are workarounds the team should replace:
     on Memories or re-checking a submitted photo.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from io import BytesIO
 
