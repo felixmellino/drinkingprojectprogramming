@@ -74,7 +74,7 @@ A Season can contain several game nights. The calendar and the rules for actions
 
 ### Territory
 
-A named area on the Lisbon map, such as Bairro Alto East or Pink Street. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
+A named area on the Lisbon map, such as Bairro Alto – Rua da Rosa or Santa Catarina. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ A named area on the Lisbon map, such as Bairro Alto East or Pink Street. A polyg
 | `name` | Text | Label shown on the map and in standings. |
 | `boundary` | GeoJSON polygon | Team-defined outline, loaded from the shared territory data. |
 
-For the prototype, `territories.geojson` can supply the territory records. The map and server should read the same definitions. Adjacent territories can share a border. Their interiors should be distinct so a point inside one area has a single match. The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
+`data/territories.geojson` supplies the territory records (R-T01). The map and server should read the same definitions. Adjacent territories can share a border, and gaps between them are allowed. Their interiors never overlap, so a point inside one area has a single match (R-T02). The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
 
 ### DrinkEntry
 

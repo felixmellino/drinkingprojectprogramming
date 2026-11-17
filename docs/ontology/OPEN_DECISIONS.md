@@ -8,7 +8,7 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | --- | --- | --- |
 | D-01 | Owner advantage | Does the Owner of a Territory take a small share of the Points other Players earn there, or weaken those Players' Points on that Territory? If Points are weakened: reduction percentage, rounding, and Points in an unclaimed Territory. |
 | D-02 | Points per Drink | How many Points does each category (beer, wine, shots, long drinks) give, and how does the amount count for beer and wine? Supported drinks and sizes (with units), exact base Points, and whether size uses a lookup table or a formula. |
-| D-03 | Territory areas | How are the Territory areas drawn and stored on the map? |
+| D-03 | Territory areas | **Decided 2026-11-17**, see [R-T01 and R-T02](RULES.md#territories). Still open: Territories around Nova SBE (Carcavelos) for demos, and possibly Praça das Flores. |
 | D-04 | Special items | Which special items do Minigames give, and what does each one do? |
 | D-05 | Game Night boundaries | When does a Game Night start and end, and which night does a Drink after midnight belong to? Exact Thursday to Sunday hours, timezone and out-of-hours behavior. |
 | D-06 | Season length | How long is the playing period, and when does it start and end? Initial ownership, scoring window and Season resets. |
