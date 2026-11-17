@@ -43,6 +43,23 @@ embedded metadata before saving the image. Save the verification result and
 territory match from the location check. Discard the exact coordinates from
 the phone and photo after verification.
 
+The camera upload accepts JPEG images up to 10 MiB and 20 million pixels.
+These server resource limits are checked before decoding image pixels.
+
+The photo's owner can select it in Lobby photos and confirm deletion. The
+server verifies ownership again, removes the private file, and marks its
+reference `deleted`. The drink entry, awarded points and standings remain.
+Other lobby members cannot delete it. A downloaded copy or screenshot cannot
+be recalled from another player's device.
+
+Photos stop being served at exactly 30 days after the season's end. The
+server maintenance command `python -m data.cleanup_checkin_photos --apply`
+removes expired files and marks their references `expired`. It also removes
+unlinked uploads that have had no update for 24 hours, allowing time to retry
+a failed database save. It never deletes entries or changes points. The Data
+owner must schedule this command and monitor successful runs. Access expiry
+works even if a cleanup run is delayed; physical deletion needs that job.
+
 ### Duplicate check-ins in the current build
 
 Check-in records a time-zone offset and compares new and saved submission

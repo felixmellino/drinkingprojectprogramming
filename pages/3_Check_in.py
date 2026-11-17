@@ -19,6 +19,7 @@ show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
 st.title("Check in")
+st.caption("Your lobby can view saved drink photos with your username, capture time and territory.")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:

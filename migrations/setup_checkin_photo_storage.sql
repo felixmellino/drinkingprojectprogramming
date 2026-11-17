@@ -3,6 +3,14 @@ begin;
 
 alter table public.drink_entries add column if not exists photo_captured_at timestamptz;
 
+-- Verification has already finished for saved entries. Preserve their scores
+-- and territory assignment while removing legacy exact-coordinate evidence.
+update public.drink_entries
+set device_gps_lat = null, device_gps_lng = null,
+    photo_gps_lat = null, photo_gps_lng = null
+where device_gps_lat is not null or device_gps_lng is not null
+   or photo_gps_lat is not null or photo_gps_lng is not null;
+
 -- The app authenticates players on its server and uses a service-role key.
 -- Membership and season records are the source of photo access decisions.
 alter table public.lobby_memberships enable row level security;

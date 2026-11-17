@@ -96,7 +96,7 @@ A fresh phone reading supports the player's location at submission time. GPS tag
 | `membership_id` | LobbyMembership ID | The member who submitted the entry. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Reference to the photo in private storage. Current members of the entry's lobby can view it under R6. |
+| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos under R6. Photo removal preserves the scored entry. |
 | `photo_captured_at` | Timestamp, optional | When Check-in received the camera photo. Older entries may only have a submission time. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |

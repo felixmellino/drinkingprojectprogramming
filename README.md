@@ -12,7 +12,13 @@ before submission.
 
 ## Local setup
 
-Requires Python 3.9+.
+Requires Python 3.11+.
+
+The team uses one shared Supabase project. Ask the Data owner for its
+credentials through a secure transfer and put them in the ignored local
+secrets file. If that project already has the schema, do not run `schema.sql`
+again. The Data owner applies reviewed migrations once for the whole team.
+Each teammate then pulls the merged code and uses the same project locally.
 
 ```bash
 python3 -m venv .venv
@@ -29,12 +35,16 @@ For a **new database**, apply `schema.sql` via the Supabase SQL editor.
 For an **existing database**, back it up and apply only
 `migrations/001_personal_accounts.sql` once, then
 `migrations/002_remembered_devices.sql` once, then
-`migrations/003_text_territory_ids.sql` once. Skip the ones already applied.
+`migrations/003_text_territory_ids.sql` once, then
+`migrations/004_server_game_tables.sql`. Skip the ones already applied.
 Do not recreate the tables.
 The migration adds email, unique indexes, recovery codes and login throttling;
 it keeps every player ID, membership, drink entry and score. It aborts safely
 if existing usernames collide after trimming and ignoring capitalization.
 Resolve such collisions with the account owners before retrying.
+Migration 004 restricts game tables, including lobby invite codes, to the
+server's service-role key. Fresh databases get these restrictions in the
+schema. All app database access continues through `data/db.py`.
 
 Set the SMTP entries shown in `.streamlit/secrets.toml.example` to enable
 Forgot password. Port 465 uses implicit TLS; other ports use STARTTLS
@@ -48,6 +58,8 @@ To enable check-in photos, run
 in the Supabase SQL editor after the `drink_entries` table exists. It adds the
 capture-time column and creates the private `check-in-photos` bucket. It can
 also run on a project that already has the column and a private bucket.
+It removes exact GPS coordinates from legacy entries, keeping their points
+and assigned territory. Re-run it if an older photo setup was already applied.
 
 The script restricts direct access to membership, season, and drink entry
 records to the server, and blocks anonymous and authenticated Supabase clients
@@ -58,6 +70,17 @@ the account migrations.
 In the test project, save a check-in and reopen it under **Lobby photos**
 after restarting the app. Verify access with a lobby member and an account
 outside the lobby.
+
+The [security and data handling protocol](docs/SECURITY.md) describes photo
+access, upload limits, secrets, and the privacy decisions to complete before
+collecting real player photos.
+
+Owners can delete their photo in **Lobby photos** while keeping the score.
+Photo access ends 30 days after its season ends. The Data owner must schedule
+`python -m data.cleanup_checkin_photos --apply` on the server at least daily
+and monitor failures. Without `--apply`, the command only reports counts.
+It removes expired photos and abandoned uploads older than 24 hours, keeping
+all scored entries. Physical deletion happens on a successful cleanup run.
 
 ### Run the app
 

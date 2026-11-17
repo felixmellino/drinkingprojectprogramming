@@ -87,6 +87,22 @@ create table minigame_attempts (
 create index minigame_attempts_window
   on minigame_attempts (membership_id, game_window_id);
 
+-- Public clients cannot read invite codes or change game state. The app
+-- validates its custom player sessions before using its server service key.
+alter table public.lobbies enable row level security;
+alter table public.lobby_memberships enable row level security;
+alter table public.seasons enable row level security;
+alter table public.territories enable row level security;
+alter table public.drink_entries enable row level security;
+alter table public.arenas enable row level security;
+alter table public.minigame_attempts enable row level security;
+revoke all on public.lobbies, public.lobby_memberships, public.seasons,
+  public.territories, public.drink_entries, public.arenas, public.minigame_attempts
+  from public, anon, authenticated;
+grant all on public.lobbies, public.lobby_memberships, public.seasons,
+  public.territories, public.drink_entries, public.arenas, public.minigame_attempts
+  to service_role;
+
 -- Personal account support (also provided separately for existing databases).
 -- Apply ONCE to an existing database. All player IDs and game records survive.
 -- Case-insensitive duplicates must be resolved by the team before proceeding.
