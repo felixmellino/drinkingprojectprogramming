@@ -121,6 +121,7 @@ services; the automated suite does not replace it.
 - `data/db.py` — the only file that talks to Supabase.
 - `account_ui.py` — one account form with registration, login and expandable recovery.
 - `device_login.py` and `components/remember_device/` — persistent device login.
+- `phone_location.py` and `components/phone_location/` — the "Use my location" GPS button.
 - `data/mail.py` — recovery email transport using the Python standard library.
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
@@ -134,9 +135,10 @@ four building blocks, and the team's workflow rules.
 
 ## Known gaps in this first increment
 
-- **No real GPS capture.** The Check-in page takes manual latitude/longitude
-  input instead of reading the device's actual location — Streamlit has no
-  built-in geolocation. Replace with a browser-location component.
+- **Testing GPS on a laptop:** the Check-in page only accepts the browser's
+  real location. To test or demo a territory you're not standing in, open
+  Chrome DevTools → More tools → Sensors → Location and set the coordinates
+  (e.g. 38.7133, -9.1456 lands in Shortys).
 - **No real photo storage.** Photos aren't uploaded to Supabase Storage yet;
   only a placeholder reference is saved.
 - **Map, Memories, and Minigames pages aren't built yet** — Standings shows

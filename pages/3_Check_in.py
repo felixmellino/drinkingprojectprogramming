@@ -1,12 +1,11 @@
-"""Log a drink: type/size, a required photo, and GPS.
+"""Log a drink: type/size, a required photo, and the phone's GPS.
 
-Photo storage and real browser geolocation are not wired up yet -- see the
-two TODOs below. Both are workarounds the team should replace:
-  - GPS: Streamlit has no native geolocation, so this page takes a manual
-    lat/lng entry for now instead of reading the device's real GPS.
-  - Photo storage: the photo's bytes aren't uploaded anywhere yet; only a
-    placeholder reference is stored. Wire up Supabase Storage before relying
-    on Memories or re-checking a submitted photo.
+The location comes from the "Use my location" button (phone_location.py),
+which asks the browser for the phone's GPS and its accuracy (R-L01, R-L02).
+
+Photo storage is not wired up yet: the photo's bytes aren't uploaded
+anywhere; only a placeholder reference is stored. Wire up Supabase Storage
+before relying on Memories or re-checking a submitted photo.
 """
 
 from datetime import datetime
@@ -15,6 +14,9 @@ import streamlit as st
 
 import data.db as db
 from core.checkins import CheckinRejected, create_drink_entry
+from core.constants import MAX_GPS_ACCURACY_M
+from core.location import parse_phone_reading
+from phone_location import phone_location_button
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -41,20 +43,31 @@ if drink_type in ("beer", "wine"):
 photo_number = st.session_state.get("checkin_photo_number", 0)
 photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
 
-st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
-device_lat = st.number_input(
-    "Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f", key=f"checkin_lat_{photo_number}"
+st.write("Your location")
+device_gps, accuracy_m, location_problem = parse_phone_reading(
+    phone_location_button(key=f"checkin_location_{photo_number}")
 )
-device_lng = st.number_input(
-    "Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f", key=f"checkin_lng_{photo_number}"
-)
+location_messages = {
+    "not_requested": "Tap the button so we can check which territory you're in.",
+    "denied": "Location access is blocked. Allow location for this site in your browser settings, then tap the button again.",
+    "unavailable": "Your phone couldn't find its position. Move closer to a window or outside and tap the button again.",
+    "timeout": "Finding your position took too long. Tap the button again.",
+    "unsupported": "This browser can't share its location. Try another browser on your phone.",
+    "invalid": "Something went wrong reading your location. Tap the button again.",
+}
+if location_problem:
+    st.caption(location_messages[location_problem])
+elif accuracy_m > MAX_GPS_ACCURACY_M:
+    st.warning(
+        f"Your location is only accurate to about {accuracy_m:.0f} m (we need {MAX_GPS_ACCURACY_M:.0f} m or better). "
+        "Step outside or wait a moment, then tap the button again."
+    )
+else:
+    st.caption(f"Location found, accurate to about {accuracy_m:.0f} m.")
 
 
-if st.button("Submit", disabled=photo is None):
+if st.button("Submit", disabled=photo is None or device_gps is None):
     submitted_at = datetime.now().astimezone()
-    device_gps = None
-    if device_lat is not None and device_lng is not None:
-        device_gps = (device_lat, device_lng)
     # TODO: upload photo.getvalue() to Supabase Storage and store the real
     # URL/path here instead of this placeholder.
     photo_ref = f"placeholder-{submitted_at.isoformat()}"
@@ -70,7 +83,7 @@ if st.button("Submit", disabled=photo is None):
             amount,
             photo_ref,
             device_gps,
-            None,  # accuracy: manual entry reports none; real phone GPS will (R-L02)
+            accuracy_m,
             submitted_at,
             territories,
             recent_entries,
@@ -81,8 +94,8 @@ if st.button("Submit", disabled=photo is None):
             "unknown_drink_type": "Unrecognized drink type.",
             "missing_amount": "Enter an amount for this drink.",
             "duplicate_check_in": "You already logged this drink a moment ago.",
-            "location_unavailable": "Enter your latitude and longitude, then try again.",
-            "location_uncertain": "We couldn't verify your location. Check your coordinates and try again.",
+            "location_unavailable": "We need your location. Tap “Use my location”, then submit again.",
+            "location_uncertain": "Your location isn't accurate enough yet. Tap “Update my location”, then submit again.",
         }
         st.error(messages.get(rejected.reason, rejected.reason))
     else:

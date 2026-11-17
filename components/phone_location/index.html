@@ -1,0 +1,49 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body { margin: 0; font-family: "Source Sans Pro", sans-serif; }
+  button {
+    font: inherit; font-size: 16px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(49, 51, 63, 0.2); background: #fff; color: rgb(49, 51, 63);
+  }
+  button:hover { border-color: #ff4b4b; color: #ff4b4b; }
+  button:disabled { cursor: wait; opacity: 0.6; }
+</style></head>
+<body>
+<button id="locate" type="button">📍 Use my location</button>
+<script>
+// Asks the browser for the phone's GPS position (R-L01) and hands it to
+// Streamlit together with the reported accuracy in metres (R-L02).
+// Nothing is stored here; the server discards the coordinates after the check.
+const button = document.getElementById("locate");
+
+function send(type, details) {
+  window.parent.postMessage({isStreamlitMessage: true, type, ...details}, "*");
+}
+function reply(value) {
+  send("streamlit:setComponentValue", {value, dataType: "json"});
+  button.disabled = false;
+  button.textContent = "📍 Update my location";
+}
+
+button.addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    reply({error: "unsupported"});
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition(
+    (position) => reply({
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      accuracy_m: position.coords.accuracy,
+    }),
+    (error) => reply({error: {1: "denied", 2: "unavailable", 3: "timeout"}[error.code] || "unavailable"}),
+    {enableHighAccuracy: true, timeout: 15000, maximumAge: 0}
+  );
+});
+
+send("streamlit:componentReady", {apiVersion: 1});
+send("streamlit:setFrameHeight", {height: 48});
+</script></body></html>

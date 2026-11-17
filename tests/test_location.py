@@ -1,4 +1,6 @@
-from core.location import evaluate_location
+import pytest
+
+from core.location import evaluate_location, parse_phone_reading
 from core.models import Territory
 
 TERRITORY = Territory(
@@ -67,3 +69,49 @@ def test_overlapping_territories_are_uncertain():
     result, territory_id = evaluate_location(INSIDE, 10.0, [TERRITORY, twin])
     assert result == "uncertain"
     assert territory_id is None
+
+
+# -- parse_phone_reading: what the "Use my location" button sends back ----------
+
+def test_phone_reading_is_turned_into_gps_and_accuracy():
+    gps, accuracy, problem = parse_phone_reading({"lat": 38.7133, "lng": -9.1456, "accuracy_m": 12})
+    assert gps == (38.7133, -9.1456)
+    assert accuracy == 12.0
+    assert problem is None
+
+
+def test_button_not_pressed_yet():
+    assert parse_phone_reading(None) == (None, None, "not_requested")
+
+
+@pytest.mark.parametrize("error", ["denied", "unavailable", "timeout", "unsupported"])
+def test_browser_errors_are_passed_on(error):
+    assert parse_phone_reading({"error": error}) == (None, None, error)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "38.7,-9.1",
+        {"error": "hacked"},
+        {"lat": "38.7", "lng": -9.1, "accuracy_m": 10},
+        {"lat": 38.7, "lng": -9.1},
+        {"lat": 38.7, "lng": -9.1, "accuracy_m": True},
+        {"lat": 91, "lng": -9.1, "accuracy_m": 10},
+        {"lat": 38.7, "lng": -181, "accuracy_m": 10},
+        {"lat": 38.7, "lng": -9.1, "accuracy_m": -1},
+        {"lat": float("nan"), "lng": -9.1, "accuracy_m": 10},
+    ],
+    ids=["text", "unknown-error", "lat-as-text", "no-accuracy", "accuracy-bool",
+         "lat-too-big", "lng-too-small", "negative-accuracy", "lat-nan"],
+)
+def test_malformed_readings_are_rejected(value):
+    """Input validation: a tampered or broken reading never becomes a location."""
+    assert parse_phone_reading(value) == (None, None, "invalid")
+
+
+def test_phone_reading_flows_into_the_location_check():
+    gps, accuracy, _ = parse_phone_reading({"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 30})
+    assert evaluate_location(gps, accuracy, [TERRITORY]) == ("matched", TERRITORY.id)
+    gps, accuracy, _ = parse_phone_reading({"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 80})
+    assert evaluate_location(gps, accuracy, [TERRITORY]) == ("uncertain", None)

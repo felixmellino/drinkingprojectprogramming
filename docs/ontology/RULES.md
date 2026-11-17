@@ -55,8 +55,8 @@ submits. GPS data stored in the photo is not used.
 
 | Case | Outcome |
 | --- | --- |
-| Allowed | A phone reading at submission. |
-| Rejected | No phone reading (permission denied or no signal): the check-in is not saved and the player retries (R2). |
+| Allowed | A phone reading from the "Use my location" button on the Check-in page. |
+| Rejected | No phone reading (permission denied, no signal, timeout) or a malformed one: the check-in is not saved and the player retries (R2). Typed-in coordinates are not accepted. |
 | Boundary | A photo with GPS data that points somewhere else does not change the result. |
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-09.

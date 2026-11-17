@@ -19,6 +19,33 @@ from core.models import Territory
 
 GPS = tuple[float, float]  # (lat, lng)
 
+BROWSER_LOCATION_ERRORS = {"denied", "unavailable", "timeout", "unsupported"}
+
+
+def parse_phone_reading(value: object) -> tuple[GPS | None, float | None, str | None]:
+    """Check what the browser's "Use my location" button sent back.
+
+    Returns (device_gps, accuracy_m, problem). On success problem is None.
+    Otherwise device_gps and accuracy_m are None and problem is one of:
+    "not_requested" (button not pressed yet), "denied", "unavailable",
+    "timeout", "unsupported" (reported by the browser), or "invalid"
+    (anything malformed, so a tampered request can't inject a location)."""
+    if value is None:
+        return None, None, "not_requested"
+    if not isinstance(value, dict):
+        return None, None, "invalid"
+    if "error" in value:
+        error = value["error"]
+        return None, None, error if error in BROWSER_LOCATION_ERRORS else "invalid"
+
+    lat, lng, accuracy = value.get("lat"), value.get("lng"), value.get("accuracy_m")
+    numbers = (lat, lng, accuracy)
+    if not all(isinstance(n, (int, float)) and not isinstance(n, bool) for n in numbers):
+        return None, None, "invalid"
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180 and accuracy >= 0):
+        return None, None, "invalid"
+    return (float(lat), float(lng)), float(accuracy), None
+
 
 def point_in_polygon(lat: float, lng: float, polygon_coords: list[list[float]]) -> bool:
     """Ray-casting point-in-polygon test over a GeoJSON exterior ring
@@ -54,9 +81,9 @@ def evaluate_location(
     """Return (location_check_result, territory_id).
 
     `accuracy_m` is how many metres the phone says its reading may be off.
-    None means no accuracy was reported: today that is the manual
-    latitude/longitude entry on the Check-in page, which is accepted until
-    real phone GPS replaces it. A territory id is only returned for
+    The Check-in page always passes the accuracy the phone reported (see
+    parse_phone_reading); None is only used by tests that don't care about
+    accuracy. A territory id is only returned for
     "matched", so an uncertain reading never silently gets a territory."""
     if device_gps is None:
         return "unavailable", None
