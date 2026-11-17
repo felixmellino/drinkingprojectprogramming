@@ -10,10 +10,8 @@ two TODOs below. Both are workarounds the team should replace:
 """
 
 from datetime import datetime
-from io import BytesIO
 
 import streamlit as st
-from PIL import Image, ExifTags
 
 import data.db as db
 from core.checkins import CheckinRejected, create_drink_entry
@@ -52,35 +50,11 @@ device_lng = st.number_input(
 )
 
 
-def _read_photo_gps(photo_file) -> tuple[float, float] | None:
-    """Best-effort EXIF GPS extraction. Returns None if the photo has no
-    GPS tags (very common for camera-captured photos without location
-    permission, or for this component in particular)."""
-    try:
-        image = Image.open(BytesIO(photo_file.getvalue()))
-        exif = image.getexif()
-        gps_ifd = exif.get_ifd(ExifTags.IFD.GPSInfo)
-        if not gps_ifd:
-            return None
-
-        def to_decimal(value, ref):
-            degrees, minutes, seconds = value
-            decimal = degrees + minutes / 60 + seconds / 3600
-            return -decimal if ref in ("S", "W") else decimal
-
-        lat = to_decimal(gps_ifd[2], gps_ifd[1])
-        lng = to_decimal(gps_ifd[4], gps_ifd[3])
-        return (lat, lng)
-    except Exception:
-        return None
-
-
 if st.button("Submit", disabled=photo is None):
     submitted_at = datetime.now().astimezone()
     device_gps = None
     if device_lat is not None and device_lng is not None:
         device_gps = (device_lat, device_lng)
-    photo_gps = _read_photo_gps(photo) if photo else None
     # TODO: upload photo.getvalue() to Supabase Storage and store the real
     # URL/path here instead of this placeholder.
     photo_ref = f"placeholder-{submitted_at.isoformat()}"
@@ -96,7 +70,7 @@ if st.button("Submit", disabled=photo is None):
             amount,
             photo_ref,
             device_gps,
-            photo_gps,
+            None,  # accuracy: manual entry reports none; real phone GPS will (R-L02)
             submitted_at,
             territories,
             recent_entries,

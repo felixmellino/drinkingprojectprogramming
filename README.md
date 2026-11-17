@@ -142,6 +142,6 @@ four building blocks, and the team's workflow rules.
 - **Map, Memories, and Minigames pages aren't built yet** — Standings shows
   territory ownership as a list for now. See the build order in
   `AGENTS.md`/the project plan for what's next.
-- Several game-rule numbers (points per drink, GPS/photo mismatch
-  tolerance, season-length day counts) are placeholders in
+- Several game-rule numbers (points per drink, season-length day
+  counts) are placeholders in
   `core/constants.py` — see `docs/ontology/OPEN_DECISIONS.md`.

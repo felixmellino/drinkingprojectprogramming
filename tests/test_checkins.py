@@ -25,7 +25,7 @@ OUTSIDE_WINDOW_TS = datetime(2026, 11, 17, 20, 0, 0)  # a Tuesday
 
 def test_valid_check_in_scores_full_points():
     entry = create_drink_entry(
-        "membership-1", "season-1", "beer", 2, "photo-1", INSIDE, INSIDE, IN_WINDOW_TS, [TERRITORY], []
+        "membership-1", "season-1", "beer", 2, "photo-1", INSIDE, 10.0, IN_WINDOW_TS, [TERRITORY], []
     )
     assert entry.points_awarded > 0
     assert entry.location_check_result == "matched"
@@ -107,18 +107,18 @@ def test_outside_game_window_scores_zero_but_does_not_raise():
 
 
 @pytest.mark.parametrize(
-    ("device_gps", "photo_gps", "reason"),
+    ("device_gps", "accuracy_m", "reason"),
     [
         (None, None, "location_unavailable"),
-        (None, INSIDE, "location_unavailable"),
-        (INSIDE, OUTSIDE, "location_uncertain"),
-        (OUTSIDE, INSIDE, "location_uncertain"),
+        (None, 10.0, "location_unavailable"),
+        (INSIDE, 120.0, "location_uncertain"),
+        (OUTSIDE, 120.0, "location_uncertain"),
     ],
-    ids=["missing-location", "photo-only", "conflict-inside", "conflict-outside"],
+    ids=["missing-location", "accuracy-but-no-location", "inaccurate-inside", "inaccurate-outside"],
 )
-def test_failed_location_verification_rejects_check_in(device_gps, photo_gps, reason):
+def test_failed_location_verification_rejects_check_in(device_gps, accuracy_m, reason):
     with pytest.raises(CheckinRejected) as exc:
         create_drink_entry(
-            "membership-1", "season-1", "shot", None, "photo-1", device_gps, photo_gps, IN_WINDOW_TS, [TERRITORY], []
+            "membership-1", "season-1", "shot", None, "photo-1", device_gps, accuracy_m, IN_WINDOW_TS, [TERRITORY], []
         )
     assert exc.value.reason == reason

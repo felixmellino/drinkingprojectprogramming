@@ -43,7 +43,7 @@ connection.
 | `auth.py` | Turns a PIN into a scrambled code so the real PIN is never stored, and checks a typed PIN against it at login. |
 | `lobbies.py` | Creating a player, creating a lobby (with an invite code), joining a lobby, and setting up that lobby's season. |
 | `game_window.py` | One job: "is this moment inside Thursday-noon-to-Sunday-evening?" Drinks only count inside that window. |
-| `location.py` | Checks whether a drink's GPS location falls inside a territory's drawn area, and whether the phone's GPS agrees with the photo's own location tag. |
+| `location.py` | Checks whether the phone's GPS reading is accurate enough (50 m) and which territory's drawn area it falls inside. |
 | `scoring.py` | Works out how many points a drink is worth (beer and wine scale with amount; shots and long drinks are flat). |
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |

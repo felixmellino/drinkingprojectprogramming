@@ -14,8 +14,8 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-06 | Season length | How long is the playing period, and when does it start and end? Initial ownership, scoring window and Season resets. |
 | D-07 | Minigame interruption | If a Minigame is interrupted, does it count as the Player's one play for that evening? |
 | D-08 | Ownership timing | Recommended: ownership immediately before acceptance. Define the order of concurrent check-ins. |
-| D-09 | Location source | Recommended: fresh phone location alongside the photo capture. Define the role of photo metadata, missing metadata and conflicting coordinates. |
-| D-10 | Location acceptance | Maximum coordinate age and uncertainty, and territory edge handling. |
+| D-09 | Location source | **Decided 2026-11-17**, see [R-L01](RULES.md#location): phone GPS at submission only, photo GPS is not used. |
+| D-10 | Location acceptance | Uncertainty and edge handling **decided 2026-11-17**, see [R-L02, R-L03](RULES.md#location). Still open: how old a phone reading may be. |
 | D-11 | Photo validation | How to detect reused images, supported formats and size, and how to handle false drink or size declarations. |
 | D-12 | Check-in limits | Repeat drinks, cooldowns and duplicate submissions. |
 | D-13 | Privacy | Who can delete a saved photo and what happens to its drink entry afterwards? The [photo workflow](WORKFLOWS.md#save-and-view-a-check-in-photo) defines what the server keeps and what lobby members can see. |

@@ -43,9 +43,48 @@ allowed. A drink in a gap counts as outside every Territory (see R1).
 | --- | --- |
 | Allowed | Two Territories sharing an edge; empty space between Territories. |
 | Rejected | Any area that lies inside two Territories. |
-| Boundary | A location exactly on a shared border is still open under D-10 (territory edge handling). |
+| Boundary | A location near or on a shared border belongs to the Territory that contains the measured point (R-L03). |
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
+## Location
+
+### R-L01 Location source
+A check-in's location is the phone's GPS reading taken when the player
+submits. GPS data stored in the photo is not used.
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | A phone reading at submission. |
+| Rejected | No phone reading (permission denied or no signal): the check-in is not saved and the player retries (R2). |
+| Boundary | A photo with GPS data that points somewhere else does not change the result. |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-09.
+
+### R-L02 Accuracy limit
+The phone reports how many metres its reading may be off. A reading off by
+at most 50 m is accepted. A worse reading counts as uncertain: the
+check-in is not saved and the player retries (R2).
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | Accuracy of 50 m or better. |
+| Rejected | Accuracy worse than 50 m. |
+| Boundary | Exactly 50 m is accepted. |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-10 (uncertainty).
+
+### R-L03 Borders
+An accepted reading belongs to the Territory that contains the measured
+point, even if its accuracy circle reaches into a neighbouring Territory.
+A point in a gap or outside every Territory counts as outside (R1).
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | A point inside a Territory, however close to its border. |
+| Boundary | A point exactly on a shared border is assigned to one of the two Territories; which one is not defined. |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-10 (edge handling).
 
 ## Direction agreed on 17 November 2026
 
@@ -55,7 +94,7 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | ID | Rule | Allowed / rejected / boundary outcomes |
 | --- | --- | --- |
 | R1 | A city is divided into territories. An accepted check-in with a matched territory contributes its points there. | Assign a territory only when location verification identifies one. A verified location outside every territory can earn season points only, subject to the same eligibility rules. |
-| R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Use photo metadata as supporting evidence and discard raw coordinates after verification. |
+| R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Only the phone's GPS reading counts (R-L01, R-L02). Discard raw coordinates after verification. |
 | R3 | Base points depend on both drink type and size; beer earns fewer points than a longdrink in the intended comparison. | Accept only configured type/size combinations. Reject unsupported combinations. Exact table, units and comparisons between different sizes remain open. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
 | R5 | Other players earn a percentage fewer points on a drink in an owned territory than its owner. | **Proposal only, not agreed:** whether the Owner takes a share of other Players' Points or weakens their Points is still open (D-01). If agreed: apply the reduction to non-owners; percentage, rounding, unclaimed territory behavior and ownership timing remain open. |
@@ -63,8 +102,7 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 
 ## Implementation recommendations (not yet agreed rules)
 
-- Capture current device location alongside a newly captured photo. Inspect
-  embedded photo coordinates when available as supplementary evidence.
+- Capture the current device location when the player submits (R-L01).
 - Validate location, configured drink/size, eligibility and score on the server.
   Determine territory from the location; do not trust a client-selected territory.
 - Keep an accepted check-in's drink/size, base points, applied modifier,

@@ -5,8 +5,9 @@
 Updated direction: automatic location verification replaces buddy confirmation.
 
 1. Player opens Check in and selects a configured drink type and size.
-2. Player takes a fresh photo in the app. The proposed location capture
-   uses the current phone reading and any available photo coordinates.
+2. Player takes a fresh photo in the app. The location is the phone's
+   GPS reading at submission (R-L01), accepted if it is off by at most
+   50 m (R-L02).
 3. App shows the detected territory and scoring preview: base points,
    ownership reduction if applicable, and estimated awarded points.
 4. Player submits. Server validates required inputs, location evidence,
@@ -38,10 +39,10 @@ unavailable.
 Check-in records when the app receives the camera photo separately from
 when the player submits the entry. The photo view shows this capture time,
 the submitter's username, and the verified territory name or “Outside game
-territories.” Read any photo GPS tags during verification, then remove the
-embedded metadata before saving the image. Save the verification result and
-territory match from the location check. Discard the exact coordinates from
-the phone and photo after verification.
+territories.” Photo GPS tags are not used (R-L01); remove the embedded
+metadata before saving the image. Save the verification result and
+territory match from the location check. Discard the exact phone
+coordinates after verification.
 
 ### Duplicate check-ins in the current build
 
@@ -55,7 +56,7 @@ The final repeat-drink and duplicate rules are still open under D-12.
 
 ### Proposed fallback after automatic location verification fails
 
-If the automatic check using phone GPS and available photo GPS fails, the
+If the automatic check using phone GPS fails, the
 player can share a one-time confirmation link with another member of the
 same lobby who was there. The recipient signs in and confirms they were
 present. The server checks their lobby membership and uses the link once
