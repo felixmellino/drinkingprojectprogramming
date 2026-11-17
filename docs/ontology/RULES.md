@@ -92,3 +92,18 @@ verify that the selected drink type/size is accurate or that it was consumed.
 
 Login throttling (ten attempts per account per 15 minutes) is a security
 implementation setting, not a scoring rule. SMTP is not required.
+
+## Friends (agreed 17 November 2026)
+
+| ID | Rule | Allowed / rejected / boundary outcomes |
+| --- | --- | --- |
+| F1 | Signed-in players search all app usernames, independent of lobbies. | Search is partial, ignores case and surrounding whitespace, and returns at most 20 results sorted by username. Empty search returns none. Search excludes yourself and exposes only username, never name, email or credentials. No profile pictures or new profile fields. |
+| F2 | Friendship requires an explicit request and acceptance by the recipient. | Only the recipient may accept or decline a pending request; only the sender may cancel it. Reject self-requests, duplicate requests, requests between existing friends, and responses to non-pending requests. An opposite-direction request does not automatically accept. |
+| F3 | Declining a request starts a 10-minute waiting period. | Neither player can create a new request for that pair before 10 minutes have elapsed; exactly 10 minutes is allowed. This pair-wide interpretation prevents reversing a request to bypass the wait. Cancellation does not start a waiting period. |
+| F4 | Accepted friends appear in both players' private lists. | Each player can see only their own relationships. Either friend may remove the friendship, removing it from both lists. Removal allows a new request, which again needs acceptance. No friendship changes points, lobby membership or photo access. |
+| F5 | Requests are managed on Profile and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; no email notifications. Concurrent actions cannot overwrite an unseen change. |
+
+Implementation: `core/friends.py` holds validation and search rules;
+`friends_ui.py` renders controls using the authenticated session's player ID;
+`data/db.py` stores state through a version-checked database function. The
+server service key is the only database role with friendship access.
