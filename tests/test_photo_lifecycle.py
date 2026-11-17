@@ -216,7 +216,7 @@ def photo_page(monkeypatch, player="author"):
     monkeypatch.setattr("shared.require_login", lambda: player)
     monkeypatch.setattr("shared.require_active_membership", lambda: ("member", "lobby", "season"))
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
-    return AppTest.from_file(Path(__file__).resolve().parents[1] / "pages/6_Check_in_photos.py").run()
+    return AppTest.from_file(str(Path(__file__).resolve().parents[1] / "pages/6_Check_in_photos.py")).run()
 
 
 def delete_button(page):
