@@ -1,0 +1,95 @@
+"""Creating and validating drink entries."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timedelta
+
+from core.constants import ALLOWED_DRINK_TYPES, AMOUNT_SCALED_DRINK_TYPES, DUPLICATE_WINDOW_SECONDS
+from core.game_window import is_in_game_window
+from core.location import evaluate_location
+from core.models import DrinkEntry, Territory
+from core.scoring import calculate_base_points
+
+
+class CheckinRejected(Exception):
+    """Raised when a drink entry can't be submitted at all (bad input or a
+    duplicate). `reason` is a short machine-readable code for the UI."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def validate_drink_input(drink_type: str, amount: float | None, photo_ref: str | None) -> None:
+    if not photo_ref:
+        raise CheckinRejected("missing_photo")
+    if drink_type not in ALLOWED_DRINK_TYPES:
+        raise CheckinRejected("unknown_drink_type")
+    if drink_type in AMOUNT_SCALED_DRINK_TYPES and (amount is None or amount <= 0):
+        raise CheckinRejected("missing_amount")
+
+
+def is_duplicate(
+    membership_id: str,
+    drink_type: str,
+    submitted_at: datetime,
+    recent_entries: list[DrinkEntry],
+) -> bool:
+    window = timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    for entry in recent_entries:
+        if (
+            entry.membership_id == membership_id
+            and entry.drink_type == drink_type
+            and abs(entry.submitted_at - submitted_at) < window
+        ):
+            return True
+    return False
+
+
+def create_drink_entry(
+    membership_id: str,
+    season_id: str,
+    drink_type: str,
+    amount: float | None,
+    photo_ref: str,
+    device_gps: tuple[float, float] | None,
+    photo_gps: tuple[float, float] | None,
+    submitted_at: datetime,
+    territories: list[Territory],
+    recent_entries: list[DrinkEntry],
+) -> DrinkEntry:
+    """Validate and build a new DrinkEntry. Raises CheckinRejected for bad
+    input or a duplicate submission. A drink outside the game window, or
+    with unavailable location, is still RETURNED (never raised) with
+    points_awarded == 0, so rejected actions are visible in history and
+    leave the leaderboard unchanged -- only input errors and duplicates
+    stop the submission outright."""
+    validate_drink_input(drink_type, amount, photo_ref)
+
+    if is_duplicate(membership_id, drink_type, submitted_at, recent_entries):
+        raise CheckinRejected("duplicate_check_in")
+
+    location_check_result, territory_id = evaluate_location(device_gps, photo_gps, territories)
+    in_window = is_in_game_window(submitted_at)
+    base_points = calculate_base_points(drink_type, amount)
+
+    if not in_window or location_check_result == "unavailable":
+        points_awarded = 0
+    else:
+        points_awarded = base_points
+
+    return DrinkEntry(
+        id=str(uuid.uuid4()),
+        membership_id=membership_id,
+        season_id=season_id,
+        drink_type=drink_type,
+        amount=amount,
+        photo_ref=photo_ref,
+        device_gps=device_gps,
+        photo_gps=photo_gps,
+        territory_id=territory_id,
+        location_check_result=location_check_result,
+        points_awarded=points_awarded,
+        submitted_at=submitted_at,
+    )

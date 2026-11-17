@@ -1,0 +1,46 @@
+"""Every tunable game-rule number, in one place. Change behavior here,
+nowhere else. Values marked 'placeholder' are the team's defaults from the
+2026-11-17 sync, not final -- see docs/ontology/OPEN_DECISIONS.md."""
+
+from datetime import time
+
+# -- scoring (placeholder values, D-02 in OPEN_DECISIONS.md) --------------
+
+BEER_POINTS_PER_UNIT = 5
+WINE_POINTS_PER_UNIT = 5
+SHOT_POINTS = 10
+LONGDRINK_POINTS = 15
+
+ALLOWED_DRINK_TYPES = {"beer", "wine", "shot", "longdrink"}
+# Drink types whose points scale with an amount (size); others are flat.
+AMOUNT_SCALED_DRINK_TYPES = {"beer", "wine"}
+
+# -- game window (placeholder exact hours, D-05 in OPEN_DECISIONS.md) -----
+# One continuous block per week: Thursday 12:00 through Sunday 23:59:59.
+# Monday = 0 ... Sunday = 6.
+
+WINDOW_START_WEEKDAY = 3  # Thursday
+WINDOW_START_TIME = time(12, 0, 0)
+WINDOW_END_WEEKDAY = 6  # Sunday
+WINDOW_END_TIME = time(23, 59, 59)
+
+# -- duplicate check-in guard (D-12 in OPEN_DECISIONS.md) ------------------
+
+DUPLICATE_WINDOW_SECONDS = 120
+
+# -- location evidence (D-09/D-10 in OPEN_DECISIONS.md) --------------------
+
+GPS_MISMATCH_TOLERANCE_M = 200.0
+
+# -- season length (D-06 in OPEN_DECISIONS.md) ------------------------------
+# Calendar months are ambiguous; these day counts are a placeholder.
+
+SEASON_LENGTH_DAYS = {
+    "1_week": 7,
+    "1_month": 30,
+    "3_months": 91,
+}
+
+# -- minigames ---------------------------------------------------------
+
+MAX_MINIGAME_PLAYS_PER_WINDOW = 1
