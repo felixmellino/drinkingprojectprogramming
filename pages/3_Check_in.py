@@ -12,7 +12,7 @@ from storage3.utils import StorageException
 import data.db as db
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
-from shared import require_active_membership, require_login, show_logged_in_as
+from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
@@ -76,7 +76,7 @@ if st.button("Submit", disabled=photo is None) and photo is not None and capture
                 device_gps,
                 photo_gps,
                 submitted_at,
-                db.list_territories(),
+                get_territories(),
                 recent_entries,
             )
             entry = replace(entry, id=capture_id, photo_captured_at=captured_at)

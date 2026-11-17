@@ -9,6 +9,44 @@ When two Players have the same Points, the Player who reached that score first r
 
 Source: team decision, 2026-11-17.
 
+## Territories
+
+### R-T01 Territory set
+The game starts with 12 hand-drawn Territories in Lisbon: 8 in Bairro Alto,
+Santa Catarina, and 3 in Santos. Their outlines live in one shared file,
+`data/territories.geojson`, as GeoJSON Polygons with a display `name`
+(for example "Shortys") and a short, permanent `id` (for example
+`shortys`: lowercase letters and digits, words joined by hyphens). The
+file is drawn and edited in geojson.io. Every
+lobby plays on the same Territories; each lobby's Seasons have their own
+Owners.
+
+The file is the only source of truth. The app reads it for the location
+check and the standings, and copies it into the database's `territories`
+table when the app starts, because saved drinks refer to a Territory by its
+`id`. After editing the file, restart the app.
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | Adding, removing, renaming or reshaping a Territory by editing the file, as long as R-T02 still holds. A renamed or reshaped Territory keeps its `id`; only the `name` changes. A new Territory gets a new, unused `id`. |
+| Rejected | A Territory without a `name`, with a missing or badly formed `id` (capitals, spaces, underscores), or with an outline that is not a closed Polygon; two Territories with the same `id` or `name`. The app refuses to load such a file. |
+| Boundary | Changing an outline mid-Season does not move drinks that were already saved; their stored Territory stays. A Territory removed from the file stays in the database so older drinks still point at it, but it is no longer matched or shown in the standings. |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
+### R-T02 Territories never overlap
+Neighbouring Territories may share a border but must never overlap, so a
+location lies inside at most one Territory. Gaps between Territories are
+allowed. A drink in a gap counts as outside every Territory (see R1).
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | Two Territories sharing an edge; empty space between Territories. |
+| Rejected | Any area that lies inside two Territories. |
+| Boundary | A location exactly on a shared border is still open under D-10 (territory edge handling). |
+
+Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
 ## Direction agreed on 17 November 2026
 
 The user's updated direction replaces buddy confirmation. Exact values and
@@ -38,3 +76,19 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 
 Location evidence can support a location check; it does not automatically
 verify that the selected drink type/size is accurate or that it was consumed.
+
+## Accounts (agreed 17 November 2026)
+
+| ID | Rule | Allowed / rejected / boundary outcomes |
+| --- | --- | --- |
+| A1 | Game pages require authentication; first visit offers registration and login. | A returning player logs in without recreating an account. Logged-out access stops before any game content or actions. |
+| A2 | Registration requires first name, surname, username, email and a personally chosen password entered twice. | Reject empty names, malformed email, mismatched passwords and passwords shorter than 8 characters. Eight characters are accepted; implementation also rejects whitespace-only passwords and bounds input length. |
+| A3 | Username and email must each be unique, ignoring case and surrounding whitespace. | Duplicate submissions cannot create another account, including concurrent submissions. Only username is public; name and email stay private. |
+| A4 | Login uses email and password, without registration email verification. Forgot password is available by email. | Incorrect credentials, invalid/expired/reused reset codes leave credentials and game points unchanged. A successful reset replaces the password and requires existing sessions to log in again. |
+| A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
+| A6 | Profile offers one Create account / Log in selector, with recovery beneath login. | Only the selected account form is shown. No separate upgrade or recovery tabs. |
+| A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
+
+Recovery code lifetime (15 minutes), request cooldown (one minute), and login
+throttling (ten attempts per account per 15 minutes) are security implementation
+settings, not scoring rules. Recovery requires configured SMTP delivery.

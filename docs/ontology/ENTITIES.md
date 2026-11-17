@@ -29,7 +29,10 @@ One record per person who plays WeGoPub. The same player can participate in many
 | Attribute | Type | Meaning |
 | --- | --- | --- |
 | `id` | ID | Stable internal player identifier. |
-| `display_name` | Text | Name shown on the profile and rankings. |
+| `display_name` | Text | Unique public username; case-insensitive uniqueness. |
+| `first_name`, `last_name` | Text | Required private first name and surname. |
+| `email` | Text | Unique private login email, normalized to lowercase. Null only for legacy records awaiting administrator migration. |
+| `pin_hash` | Text | Salted password hash. The old column name is retained to preserve existing data; legacy records are retained but have no self-service upgrade screen. |
 
 ### Lobby
 
@@ -71,15 +74,15 @@ A Season can contain several game nights. The calendar and the rules for actions
 
 ### Territory
 
-A named area on the Lisbon map, such as Bairro Alto East or Pink Street. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
+A named area on the Lisbon map, such as Shortys or Santa Catarina. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
-| `id` | ID | Stable territory identifier referenced by entries and standings. |
+| `id` | Short text key | Permanent key from `data/territories.geojson`, such as `shortys`, referenced by entries and standings. It never changes, even when the territory is renamed or reshaped. |
 | `name` | Text | Label shown on the map and in standings. |
 | `boundary` | GeoJSON polygon | Team-defined outline, loaded from the shared territory data. |
 
-For the prototype, `territories.geojson` can supply the territory records. The map and server should read the same definitions. Adjacent territories can share a border. Their interiors should be distinct so a point inside one area has a single match. The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
+`data/territories.geojson` supplies the territory records (R-T01). The location check and the standings both read this file, and the app copies it into the `territories` table on start so drink entries can reference a territory id. Adjacent territories can share a border, and gaps between them are allowed. Their interiors never overlap, so a point inside one area has a single match (R-T02). The standings identify the holder for a given competition. One territory can therefore have different holders in different lobbies.
 
 ### DrinkEntry
 
