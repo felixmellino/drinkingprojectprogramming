@@ -28,8 +28,9 @@ For a **new database**, apply `schema.sql` via the Supabase SQL editor.
 
 For an **existing database**, back it up and apply only
 `migrations/001_personal_accounts.sql` once, then
-`migrations/002_remembered_devices.sql` once. If 001 is already applied, apply
-only 002. Do not recreate the tables.
+`migrations/002_remembered_devices.sql` once, then
+`migrations/003_text_territory_ids.sql` once. Skip the ones already applied.
+Do not recreate the tables.
 The migration adds email, unique indexes, recovery codes and login throttling;
 it keeps every player ID, membership, drink entry and score. It aborts safely
 if existing usernames collide after trimming and ignoring capitalization.

@@ -4,7 +4,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Atalaia Norte",
+        "id": "rua-dos-mouros",
+        "name": "Rua dos Mouros",
         "fill": "#e6194b",
         "stroke": "#e6194b",
         "fill-opacity": 0.35
@@ -52,7 +53,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Grémio Lusitano",
+        "id": "cheers-irish-pub",
+        "name": "Cheers Irish Pub",
         "fill": "#3cb44b",
         "stroke": "#3cb44b",
         "fill-opacity": 0.35
@@ -100,7 +102,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – São Roque",
+        "id": "le-pub",
+        "name": "Le Pub",
         "fill": "#4363d8",
         "stroke": "#4363d8",
         "fill-opacity": 0.35
@@ -140,7 +143,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Rua da Rosa",
+        "id": "shortys",
+        "name": "Shortys",
         "fill": "#f58231",
         "stroke": "#f58231",
         "fill-opacity": 0.35
@@ -188,7 +192,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Poço da Cidade",
+        "id": "party-street",
+        "name": "Party Street",
         "fill": "#911eb4",
         "stroke": "#911eb4",
         "fill-opacity": 0.35
@@ -228,7 +233,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Rua do Norte",
+        "id": "outer-bairro",
+        "name": "Outer Bairro",
         "fill": "#42d4f4",
         "stroke": "#42d4f4",
         "fill-opacity": 0.35
@@ -268,7 +274,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Fiéis de Deus",
+        "id": "rua-da-rosa",
+        "name": "Rua da Rosa",
         "fill": "#f032e6",
         "stroke": "#f032e6",
         "fill-opacity": 0.35
@@ -308,7 +315,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Bairro Alto – Rua da Barroca",
+        "id": "autschan",
+        "name": "Autschan",
         "fill": "#bfef45",
         "stroke": "#bfef45",
         "fill-opacity": 0.35
@@ -360,6 +368,7 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "santa-catarina",
         "name": "Santa Catarina",
         "fill": "#469990",
         "stroke": "#469990",
@@ -412,7 +421,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Santos – Largo de Santos",
+        "id": "tower-bar",
+        "name": "Tower Bar",
         "fill": "#9a6324",
         "stroke": "#9a6324",
         "fill-opacity": 0.35
@@ -460,7 +470,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Santos – Marquês de Abrantes",
+        "id": "santos-kiosk",
+        "name": "Santos Kiosk",
         "fill": "#800000",
         "stroke": "#800000",
         "fill-opacity": 0.35
@@ -504,7 +515,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "Santos – Ribeira",
+        "id": "after8",
+        "name": "After8",
         "fill": "#000075",
         "stroke": "#000075",
         "fill-opacity": 0.35

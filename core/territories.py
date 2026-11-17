@@ -9,12 +9,59 @@ ties the leader's total never displaces them.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
-from core.models import DrinkEntry
+from core.models import DrinkEntry, Territory
 
 # (timestamp, membership_id, points) in the order they happened.
 ScoreEvent = tuple[datetime, str, int]
+
+# A territory id is a short, readable, permanent key such as "rua-da-rosa":
+# lowercase letters and digits, words joined by single hyphens.
+TERRITORY_ID_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+
+
+def parse_territories(collection: dict) -> list[Territory]:
+    """Turn the GeoJSON from data/territories.geojson into Territory records,
+    enforcing R-T01: every territory has a permanent short `id` (like
+    "rua-da-rosa"), a non-empty `name`, and a closed Polygon outline; ids
+    and names are unique. Raises
+    ValueError naming the broken territory. Extra properties (like the
+    geojson.io colours) are ignored. R-T02 (no overlap) is checked by
+    tests/test_territory_data.py, because it needs a slow geometric scan."""
+    if collection.get("type") != "FeatureCollection":
+        raise ValueError("territory file must be a GeoJSON FeatureCollection")
+
+    territories: list[Territory] = []
+    for position, feature in enumerate(collection.get("features", []), start=1):
+        properties = feature.get("properties") or {}
+        geometry = feature.get("geometry") or {}
+        name = str(properties.get("name", "")).strip()
+        label = name or f"territory #{position}"
+
+        if not name:
+            raise ValueError(f"{label} has no name")
+        territory_id = properties.get("id")
+        if not isinstance(territory_id, str) or not TERRITORY_ID_PATTERN.fullmatch(territory_id):
+            raise ValueError(f"{label} needs a short id like 'rua-da-rosa' (lowercase letters, digits, hyphens)")
+        if geometry.get("type") != "Polygon":
+            raise ValueError(f"{label} must be a Polygon")
+        ring = (geometry.get("coordinates") or [[]])[0]
+        if len(ring) < 4 or ring[0] != ring[-1]:
+            raise ValueError(f"{label} needs a closed outline with at least 3 corners")
+
+        territories.append(
+            Territory(id=territory_id, name=name, boundary={"type": "Polygon", "coordinates": geometry["coordinates"]})
+        )
+
+    ids = [t.id for t in territories]
+    names = [t.name for t in territories]
+    if len(set(ids)) != len(ids):
+        raise ValueError("two territories share the same id")
+    if len(set(names)) != len(names):
+        raise ValueError("two territories share the same name")
+    return territories
 
 
 def replay_leader(events: list[ScoreEvent]) -> str | None:

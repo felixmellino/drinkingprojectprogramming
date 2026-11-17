@@ -97,6 +97,7 @@ the docs — if they disagree, that's a bug to fix, not a detail to shrug off.
 | `GAME.md` → Points | `core/scoring.py` |
 | `GAME.md` → Territories, Ownership | `core/location.py`, `core/territories.py` |
 | `RULES.md` R-R01 (tie rule) | `core/territories.py`'s `replay_leader` |
+| `RULES.md` R-T01, R-T02 (territory set, no overlap) | `data/territories.geojson`, read by `data/territory_file.py` and checked by `core/territories.py`'s `parse_territories`; copied into the database by `shared.get_territories()`; overlap checked in `tests/test_territory_data.py` |
 | `GAME.md` → Minigames | `core/minigames.py` |
 | `SCREENS.md` | `pages/*.py` |
 | `OPEN_DECISIONS.md` items not yet decided (like D-01) | A placeholder that does nothing yet, e.g. `core/scoring.py`'s `apply_owner_modifier` — already wired in, waiting for the real rule |
