@@ -104,9 +104,19 @@ def test_outside_game_window_scores_zero_but_does_not_raise():
     assert entry.points_awarded == 0
 
 
-def test_unavailable_location_scores_zero():
-    entry = create_drink_entry(
-        "membership-1", "season-1", "shot", None, "photo-1", None, None, IN_WINDOW_TS, [TERRITORY], []
-    )
-    assert entry.points_awarded == 0
-    assert entry.location_check_result == "unavailable"
+@pytest.mark.parametrize(
+    ("device_gps", "photo_gps", "reason"),
+    [
+        (None, None, "location_unavailable"),
+        (None, INSIDE, "location_unavailable"),
+        (INSIDE, OUTSIDE, "location_uncertain"),
+        (OUTSIDE, INSIDE, "location_uncertain"),
+    ],
+    ids=["missing-location", "photo-only", "conflict-inside", "conflict-outside"],
+)
+def test_failed_location_verification_rejects_check_in(device_gps, photo_gps, reason):
+    with pytest.raises(CheckinRejected) as exc:
+        create_drink_entry(
+            "membership-1", "season-1", "shot", None, "photo-1", device_gps, photo_gps, IN_WINDOW_TS, [TERRITORY], []
+        )
+    assert exc.value.reason == reason

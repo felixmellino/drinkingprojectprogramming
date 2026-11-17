@@ -13,8 +13,7 @@ from core.scoring import calculate_base_points
 
 
 class CheckinRejected(Exception):
-    """Raised when a drink entry can't be submitted at all (bad input or a
-    duplicate). `reason` is a short machine-readable code for the UI."""
+    """A check-in cannot be saved. `reason` identifies the message to show."""
 
     def __init__(self, reason: str):
         super().__init__(reason)
@@ -60,26 +59,19 @@ def create_drink_entry(
     territories: list[Territory],
     recent_entries: list[DrinkEntry],
 ) -> DrinkEntry:
-    """Validate and build a new DrinkEntry. Raises CheckinRejected for bad
-    input or a duplicate submission. A drink outside the game window, or
-    with unavailable location, is still RETURNED (never raised) with
-    points_awarded == 0, so rejected actions are visible in history and
-    leave the leaderboard unchanged -- only input errors and duplicates
-    stop the submission outright."""
+    """Build a drink entry after input, duplicate, and location checks pass."""
     validate_drink_input(drink_type, amount, photo_ref)
 
     if is_duplicate(membership_id, drink_type, submitted_at, recent_entries):
         raise CheckinRejected("duplicate_check_in")
 
     location_check_result, territory_id = evaluate_location(device_gps, photo_gps, territories)
+    if location_check_result in ("unavailable", "uncertain"):
+        raise CheckinRejected(f"location_{location_check_result}")
+
     # Game-window boundaries use the submission's local clock time.
     in_window = is_in_game_window(submitted_at.replace(tzinfo=None))
-    base_points = calculate_base_points(drink_type, amount)
-
-    if not in_window or location_check_result == "unavailable":
-        points_awarded = 0
-    else:
-        points_awarded = base_points
+    points_awarded = calculate_base_points(drink_type, amount) if in_window else 0
 
     return DrinkEntry(
         id=str(uuid.uuid4()),

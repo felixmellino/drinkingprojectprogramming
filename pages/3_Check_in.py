@@ -25,16 +25,27 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 st.title("Check in")
 
+saved_result = st.session_state.pop("checkin_saved_result", None)
+if saved_result is not None:
+    points, location = saved_result
+    if points == 0:
+        st.warning("Saved in your history with zero points.")
+    elif location == "outside":
+        st.success(f"Logged! +{points} season points. Your location is outside the game territories.")
+    else:
+        st.success(f"Logged! +{points} points.")
+
 drink_type = st.selectbox("Drink type", options=["beer", "wine", "shot", "longdrink"])
 amount = None
 if drink_type in ("beer", "wine"):
     amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
 
-photo = st.camera_input("Take a photo of your drink")
+photo_number = st.session_state.get("checkin_photo_number", 0)
+photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
 
 st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
-device_lat = st.number_input("Latitude", value=38.7169, format="%.6f")
-device_lng = st.number_input("Longitude", value=-9.1399, format="%.6f")
+device_lat = st.number_input("Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f")
+device_lng = st.number_input("Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f")
 
 
 def _read_photo_gps(photo_file) -> tuple[float, float] | None:
@@ -62,7 +73,9 @@ def _read_photo_gps(photo_file) -> tuple[float, float] | None:
 
 if st.button("Submit", disabled=photo is None):
     submitted_at = datetime.now().astimezone()
-    device_gps = (device_lat, device_lng)
+    device_gps = None
+    if device_lat is not None and device_lng is not None:
+        device_gps = (device_lat, device_lng)
     photo_gps = _read_photo_gps(photo) if photo else None
     # TODO: upload photo.getvalue() to Supabase Storage and store the real
     # URL/path here instead of this placeholder.
@@ -90,14 +103,12 @@ if st.button("Submit", disabled=photo is None):
             "unknown_drink_type": "Unrecognized drink type.",
             "missing_amount": "Enter an amount for this drink.",
             "duplicate_check_in": "You already logged this drink a moment ago.",
+            "location_unavailable": "Enter your latitude and longitude, then try again.",
+            "location_uncertain": "We couldn't verify your location. Check your coordinates and try again.",
         }
         st.error(messages.get(rejected.reason, rejected.reason))
     else:
         db.insert_drink_entry(entry)
-        if entry.points_awarded > 0:
-            st.success(f"Logged! +{entry.points_awarded} points.")
-        else:
-            reasons = {
-                "unavailable": "No location evidence -- 0 points awarded, but it's saved in your history.",
-            }
-            st.warning(reasons.get(entry.location_check_result, "Outside the game window -- 0 points awarded, but it's saved in your history."))
+        st.session_state["checkin_saved_result"] = (entry.points_awarded, entry.location_check_result)
+        st.session_state["checkin_photo_number"] = photo_number + 1
+        st.rerun()

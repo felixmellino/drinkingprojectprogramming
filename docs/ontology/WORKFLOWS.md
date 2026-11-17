@@ -5,16 +5,20 @@
 Updated direction: automatic location verification replaces buddy confirmation.
 
 1. Player opens Check in and selects a configured drink type and size.
-2. Player takes a required photo. Recommended: request current phone location
-   at capture time; inspect photo coordinates if present as supporting evidence.
+2. Player takes a fresh photo in the app. The proposed location capture
+   uses the current phone reading and any available photo coordinates.
 3. App shows the detected territory and scoring preview: base points,
    ownership reduction if applicable, and estimated awarded points.
 4. Player submits. Server validates required inputs, location evidence,
    eligibility and duplicate protection using agreed rules.
-5. If accepted, server saves the check-in and calculated points and updates
-   territory standings/ownership consistently. The app shows points awarded
-   and any ownership change, with links to Map and Standings.
+5. If accepted, server saves the check-in and calculated points. An eligible
+   entry outside all territories contributes to the season leaderboard. An
+   eligible entry inside a territory also contributes to that territory.
+   The app shows points awarded and any ownership change, with links to Map
+   and Standings. Each new entry requires a fresh photo.
 6. If rejected, no points change. Explain why and offer a relevant retry.
+   If location is missing or uncertain, the player keeps the drink selection
+   and photo on the form and tries location verification again.
    If the network result is uncertain, retrieve the submission status before
    retrying; do not create a second award.
 
@@ -31,3 +35,18 @@ moment ago.” The app saves no second entry and awards zero extra points.
 At exactly two minutes, the submission can continue through the other checks.
 
 The final repeat-drink and duplicate rules are still open under D-12.
+
+### Proposed fallback after automatic location verification fails
+
+If the automatic check using phone GPS and available photo GPS fails, the
+player can share a one-time confirmation link with another member of the
+same lobby who was there. The recipient signs in and confirms they were
+present. The server checks their lobby membership and uses the link once
+for a successful confirmation. The request expires 24 hours after the
+original check-in or when that season ends, whichever comes first. A
+decline closes the request immediately.
+
+Pending, declined, and expired requests earn zero points. If the entry
+meets the other scoring rules, a confirmation awards season points once.
+The entry has no territory assignment. For a tie in the season standings,
+the points count from the moment the other player confirms.
