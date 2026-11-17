@@ -9,7 +9,7 @@ ties the leader's total never displaces them.
 
 from __future__ import annotations
 
-import uuid
+import re
 from datetime import datetime
 
 from core.models import DrinkEntry, Territory
@@ -17,11 +17,16 @@ from core.models import DrinkEntry, Territory
 # (timestamp, membership_id, points) in the order they happened.
 ScoreEvent = tuple[datetime, str, int]
 
+# A territory id is a short, readable, permanent key such as "rua-da-rosa":
+# lowercase letters and digits, words joined by single hyphens.
+TERRITORY_ID_PATTERN = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+
 
 def parse_territories(collection: dict) -> list[Territory]:
     """Turn the GeoJSON from data/territories.geojson into Territory records,
-    enforcing R-T01: every territory has a permanent UUID `id`, a non-empty
-    `name`, and a closed Polygon outline; ids and names are unique. Raises
+    enforcing R-T01: every territory has a permanent short `id` (like
+    "rua-da-rosa"), a non-empty `name`, and a closed Polygon outline; ids
+    and names are unique. Raises
     ValueError naming the broken territory. Extra properties (like the
     geojson.io colours) are ignored. R-T02 (no overlap) is checked by
     tests/test_territory_data.py, because it needs a slow geometric scan."""
@@ -37,10 +42,9 @@ def parse_territories(collection: dict) -> list[Territory]:
 
         if not name:
             raise ValueError(f"{label} has no name")
-        try:
-            territory_id = str(uuid.UUID(str(properties.get("id"))))
-        except ValueError:
-            raise ValueError(f"{label} needs a permanent UUID id") from None
+        territory_id = properties.get("id")
+        if not isinstance(territory_id, str) or not TERRITORY_ID_PATTERN.fullmatch(territory_id):
+            raise ValueError(f"{label} needs a short id like 'rua-da-rosa' (lowercase letters, digits, hyphens)")
         if geometry.get("type") != "Polygon":
             raise ValueError(f"{label} must be a Polygon")
         ring = (geometry.get("coordinates") or [[]])[0]

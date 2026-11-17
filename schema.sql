@@ -33,9 +33,11 @@ create table seasons (
   length_choice text not null
 );
 
--- GeoJSON Polygon, e.g. {"type":"Polygon","coordinates":[[[lng,lat],...]]}
+-- Copied from data/territories.geojson by the app on start (R-T01).
+-- id is the territory's short, permanent key, e.g. 'rua-da-rosa'.
+-- boundary is a GeoJSON Polygon, e.g. {"type":"Polygon","coordinates":[[[lng,lat],...]]}
 create table territories (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key check (id ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   name text not null,
   boundary jsonb not null
 );
@@ -51,7 +53,7 @@ create table drink_entries (
   device_gps_lng double precision,
   photo_gps_lat double precision,
   photo_gps_lng double precision,
-  territory_id uuid references territories(id),
+  territory_id text references territories(id),
   location_check_result text not null,
   points_awarded integer not null,
   submitted_at timestamptz not null

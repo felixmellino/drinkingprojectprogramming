@@ -74,11 +74,11 @@ A Season can contain several game nights. The calendar and the rules for actions
 
 ### Territory
 
-A named area on the Lisbon map, such as Bairro Alto – Rua da Rosa or Santa Catarina. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
+A named area on the Lisbon map, such as Shortys or Santa Catarina. A polygon is the outline of the area. The map draws that outline and the location check uses it to match a device reading.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
-| `id` | ID | Permanent UUID from `data/territories.geojson`, referenced by entries and standings. It never changes, even when the territory is renamed or reshaped. |
+| `id` | Short text key | Permanent key from `data/territories.geojson`, such as `shortys`, referenced by entries and standings. It never changes, even when the territory is renamed or reshaped. |
 | `name` | Text | Label shown on the map and in standings. |
 | `boundary` | GeoJSON polygon | Team-defined outline, loaded from the shared territory data. |
 

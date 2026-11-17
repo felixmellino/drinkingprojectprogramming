@@ -14,8 +14,10 @@ Source: team decision, 2026-11-17.
 ### R-T01 Territory set
 The game starts with 12 hand-drawn Territories in Lisbon: 8 in Bairro Alto,
 Santa Catarina, and 3 in Santos. Their outlines live in one shared file,
-`data/territories.geojson`, as GeoJSON Polygons with a `name` and a
-permanent `id` (a UUID). The file is drawn and edited in geojson.io. Every
+`data/territories.geojson`, as GeoJSON Polygons with a display `name`
+(for example "Shortys") and a short, permanent `id` (for example
+`shortys`: lowercase letters and digits, words joined by hyphens). The
+file is drawn and edited in geojson.io. Every
 lobby plays on the same Territories; each lobby's Seasons have their own
 Owners.
 
@@ -26,8 +28,8 @@ table when the app starts, because saved drinks refer to a Territory by its
 
 | Case | Outcome |
 | --- | --- |
-| Allowed | Adding, removing, renaming or reshaping a Territory by editing the file, as long as R-T02 still holds. A renamed or reshaped Territory keeps its `id`. A new Territory gets a new UUID. |
-| Rejected | A Territory without a `name`, without a valid UUID `id`, or with an outline that is not a closed Polygon; two Territories with the same `id` or `name`. The app refuses to load such a file. |
+| Allowed | Adding, removing, renaming or reshaping a Territory by editing the file, as long as R-T02 still holds. A renamed or reshaped Territory keeps its `id`; only the `name` changes. A new Territory gets a new, unused `id`. |
+| Rejected | A Territory without a `name`, with a missing or badly formed `id` (capitals, spaces, underscores), or with an outline that is not a closed Polygon; two Territories with the same `id` or `name`. The app refuses to load such a file. |
 | Boundary | Changing an outline mid-Season does not move drinks that were already saved; their stored Territory stays. A Territory removed from the file stays in the database so older drinks still point at it, but it is no longer matched or shown in the standings. |
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.

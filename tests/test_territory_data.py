@@ -151,8 +151,8 @@ def test_overlap_check_allows_a_shared_border():
     "place, lat_lng, expected_name",
     [
         ("Jardim do Alto de Santa Catarina", (38.70963, -9.14765), "Santa Catarina"),
-        ("K Urban Beach Club", (38.70386, -9.15543), "Santos – Ribeira"),
-        ("Rua da Rosa, middle", (38.7133, -9.1456), "Bairro Alto – Rua da Rosa"),
+        ("K Urban Beach Club", (38.70386, -9.15543), "After8"),
+        ("Rua da Rosa, middle", (38.7133, -9.1456), "Shortys"),
     ],
 )
 def test_known_places_match_their_territory(place, lat_lng, expected_name):

@@ -75,8 +75,8 @@ def test_territory_standings_sorted_descending():
 # -- parse_territories: reading the territory file (R-T01) -----------------
 
 SQUARE = [[-9.145, 38.712], [-9.144, 38.712], [-9.144, 38.713], [-9.145, 38.713], [-9.145, 38.712]]
-GOOD_ID = "57aeed24-8f46-4b69-8b22-4c164863c3b7"
-OTHER_ID = "a18b0f5d-ffc3-4096-b8d1-c52530bab1db"
+GOOD_ID = "rua-da-rosa"
+OTHER_ID = "le-pub"
 
 
 def make_feature(name="Rua da Rosa", id_=GOOD_ID, ring=SQUARE, geometry_type="Polygon", **extra):
@@ -102,8 +102,13 @@ def test_parse_territories_reads_id_name_and_outline():
     "feature, message",
     [
         (make_feature(name="  "), "no name"),
-        (make_feature(id_=None), "permanent UUID id"),
-        (make_feature(id_="territory-1"), "permanent UUID id"),
+        (make_feature(id_=None), "short id"),
+        (make_feature(id_=""), "short id"),
+        (make_feature(id_="Rua da Rosa"), "short id"),
+        (make_feature(id_="rua_da_rosa"), "short id"),
+        (make_feature(id_="-rua-da-rosa"), "short id"),
+        (make_feature(id_="rua--da-rosa"), "short id"),
+        (make_feature(id_=7), "short id"),
         (make_feature(geometry_type="LineString"), "must be a Polygon"),
         (make_feature(ring=SQUARE[:-1]), "closed outline"),
         (make_feature(ring=[SQUARE[0], SQUARE[1], SQUARE[0]]), "closed outline"),
@@ -112,6 +117,12 @@ def test_parse_territories_reads_id_name_and_outline():
 def test_parse_territories_rejects_broken_territories(feature, message):
     with pytest.raises(ValueError, match=message):
         parse_territories(collection(feature))
+
+
+@pytest.mark.parametrize("id_", ["after8", "rua-da-rosa", "t1"])
+def test_parse_territories_accepts_short_readable_ids(id_):
+    [territory] = parse_territories(collection(make_feature(id_=id_)))
+    assert territory.id == id_
 
 
 def test_parse_territories_rejects_duplicate_ids():
