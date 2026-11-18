@@ -65,7 +65,7 @@ contains no rules of its own — if you want to know whether something is
 | File | What it means |
 | --- | --- |
 | `app.py` | The very first screen. On purpose, it does almost nothing — just a welcome message — so it never becomes a file everyone has to edit at once. |
-| `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
+| `shared.py` | Helpers every screen reuses to verify the current account, lobby membership and season, or ask the player to sign in/pick a lobby. Page plumbing and fresh access checks; no game rules. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
 | `pages/3_Check_in.py` | Camera opens automatically; take a photo, pick drink/size, review live location and submit. |
@@ -246,8 +246,9 @@ for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
 unranked/empty states, service failures and escaped public display text.
 
 Authenticated pages now get the shared seven-button bottom bar from
-`app_navigation.py`, called only after `shared.require_login` verifies the
-account. The plus opens Check-in; Leaderboard and Photo history are to its
+`app_navigation.py`. For an existing session, `shared.require_login` handles
+this generic bar before network reads; every destination verifies the account
+before showing private data. The plus opens Check-in; Leaderboard and Photo history are to its
 right. Minigames sits immediately right of the plus, before Map. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
@@ -360,3 +361,12 @@ Both use `_opened_lobby_id` and clear it on dismissal; `_lobby_dialog` is
 reserved for Create/Join. Opening Create/Join closes either detail popup,
 and successful creation/join selects the saved lobby and opens its matching
 popup. This preserves the member UI from main and the team competition rules.
+
+## Page responsiveness and shared styling
+
+See [PAGE_PERFORMANCE.md](PAGE_PERFORMANCE.md) for the 18 November cleanup,
+query/replay changes, reproducible benchmarks and verification. Reuse each
+page's fresh validated account/season context instead of loading it twice.
+Map and Leaderboard share one score replay within their page render. Keep
+authorization fresh on every full page run; do not add a global account cache.
+Shared fonts, spacing, borders and shadows live in `assets/theme.css`.

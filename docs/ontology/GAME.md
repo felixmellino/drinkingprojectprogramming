@@ -76,8 +76,10 @@ Friend confirmation remains a separate proposal, not an active v1 fallback.
 ## Minigames
 
 Chug Duel is the first playable minigame, authorised by the contributor on
-18 November 2026. Each player can challenge once and accept once per lobby
-and night, with a 06:00 rollover in the season timezone. An opponent accepts
+18 November 2026. In normal seasons each player can challenge once and accept
+once per lobby and night, with a 06:00 rollover in the season timezone. Explicit QA/test seasons
+instead allow unlimited sequential replays, with all normal check-in evidence,
+cooldown and scoring rules still enforced (R-M02). An opponent accepts
 the selected drink and size on their own device. The challenger takes one
 shared photo and provides the shared verified location, then hosts a
 split-screen board. Both players press Ready; after a countdown the first

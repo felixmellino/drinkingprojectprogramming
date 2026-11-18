@@ -57,6 +57,7 @@
 
 /* Base */
 .stApp { background: var(--bg); color: var(--text); }
+[data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
 .stApp, .stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp button,
 .stApp h2, .stApp h3, .stApp h4, .stApp td, .stApp th, .stApp small {
   font-family: var(--font-body);
@@ -111,7 +112,7 @@
 .stApp [data-testid="stExpander"] summary p { color: var(--text); font-weight: 600; }
 .stApp [data-testid="stAlertContainer"] { border-radius: var(--radius-md); }
 .stApp [data-testid="stMetric"] { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; }
-.stApp [data-testid="stMetricValue"] { font-family: var(--font-display); color: var(--text); }
+.stApp [data-testid="stMetricValue"] { font-family: var(--font-display); font-weight:700; color: var(--text); }
 
 /* Radios, checkboxes and segmented controls in the sky-blue accent */
 .stApp [data-testid="stSegmentedControl"] button { border-radius: var(--radius-pill); }

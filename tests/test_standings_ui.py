@@ -133,3 +133,14 @@ def test_public_names_and_territory_names_are_rendered_as_text(ui):
     assert not at.exception
     markup = all_markup(at)
     assert payload not in markup and "&lt;img" in markup
+
+
+def test_whole_season_is_replayed_once_for_all_territory_cards(ui, monkeypatch):
+    from unittest.mock import Mock
+    from core.scoring_v1 import replay_season
+    replay = Mock(wraps=replay_season)
+    monkeypatch.setattr('core.scoring_v1.replay_season', replay)
+    ui['territories'] = [TERRITORY] + [replace(TERRITORY,id=f'extra-{i}',name=f'Area {i}') for i in range(23)]
+    at = page()
+    assert not at.exception and '9.5 pts' in text(board(at))
+    replay.assert_called_once()

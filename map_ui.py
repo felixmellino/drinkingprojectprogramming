@@ -16,6 +16,7 @@ import pydeck as pdk
 import streamlit as st
 
 from core.territories import capture_status, territory_owner, territory_standings
+from core.scoring_v1 import replay_season
 
 # Colour = what the territory means for you (RGB). Same values as the
 # --territory-* tokens in assets/theme.css (design system "Rush").
@@ -103,9 +104,10 @@ def markdown_safe(text: str) -> str:
 def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
     """One row per territory with everything the map and list show."""
     rows = []
+    snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
     for territory in territories:
-        owner = territory_owner(entries, territory.id)
-        standings = territory_standings(entries, territory.id)
+        owner = snapshot.owners.get(territory.id) if snapshot else territory_owner(entries, territory.id)
+        standings = snapshot.territory_rows(territory.id) if snapshot else territory_standings(entries, territory.id)
         status, number = capture_status(standings, owner, me)
         needed = number if status == "theirs" else None
         my_points = dict(standings).get(me, 0)

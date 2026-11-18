@@ -158,6 +158,21 @@ def list_seasons_for_lobby(lobby_id: str) -> list[Season]:
     return sorted([_row_to_season(r) for r in rows], key=lambda s: s.starts_at, reverse=True)
 
 
+def membership_context(player_id: str, membership_id: str, lobby_id: str, season_id: str) -> tuple[LobbyMembership | None, Season | None]:
+    """Fresh membership and its lobby's seasons in one scoped database read."""
+    rows = (get_client().table("lobby_memberships")
+        .select("*,lobbies!inner(seasons(*))")
+        .eq("id", membership_id).eq("player_id", player_id).eq("lobby_id", lobby_id).execute().data)
+    if not rows:
+        return None, None
+    row = rows[0]
+    member = LobbyMembership(row["id"], row["player_id"], row["lobby_id"],
+        datetime.fromisoformat(row["joined_at"]), row.get("team_id"))
+    season = next((_row_to_season(s) for s in row["lobbies"]["seasons"]
+                   if s["id"] == season_id and s["lobby_id"] == lobby_id), None)
+    return member, season
+
+
 def _row_to_season(row: dict) -> Season:
     return Season(row["id"], row["lobby_id"], datetime.fromisoformat(row["starts_at"]),
                   datetime.fromisoformat(row["ends_at"]), row["length_choice"],
