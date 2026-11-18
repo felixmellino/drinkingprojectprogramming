@@ -33,3 +33,10 @@ checks passed for lobby access, revocation, owner deletion preserving scores,
 GitHub Actions cleanup; the workflow is prepared but repository secrets and
 hosted execution remain pending. See [verification](../STORAGE_SDK_VERIFICATION.md).
 The privacy contact, notice, provider region and backup decisions remain open.
+
+Team lobbies decided by the contributor on 18 November 2026: see
+R-TEAM01–R-TEAM05. Team season/territory totals, configurable count/capacity,
+random/manual joining and member-only names/pictures are implemented on the
+team-mode branch. The contributor authorised applying 009 and 010 to the
+shared Supabase project on 18 November 2026; all 12 post-application checks
+passed. Teammate code review and deployed app verification remain pending. This does not resolve minigame items or team-event effects.

@@ -208,7 +208,7 @@ implementation setting, not a scoring rule. SMTP is not required.
 | F2 | Friendship requires an explicit request and acceptance by the recipient. | Only the recipient may accept or decline a pending request; only the sender may cancel it. Reject self-requests, duplicate requests, requests between existing friends, and responses to non-pending requests. An opposite-direction request does not automatically accept. |
 | F3 | Declining a request starts a 10-minute waiting period. | Neither player can create a new request for that pair before 10 minutes have elapsed; exactly 10 minutes is allowed. This pair-wide interpretation prevents reversing a request to bypass the wait. Cancellation does not start a waiting period. |
 | F4 | Accepted friends appear in both players' private lists. | Each player can see only their own relationships. Either friend may remove the friendship, removing it from both lists. Removal allows a new request, which again needs acceptance. No friendship changes points, lobby membership or photo access. |
-| F5 | Requests are managed on Profile and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; no email notifications. Concurrent actions cannot overwrite an unseen change. |
+| F5 | Requests are managed on Profile or beside lobby members and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; lobby member controls reload with Refresh lobbies and the 60-second lobby refresh. No email notifications. Concurrent actions cannot overwrite an unseen change. |
 
 Implementation: `core/friends.py` holds validation and search rules;
 `friends_ui.py` renders controls using the authenticated session's player ID;
@@ -246,3 +246,83 @@ server service key is the only database role with friendship access.
   and re-encode JPEG without embedded metadata. Current images remain until
   replaced or removed. Failed writes can leave inaccessible uploads; remove
   unlinked uploads after a 24-hour grace period through server maintenance.
+
+### Lobby member controls (agreed 18 November 2026)
+
+- Joined lobby cards display their invite code alongside the name, leader and
+  timing. Only joined lobbies are shown.
+- Clicking a lobby card opens a popup over the blurred/dimmed overview showing
+  its name, invite code and, in individual mode, all current member usernames, including players
+  with no points. This works for active, past, upcoming and incomplete lobbies.
+  There is no top-three preview. View leaderboard below the members closes
+  the popup and opens the full Leaderboard for that lobby. Close, ×, outside
+  click and Escape dismiss it. Long lists scroll; no scoring rules change.
+- Create lobby and Join with a code are separate top-of-overview buttons.
+  Forms open in dismissible modals over a blurred/dimmed background. Cancel,
+  ×, outside click and Escape do not save. Successful creation/join opens
+  that lobby's member or team popup with a notice. Existing options and validation stay.
+- Each member row shows only the viewer's relationship: You, Friends, Request
+  sent, Incoming friend request with Accept/Decline, or Add friend. F2–F5
+  still apply, including the decline waiting period and concurrent-write checks.
+  No new friendship rules, account fields or lobby-wide picture access.
+- Membership is rechecked before showing members. Service failures show an
+  error; unavailable friendship state disables actions without hiding usernames.
+
+## Team lobbies (R-TEAM01–R-TEAM05, authorised 18 November 2026)
+
+### R-TEAM01 Competition mode and settings
+The creator chooses Individual (default) or Team. Individual lobbies keep
+existing rules. Team setup chooses 2–16 teams, 1–20 players per team, and
+Random or Players choose. These are fixed settings, not editable after creation.
+The capacity is a maximum, not a required roster: play starts immediately,
+late arrivals are allowed until the lobby ends, and uneven rosters can occur.
+Equal capacities do not guarantee equal participation. There is no normalization
+of points by team size. Existing lobbies stay individual.
+
+### R-TEAM02 Joining teams
+Teams are created together with the lobby, initially named Team 1, Team 2,
+etc. Players choose a team with space in manual mode. A player may switch
+before their first accepted scoring entry; after that, assignment is locked.
+A member without a team cannot score. Random mode assigns each arriving
+member to a randomly selected smallest team with space; no manual switching
+or reshuffling. Lobby capacity includes members who have not chosen a team.
+Repeated lobby joins retain the same membership and assignment.
+
+Rejected: full lobby/team, another lobby's team, changes after scoring,
+manual changes in random mode, joining/switching at or after the finish.
+Concurrent joins serialize on the lobby lock, so the final slot admits only
+one member. Rejection changes neither membership nor score.
+
+### R-TEAM03 Names and pictures
+Only current members of a team can click its name to edit its name and picture.
+Names are trimmed, 1–40 characters, without control characters, and unique
+within the lobby ignoring case. Members may upload or take a picture, replace
+it or remove it. JPEG/PNG/WebP, 10 MB and 20 megapixels maximum; existing
+profile photo processing crops to 512×512 JPEG and strips metadata. Encoded
+output is limited to 512 KiB. No picture uses initials as the avatar.
+Names/pictures can be edited after play and do not change identity or points.
+Team pictures are visible only within their lobby. Member profile pictures
+retain A11 privacy; other members see initials when access is unavailable.
+
+### R-TEAM04 Combined competition and territory ownership
+Every accepted entry snapshots the member's team. The leaderboard ranks teams,
+not individual contributions. A team's territory account sums all members'
+base points in that territory; the highest total owns it. Ties keep the team
+that reached the total first, using the existing database acceptance order.
+Season totals combine the members' base awards and the team's owner income.
+
+The existing 25% prior-owner income goes to the owning team when a rival
+team scores there. A teammate's entry never generates owner income. The
+visiting team keeps all base points. Income counts only toward the season,
+never territory ownership. Outside entries earn team season points only.
+Corrections replay combined ownership and downstream owner income from the
+original event position. Photos/minigames remain attached to their submitting
+player; cooldown and minigame limits remain per player, not per team.
+
+### R-TEAM05 Persistence and authorization
+Team settings, roster, names, sanitized pictures and entry team identities
+are saved in PostgreSQL through migration 010. Assignment and scoring share
+the same lobby lock; accepted entry identity is immutable. Team writes and
+reads require the authenticated app's existing member checks; anonymous and
+Supabase authenticated roles have no access to the team table or write RPCs.
+Source: contributor's explicit team-mode choices, 18 November 2026.

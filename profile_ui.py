@@ -118,13 +118,20 @@ def show_stats(player_id):
         return
     entries = db.list_drink_entries(season.id)
     ranking = season_leaderboard(entries)
-    rank = next((i for i, (mid, _) in enumerate(ranking, 1) if mid == member.id), None)
-    points = next((points for mid, points in ranking if mid == member.id), 0)
+    team_mode = st.session_state.get("current_lobby_mode") == "team" or getattr(member, "team_id", None) is not None
+    identity = member.team_id if team_mode else member.id
+    if team_mode:
+        st.caption("Team stats · Combined points and territories for your team.")
+        if not identity:
+            st.info("Join a team from your lobby before checking in.")
+            return
+    rank = next((i for i, (mid, _) in enumerate(ranking, 1) if mid == identity), None)
+    points = next((points for mid, points in ranking if mid == identity), 0)
     left, middle, right = st.columns(3)
-    left.metric("Season points", str(points))
+    left.metric("Team season points" if team_mode else "Season points", str(points))
     middle.metric("Rank", f"#{rank}" if rank else "Unranked")
     try:
-        owned = sum(territory_owner(entries, t.id) == member.id for t in get_territories())
+        owned = sum(territory_owner(entries, t.id) == identity for t in get_territories())
         right.metric("Territories owned", owned)
     except SERVICE_ERRORS:
         right.metric("Territories owned", "Unavailable")

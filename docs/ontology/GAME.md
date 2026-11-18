@@ -12,12 +12,16 @@ Players compete in lobbies: groups joined using the same invite code. Each
 lobby runs its own season. Its length is chosen when the lobby is created:
 one week, one month or three months ([R-R02](RULES.md#r-r02-season-length)).
 
-The main competition is individual. The player with the highest total in a
-lobby's season wins. Ties favour whoever reached the tied score first
+Individual is the default competition mode. The highest player total wins
+there; team lobbies instead combine members' points and award the win to the
+highest team total. Teams also combine territory base points for ownership.
+The creator chooses team count, capacity and random/manual assignment;
+members can edit their team's name and picture (R-TEAM01–R-TEAM05). Ties favour whoever reached the tied score first
 ([R-R01](RULES.md#r-r01-ties)).
-A player's season account combines their own base awards and additional
-territory-owner income. Each territory has a separate account for each player,
-containing only their own base awards there. Owner income never affects
+An individual player's season account combines their own base awards and
+additional territory-owner income. In team mode, the team has the combined
+account. Each territory has a separate account per competitor (player or
+team), containing only that competitor's base awards there. Owner income never affects
 territory ownership. Cross-lobby/lifetime rankings are outside this version.
 
 ## Drink entry and base points

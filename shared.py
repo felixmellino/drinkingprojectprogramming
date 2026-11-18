@@ -79,6 +79,8 @@ def require_active_membership() -> tuple[str, str, str]:
                and m.lobby_id == st.session_state.get("current_lobby_id") for m in memberships):
         st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
         st.stop()
+    selected = next(m for m in memberships if m.id == st.session_state["current_membership_id"])
+    st.session_state["current_team_id"] = getattr(selected, "team_id", None)
     if not st.session_state.get("current_season_id"):
         st.info("Start or select a season on the Lobby page first.")
         st.stop()

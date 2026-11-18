@@ -13,7 +13,7 @@ from core.location import evaluate_location
 from phone_location import current_location, track_location
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
-require_login()
+player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
@@ -30,6 +30,14 @@ except (APIError, RequestError, RuntimeError):
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
+if st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries):
+    try:
+        names = {t.id: t.name for t in db.list_lobby_teams(player_id, lobby_id)}
+    except (APIError, RequestError, RuntimeError, PermissionError):
+        st.error("Teams could not be loaded. Reload to try again.")
+        st.stop()
+    membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
+    st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
 rows = map_ui.territory_rows(territories, entries, membership_id, names)
 
 # Where am I? Decides the bottom card and whether "Me" is offered.
