@@ -61,8 +61,8 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert at.session_state['current_membership_id'] == 'm-new'
     assert at.session_state['current_season_id'] == ui['seasons']['new'][0].id
     assert not any(s.label in ('Your lobbies', 'View season') for s in at.selectbox)
-    assert any(b.label == 'Create lobby' for b in at.button)
-    assert any(b.label == 'Join lobby' for b in at.button)
+    assert any(b.label == 'Create a lobby' for b in at.button)
+    assert any(b.label == 'Join with a code' for b in at.button)
     assert not any(b.label == 'Start next scoring season' for b in at.button)
 
 
@@ -129,6 +129,7 @@ def test_join_invalid_code_keeps_lists_and_saves_nothing(ui, monkeypatch):
     save = Mock()
     monkeypatch.setattr(db, 'insert_membership', save)
     at = page()
+    at.button(key='open_join_lobby').click().run()
     next(v for v in at.text_input if v.label == 'Invite code').input('badcode')
     click(at, 'Join lobby')
     assert not at.exception and any("doesn't match" in e.value for e in at.error)
@@ -169,12 +170,29 @@ def test_joining_valid_code_updates_the_visible_list_once(ui, monkeypatch):
     save = Mock(side_effect=ui['members'].append)
     monkeypatch.setattr(db, 'insert_membership', save)
     at = page()
+    at.button(key='open_join_lobby').click().run()
     next(v for v in at.text_input if v.label == 'Invite code').input('private')
     click(at, 'Join lobby')
     assert not at.exception
     assert any('Not joined' in s for s in cards(at))
     assert at.session_state['current_lobby_id'] == 'secret'
     assert save.call_count == 1
+    at.button(key='open_join_lobby').click().run()
     next(v for v in at.text_input if v.label == 'Invite code').input('private')
     click(at, 'Join lobby')
     assert not at.exception and save.call_count == 1
+
+
+def test_top_actions_open_separate_dialogs_and_hide_forms_until_clicked(ui):
+    at = page()
+    assert not at.exception and not at.tabs and not at.text_input
+    assert [button.key for button in at.button[:2]] == ['open_create_lobby', 'open_join_lobby']
+    at.button(key='open_create_lobby').click().run()
+    assert not at.exception
+    assert any(field.label == 'Lobby name' for field in at.text_input)
+    assert not any(field.label == 'Invite code' for field in at.text_input)
+    at.session_state['_lobby_dialog'] = 'join'
+    at.run()
+    assert not at.exception
+    assert any(field.label == 'Invite code' for field in at.text_input)
+    assert not any(field.label == 'Lobby name' for field in at.text_input)

@@ -293,3 +293,13 @@ running lobbies and one finished lobby, check newest-first auto-selection,
 private-picture initials and both Open lobby / View results; restart, log in
 again, and confirm the same saved dates/results and ordering remain. A lobby
 at its finish boundary must reject check-ins and appear as past on refresh.
+
+## Team lobbies (Identity, Scoring and Standings)
+
+See [TEAM_MODE.md](TEAM_MODE.md) for the cross-block handoff, migration 010,
+source mapping and verification commands. This contributor-authorized shared
+model change adds teams without changing individual lobbies. Replay uses
+saved entry team identities for totals, territory ownership and income.
+Every teammate should explain why team joins/scoring use one database lock,
+why a teammate does not pay owner income, and why a scored member cannot
+switch teams. Rule source: R-TEAM01–R-TEAM05 in the ontology.

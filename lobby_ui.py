@@ -21,13 +21,13 @@ LOAD_ERRORS = (APIError, RequestError, RuntimeError)
 
 
 def clear_selection():
-    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id'):
+    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id', 'current_lobby_mode'):
         st.session_state.pop(key, None)
 
 
 def select_lobby(lobby, membership, season):
     st.session_state.update(current_membership_id=membership.id,
-                            current_lobby_id=lobby.id, current_lobby_name=lobby.name,
+                            current_lobby_id=lobby.id, current_lobby_name=lobby.name, current_lobby_mode=lobby.game_mode,
                             current_season_id=season.id if season else None)
 
 
@@ -47,6 +47,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
         meta += ' · Test season (Wed 08:00–Sun 18:00)'
+    if lobby.game_mode == 'team':
+        meta += f' · Team mode · {lobby.team_count} × {lobby.team_capacity}'
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
               f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
@@ -113,8 +115,14 @@ def show_lobbies(player_id, memberships):
                 try:
                     leader = season_leader(db.list_drink_entries(season.id))
                     if leader:
-                        leader_name = db.membership_display_name(leader, lobby.id)
-                        if status == 'active':
+                        if lobby.game_mode == 'team':
+                            teams = db.list_lobby_teams(player_id, lobby.id)
+                            winning = next((t for t in teams if t.id == leader), None)
+                            leader_name = winning.name if winning else 'Team'
+                            photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
+                        else:
+                            leader_name = db.membership_display_name(leader, lobby.id)
+                        if status == 'active' and lobby.game_mode == 'individual':
                             members = db.list_memberships_for_lobby(lobby.id)
                             owner = next((m.player_id for m in members if m.id == leader), None)
                             if owner:
@@ -128,7 +136,14 @@ def show_lobbies(player_id, memberships):
             if status in ('active', 'past'):
                 if st.button('View results' if status == 'past' else 'Open lobby', key=f'open_lobby_{lobby.id}', width='stretch'):
                     select_lobby(lobby, membership, season)
-                    st.switch_page('pages/4_Standings.py')
+                    if lobby.game_mode == 'team':
+                        st.session_state["_lobby_dialog"] = lobby.id
+                    else:
+                        st.switch_page('pages/4_Standings.py')
+            if st.session_state.get('_lobby_dialog') == lobby.id and status in ('active', 'past'):
+                from team_ui import open_team_lobby
+                select_lobby(lobby, membership, season)
+                open_team_lobby(player_id, lobby, season, finished=status == 'past')
             if status == 'setup':
                 with st.expander('Retry lobby setup'):
                     with st.form(f'retry_setup_{lobby.id}'):

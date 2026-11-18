@@ -240,9 +240,29 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - A timed fragment refreshes the list/countdown every 60 seconds while open,
   rechecks memberships and moves expired cards at the next refresh. Server
   check-ins still enforce the exact finish boundary independently of the UI.
-- Create lobby / Join with a code remain below. Duration is fixed; no renewal
+- Create a lobby / Join with a code are buttons at the top of the page,
+  above the joined lobby lists. Each opens its own dialog. Duration is fixed; no renewal
   or season selection is offered. Incomplete setup has a retry form. Future
   legacy competitions are labelled Upcoming instead of shown as running.
 - R-R03 governs one competition per lobby. Existing multiple-season history
   is retained; only its latest competition is summarized. Picture privacy
   remains A11; lobby membership alone does not grant picture access.
+
+## Team lobby extension (18 November 2026)
+
+Create lobby now opens a dialog with Individual/Team selection. Team settings
+react immediately and expose count, capacity and Random/Players choose.
+Open lobby on a team card opens a dialog showing the numbered teams, member
+identities, occupancy and combined points. Available teams have Join buttons
+in manual mode. Clicking one's own team name opens its name/picture editor;
+other teams have no editing controls. A View leaderboard action opens the
+combined team standings. Map, leaderboard and My stats show team totals and
+ownership; Check-in blocks unassigned members and previews team ownership.
+The lobby card's Leader/Winner also names the leading team. Individual lobby
+navigation remains as described above. R-TEAM01–R-TEAM05 govern these flows.
+
+Lobby action placement updated 18 November 2026: both entry points are
+full-width buttons in two columns directly below the page title. Forms are
+shown only in their respective popups. Successful joining closes the popup
+and refreshes the lobby cards; an invalid code keeps the popup open with its
+error. Creation settings and team rules remain unchanged.

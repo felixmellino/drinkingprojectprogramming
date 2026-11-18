@@ -11,7 +11,7 @@ from drink_entry_ui import context_line, page_header, section_heading
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
-require_login()
+player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
@@ -28,6 +28,17 @@ except (APIError, RequestError, RuntimeError):
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
+team_mode = st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries)
+if team_mode:
+    try:
+        teams = db.list_lobby_teams(player_id, lobby_id)
+    except (APIError, RequestError, RuntimeError, PermissionError):
+        st.error("Teams could not be loaded. Refresh standings to try again.")
+        st.stop()
+    names = {t.id: t.name for t in teams}
+    membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
+    if not membership_id:
+        st.info("Open this lobby on the Lobby page and join a team before checking in.")
 leaderboard = season_leaderboard(entries)
 context_line(st.session_state.get("current_lobby_name", "Your lobby"),
              f"{len(memberships)} members · {len(leaderboard)} ranked this season")
@@ -54,16 +65,16 @@ except (APIError, RequestError, RuntimeError):
 own_rank = next((rank for rank, (member, _) in enumerate(leaderboard, start=1) if member == membership_id), None)
 own_points = next((points for member, points in leaderboard if member == membership_id), 0)
 owned = owner_counts.get(membership_id, 0) if territories_available else None
-standings_ui.personal_summary(own_rank, own_points, owned, len(leaderboard))
+standings_ui.personal_summary(own_rank, own_points, owned, len(leaderboard), team_mode=team_mode)
 
-section_heading("01", "Season leaderboard", "Ranked by total season points. Your row is marked YOU.")
+section_heading("01", "Season leaderboard", "Ranked by combined team points. Your team is marked YOUR TEAM." if team_mode else "Ranked by total season points. Your row is marked YOU.")
 if not leaderboard:
     st.info("No points logged yet this season.")
 else:
-    standings_ui.leaderboard(leaderboard, names, membership_id, owner_counts)
-    st.caption("Equal points? The player who reached the score first ranks higher.")
+    standings_ui.leaderboard(leaderboard, names, membership_id, owner_counts, team_mode=team_mode)
+    st.caption("Equal points? The team who reached the score first ranks higher." if team_mode else "Equal points? The player who reached the score first ranks higher.")
 if any(entry.rule_version == "v1" for entry in entries):
-    st.caption("Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")
+    st.caption("Team season points combine all members’ drinks and 25% income from rival teams. Territory points combine members’ base drink points." if team_mode else "Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")
 
 section_heading("02", "Territories", "Local standings use base drink points. Owner income stays in the season total.")
 if not territories_available:

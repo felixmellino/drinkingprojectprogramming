@@ -289,10 +289,11 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
         return game
     monkeypatch.setattr(db,"start_scoring_season",start)
     page=AppTest.from_file(ROOT/"pages/2_Lobby.py", default_timeout=10).run()
+    next(item for item in page.button if item.key == "open_create_lobby").click().run()
     next(item for item in page.text_input if item.label=="Lobby name").input("New friends")
     next(item for item in page.selectbox if item.label=="Lobby timezone").set_value("America/New_York")
     next(item for item in page.checkbox if item.key == 'create_test_season').set_value(test_mode)
-    button(page,"Create lobby").click().run()
+    next(item for item in page.button if item.label == "Create lobby" and item.key != "open_create_lobby").click().run()
     assert not page.exception
     assert games[0].scoring_version=="v1" and games[0].timezone_name=="America/New_York"
     assert games[0].scoring_rules["points"]["shot"]["standard"]==4

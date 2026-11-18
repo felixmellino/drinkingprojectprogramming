@@ -21,6 +21,10 @@ class Lobby:
     id: str
     name: str
     invite_code: str
+    game_mode: str = "individual"
+    team_count: int | None = None
+    team_capacity: int | None = None
+    team_assignment: str | None = None
 
 
 @dataclass
@@ -29,6 +33,16 @@ class LobbyMembership:
     player_id: str
     lobby_id: str
     joined_at: datetime
+    team_id: str | None = None
+
+
+@dataclass
+class Team:
+    id: str
+    lobby_id: str
+    number: int
+    name: str
+    photo_base64: str | None = None
 
 
 @dataclass
@@ -72,6 +86,8 @@ class DrinkEntry:
     owner_bonus_quarters: int = 0
     corrected_at: datetime | None = None
     revision: int = 0
+    team_id: str | None = None
+    owner_team_id: str | None = None
 
 
 @dataclass
