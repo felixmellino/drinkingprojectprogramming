@@ -23,6 +23,14 @@ Updated direction: automatic location verification replaces buddy confirmation.
    eligible entry inside a territory also contributes to that territory.
    The app shows points awarded and any ownership change, with links to Map
    and Standings. Each new entry requires a fresh photo.
+   Check-in success shows “You captured <territory>!” when that saved entry
+   first claims an unowned territory or strictly overtakes its prior owner.
+   It uses the saved season history in acceptance order through that entry,
+   including when recovering a lost successful reply. A tie, defending one's
+   own territory, an outside entry or a rejected submission shows no capture
+   message. Later entries do not rewrite the historical capture message;
+   Map and Leaderboard in bottom navigation lead to the latest standings. If the feedback
+   lookup fails, the saved-points confirmation remains and no save is retried.
 6. If rejected, no points change. Explain why and offer a relevant retry.
    If location is missing or uncertain, the player keeps the drink selection
    and photo on the form and tries location verification again.

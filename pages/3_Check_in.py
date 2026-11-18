@@ -19,6 +19,7 @@ from storage3.utils import StorageException
 import data.db as db
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
+from core.checkin_feedback import captured_territory
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
@@ -49,15 +50,26 @@ if modern:
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
-    points, location, *owner_income = saved_result
+    points, location, owner_income, *saved_ids = saved_result
     if points == 0:
         st.warning("Saved in your history with zero points.")
     elif location == "outside":
         st.success(f"Logged! +{points} season points. Your location is outside the game territories.")
     else:
         st.success(f"Logged! +{points} points.")
-    if owner_income and owner_income[0]:
-        st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income[0]) / 4)} season points. You kept all your points.")
+    if owner_income:
+        st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
+    if saved_ids:
+        try:
+            territory_id = captured_territory(saved_ids[0], db.list_drink_entries(season_id))
+            if territory_id:
+                territory_name = next((t.name for t in get_territories() if t.id == territory_id), "the territory")
+                # Plain text prevents a territory label from injecting Markdown.
+                st.success("Territory captured!")
+                st.text(f"You captured {territory_name}!")
+                st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
+        except (APIError, RequestError, RuntimeError, ValueError):
+            st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
 
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
 closed = period_closed or (modern and not scoring_open(now, season))
@@ -168,7 +180,7 @@ with st.container(key="drink_ui_panel_location"):
 # Recover a lost successful reply even after the scoring window closes.
 recovered = next((item for item in recent_entries if capture and item.id == capture[1]), None)
 if recovered is not None:
-    st.session_state["checkin_saved_result"] = (recovered.points_awarded, recovered.location_check_result, recovered.owner_bonus_quarters)
+    st.session_state["checkin_saved_result"] = (recovered.points_awarded, recovered.location_check_result, recovered.owner_bonus_quarters, recovered.id)
     st.session_state["checkin_photo_number"] = photo_number + 1
     st.session_state.pop("checkin_capture", None)
     st.rerun()
@@ -227,6 +239,6 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
     except (APIError, RequestError, StorageException):
         st.error("We couldn't confirm the check-in was saved. Try submitting again.")
     else:
-        st.session_state["checkin_saved_result"] = (entry.points_awarded, entry.location_check_result, entry.owner_bonus_quarters)
+        st.session_state["checkin_saved_result"] = (entry.points_awarded, entry.location_check_result, entry.owner_bonus_quarters, entry.id)
         st.session_state["checkin_photo_number"] = photo_number + 1
         st.rerun()

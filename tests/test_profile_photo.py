@@ -30,7 +30,8 @@ def test_square_centre_crop_and_metadata_removed(format):
         assert red > 200 and green < 30 and blue < 30
 
 
-@pytest.mark.parametrize('raw', [b'', b'not an image', b'x' * (MAX_PROFILE_PHOTO_BYTES + 1)])
+@pytest.mark.parametrize('raw', [b'', b'not an image', b'x' * (MAX_PROFILE_PHOTO_BYTES + 1)],
+                         ids=['empty', 'not-an-image', 'too-large'])
 def test_invalid_image_rejected(raw):
     with pytest.raises(ValueError):
         prepare_profile_photo(raw)
