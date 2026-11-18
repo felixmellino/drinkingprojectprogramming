@@ -53,6 +53,9 @@
   padding: 12px;
 }
 .drink-hero-art svg { width: 100%; height: 100%; }
+.drink-camera-hero { padding: .2rem 0 .7rem; }
+.drink-camera-hero h1 { font-size: clamp(1.8rem, 4vw, 2.3rem); margin: .3rem 0; }
+.drink-camera-hero .drink-hero-art { flex-basis: 64px; height:64px; border-radius:20px; padding:8px; }
 .drink-context {
   display: flex;
   flex-wrap: wrap;
@@ -149,6 +152,7 @@
 .stApp:has(.drink-page-hero) [data-testid="stBaseButton-primary"]:disabled { background: #dce5dc; border-color: #dce5dc; color: #58685d; }
 .stApp:has(.drink-page-hero) [data-testid="stBaseButton-secondary"] { border-radius: 12px; min-height: 44px; }
 .stApp:has(.drink-page-hero) [data-testid="stCameraInput"] { border-radius: 15px; overflow: hidden; }
+.st-key-drink_ui_panel_camera iframe { border: 0; border-radius: 22px; }
 .drink-photo {
   display: block;
   width: 100%;
@@ -169,6 +173,7 @@
   .drink-hero-art { flex-basis: 72px; height: 72px; border-radius: 22px; padding: 8px; }
   .drink-eyebrow { font-size: 0.62rem; letter-spacing: 0.1em; }
   .drink-intro { font-size: 0.9rem; }
+  .drink-camera-hero .drink-hero-art { flex-basis:48px; height:48px; padding:6px; }
   .stApp:has(.drink-page-hero) [class*="st-key-drink_ui_panel"] { padding: 1rem; border-radius: 18px; }
   .st-key-drink_ui_drinks label p,
   .st-key-drink_ui_sizes label p { font-size: 0.77rem; }

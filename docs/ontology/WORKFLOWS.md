@@ -10,12 +10,16 @@
 
 Updated direction: automatic location verification replaces buddy confirmation.
 
-1. Player opens Check in and selects a configured drink type and size.
-2. Player takes a fresh photo in the app. The location is the phone's
+1. Player taps the central +. Check-in opens the camera automatically and
+   starts live phone-location tracking. Browser camera/location permission
+   remains necessary; a previously granted permission avoids an extra app step.
+2. Player takes a fresh photo with the shutter, reviews it in its rounded
+   frame, and chooses drink type and size underneath. Retake replaces the
+   capture; there is no gallery upload. The location is the phone's
    GPS reading at submission (R-L01), accepted if it is off by at most
    50 m (R-L02).
 3. App shows the detected territory and scoring preview: base points,
-   ownership reduction if applicable, and estimated awarded points.
+   additional prior-owner income if applicable, and estimated awarded points.
 4. Player submits. Server validates required inputs, location evidence,
    eligibility and duplicate protection using agreed rules.
 5. If accepted, server saves the check-in and calculated points. An eligible

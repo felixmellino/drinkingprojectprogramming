@@ -61,7 +61,7 @@ def join_lobby(
     )
 
 
-def create_season(lobby_id: str, length_choice: str, starts_at: datetime, timezone_name: str = "Europe/Lisbon") -> Season:
+def create_season(lobby_id: str, length_choice: str, starts_at: datetime, timezone_name: str = "Europe/Lisbon", *, test_mode: bool = False) -> Season:
     from zoneinfo import ZoneInfo
     from core.scoring_v1 import VERSION, new_rules, utc
 
@@ -78,5 +78,5 @@ def create_season(lobby_id: str, length_choice: str, starts_at: datetime, timezo
         length_choice=length_choice,
         timezone_name=timezone_name,
         scoring_version=VERSION,
-        scoring_rules=new_rules(),
+        scoring_rules=new_rules(test_mode=test_mode),
     )

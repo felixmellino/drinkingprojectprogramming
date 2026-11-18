@@ -23,12 +23,24 @@ These presentation choices introduce no new scoring or database rules.
   Drink/size choices have large selectable areas and an immediate points
   preview. Closed-window/cooldown messages appear before the form, and Submit
   spans the available width. Camera permission remains controlled by the browser.
-- The Location card uses the Location block's Use my location browser button
-  after the photo and drink selection. Manual coordinate inputs are removed.
+- Follow-up, 18 November 2026: tapping the central + mounts the camera
+  automatically with a compact heading. There is one shutter action after
+  browser permission; no separate Enable camera button or gallery picker.
+  The captured image stays in a rounded frame above the drink/size controls;
+  Retake clears that capture and opens the camera again. The camera stops
+  after capture, when backgrounded and when leaving the page. A blocked or
+  unavailable camera has a clear message and Retry control.
+- Location tracking starts as soon as Check-in opens, while the player is
+  taking the photo. After capture, the Location card shows the latest status
+  and territory below drink/size choices. Manual coordinate inputs are removed.
   The phone supplies coordinates and accuracy; missing permission/signal and
   readings worse than 50 m keep the form open without saving (R-L01–R-L03).
   Photo GPS is not used. Exactly 50 m is accepted. Final checks still run on
   submission; the territory preview does not reserve eligibility or ownership.
+- Create lobby and Retry lobby setup have an unchecked Test season option.
+  A selected test season is labelled on its lobby card and Check-in page.
+  Its frozen scoring window is Wednesday 08:00–Sunday 18:00 in the lobby
+  timezone. Normal seasons keep Thursday 18:00–Sunday 18:00.
 - Photo history opens a newest-first gallery of the lobby's retained entries,
   four per page, with username, territory, image, drink/size, base season and
   territory awards, applicable owner income and photo-receipt/submission time.

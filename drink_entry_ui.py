@@ -6,7 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 
-def page_header(title: str, description: str, *, photos: bool = False, standings: bool = False) -> None:
+def page_header(title: str, description: str, *, photos: bool = False, standings: bool = False, compact: bool = False) -> None:
     """Load page-scoped styles and an accessible heading with decorative art."""
     css = (Path(__file__).parent / "assets" / "drink_entries.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
@@ -18,7 +18,7 @@ def page_header(title: str, description: str, *, photos: bool = False, standings
         drawing = '<path d="M32 40h49v51a12 12 0 0 1-12 12H44a12 12 0 0 1-12-12Z"/><path d="M81 49h8a13 13 0 0 1 0 26h-8M46 55v31m20-31v31"/><path d="M32 40a11 11 0 0 1 4-21 13 13 0 0 1 23-3 12 12 0 0 1 22 7 9 9 0 0 1 0 17M95 20l3-8m5 18 8-3"/>'
     label = "SEASON STANDINGS" if standings else "LOBBY MOMENTS" if photos else "DRINK ENTRIES"
     st.markdown(
-        f'<header class="drink-page-hero"><div><p class="drink-eyebrow">WeGoPub / {label}</p>'
+        f'<header class="drink-page-hero{" drink-camera-hero" if compact else ""}"><div><p class="drink-eyebrow">WeGoPub / {label}</p>'
         f'<h1>{escape(title)}</h1><p class="drink-intro">{escape(description)}</p></div>'
         f'<div class="drink-hero-art" aria-hidden="true"><svg viewBox="0 0 120 120" '
         f'fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" '

@@ -45,6 +45,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     label = 'Winner' if status == 'past' else 'Leader'
     result = (f'{label}: <strong>{name}</strong>' if leader_name else name) if ranking_available else 'Standings unavailable'
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
+    if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
+        meta += ' · Test season (Wed 08:00–Sun 18:00)'
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
               f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
@@ -133,10 +135,13 @@ def show_lobbies(player_id, memberships):
                         duration = st.radio('Lobby duration', ['1_week', '1_month', '3_months'],
                                             format_func=lambda value: value.replace('_', ' '), horizontal=True)
                         zone = st.text_input('Lobby timezone', value='Europe/Lisbon')
+                        test_mode = st.checkbox('Test season: Wednesday 08:00–Sunday 18:00',
+                                                key=f'retry_test_season_{lobby.id}')
                         retry = st.form_submit_button('Start lobby')
                     if retry:
                         try:
-                            db.start_scoring_season(player_id, lobby.id, duration, zone)
+                            db.start_scoring_season(player_id, lobby.id, duration, zone,
+                                                    **({'test_mode': True} if test_mode else {}))
                         except (PermissionError, CheckinRejected, *LOAD_ERRORS):
                             st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
                         else:
