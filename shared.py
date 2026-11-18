@@ -16,12 +16,14 @@ from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
 from app_navigation import bottom_navigation
+from theme import apply_theme
 from phone_location import ask_for_location
 
 
 def require_login() -> str:
     """Stop the page and prompt a login if nobody is logged in. Returns
     the logged-in player's id otherwise."""
+    apply_theme()  # design system on every page, including the login screen
     token = sync_storage()
     if token is None and "player_id" not in st.session_state and not st.session_state.get("_remember_attempted"):
         st.info("Checking your saved sign-in…")

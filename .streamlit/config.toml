@@ -5,3 +5,12 @@ maxUploadSize = 10
 
 [browser]
 gatherUsageStats = false
+
+# Design system "Rush" (see assets/theme.css for the full token set).
+[theme]
+base = "dark"
+primaryColor = "#F0E1CE"
+backgroundColor = "#1A2841"
+secondaryBackgroundColor = "#22334F"
+textColor = "#F0E1CE"
+font = "sans serif"
