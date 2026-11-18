@@ -186,6 +186,13 @@ revokes the current device's token and clears its storage; a password change
 invalidates all remembered tokens. If browser storage is blocked, login still
 works for the current visit. Serve the deployed app over HTTPS.
 
+On reconnect, each new server session requests the saved token with a fresh
+request ID, even if the browser's storage component is still open. The account
+form waits for that read before appearing. Regression coverage in
+`tests/test_account_ui.py` checks delayed reads and lost server state; token
+expiry, password changes and logout remain covered by
+`tests/test_remembered_sessions.py`.
+
 Existing player IDs and all linked game records are retained. Legacy accounts
 without an email cannot use email login: an administrator must link the correct
 email and replace their credential hash while retaining the original player ID.

@@ -22,7 +22,15 @@ def queue_storage(action: str, token: str = "") -> None:
 
 def sync_storage() -> str | None:
     """Mount the browser bridge; None means its first read has not returned yet."""
-    command = st.session_state.get("_device_command", {"action": "read", "request_id": "read", "token": ""})
+    # The iframe can outlive the server session (for example after reconnecting).
+    # A constant read ID would be ignored by its lastRequest deduplication after
+    # Python has lost the previous result. Keep a fresh ID for each session,
+    # stable across reruns while waiting for the browser's reply.
+    if "_device_read_id" not in st.session_state:
+        st.session_state["_device_read_id"] = str(uuid.uuid4())
+    command = st.session_state.get("_device_command", {
+        "action": "read", "request_id": st.session_state["_device_read_id"], "token": "",
+    })
     result = _browser_storage(**command, key="remember_device", default=None)
     if not isinstance(result, dict) or result.get("request_id") != command["request_id"]:
         if "_device_command" in st.session_state:
