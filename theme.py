@@ -1,4 +1,4 @@
-"""Loads the WeGoPub design system (direction "Rush") on every page.
+"""Loads the WeGoPub design system (direction "Tennis") on every page.
 
 assets/theme.css holds the colour, type and shape tokens plus the base
 styling of Streamlit's own widgets. Page styles in assets/*.css only use
