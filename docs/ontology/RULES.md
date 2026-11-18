@@ -61,7 +61,8 @@ Owners.
 The file is the only source of truth. The app reads it for the location
 check and the standings, and copies it into the database's `territories`
 table when the app starts, because saved drinks refer to a Territory by its
-`id`. After editing the file, restart the app.
+`id`. When the file changes (e.g. after a merge), the app notices on the next
+page load and copies the new version; no restart is needed.
 
 | Case | Outcome |
 | --- | --- |

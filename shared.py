@@ -10,7 +10,7 @@ import streamlit as st
 
 import data.db as db
 from core.models import Territory
-from data.territory_file import load_territories
+from data.territory_file import load_territories, territory_file_version
 from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
@@ -92,15 +92,21 @@ def require_active_membership() -> tuple[str, str, str]:
     )
 
 
-@st.cache_resource(show_spinner=False)
 def get_territories() -> list[Territory]:
     """The game's territories, read from data/territories.geojson (R-T01).
 
-    The first call after the app starts also copies them into the database,
-    because drink entries store a territory id that must exist there. The
-    result is cached for the whole server process, so after editing the
-    file, restart the app. If the database is unreachable the error is not
-    cached and the next page load tries again."""
+    They are loaded and copied into the database once per version of the
+    file (drink entries store a territory id that must exist there), then
+    kept in memory. When the file changes, e.g. after a merge, the next page
+    load picks up the new version by itself; no restart needed. If the
+    database is unreachable the error is not cached and the next page load
+    tries again."""
+    return _load_and_sync(territory_file_version())
+
+
+@st.cache_resource(show_spinner=False, max_entries=1)
+def _load_and_sync(version: str) -> list[Territory]:
+    # `version` is only the cache key: a new file version means a new load.
     territories = load_territories()
     db.upsert_territories(territories)
     return territories

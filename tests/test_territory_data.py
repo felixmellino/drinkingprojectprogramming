@@ -214,3 +214,34 @@ def test_upsert_territories_with_nothing_to_copy_does_not_call_the_database(monk
 
     monkeypatch.setattr(db, "get_client", fail)
     db.upsert_territories([])
+
+
+# -- The app notices when the territory file changes --------------------------
+
+def test_file_version_changes_with_the_contents(tmp_path):
+    from data.territory_file import territory_file_version
+    path = tmp_path / "territories.geojson"
+    path.write_text('{"type": "FeatureCollection", "features": []}')
+    first = territory_file_version(path)
+    assert territory_file_version(path) == first
+    path.write_text('{"type": "FeatureCollection", "features": [ ]}')
+    assert territory_file_version(path) != first
+
+
+def test_new_file_version_is_loaded_and_copied_again(monkeypatch):
+    """A merge that edits the file must reach the app without a restart."""
+    import shared
+    shared._load_and_sync.clear()
+    copies, version = [], {"now": "v1"}
+    monkeypatch.setattr(shared, "territory_file_version", lambda: version["now"])
+    monkeypatch.setattr(shared, "load_territories", lambda: [version["now"]])
+    monkeypatch.setattr(db, "upsert_territories", lambda territories: copies.append(list(territories)))
+
+    assert shared.get_territories() == ["v1"]
+    assert shared.get_territories() == ["v1"]
+    assert copies == [["v1"]]  # same file: loaded and copied once
+
+    version["now"] = "v2"
+    assert shared.get_territories() == ["v2"]
+    assert copies == [["v1"], ["v2"]]  # changed file: picked up by itself
+    shared._load_and_sync.clear()
