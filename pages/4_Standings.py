@@ -16,7 +16,7 @@ player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
-page_header("Leaderboard", "Your place in the season. Every point and territory, together.", standings=True)
+page_header("Leaderboard", "Your place in the season. Every point and territory, together.")
 standings_ui.load_styles()
 
 st.button("Refresh standings")

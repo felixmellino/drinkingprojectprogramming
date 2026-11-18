@@ -1,9 +1,9 @@
 /* WeGoPub design system, direction "Tennis": sky blue + cloud white,
-   scarlet red kept as a subtle third colour (eyebrow labels, section
-   numbers, countdowns) -- never the primary action colour, so it never
-   collides with the fixed "theirs" territory colour. Loaded once on
-   every page by theme.py. Page styles (assets/*.css) use these
-   variables instead of their own colours. */
+   scarlet red kept as a subtle third colour (lobby countdowns) -- never
+   the primary action colour, so it never collides with the fixed
+   "theirs" territory colour. Loaded once on every page by theme.py.
+   Page styles (assets/*.css) use these variables instead of their own
+   colours. */
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -22,8 +22,7 @@
   --border: #D7E6EF;
   --hud-bg: rgba(255, 255, 255, .92);
   --brand: #EB2F33;            /* wordmark only, large text */
-  --brand-ink: #C0242A;        /* subtle red: eyebrows, section numbers, countdowns -- never a fill */
-  --brand-soft: #FDEEEF;
+  --brand-ink: #C0242A;        /* subtle red: lobby countdowns -- never a fill */
   /* territory colours: fixed meaning in every direction */
   --territory-yours: #4CC38A;
   --territory-theirs: #FF5D52;
@@ -64,8 +63,8 @@
 }
 .stApp [data-testid="stHeader"] { background: transparent; }
 .stApp h1 {
-  font-family: var(--font-display); font-weight: 400; letter-spacing: 0.01em;
-  text-transform: uppercase; color: var(--text); line-height: 1.05;
+  font-family: var(--font-display); font-weight: 400;
+  color: var(--text); line-height: 1.05;
 }
 .stApp [data-testid="stCaptionContainer"], .stApp [data-testid="stCaptionContainer"] p { color: var(--text-muted); }
 .stApp a { color: var(--accent-ink); }
@@ -107,11 +106,11 @@
 .stApp [data-testid="stWidgetLabel"] p { color: var(--text); font-weight: 600; }
 
 /* Containers, forms, expanders, alerts */
-.stApp [data-testid="stForm"] { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); }
-.stApp [data-testid="stExpander"] details { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); }
+.stApp [data-testid="stForm"] { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.stApp [data-testid="stExpander"] details { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
 .stApp [data-testid="stExpander"] summary p { color: var(--text); font-weight: 600; }
 .stApp [data-testid="stAlertContainer"] { border-radius: var(--radius-md); }
-.stApp [data-testid="stMetric"] { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; }
+.stApp [data-testid="stMetric"] { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 12px 14px; }
 .stApp [data-testid="stMetricValue"] { font-family: var(--font-display); font-weight:700; color: var(--text); }
 
 /* Radios, checkboxes and segmented controls in the sky-blue accent */

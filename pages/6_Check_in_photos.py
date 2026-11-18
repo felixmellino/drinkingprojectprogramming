@@ -34,7 +34,7 @@ player_id = require_login()
 show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
-page_header("Photo history", "Every moment, with the player, place, drink and points together.", photos=True)
+page_header("Photo history", "Every moment, with the player, place, drink and points together.")
 st.caption(f"Photos are available until {PHOTO_RETENTION_DAYS} days after their season ends. Deleting your photo keeps your score.")
 if st.session_state.pop("photo_deleted", False):
     st.success("Photo deleted. Your score is unchanged.")

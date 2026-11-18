@@ -1,13 +1,13 @@
 /* Standings presentation only. All names and scores are escaped by the renderer. */
 .standings-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 22px; }
-.standings-stat { display: flex; flex-direction: column; gap: 5px; padding: 20px 22px; border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); background: var(--surface); min-width: 0; }
-.standings-stat:first-child { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.standings-stat { display: flex; flex-direction: column; gap: 5px; padding: 20px 22px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); min-width: 0; }
+.standings-stat:first-child { background: var(--accent); color: var(--on-accent); }
 .standings-stat > span { font-size: 0.8rem; font-weight: 650; color: var(--drink-muted); }
 .standings-stat > strong { font-family: var(--font-display); font-weight: 400; font-size: 2.15rem; line-height: 1.15; letter-spacing: 0; overflow-wrap: anywhere; }
 .standings-stat > small { font-size: 0.75rem; color: var(--drink-muted); }
 .standings-stat:first-child > span, .standings-stat:first-child > small { color: var(--on-accent); opacity: .75; }
 .standings-stat:first-child > strong { color: var(--on-accent); }
-.standings-board { background: var(--surface); border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); overflow: hidden; margin-top: 8px; }
+.standings-board { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; margin-top: 8px; box-shadow: var(--shadow-card); }
 .standings-table { width: 100%; border-collapse: collapse; table-layout: fixed; color: var(--drink-ink); }
 .standings-table th, .standings-table td { text-align: left; padding: 17px 20px; vertical-align: middle; border: 0; }
 .standings-table thead { background: var(--surface-raised); }
@@ -29,10 +29,10 @@
 .standings-player-text small { display: block; margin-top: 3px; font-size: 0.75rem; font-weight: 400; color: var(--drink-muted); }
 .standings-you-tag { display: inline-block; padding: 3px 6px; margin-left: 5px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.59rem; font-weight: 800; vertical-align: middle; letter-spacing: 0.04em; }
 .standings-territories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 10px; }
-.standings-territory { padding: 21px; border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); background: var(--surface); min-width: 0; }
-.standings-territory.territory-yours { border-color: var(--territory-yours); }
+.standings-territory { padding: 21px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); min-width: 0; }
+.standings-territory.territory-yours { border: var(--border-width) solid var(--territory-yours); }
 .standings-territory header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.standings-territory h3 { color: var(--drink-ink); font-size: 1.08rem; font-weight: 700; letter-spacing: -0.025em; padding: 0; margin: 0; overflow-wrap: anywhere; }
+.standings-territory h3 { color: var(--drink-ink); font-size: 1.08rem; font-weight: 700; padding: 0; margin: 0; overflow-wrap: anywhere; }
 .territory-state { padding: 4px 8px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text-muted); font-size: 0.66rem; font-weight: 700; }
 .territory-yours .territory-state { background: color-mix(in srgb, var(--territory-yours) 18%, var(--surface)); color: var(--territory-yours); }
 .territory-owner { color: var(--drink-muted); font-size: 0.8rem; margin: 11px 0 18px; overflow-wrap: anywhere; }
