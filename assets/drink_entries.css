@@ -1,11 +1,7 @@
 /* Loaded only by Drink Entries pages. Native Streamlit controls keep their
    labels, keyboard behavior and server-side validation. No external assets. */
 .stApp:has(.drink-page-hero) {
-  --drink-ink: #19392f;
-  --drink-muted: #576a60;
-  --drink-green: #176c50;
-  --drink-line: #dce5dc;
-  background: #f5f7f2;
+  background: var(--bg);
   color: var(--drink-ink);
 }
 .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] {
@@ -22,18 +18,19 @@
 }
 .drink-page-hero h1 {
   color: var(--drink-ink);
+  font-family: var(--font-display);
   font-size: clamp(2.1rem, 5vw, 3.25rem);
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
   line-height: 1.1;
   padding: 0;
   margin: 0.7rem 0;
-  font-weight: 750;
+  font-weight: 400;
 }
 .drink-eyebrow {
   color: var(--drink-green);
   font-size: 0.7rem;
   font-weight: 750;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.2em;
   margin: 0;
 }
 .drink-intro {
@@ -47,7 +44,7 @@
   flex: 0 0 112px;
   height: 112px;
   border-radius: 30px;
-  background: #dcecbd;
+  background: var(--accent-soft);
   color: var(--drink-green);
   transform: rotate(5deg);
   padding: 12px;
@@ -64,19 +61,19 @@
   gap: 0.35rem 1rem;
   padding: 0.8rem 1rem;
   border: 1px solid var(--drink-line);
-  border-radius: 14px;
-  background: #edf2e9;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
   font-size: 0.8rem;
   color: var(--drink-muted);
   overflow-wrap: anywhere;
 }
 .drink-context > span:first-child { color: var(--drink-ink); font-weight: 700; }
 .stApp:has(.drink-page-hero) [class*="st-key-drink_ui_panel"] {
-  background: #fff;
-  border: 1px solid var(--drink-line);
-  border-radius: 22px;
+  background: var(--surface);
+  border: var(--border-width) solid var(--drink-line);
+  border-radius: var(--radius-lg);
   padding: 1.4rem;
-  box-shadow: 0 3px 14px #19392f04;
+  box-shadow: var(--shadow-card);
 }
 .drink-section-heading { display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.4rem; }
 .drink-step {
@@ -84,8 +81,8 @@
   place-items: center;
   flex: 0 0 34px;
   height: 34px;
-  background: #edf4e7;
-  border-radius: 11px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
   color: var(--drink-green);
   font-weight: 750;
   font-size: 0.75rem;
@@ -110,11 +107,11 @@
   justify-content: center;
   min-height: 54px;
   width: 100%;
-  border: 1px solid var(--drink-line);
-  border-radius: 13px;
+  border: var(--border-width) solid var(--drink-line);
+  border-radius: var(--radius-md);
   padding: 0.55rem 0.45rem;
   margin: 0;
-  background: #fafbf8;
+  background: var(--surface-raised);
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
 }
@@ -124,33 +121,24 @@
 .st-key-drink_ui_drinks label:has(input:checked),
 .st-key-drink_ui_sizes label:has(input:checked) {
   border-color: var(--drink-green);
-  background: #e8f2e6;
+  background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--drink-green);
 }
 .st-key-drink_ui_drinks label:has(input:focus-visible),
-.st-key-drink_ui_sizes label:has(input:focus-visible) { outline: 3px solid #8aab69; outline-offset: 3px; }
+.st-key-drink_ui_sizes label:has(input:focus-visible) { outline: 3px solid var(--accent-ink); outline-offset: 3px; }
 .st-key-drink_ui_drinks label p,
 .st-key-drink_ui_sizes label p { color: var(--drink-ink); font-size: 0.85rem; font-weight: 650; line-height: 1.35; }
 .st-key-drink_ui_points [data-testid="stAlertContainer"] {
-  background: #edf5e6;
-  border: 1px solid #cdddbe;
-  border-radius: 15px;
+  background: var(--accent-soft);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
   color: var(--drink-ink);
 }
 .st-key-drink_ui_points [data-testid="stMarkdownContainer"] p { color: var(--drink-ink); font-size: 1rem; line-height: 1.65; }
 .stApp:has(.drink-page-hero) [data-testid="stCaptionContainer"] { color: var(--drink-muted); }
 .stApp:has(.drink-page-hero) [data-testid="stWidgetLabel"],
 .stApp:has(.drink-page-hero) [data-testid="stText"] { color: var(--drink-ink); }
-.stApp:has(.drink-page-hero) [data-testid="stBaseButton-primary"] {
-  background: var(--drink-green);
-  border-color: var(--drink-green);
-  border-radius: 14px;
-  min-height: 52px;
-  font-weight: 700;
-}
-.stApp:has(.drink-page-hero) [data-testid="stBaseButton-primary"]:hover:not(:disabled) { background: #10563e; border-color: #10563e; }
-.stApp:has(.drink-page-hero) [data-testid="stBaseButton-primary"]:disabled { background: #dce5dc; border-color: #dce5dc; color: #58685d; }
-.stApp:has(.drink-page-hero) [data-testid="stBaseButton-secondary"] { border-radius: 12px; min-height: 44px; }
+/* Buttons come from assets/theme.css (cream primary, navy text). */
 .stApp:has(.drink-page-hero) [data-testid="stCameraInput"] { border-radius: 15px; overflow: hidden; }
 .st-key-drink_ui_panel_camera iframe { border: 0; border-radius: 22px; }
 .drink-photo {
@@ -158,14 +146,14 @@
   width: 100%;
   max-height: 560px;
   object-fit: contain;
-  background: #f0f3ed;
-  border-radius: 16px;
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
 }
 .st-key-drink_ui_panel_details [data-testid="stText"] { color: var(--drink-ink); }
-.history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #f0f3ed; border-radius: 14px; }
-.history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: 14px; background: #f0f3ed; color: var(--drink-muted); font-size: 0.85rem; }
+.history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--surface-raised); border-radius: 14px; }
+.history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
-.history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: 10px; color: #285236; background: #edf5e6; font-size: 0.82rem; font-weight: 650; }
+.history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
 @media (max-width: 640px) {
   .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] { padding: 1rem 1rem 3rem; }

@@ -20,8 +20,8 @@ def picture_identity(username: str, photo: bytes | None = None, *, size=64):
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:14px;margin:8px 0 20px">'
         f'<span style="display:flex;align-items:center;justify-content:center;flex-shrink:0;'
-        f'width:{size}px;height:{size}px;border-radius:50%;overflow:hidden;background:#e8f2e2;'
-        f'color:#176c50;font-weight:700;font-size:{size // 3}px">{picture}</span>'
+        f'width:{size}px;height:{size}px;border-radius:50%;overflow:hidden;background:var(--surface-raised);'
+        f'color:var(--text);font-weight:700;font-size:{size // 3}px">{picture}</span>'
         f'<span style="font-weight:600;overflow-wrap:anywhere">{escape(username)}</span></div>',
         unsafe_allow_html=True,
     )

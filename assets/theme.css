@@ -1,0 +1,117 @@
+/* WeGoPub design system, direction "Rush": midnight navy + old cream,
+   vintage red only for the wordmark and the 1st-place medal.
+   Loaded once on every page by theme.py. Page styles (assets/*.css) use
+   these variables instead of their own colours. */
+@import url('https://fonts.googleapis.com/css2?family=Shrikhand&family=Familjen+Grotesk:wght@400..700&display=swap');
+
+:root {
+  color-scheme: dark;
+  /* colours */
+  --bg: #1A2841;
+  --surface: #22334F;
+  --surface-raised: #2C3F60;
+  --text: #F0E1CE;
+  --text-muted: #BCB0A0;
+  --accent: #F0E1CE;
+  --accent-hover: #FFF2E0;
+  --accent-ink: #F7D9A8;
+  --accent-soft: #33466A;
+  --on-accent: #1A2841;
+  --border: #3C5076;
+  --hud-bg: rgba(26, 40, 65, .9);
+  --brand: #B11722;          /* wordmark + 1st-place medal only */
+  /* territory colours: fixed meaning in every direction */
+  --territory-yours: #4CC38A;
+  --territory-theirs: #FF5D52;
+  --territory-free: #7E889C;
+  --you-dot: #5AA8FF;
+  /* status */
+  --success: #6BD49B;
+  --warning: #F4C04E;
+  --error: #FF7A70;
+  --info: #7DB8FF;
+  --medal-2: #C3CBD1;
+  --medal-3: #C98D5B;
+  /* type */
+  --font-display: 'Shrikhand', Georgia, serif;
+  --font-body: 'Familjen Grotesk', system-ui, -apple-system, sans-serif;
+  /* shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --radius-btn: 10px;
+  --border-width: 2px;
+  --shadow-card: 0 0 0 1px rgba(240, 225, 206, .06), 0 6px 18px rgba(5, 10, 20, .35);
+  --shadow-float: 0 14px 36px rgba(5, 10, 20, .55);
+  /* Older page styles read these names; point them at the Rush tokens. */
+  --drink-ink: var(--text);
+  --drink-muted: var(--text-muted);
+  --drink-green: var(--accent-ink);
+  --drink-line: var(--border);
+}
+
+/* Base */
+.stApp { background: var(--bg); color: var(--text); }
+.stApp, .stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp button,
+.stApp h2, .stApp h3, .stApp h4, .stApp td, .stApp th, .stApp small {
+  font-family: var(--font-body);
+}
+.stApp [data-testid="stHeader"] { background: transparent; }
+.stApp h1 {
+  font-family: var(--font-display); font-weight: 400; letter-spacing: 0;
+  color: var(--text); line-height: 1.1;
+}
+.stApp [data-testid="stCaptionContainer"], .stApp [data-testid="stCaptionContainer"] p { color: var(--text-muted); }
+.stApp a { color: var(--accent-ink); }
+
+/* Wordmark: the only big use of the vintage red. */
+.stApp p.wego-wordmark {
+  font-family: var(--font-display); color: var(--brand); font-size: 2.6rem; line-height: 1;
+  margin: .2rem 0 .6rem; text-shadow: 0 2px 0 rgba(0, 0, 0, .25);
+}
+.stApp p.wego-wordmark span { color: var(--text); }
+
+/* Buttons */
+.stApp [data-testid="stBaseButton-primary"] {
+  background: var(--accent); color: var(--on-accent); border: 0;
+  border-radius: var(--radius-btn); min-height: 52px; font-weight: 700;
+  box-shadow: inset 0 -3px 0 rgba(26, 40, 65, .25);
+}
+.stApp [data-testid="stBaseButton-primary"] p { color: var(--on-accent); font-weight: 700; }
+.stApp [data-testid="stBaseButton-primary"]:hover:not(:disabled) { background: var(--accent-hover); color: var(--on-accent); }
+.stApp [data-testid="stBaseButton-primary"]:disabled { background: var(--surface-raised); color: var(--text-muted); box-shadow: none; }
+.stApp [data-testid="stBaseButton-secondary"], .stApp [data-testid="stBaseButton-secondaryFormSubmit"] {
+  background: var(--surface-raised); color: var(--text);
+  border: var(--border-width) solid var(--border); border-radius: var(--radius-btn); min-height: 44px;
+}
+.stApp [data-testid="stBaseButton-secondary"]:hover:not(:disabled) { border-color: var(--accent-ink); color: var(--text); }
+.stApp [data-testid="stBaseButton-primaryFormSubmit"] {
+  background: var(--accent); color: var(--on-accent); border: 0; border-radius: var(--radius-btn); min-height: 52px; font-weight: 700;
+}
+.stApp [data-testid="stBaseButton-primaryFormSubmit"] p { color: var(--on-accent); }
+
+/* Inputs */
+.stApp [data-testid="stTextInput"] input, .stApp [data-testid="stTextArea"] textarea,
+.stApp [data-testid="stNumberInput"] input {
+  background: var(--surface); color: var(--text); border-radius: var(--radius-md);
+}
+.stApp [data-baseweb="input"], .stApp [data-baseweb="select"] > div, .stApp [data-baseweb="textarea"] {
+  background: var(--surface); border-color: var(--border); border-radius: var(--radius-md);
+}
+.stApp [data-testid="stWidgetLabel"] p { color: var(--text); font-weight: 600; }
+
+/* Containers, forms, expanders, alerts */
+.stApp [data-testid="stForm"] { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); }
+.stApp [data-testid="stExpander"] details { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); }
+.stApp [data-testid="stExpander"] summary p { color: var(--text); font-weight: 600; }
+.stApp [data-testid="stAlertContainer"] { border-radius: var(--radius-md); }
+.stApp [data-testid="stMetric"] { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; }
+.stApp [data-testid="stMetricValue"] { font-family: var(--font-display); color: var(--text); }
+
+/* Radios, checkboxes and segmented controls in the cream accent */
+.stApp [data-testid="stSegmentedControl"] button { border-radius: var(--radius-pill); }
+
+@media (prefers-reduced-motion: reduce) {
+  .stApp * { transition: none !important; animation: none !important; }
+}

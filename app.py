@@ -7,9 +7,11 @@ file small and avoid everyone colliding on it as the team adds pages.
 import streamlit as st
 
 from shared import require_login
+from theme import apply_theme, wordmark
 
-st.set_page_config(page_title="WeGoPub", page_icon="🍺")
-st.title("🍺 WeGoPub")
+st.set_page_config(page_title="WeGoPub", page_icon=":material/sports_bar:")
+apply_theme()
+wordmark()
 
 require_login()
 st.success(f"Logged in as **{st.session_state['player_display_name']}**")

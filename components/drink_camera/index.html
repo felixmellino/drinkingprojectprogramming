@@ -1,15 +1,15 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-* { box-sizing: border-box; } body { margin:0; font:15px system-ui,sans-serif; color:#19392f; }
-.frame { position:relative; overflow:hidden; border:1px solid #dce5dc; border-radius:22px; background:#edf2e9; box-shadow:0 6px 24px #19392f0c; }
-video, img { display:block; width:100%; aspect-ratio:4/3; max-height:460px; object-fit:contain; background:#edf2e9; }
+* { box-sizing: border-box; } body { margin:0; font:15px system-ui,sans-serif; color:#F0E1CE; }
+.frame { position:relative; overflow:hidden; border:2px solid #3C5076; border-radius:16px; background:#22334F; box-shadow:0 6px 18px rgba(5,10,20,.35); }
+video, img { display:block; width:100%; aspect-ratio:4/3; max-height:460px; object-fit:contain; background:#22334F; }
 [hidden] { display:none !important; }
 .controls { display:flex; justify-content:center; align-items:center; gap:12px; padding:14px; }
-button { font:inherit; font-weight:650; cursor:pointer; border-radius:999px; padding:12px 24px; border:1px solid #c9d7c8; background:white; color:#176c50; }
-#shutter { background:#176c50; color:white; border:5px solid #dcecbd; min-width:150px; }
-button:focus-visible { outline:3px solid #8aab69; outline-offset:3px; } button:disabled { opacity:.55; cursor:wait; }
-#status { margin:0; font-size:13px; line-height:1.5; padding:0 8px 10px; color:#576a60; text-align:center; }
+button { font:inherit; font-weight:650; cursor:pointer; border-radius:10px; padding:12px 24px; border:2px solid #3C5076; background:#2C3F60; color:#F0E1CE; }
+#shutter { background:#F0E1CE; color:#1A2841; border:5px solid #33466A; border-radius:999px; min-width:150px; font-weight:700; }
+button:focus-visible { outline:3px solid #F7D9A8; outline-offset:3px; } button:disabled { opacity:.55; cursor:wait; }
+#status { margin:0; font-size:13px; line-height:1.5; padding:0 8px 10px; color:#BCB0A0; text-align:center; }
 </style></head><body>
 <div class="frame">
   <video id="video" autoplay playsinline muted aria-label="Live camera preview"></video>

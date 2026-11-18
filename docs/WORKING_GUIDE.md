@@ -86,6 +86,18 @@ function it called, not in the page itself.
 | `AGENTS.md` | Course requirements, grading criteria, and the team's own workflow rules. |
 | `README.md` | How to set up, run, and test the app locally, plus what's not built yet. |
 
+## Design system (direction "Rush")
+
+The look of the whole app lives in one place: `assets/theme.css` (colour,
+type and shape tokens such as `--bg`, `--accent`, `--territory-yours`, plus
+base styles for Streamlit's own widgets) and the `[theme]` block in
+`.streamlit/config.toml`. `theme.py` loads it on every page through
+`shared.require_login()`. Page styles in `assets/*.css` only use these
+variables; never add hard-coded colours there. Rules: green/red/grey are
+reserved for territory status, the cream accent is the action colour, and
+the vintage red (`--brand`) appears only in the wordmark and the 1st-place
+medal. Icons are Material Symbols (`:material/name:`), no emojis.
+
 ## How `docs/ontology/` connects to the code
 
 `docs/ontology/` is the design, written first, in plain English. `core/`
