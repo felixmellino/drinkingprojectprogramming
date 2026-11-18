@@ -182,7 +182,8 @@ project; the automated suite does not replace it.
 - `data/db.py` — the only file that talks to Supabase.
 - `account_ui.py` — one account form with registration and login.
 - `device_login.py` and `components/remember_device/` — persistent device login.
-- `phone_location.py` and `components/phone_location/` — the "Use my location" GPS button.
+- `phone_location.py` and `components/phone_location/` — automatic phone GPS for Check-in and Map.
+- `map_ui.py` and `pages/5_Map.py` — territory map coloured by owner.
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.
@@ -195,15 +196,14 @@ four building blocks, and the team's workflow rules.
 
 ## Known gaps in this first increment
 
-- **Testing GPS on a laptop:** the Check-in page only accepts the browser's
-  real location. To test or demo a territory you're not standing in, open
-  Chrome DevTools → More tools → Sensors → Location and set the coordinates
-  (e.g. 38.7133, -9.1456 lands in Shortys).
-- **Map, Memories, and Minigames pages aren't built yet** — Standings shows
-  territory ownership as a list for now. See the build order in
+- **Testing GPS on a laptop:** Check-in and Map only use the browser's real
+  location, followed automatically. To test or demo a territory you're not
+  standing in, open Chrome DevTools → More tools → Sensors → Location and set
+  the coordinates (e.g. 38.7133, -9.1456 lands in Shortys).
+- **The Minigames page isn't built yet.** See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
-  constants, the maximum age of a GPS reading and calendar-month season
+  constants and calendar-month season
   semantics still need team review; see `docs/ontology/OPEN_DECISIONS.md`.
 
 ### Profile friends

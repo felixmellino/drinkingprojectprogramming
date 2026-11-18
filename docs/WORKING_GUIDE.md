@@ -116,7 +116,7 @@ explain all of it.
 | Block | Owns these files | In plain words |
 | --- | --- | --- |
 | **A. Identity & Lobbies** | `core/auth.py`, `core/lobbies.py`, `core/game_window.py`, `pages/1_Profile.py`, `pages/2_Lobby.py` | Accounts, logging in, creating/joining lobbies, and the Thursday-to-Sunday time window. |
-| **B. Location & Territories** | `core/location.py`, `core/territories.py` (picks up `pages/5_Map.py` later) | The hardest, most technical block: matching GPS to a territory, and working out who owns each one. |
+| **B. Location & Territories** | `core/location.py`, `core/territories.py`, `phone_location.py`, `map_ui.py`, `pages/5_Map.py` | The hardest, most technical block: matching GPS to a territory, and working out who owns each one. |
 | **C. Drink Entries & Scoring** | `core/scoring.py`, `core/checkins.py`, `pages/3_Check_in.py` | The biggest rulebook: how many points a drink is worth, and all the reasons a check-in can be accepted or rejected. |
 | **D. Standings & Data layer** | `core/leaderboard.py`, `data/db.py`, `schema.sql`, the real Supabase project, `pages/4_Standings.py` | The season ranking, the one file that talks to the database, and actually setting up the live database. |
 
@@ -240,10 +240,12 @@ these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
 Check-in requires a camera photo before rendering drink/size choices. Its
-Location card now calls `phone_location.py`: the browser asks for permission,
-then `core.location.parse_phone_reading` validates the returned coordinates and
-accuracy. R-L01–R-L03 accept at most 50 m uncertainty and ignore photo GPS.
-No manual coordinate inputs remain. Photo history lists up to four authorized images per page,
+Location card calls `phone_location.track_location()`, which follows the
+phone's GPS automatically (no button); `current_location()` then validates the
+newest reading with `core.location.parse_phone_reading`. R-L01–R-L04 accept at
+most 50 m uncertainty and 60 s age and ignore photo GPS. No manual coordinate
+inputs remain. The Map page (`pages/5_Map.py`, drawn by `map_ui.py`) uses the
+same tracker plus `core.territories.capture_status` for "points needed to take it". Photo history lists up to four authorized images per page,
 with cards rendered by `photo_history_ui.py`; View details retains correction
 and deletion controls. Keep inline image bytes so private images never get a
 public Streamlit media URL. Test the routes, photo gate, gallery paging,

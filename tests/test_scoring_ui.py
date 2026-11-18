@@ -3,6 +3,7 @@ from dataclasses import replace
 from datetime import timedelta
 from io import BytesIO
 from pathlib import Path
+import time
 from unittest.mock import Mock
 
 import pytest
@@ -44,9 +45,9 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr(st, "camera_input", lambda label, key: state["photo"] if key.endswith("_0") else None)
-    # The "Use my location" button is a browser component AppTest can't click;
-    # this returns what the browser would send after a tap (None = not tapped).
-    monkeypatch.setattr("phone_location.phone_location_button", lambda key: state["location"])
+    # The automatic location tracker is a browser component AppTest can't run;
+    # this returns what the phone would send (None = no reading yet).
+    monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: state["location"])
 
     def save(player, lobby, model, photo):
         state["calls"] += 1
@@ -67,9 +68,10 @@ def open_checkin():
     return AppTest.from_file(ROOT / "pages/3_Check_in.py", default_timeout=10).run()
 
 
-def set_location(page, state, accuracy_m=10):
-    """Simulate tapping "Use my location" while standing inside TERRITORY."""
-    state["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": accuracy_m}
+def set_location(page, state, accuracy_m=10, age_seconds=0):
+    """Simulate the phone reporting a position inside TERRITORY."""
+    state["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": accuracy_m,
+                         "taken_at_ms": (time.time() - age_seconds) * 1000}
     page.run()
 
 
@@ -298,10 +300,10 @@ def test_submit_needs_the_phone_location_first(ui):
     state, _ = ui
     page = open_checkin()
     assert button(page, "Submit").disabled
-    assert any("Tap the button" in item.value for item in page.caption)
+    assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
-    assert any("Location found, accurate to about 10 m" in item.value for item in page.caption)
+    assert any("Location found automatically, accurate to about 10 m" in item.value for item in page.caption)
 
 
 def test_inaccurate_phone_location_warns_and_saves_nothing(ui):
@@ -323,7 +325,7 @@ def test_phone_permission_retry_keeps_photo_and_selection_and_accepts_50m(ui):
     state["location"] = {"error": "denied"}
     page.run()
     assert not page.exception and button(page, "Submit").disabled
-    assert any("Location access is blocked" in item.value for item in page.caption)
+    assert any("Location access is blocked" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture_id
     assert radio(page, "Drink").value == "wine" and radio(page, "Size").value == "large"
     assert state["calls"] == 0 and state["entries"] == []
@@ -332,3 +334,14 @@ def test_phone_permission_retry_keeps_photo_and_selection_and_accepts_50m(ui):
     button(page, "Submit").click().run()
     assert not page.exception and state["calls"] == 1
     assert state["entries"][0].id == capture_id and state["entries"][0].points_awarded == 4
+
+
+def test_location_older_than_60_seconds_is_not_used(ui):
+    """R-L04: a reading must be fresh; 61 s old blocks Submit, 59 s is fine."""
+    state, _ = ui
+    page = open_checkin()
+    set_location(page, state, age_seconds=61)
+    assert button(page, "Submit").disabled
+    assert any("more than a minute old" in item.value for item in page.caption)
+    set_location(page, state, age_seconds=59)
+    assert not button(page, "Submit").disabled

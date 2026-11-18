@@ -135,11 +135,20 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 
 ## Map
 
-- City map divided into territories, showing owners and bar locations.
-- Selecting a territory shows its owner, player standings, bars and
-  applicable points reduction.
-- Selecting a bar shows its details and a Check in action.
-- A territory list provides an alternative to the map.
+Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
+current lobby's season only. Bars are not part of the game, so none are shown.
+
+- City map with the 12 territories coloured for the viewer: green = yours,
+  red = someone else's, grey = unclaimed.
+- Tapping a territory shows its name, what it means for you and your points
+  there: "Unclaimed: your next drink here claims it", "Yours: you lead by X
+  points", or "Owned by Y: you need X more points to take it" (owner's
+  territory points − yours + 1, because a tie keeps the owner, R-R01).
+  Owner income never counts towards territory points.
+- A blue dot shows where you are (automatic location, R-L01/R-L04), with a
+  line saying which territory you're in; nothing is shown if location is
+  blocked, stale or worse than 50 m.
+- A territory table below the map gives the same information.
 
 ## Memories
 

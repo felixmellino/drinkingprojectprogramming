@@ -9,7 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 @pytest.mark.parametrize("label,target", [
     ("Profile", "1_Profile.py"), ("Lobby", "2_Lobby.py"),
-    ("Check in", "3_Check_in.py"), ("Leaderboard", "4_Standings.py"),
+    ("Check in", "3_Check_in.py"), ("Map", "5_Map.py"), ("Leaderboard", "4_Standings.py"),
     ("Photo history", "6_Check_in_photos.py"),
 ])
 def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, target):
@@ -17,7 +17,7 @@ def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, ta
     monkeypatch.setattr(st, "switch_page", switch)
     at = AppTest.from_string("from app_navigation import bottom_navigation\nbottom_navigation('leaderboard')").run()
     assert not at.exception
-    assert [button.label for button in at.button] == ["Profile", "Lobby", "Check in", "Leaderboard", "Photo history"]
+    assert [button.label for button in at.button] == ["Profile", "Lobby", "Check in", "Map", "Leaderboard", "Photo history"]
     at.session_state["player_id"] = "signed-in-player"
     next(button for button in at.button if button.label == label).click().run()
     assert not at.exception
