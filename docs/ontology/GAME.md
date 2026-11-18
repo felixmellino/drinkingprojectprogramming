@@ -45,7 +45,7 @@ and lobby across all categories. Retries return their original result once.
 ## Territories and owner income
 
 Territories are predefined map areas; bars are not part of scoring. The
-location assigns the territory. The shared file contains 12 Lisbon areas plus the Nova SBE campus,
+location assigns the territory. The shared file contains 25 bordering areas (central Lisbon plus Nova SBE and Carcavelos Beach),
 with permanent IDs and non-overlapping interiors (R-T01/R-T02).
 
 The highest territory total owns it, with earliest-reached ties. Reward the
