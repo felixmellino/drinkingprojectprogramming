@@ -8,7 +8,7 @@ from core.leaderboard import season_leaderboard
 from core.scoring_v1 import utc
 from core.territories import territory_owner
 from device_login import log_out, queue_storage, set_identity
-from friends_ui import show_friends
+from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from shared import get_territories
 
@@ -35,6 +35,7 @@ def show_profile(player):
             log_out()
         return
     if st.button("Back to Profile", icon=":material/arrow_back:"):
+        dismiss_friends()
         st.session_state["profile_view"] = "menu"
         st.rerun()
     try:

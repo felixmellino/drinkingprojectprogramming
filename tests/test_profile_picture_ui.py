@@ -78,7 +78,14 @@ def test_friends_show_pictures_for_requests_but_not_stranger_search(monkeypatch)
     at.session_state['credential_version'] = 'hash'
     at.run()
     assert not at.exception
+    download.assert_not_called()  # Overview cards do not load private pictures.
+    click(at, 'Current Friends · 1')
+    assert {call.args[2] for call in download.call_args_list} == {'friend'}
+    click(at, 'Close')
+    click(at, 'Incoming requests · 1')
     assert {call.args[2] for call in download.call_args_list} == {'friend', 'pending'}
+    click(at, 'Close')
+    click(at, 'Find players')
     at.text_input[0].input('stranger').run()
     assert not at.exception
     assert all(call.args[2] != 'stranger' for call in download.call_args_list)

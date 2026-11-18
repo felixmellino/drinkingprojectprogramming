@@ -158,6 +158,8 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
         assert fresh.session_state["player_id"] == player.id
         assert not fresh.text_input
         form(fresh, "Friends").click().run()
+        assert not fresh.text_input
+        form(fresh, "Find players").click().run()
         assert [field.label for field in fresh.text_input] == ["Search usernames"]
 
 
