@@ -576,6 +576,43 @@
           ]
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "nova-sbe",
+        "name": "Nova SBE Campus",
+        "fill": "#f58231",
+        "stroke": "#f58231",
+        "fill-opacity": 0.35
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -9.3281,
+              38.677
+            ],
+            [
+              -9.3235,
+              38.677
+            ],
+            [
+              -9.3235,
+              38.68
+            ],
+            [
+              -9.3281,
+              38.68
+            ],
+            [
+              -9.3281,
+              38.677
+            ]
+          ]
+        ]
+      }
     }
   ]
 }
