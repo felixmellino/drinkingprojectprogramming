@@ -26,3 +26,10 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 
 Design consideration: an ownership reduction can make leaders harder to
 catch. Test the agreed percentage with sample standings before fixing it.
+
+Storage integration follow-up, 18 November 2026 (D-13): live synthetic-fixture
+checks passed for lobby access, revocation, owner deletion preserving scores,
+30-day expiry and scoped cleanup with SDK 2.34.1. The user selected daily
+GitHub Actions cleanup; the workflow is prepared but repository secrets and
+hosted execution remain pending. See [verification](../STORAGE_SDK_VERIFICATION.md).
+The privacy contact, notice, provider region and backup decisions remain open.

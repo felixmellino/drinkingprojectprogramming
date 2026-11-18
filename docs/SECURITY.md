@@ -155,5 +155,15 @@ Also verify owner deletion leaves scores unchanged, another member cannot
 delete the image, expiry blocks downloads at the boundary, and two cleanup
 runs remove expired and abandoned files safely without removing active ones.
 
+Follow-up verification on 18 November 2026: the SDK upgrade was combined
+with current main; 305 tests passed on Python 3.12.14. Real shared-project
+storage checks with synthetic QA fixtures passed, including fresh-process
+reopen, member/outsider/revoked-member access, owner deletion preserving
+scores, and scoped expiry/cleanup. All QA fixtures were removed. The isolated
+dependency audit is clean after updating pip to 26.3. See
+[the verification record](STORAGE_SDK_VERIFICATION.md) for scope and limits.
+The selected daily GitHub Actions workflow is prepared; private Actions
+secrets, first hosted execution and monitoring still need setup after merge.
+
 The upload controls follow the [OWASP file upload guidance](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html).
 The retention and notice work supports the [European Commission's data protection principles](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/principles-gdpr_en).
