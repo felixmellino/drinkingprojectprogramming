@@ -125,6 +125,28 @@ The submitter's membership and the Season belong to the same lobby. If the locat
 
 ## Minigames
 
+### ChugDuel
+
+Implemented on 18 November 2026, separately from the legacy MinigameAttempt
+placeholder below. One challenge links `season_id`, `challenger_id` and
+`opponent_id` (membership IDs), agreed `drink_type`/`size` and a `game_night`
+date using a 06:00 cutoff in the season timezone. State is invited, accepted,
+started, completed, aborted, declined, cancelled or expired. Server timestamps
+track creation, acceptance, start, countdown (`play_at`), finish and expiry.
+`winner_id` is a participating membership. Two preallocated entry IDs identify
+the normal drink entries created atomically on start.
+
+The linked DrinkEntries carry `duel_id`. Only the losing entry after completion
+carries `duel_transfer_to` (saved winner competitor: team or membership) and
+`duel_transfer_order` (result position in the shared scoring sequence). These
+fields change season replay without changing original territory base awards
+or owner income. Both entries keep their own private image copy and frozen
+team identity. See RULES.md R-M01–R-M05 and [the handoff](../CHUG_DUEL.md).
+
+The separate outgoing/incoming allowances are unique by membership and
+game-night date, so they are per lobby and cannot be bypassed by selecting a
+different opponent. Other proposed games/items remain unimplemented.
+
 ### Arena
 
 A named location on the Lisbon map where the team plans to offer minigames.

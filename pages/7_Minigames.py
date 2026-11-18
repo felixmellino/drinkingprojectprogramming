@@ -1,0 +1,19 @@
+"""Minigames in the selected lobby; server RPCs recheck every action."""
+import streamlit as st
+import data.db as db
+from minigames_ui import render_minigames, _error, SERVICE_ERRORS
+from shared import require_login, require_active_membership
+
+player = require_login()
+member, lobby_id, season_id = require_active_membership()
+try:
+    season = next((s for s in db.list_seasons_for_lobby(lobby_id) if s.id == season_id), None)
+    lobby = next((l for l in db.list_lobbies() if l.id == lobby_id), None)
+    if not season or not lobby:
+        st.info("Choose a lobby and season on the Lobby page.")
+    elif season.scoring_version != "v1":
+        st.info("Chug Duel requires a lobby with v1 scoring. Historical seasons keep their original rules.")
+    else:
+        render_minigames(player, member, lobby, season)
+except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+    _error(error)

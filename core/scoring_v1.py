@@ -113,7 +113,7 @@ def cooldown_remaining(membership_id: str, now: datetime, entries: list[DrinkEnt
 
 
 def can_correct(entry: DrinkEntry, season: Season, now: datetime) -> bool:
-    if entry.rule_version != VERSION or entry.season_id != season.id:
+    if entry.rule_version != VERSION or entry.season_id != season.id or entry.duel_id:
         return False
     at = utc(now)
     return (utc(entry.submitted_at) <= at < utc(entry.submitted_at) + timedelta(seconds=rules_for(season)["correction_seconds"])
@@ -204,7 +204,19 @@ def replay_season(entries: list[DrinkEntry]) -> Replay:
     if len({entry.season_id for entry in entries}) > 1:
         raise ValueError("Replay one season at a time.")
     state = Replay()
-    for index, entry in enumerate(sorted(entries, key=entry_order)):
+    events = [(entry_order(entry), False, entry) for entry in entries]
+    events += [((0, entry.duel_transfer_order, entry.id), True, entry) for entry in entries
+               if entry.duel_transfer_to and entry.duel_transfer_order is not None]
+    for index, (_, is_transfer, entry) in enumerate(sorted(events, key=lambda event: (event[0], event[1]))):
+        if is_transfer:
+            # Move only the loser's base award at the result's own event position.
+            # Territory ownership and prior-owner income keep their original history.
+            prior_order = {account: rank for rank, (account, _) in enumerate(state.season_rows())}
+            for account, delta in ((competitor(entry), -entry.points_awarded * 4),
+                                   (entry.duel_transfer_to, entry.points_awarded * 4)):
+                state.season_quarters[account] = state.season_quarters.get(account, 0) + delta
+                state.reached[account] = (index, prior_order.get(account, len(prior_order)))
+            continue
         points = entry.points_awarded
         if points <= 0 or entry.location_check_result not in ("matched", "outside"):
             continue

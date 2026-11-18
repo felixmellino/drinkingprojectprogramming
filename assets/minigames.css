@@ -1,0 +1,12 @@
+.chug-photo { display:block; width:min(100%,420px); max-height:360px; object-fit:cover;
+  border-radius:var(--radius-lg); border:var(--border-width) solid var(--border); margin:auto; }
+.st-key-chug_camera_stage { position:fixed!important; inset:0; z-index:100000;
+  width:100vw!important; max-width:none!important; background:var(--bg); overflow:hidden; }
+.st-key-chug_camera_stage iframe { width:100vw!important; height:100dvh!important; border:0; }
+body:has(.st-key-chug_camera_stage) [data-testid="stHeader"],
+body:has(.st-key-chug_camera_stage) .st-key-wego_bottom_nav { display:none!important; }
+.stApp:has(.st-key-chug_refresh) [data-testid="stMetric"] { background:var(--surface);
+  border:var(--border-width) solid var(--border); border-radius:var(--radius-lg); padding:12px; }
+@media(max-width:480px) {
+  .stApp:has(.st-key-chug_refresh) [data-testid="stMetricValue"] { font-size:1.15rem; }
+}

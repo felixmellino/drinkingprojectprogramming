@@ -1,4 +1,7 @@
-"""The shared one-play-per-lobby-per-game-window minigame limit.
+"""Legacy one-play-per-lobby-per-game-window minigame placeholder.
+
+Chug Duel uses core.chug_duel and migration 011's separate outgoing/incoming
+nightly allowances. No playable screen calls this older weekly helper.
 
 membership_id already identifies a player WITHIN one specific lobby, so
 scoping by membership_id automatically makes this limit per-lobby, not

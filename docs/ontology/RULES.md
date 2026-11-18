@@ -1,5 +1,90 @@
 # Rules
 
+## Minigames
+
+### R-M01 Chug Duel invitation and opponents
+
+In a v1 season with scoring open, challenge another member of the same lobby.
+The challenger selects a drink and size from the frozen scoring table; the
+recipient must accept these terms on their own account/device. Both drinks
+have that selection. Self-challenges and cross-lobby opponents are rejected.
+In a team lobby both players need different teams. Recheck teams before start.
+One pending outgoing invitation and one accepted/started duel per player are
+allowed at a time. Decline/cancel before start awards no points.
+
+Source: contributor's explicit answers, 18 November 2026. Operational defaults
+are explained in [CHUG_DUEL.md](../CHUG_DUEL.md).
+
+### R-M02 Two separate nightly allowances
+
+Each member can play once as challenger and once as recipient per lobby and
+game night. A night rolls over at 06:00 in the season timezone: 23:59 and the
+following 00:01 share the allowance; exactly 06:00 starts the next one.
+Other lobbies have independent allowances. Acceptance reserves both respective
+roles atomically; starting consumes them. A rejected, declined, expired or
+cancelled pre-start invitation consumes neither. A second acceptance cannot
+reserve an already used role, including concurrent requests. The opposite
+role remains available after a finished game.
+
+Source: contributor's explicit answers, 18 November 2026. This is an explicit
+exception to the earlier shared-one-minigame-per-night design for Chug Duel.
+
+### R-M03 Shared check-in and base-point transfer
+
+After acceptance the host takes one shared fresh photo and supplies their
+current accepted phone GPS for both players. Apply normal photo sanitation,
+location, territory, season/window and per-member cooldown checks. Store two
+linked normal drink entries in one transaction, each with its own private
+copy of the shared image. Invalid evidence or either member's cooldown
+rejects the entire start: neither gets a new entry or points. Exact GPS is
+discarded after validation. Each image copy follows its owner's existing R7
+deletion/retention policy. Duel drink/size selections cannot be corrected
+individually after start; delete images without changing points as usual.
+
+At start both get normal base season/territory awards and normal owner income.
+At a recorded win transfer only the loser's drink's base season points to the
+winner's saved member/team account. Two 3-point drinks yield 6/0 base season
+points. Territory base points and all owner income stay unchanged. Result
+retries award nothing extra. The transfer gets its own ordered scoring event
+so earliest-reaching ties use result time. Within an exact same-event tie,
+preserve the previously higher-ranked account. Replaying corrected unrelated
+entries preserves the transfer and recalculates normal owner income.
+
+Source: contributor's explicit answers, 18 November 2026. Supersedes the
+items-only reward rule for Chug Duel. Earlier source entries are unchanged.
+
+### R-M04 Shared-phone finish
+
+The challenger hosts a split screen with one named half per participant.
+Both press Ready, then the server starts a three-second countdown. Ignore
+early taps; the first finish tap after GO wins. Only the authenticated host
+can submit one of these two participants as winner. A nonparticipant,
+recipient-device result, invalid winner or pre-countdown result is rejected.
+First tap wins even when browser events arrive close together. Completed
+results are immutable, including retries with a different winner. Physical
+completion is trust-based; the app only records the tap.
+
+Source: contributor's explicit shared-device decision, 18 November 2026;
+three seconds and first-browser-event handling are operational defaults.
+
+### R-M05 Expiry, interruption and navigation
+
+Invitations expire at ten minutes (inclusive). Accepted setup and started
+play each also have ten minutes, capped by the next 06:00 rollover, scoring
+close and season end. An accepted pre-start cancellation/expiry releases
+reservations. After start, either participant can end without a winner;
+expiry does the same. Both retain their normal drink awards, no base-point
+transfer happens and the used role allowances remain consumed. A connection
+loss can resume the saved started game until expiry. A lost successful reply
+recovers its existing start/result instead of creating another one.
+
+Minigames is immediately right of the check-in plus in the bottom navigation.
+Receiving accounts see incoming invitations and outcomes on that page through
+automatic refresh. New games are blocked outside normal scoring availability.
+
+Source: contributor's explicit interruption and navigation answers,
+18 November 2026; accepted/start phase deadlines are operational defaults.
+
 ## QA season exception (18 November 2026)
 
 For explicitly selected **test seasons only**, posting opens Wednesday at

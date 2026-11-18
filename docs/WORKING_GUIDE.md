@@ -49,7 +49,8 @@ connection.
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |
 | `leaderboard.py` | The same tie-breaking idea as territories, but for the whole season's ranking instead of one territory. |
-| `minigames.py` | Makes sure a player can only play one minigame per lobby per week — no actual minigame logic yet, just the limit. |
+| `minigames.py` | Legacy weekly-limit placeholder; Chug Duel does not use it. |
+| `chug_duel.py` | Chug Duel's nightly outgoing/incoming allowances, eligible opponents and component messages; SQL enforces mutations atomically. |
 
 ## `data/db.py` — the fridge
 
@@ -111,7 +112,7 @@ the docs — if they disagree, that's a bug to fix, not a detail to shrug off.
 | `GAME.md` → Territories, Ownership | `core/location.py`, `core/territories.py` |
 | `RULES.md` R-R01 (tie rule) | `core/territories.py`'s `replay_leader` |
 | `RULES.md` R-T01, R-T02 (territory set, no overlap) | `data/territories.geojson`, read by `data/territory_file.py` and checked by `core/territories.py`'s `parse_territories`; copied into the database by `shared.get_territories()`; overlap checked in `tests/test_territory_data.py` |
-| `GAME.md` → Minigames | `core/minigames.py` |
+| `RULES.md` R-M01–R-M05 → Chug Duel | `core/chug_duel.py`, `core/scoring_v1.py`, migration 011, `minigames_ui.py` / `pages/7_Minigames.py` |
 | `SCREENS.md` | `pages/*.py` |
 | `OPEN_DECISIONS.md` items not yet decided (like D-01) | A placeholder that does nothing yet, e.g. `core/scoring.py`'s `apply_owner_modifier` — already wired in, waiting for the real rule |
 
@@ -132,9 +133,9 @@ explain all of it.
 | **C. Drink Entries & Scoring** | `core/scoring.py`, `core/checkins.py`, `pages/3_Check_in.py` | The biggest rulebook: how many points a drink is worth, and all the reasons a check-in can be accepted or rejected. |
 | **D. Standings & Data layer** | `core/leaderboard.py`, `data/db.py`, `schema.sql`, the real Supabase project, `pages/4_Standings.py` | The season ranking, the one file that talks to the database, and actually setting up the live database. |
 
-**Not assigned yet, on purpose:** `core/minigames.py` and the
-Map/Memories/Minigame pages — these come after the four blocks above are
-working together.
+Chug Duel is now implemented across the shared scoring/data boundary; its
+rules, ownership and verification handoff are in [CHUG_DUEL.md](CHUG_DUEL.md).
+Other minigames remain future work after the core workflows are stable.
 
 Everyone should still read `core/models.py` first, since it's the short
 file that defines the "things" every other block works with.
@@ -244,10 +245,10 @@ Data-block changes in the existing core/repository helpers; use the UI module
 for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
 unranked/empty states, service failures and escaped public display text.
 
-Authenticated pages now get the shared five-button bottom bar from
+Authenticated pages now get the shared seven-button bottom bar from
 `app_navigation.py`, called only after `shared.require_login` verifies the
 account. The plus opens Check-in; Leaderboard and Photo history are to its
-right. Use native `st.switch_page` to keep login/session state; do not replace
+right. Minigames sits immediately right of the plus, before Map. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 

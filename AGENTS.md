@@ -46,7 +46,11 @@ weighted as shown below.
    leaderboard, and in the territory standings on the map.
 2. Add one playable minigame with a shared limit of one minigame per
    player per game night across all minigames. Minigames give special
-   items, not points. Reuse that logic for additional minigames.
+   items, not points. Chug Duel is the contributor-approved exception
+   (18 November 2026): one outgoing and one incoming duel per member/lobby
+   per 06:00-based night; the winner receives both drinks' base season
+   points. Territory scoring and owner income stay normal. See R-M01–R-M05
+   in `docs/ontology/RULES.md`. Reuse shared rules for additional minigames.
 3. Once the core is stable, prioritize additions that make the game
    better and can be demonstrated and tested. The territory owner
    advantage, team events, and special effects depend on rules agreed by

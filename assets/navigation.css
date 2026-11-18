@@ -39,7 +39,7 @@
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Collapse sidebar"] { display: none; }
 @media (max-width: 480px) {
   .st-key-wego_bottom_nav { width: calc(100% - 16px); padding: 7px 4px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 20px; }
-  /* Six destinations: let long labels wrap and use the full button width. */
+  /* Seven destinations: let long labels wrap and use the full button width. */
   .st-key-wego_bottom_nav button { padding: 6px 0; }
   .st-key-wego_bottom_nav button p { font-size: 0.6rem; letter-spacing: -0.01em; white-space: normal; word-break: normal; overflow-wrap: normal; text-align: center; }
   .stApp .st-key-wego_bottom_nav .st-key-wego_nav_checkin button { width: 58px; height: 58px; min-height: 58px; }
