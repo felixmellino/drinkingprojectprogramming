@@ -61,9 +61,14 @@ def join_lobby(
     )
 
 
-def create_season(lobby_id: str, length_choice: str, starts_at: datetime) -> Season:
+def create_season(lobby_id: str, length_choice: str, starts_at: datetime, timezone_name: str = "Europe/Lisbon") -> Season:
+    from zoneinfo import ZoneInfo
+    from core.scoring_v1 import VERSION, new_rules, utc
+
+    ZoneInfo(timezone_name)
     if length_choice not in SEASON_LENGTH_DAYS:
         raise ValueError(f"unknown season length: {length_choice}")
+    starts_at = utc(starts_at)
     ends_at = starts_at + timedelta(days=SEASON_LENGTH_DAYS[length_choice])
     return Season(
         id=str(uuid.uuid4()),
@@ -71,4 +76,7 @@ def create_season(lobby_id: str, length_choice: str, starts_at: datetime) -> Sea
         starts_at=starts_at,
         ends_at=ends_at,
         length_choice=length_choice,
+        timezone_name=timezone_name,
+        scoring_version=VERSION,
+        scoring_rules=new_rules(),
     )

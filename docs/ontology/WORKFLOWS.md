@@ -1,12 +1,19 @@
 # Workflows
 
+> Scoring v1 implementation was authorised on 17 November 2026. See
+> [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
+> Earlier scoring drafts below are historical where they differ. Legacy seasons
+> retain their old behaviour; migration and teammate review are pending.
+
+
 ## Check in and score
 
 Updated direction: automatic location verification replaces buddy confirmation.
 
 1. Player opens Check in and selects a configured drink type and size.
-2. Player takes a fresh photo in the app. The proposed location capture
-   uses the current phone reading and any available photo coordinates.
+2. Player takes a fresh photo in the app. The location is the phone's
+   GPS reading at submission (R-L01), accepted if it is off by at most
+   50 m (R-L02).
 3. App shows the detected territory and scoring preview: base points,
    ownership reduction if applicable, and estimated awarded points.
 4. Player submits. Server validates required inputs, location evidence,
@@ -38,10 +45,27 @@ unavailable.
 Check-in records when the app receives the camera photo separately from
 when the player submits the entry. The photo view shows this capture time,
 the submitter's username, and the verified territory name or “Outside game
-territories.” Read any photo GPS tags during verification, then remove the
-embedded metadata before saving the image. Save the verification result and
-territory match from the location check. Discard the exact coordinates from
-the phone and photo after verification.
+territories.” Photo GPS tags are not used (R-L01); remove the embedded
+metadata before saving the image. Save the verification result and
+territory match from the location check. Discard the exact phone
+coordinates after verification.
+
+The camera upload accepts JPEG images up to 10 MiB and 20 million pixels.
+These server resource limits are checked before decoding image pixels.
+
+The photo's owner can select it in Lobby photos and confirm deletion. The
+server verifies ownership again, removes the private file, and marks its
+reference `deleted`. The drink entry, awarded points and standings remain.
+Other lobby members cannot delete it. A downloaded copy or screenshot cannot
+be recalled from another player's device.
+
+Photos stop being served at exactly 30 days after the season's end. The
+server maintenance command `python -m data.cleanup_checkin_photos --apply`
+removes expired files and marks their references `expired`. It also removes
+unlinked uploads that have had no update for 24 hours, allowing time to retry
+a failed database save. It never deletes entries or changes points. The Data
+owner must schedule this command and monitor successful runs. Access expiry
+works even if a cleanup run is delayed; physical deletion needs that job.
 
 ### Duplicate check-ins in the current build
 
@@ -55,7 +79,7 @@ The final repeat-drink and duplicate rules are still open under D-12.
 
 ### Proposed fallback after automatic location verification fails
 
-If the automatic check using phone GPS and available photo GPS fails, the
+If the automatic check using phone GPS fails, the
 player can share a one-time confirmation link with another member of the
 same lobby who was there. The recipient signs in and confirms they were
 present. The server checks their lobby membership and uses the link once
@@ -67,3 +91,7 @@ Pending, declined, and expired requests earn zero points. If the entry
 meets the other scoring rules, a confirmation awards season points once.
 The entry has no territory assignment. For a tie in the season standings,
 the points count from the moment the other player confirms.
+
+## Proposed scoring workflow - review pending
+
+The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.

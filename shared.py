@@ -9,10 +9,13 @@ contain no game rules themselves.
 import streamlit as st
 
 import data.db as db
+from core.models import Territory
+from data.territory_file import load_territories
 from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
+from app_navigation import bottom_navigation
 
 
 def require_login() -> str:
@@ -47,6 +50,7 @@ def require_login() -> str:
     if "player_id" not in st.session_state:
         show_accounts()
         st.stop()
+    bottom_navigation()
     return st.session_state["player_id"]
 
 
@@ -56,11 +60,45 @@ def require_active_membership() -> tuple[str, str, str]:
     if "current_membership_id" not in st.session_state:
         st.info("Create or join a lobby on the Lobby page first.")
         st.stop()
+    try:
+        memberships = db.list_memberships_for_player(st.session_state["player_id"])
+    except (APIError, RequestError, RuntimeError):
+        st.error("Lobby access could not be checked. Try again.")
+        st.stop()
+    if not any(m.id == st.session_state["current_membership_id"]
+               and m.lobby_id == st.session_state.get("current_lobby_id") for m in memberships):
+        st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
+        st.stop()
+    if not st.session_state.get("current_season_id"):
+        st.info("Start or select a season on the Lobby page first.")
+        st.stop()
+    try:
+        seasons = db.list_seasons_for_lobby(st.session_state["current_lobby_id"])
+    except (APIError, RequestError, RuntimeError):
+        st.error("Season access could not be checked. Try again.")
+        st.stop()
+    if not any(s.id == st.session_state["current_season_id"] for s in seasons):
+        st.error("This season does not belong to the selected lobby. Choose a season again.")
+        st.stop()
     return (
         st.session_state["current_membership_id"],
         st.session_state["current_lobby_id"],
         st.session_state["current_season_id"],
     )
+
+
+@st.cache_resource(show_spinner=False)
+def get_territories() -> list[Territory]:
+    """The game's territories, read from data/territories.geojson (R-T01).
+
+    The first call after the app starts also copies them into the database,
+    because drink entries store a territory id that must exist there. The
+    result is cached for the whole server process, so after editing the
+    file, restart the app. If the database is unreachable the error is not
+    cached and the next page load tries again."""
+    territories = load_territories()
+    db.upsert_territories(territories)
+    return territories
 
 
 def show_logged_in_as():

@@ -1,6 +1,7 @@
 """Checks that data/territories.geojson follows R-T01 and R-T02 in
-docs/ontology/RULES.md, and that the app's own location matcher assigns
-real places to the right territory.
+docs/ontology/RULES.md, that the app's loader reads it, that it is copied
+into the database correctly, and that the app's own location matcher
+assigns real places to the right territory.
 
 Overlap is measured in metres: hand-drawn shared borders are snapped
 together, so two neighbours can disagree by a centimetre at their common
@@ -10,14 +11,12 @@ two territories is a real overlap and fails the test.
 
 import json
 import math
-from pathlib import Path
 
 import pytest
 
+import data.db as db
 from core.location import evaluate_location, point_in_polygon
-from core.models import Territory
-
-TERRITORY_FILE = Path(__file__).resolve().parent.parent / "data" / "territories.geojson"
+from data.territory_file import TERRITORY_FILE, load_territories
 
 # Metres per degree at Lisbon's latitude (about 38.7° N).
 METRES_PER_DEG_LNG = 86_900
@@ -26,10 +25,10 @@ METRES_PER_DEG_LAT = 110_574
 OVERLAP_TOLERANCE_M = 0.5
 SAMPLE_STEP_M = 1.0
 
-# Rough box around central Lisbon, written as (lng, lat) like GeoJSON.
-# Catches swapped coordinates, which would land somewhere in Ethiopia.
-LISBON_LNG = (-9.25, -9.05)
-LISBON_LAT = (38.68, 38.80)
+# Rough box around Lisbon and Carcavelos (Nova SBE), as (lng, lat) like
+# GeoJSON. Catches swapped coordinates, which would land in Ethiopia.
+LISBON_LNG = (-9.40, -9.05)
+LISBON_LAT = (38.65, 38.80)
 
 
 def load_features():
@@ -82,17 +81,19 @@ def deepest_overlap_m(ring_a, ring_b):
     return deepest
 
 
-def as_territories(features):
-    return [
-        Territory(id=f"t{i}", name=f["properties"]["name"], boundary=f["geometry"])
-        for i, f in enumerate(features)
-    ]
-
-
 # -- R-T01: every territory is a named, closed polygon in Lisbon --------------
 
-def test_file_has_the_twelve_starting_territories():
-    assert len(load_features()) == 12
+def test_file_has_the_thirteen_starting_territories():
+    assert len(load_features()) == 13
+
+
+def test_app_loader_reads_every_territory_with_its_permanent_id():
+    """The real loader the app uses accepts the file (it raises on any
+    R-T01 problem) and keeps each territory's id from the file."""
+    territories = load_territories()
+    file_ids = [f["properties"]["id"] for f in load_features()]
+    assert [t.id for t in territories] == file_ids
+    assert len(set(file_ids)) == 13
 
 
 def test_every_territory_has_a_unique_name():
@@ -150,12 +151,13 @@ def test_overlap_check_allows_a_shared_border():
     "place, lat_lng, expected_name",
     [
         ("Jardim do Alto de Santa Catarina", (38.70963, -9.14765), "Santa Catarina"),
-        ("K Urban Beach Club", (38.70386, -9.15543), "Santos – Ribeira"),
-        ("Rua da Rosa, middle", (38.7133, -9.1456), "Bairro Alto – Rua da Rosa"),
+        ("K Urban Beach Club", (38.70386, -9.15543), "After8"),
+        ("Rua da Rosa, middle", (38.7133, -9.1456), "Shortys"),
+        ("Nova SBE main building", (38.6782, -9.3259), "Nova SBE Campus"),
     ],
 )
 def test_known_places_match_their_territory(place, lat_lng, expected_name):
-    territories = as_territories(load_features())
+    territories = load_territories()
     result, territory_id = evaluate_location(lat_lng, None, territories)
     assert result == "matched", place
     assert next(t.name for t in territories if t.id == territory_id) == expected_name
@@ -163,6 +165,49 @@ def test_known_places_match_their_territory(place, lat_lng, expected_name):
 
 def test_largo_de_camoes_is_outside_every_territory():
     """Gap case (R-T02): a drink here counts for the season only."""
-    result, territory_id = evaluate_location((38.71057, -9.14343), None, as_territories(load_features()))
+    result, territory_id = evaluate_location((38.71057, -9.14343), None, load_territories())
     assert result == "outside"
     assert territory_id is None
+
+
+# -- Copying the file into the database ----------------------------------
+
+class FakeTable:
+    def __init__(self):
+        self.upserted = None
+
+    def upsert(self, rows):
+        self.upserted = rows
+        return self
+
+    def execute(self):
+        return self
+
+
+class FakeClient:
+    def __init__(self):
+        self.tables = {}
+
+    def table(self, name):
+        return self.tables.setdefault(name, FakeTable())
+
+
+def test_upsert_territories_sends_id_name_and_outline(monkeypatch):
+    client = FakeClient()
+    monkeypatch.setattr(db, "get_client", lambda: client)
+    territories = load_territories()
+
+    db.upsert_territories(territories)
+
+    rows = client.tables["territories"].upserted
+    assert [row["id"] for row in rows] == [t.id for t in territories]
+    assert rows[0] == {"id": territories[0].id, "name": territories[0].name, "boundary": territories[0].boundary}
+    assert set(rows[0]["boundary"]) == {"type", "coordinates"}  # no geojson.io colours in the database
+
+
+def test_upsert_territories_with_nothing_to_copy_does_not_call_the_database(monkeypatch):
+    def fail():
+        raise AssertionError("database should not be called")
+
+    monkeypatch.setattr(db, "get_client", fail)
+    db.upsert_territories([])

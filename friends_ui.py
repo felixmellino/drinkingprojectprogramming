@@ -1,0 +1,81 @@
+"""Private friend controls for the authenticated Profile page."""
+import streamlit as st
+from httpx import RequestError
+from postgrest.exceptions import APIError
+
+import data.db as db
+from core.friends import search_usernames
+
+
+def show_friends(player_id: str):
+    st.header("Friends")
+    st.caption("Your friends list is private. Search finds usernames across the app.")
+    if st.button("Refresh friends"):
+        st.rerun()
+    try:
+        users = db.list_public_usernames()
+        relationships = db.list_friendships(player_id)
+    except (APIError, RuntimeError, OSError, RequestError):
+        st.error("Friends are unavailable. Please try again later.")
+        return
+    names = {p["id"]: p["display_name"] for p in users}
+    by_other = {r["recipient_id"] if r["sender_id"] == player_id else r["sender_id"]: r for r in relationships}
+
+    def action(label, other, operation):
+        if st.button(label, key=f"friend_{operation}_{other}"):
+            try:
+                db.change_friendship(player_id, other, operation)
+            except ValueError as exc:
+                st.error(str(exc))
+            except APIError as exc:
+                if exc.code == "40001":
+                    st.error("This request changed. Refresh friends and try again.")
+                else:
+                    st.error("Could not update friends. Please try again later.")
+            except (RuntimeError, OSError, RequestError):
+                st.error("Could not update friends. Please try again later.")
+            else:
+                st.rerun()
+
+    st.subheader("Incoming requests")
+    incoming = [(other, r) for other, r in by_other.items() if r["status"] == "pending" and r["recipient_id"] == player_id]
+    if not incoming:
+        st.caption("No incoming requests.")
+    for other, _ in incoming:
+        st.text(names.get(other, "Unknown player"))
+        action("Accept", other, "accept")
+        action("Decline", other, "decline")
+
+    st.subheader("Your friends")
+    accepted = sorted((other for other, r in by_other.items() if r["status"] == "accepted"), key=lambda other: names.get(other, "").casefold())
+    if not accepted:
+        st.caption("No friends yet. Search for a username below.")
+    for other in accepted:
+        st.text(names.get(other, "Unknown player"))
+        action("Remove friend", other, "remove")
+
+    st.subheader("Outgoing requests")
+    outgoing = [other for other, r in by_other.items() if r["status"] == "pending" and r["sender_id"] == player_id]
+    if not outgoing:
+        st.caption("No outgoing requests.")
+    for other in outgoing:
+        st.text(names.get(other, "Unknown player"))
+        action("Cancel request", other, "cancel")
+
+    st.subheader("Find players")
+    query = st.text_input("Search usernames", max_chars=80)
+    results = search_usernames(query, users, player_id)
+    if query.strip() and not results:
+        st.info("No matching usernames found.")
+    for user in results:
+        other = user["id"]
+        st.text(user["display_name"])
+        status = by_other.get(other, {}).get("status")
+        if status == "accepted":
+            st.caption("Already friends")
+        elif status == "pending":
+            st.caption("Request pending — see requests above.")
+        else:
+            if status == "declined":
+                st.caption("After a decline, wait 10 minutes before sending another request.")
+            action("Send friend request", other, "request")

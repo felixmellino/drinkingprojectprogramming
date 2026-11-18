@@ -1,0 +1,46 @@
+.st-key-wego_bottom_nav {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: min(720px, calc(100% - 24px)); z-index: 1000;
+  padding: 8px 10px; border: 1px solid #dce5dc; border-radius: 24px;
+  background: #fffffff5; box-shadow: 0 8px 32px #19392f1c;
+  backdrop-filter: blur(12px);
+}
+.st-key-wego_bottom_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 4px; align-items: center; }
+.st-key-wego_bottom_nav [data-testid="stColumn"] { min-width: 0 !important; width: 0 !important; flex: 1 1 0 !important; }
+.st-key-wego_bottom_nav button {
+  display: flex; flex-direction: column; gap: 4px; justify-content: center;
+  width: 100%; min-height: 56px; padding: 6px 2px;
+  border: 0; border-radius: 14px; color: #576a60; background: transparent;
+}
+.st-key-wego_bottom_nav button [data-testid="stIconMaterial"] { font-size: 23px; }
+.st-key-wego_bottom_nav button > div { width: 100%; }
+.st-key-wego_bottom_nav button [data-has-shortcut] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; }
+.st-key-wego_bottom_nav button p { font-size: 0.7rem; line-height: 1.15; font-weight: 650; white-space: nowrap; }
+.st-key-wego_bottom_nav button:hover { background: #edf4e7; color: #176c50; }
+.st-key-wego_nav_checkin { align-items: center; gap: 1px; }
+.st-key-wego_nav_checkin [data-testid="stButton"] { display: flex; justify-content: center; }
+.stApp .st-key-wego_bottom_nav .st-key-wego_nav_checkin button {
+  width: 62px; height: 62px; min-height: 62px; margin-top: -26px;
+  border: 5px solid #f5f7f2; border-radius: 50%;
+  background: #176c50; color: #fff; box-shadow: 0 4px 12px #176c5026;
+}
+.st-key-wego_bottom_nav .st-key-wego_nav_checkin button [data-testid="stIconMaterial"] { font-size: 34px; }
+/* Keep the native button's accessible name while displaying the large plus. */
+.st-key-wego_nav_checkin button [data-testid="stMarkdownContainer"] {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap;
+}
+.st-key-wego_nav_checkin [data-testid="stCaptionContainer"] { width: 100%; text-align: center; color: #176c50; font-size: 0.7rem; font-weight: 700; }
+.st-key-wego_nav_checkin [data-testid="stCaptionContainer"] p { text-align: center; color: #176c50; font-size: 0.7rem; font-weight: 700; }
+.stApp:has(.st-key-wego_bottom_nav) [data-testid="stMain"] [data-testid="stMainBlockContainer"] { padding-bottom: 10rem; }
+.stApp:has(.st-key-wego_bottom_nav) [data-testid="stSidebar"],
+.stApp:has(.st-key-wego_bottom_nav) button[aria-label="Expand sidebar"],
+.stApp:has(.st-key-wego_bottom_nav) button[aria-label="Collapse sidebar"] { display: none; }
+@media (max-width: 480px) {
+  .st-key-wego_bottom_nav { width: calc(100% - 16px); padding: 7px 4px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); border-radius: 20px; }
+  /* Six destinations: let long labels wrap and use the full button width. */
+  .st-key-wego_bottom_nav button { padding: 6px 0; }
+  .st-key-wego_bottom_nav button p { font-size: 0.6rem; letter-spacing: -0.01em; white-space: normal; word-break: normal; overflow-wrap: normal; text-align: center; }
+  .stApp .st-key-wego_bottom_nav .st-key-wego_nav_checkin button { width: 58px; height: 58px; min-height: 58px; }
+}

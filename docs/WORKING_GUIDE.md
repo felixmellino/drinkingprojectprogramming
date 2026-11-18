@@ -39,12 +39,13 @@ connection.
 | File | What it means, in one sentence |
 | --- | --- |
 | `models.py` | Defines the "things" in the game — Player, Lobby, Territory, DrinkEntry, etc. — just their labels and fields, nothing else. |
-| `constants.py` | Every tunable number in one place: points per drink, the GPS tolerance, the duplicate-check window. Change a rule here, nowhere else. |
+| `constants.py` | Legacy scoring/window constants plus shared GPS, minigame and photo lifecycle settings. New scoring settings live together in `scoring_v1.py` and are snapshotted per season. |
 | `auth.py` | Turns a PIN into a scrambled code so the real PIN is never stored, and checks a typed PIN against it at login. |
 | `lobbies.py` | Creating a player, creating a lobby (with an invite code), joining a lobby, and setting up that lobby's season. |
 | `game_window.py` | One job: "is this moment inside Thursday-noon-to-Sunday-evening?" Drinks only count inside that window. |
-| `location.py` | Checks whether a drink's GPS location falls inside a territory's drawn area, and whether the phone's GPS agrees with the photo's own location tag. |
-| `scoring.py` | Works out how many points a drink is worth (beer and wine scale with amount; shots and long drinks are flat). |
+| `location.py` | Checks whether the phone's GPS reading is accurate enough (50 m) and which territory's drawn area it falls inside. |
+| `scoring.py` | Preserves the historical beer/wine-unit and flat Shot/long-drink calculator for legacy seasons. |
+| `scoring_v1.py` | The new fixed size table, frozen season rules, lobby-time window, cooldown/correction checks and exact quarter-point ownership replay. |
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |
 | `leaderboard.py` | The same tie-breaking idea as territories, but for the whole season's ranking instead of one territory. |
@@ -66,7 +67,7 @@ contains no rules of its own — if you want to know whether something is
 | `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
-| `pages/3_Check_in.py` | Log a drink: pick the type and amount, take a photo, enter your location, and submit. |
+| `pages/3_Check_in.py` | Take a photo, pick the drink/size, use the phone-location button and submit. |
 | `pages/4_Standings.py` | Shows the season leaderboard and, for each territory, who currently owns it. |
 
 Every page follows the same shape: ask `data/db.py` for the data it needs,
@@ -97,6 +98,7 @@ the docs — if they disagree, that's a bug to fix, not a detail to shrug off.
 | `GAME.md` → Points | `core/scoring.py` |
 | `GAME.md` → Territories, Ownership | `core/location.py`, `core/territories.py` |
 | `RULES.md` R-R01 (tie rule) | `core/territories.py`'s `replay_leader` |
+| `RULES.md` R-T01, R-T02 (territory set, no overlap) | `data/territories.geojson`, read by `data/territory_file.py` and checked by `core/territories.py`'s `parse_territories`; copied into the database by `shared.get_territories()`; overlap checked in `tests/test_territory_data.py` |
 | `GAME.md` → Minigames | `core/minigames.py` |
 | `SCREENS.md` | `pages/*.py` |
 | `OPEN_DECISIONS.md` items not yet decided (like D-01) | A placeholder that does nothing yet, e.g. `core/scoring.py`'s `apply_owner_modifier` — already wired in, waiting for the real rule |
@@ -114,7 +116,7 @@ explain all of it.
 | Block | Owns these files | In plain words |
 | --- | --- | --- |
 | **A. Identity & Lobbies** | `core/auth.py`, `core/lobbies.py`, `core/game_window.py`, `pages/1_Profile.py`, `pages/2_Lobby.py` | Accounts, logging in, creating/joining lobbies, and the Thursday-to-Sunday time window. |
-| **B. Location & Territories** | `core/location.py`, `core/territories.py` (picks up `pages/5_Map.py` later) | The hardest, most technical block: matching GPS to a territory, and working out who owns each one. |
+| **B. Location & Territories** | `core/location.py`, `core/territories.py`, `phone_location.py`, `map_ui.py`, `pages/5_Map.py` | The hardest, most technical block: matching GPS to a territory, and working out who owns each one. |
 | **C. Drink Entries & Scoring** | `core/scoring.py`, `core/checkins.py`, `pages/3_Check_in.py` | The biggest rulebook: how many points a drink is worth, and all the reasons a check-in can be accepted or rejected. |
 | **D. Standings & Data layer** | `core/leaderboard.py`, `data/db.py`, `schema.sql`, the real Supabase project, `pages/4_Standings.py` | The season ranking, the one file that talks to the database, and actually setting up the live database. |
 
@@ -203,3 +205,66 @@ own block from the table above):
    it's merged into main.
 
 Repeat from step 4 for the next small piece of your block.
+
+## Drink Entries presentation (Drink Entries & Scoring block)
+
+Check-in and Lobby photos share `drink_entry_ui.py` and
+`assets/drink_entries.css`. The helper renders escaped headings/context and
+simple decorative SVGs; the stylesheet applies only when that page header is
+present. Native Streamlit inputs keep their validation, labels and keyboard
+controls. Change the colors/spacing there instead of changing game rules or
+the shared account/navigation code. No new frontend dependency is needed.
+
+Check the three-step check-in on a phone-width screen, category/size changes,
+Shot without a size field, the points preview, the closed-window/cooldown
+messages, correction and confirmed image deletion. Photo management remains
+available after a failed image download; deletion keeps the score. The
+automated workflows are in `tests/test_scoring_ui.py` and
+`tests/test_photo_lifecycle.py`, including hostile display text and download
+failure. Real camera/GPS and Supabase setup still need the integration checks
+in `docs/SCORING_IMPLEMENTATION.md`.
+
+The Standings page now shares the visual header and uses `standings_ui.py`
+with `assets/standings.css` for the personal summary, ranked rows and territory
+cards. It displays the existing core helper results, preserving their exact
+quarter-points and tie order. It makes no new database writes. Keep future
+Data-block changes in the existing core/repository helpers; use the UI module
+for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
+unranked/empty states, service failures and escaped public display text.
+
+Authenticated pages now get the shared five-button bottom bar from
+`app_navigation.py`, called only after `shared.require_login` verifies the
+account. The plus opens Check-in; Leaderboard and Photo history are to its
+right. Use native `st.switch_page` to keep login/session state; do not replace
+these controls with hard browser links. Profile and Lobby retain their own
+workflows. `assets/navigation.css` provides the fixed bar and content clearance.
+
+Check-in requires a camera photo before rendering drink/size choices. Its
+Location card calls `phone_location.track_location()`, which follows the
+phone's GPS automatically (no button); `current_location()` then validates the
+newest reading with `core.location.parse_phone_reading`. R-L01–R-L04 accept at
+most 50 m uncertainty and 60 s age and ignore photo GPS. No manual coordinate
+inputs remain. The Map page (`pages/5_Map.py`, drawn by `map_ui.py`) uses the
+same tracker plus `core.territories.capture_status` for "points needed to take it". Photo history lists up to four authorized images per page,
+with cards rendered by `photo_history_ui.py`; View details retains correction
+and deletion controls. Keep inline image bytes so private images never get a
+public Streamlit media URL. Test the routes, photo gate, gallery paging,
+entry selection and membership denial alongside the existing workflow tests.
+
+## Profile friends (Identity block)
+
+`pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
+contains search and request rules and needs no database. `data/db.py`
+fetches only public usernames for search, loads the current player's
+relationships, validates an action, then calls `save_friendship` to save
+it only if the relationship version has not changed. The SQL transaction
+serializes updates for a player pair, including the first request.
+Apply `migrations/005_friendships.sql` once to an existing database.
+No Player fields or lobby behavior change. See RULES.md F1–F5.
+
+Verify with `python -m pytest tests/test_friends.py tests/test_friends_ui.py tests/test_friends_db.py -q`. With a configured database,
+use two accounts: search, request, accept, check both lists, remove,
+request again, cancel, request again and decline. Try again immediately
+(rejected), then at ten minutes (allowed). A third account must see
+neither friendship nor requests. Restart Streamlit and log back into both
+accounts to confirm saved requests/friends and decline timestamps survive.

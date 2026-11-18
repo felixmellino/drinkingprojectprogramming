@@ -28,9 +28,19 @@ WINDOW_END_TIME = time(23, 59, 59)
 
 DUPLICATE_WINDOW_SECONDS = 120
 
-# -- location evidence (D-09/D-10 in OPEN_DECISIONS.md) --------------------
+# -- location (R-L02 in RULES.md) ---------------------------------------
+# A phone reading may be off by at most this many metres; worse is uncertain.
 
-GPS_MISMATCH_TOLERANCE_M = 200.0
+MAX_GPS_ACCURACY_M = 50.0
+
+# A phone reading older than this many seconds is not used (R-L04).
+MAX_GPS_AGE_SECONDS = 60
+
+# -- photo privacy (R7 in RULES.md) -------------------------------------
+
+PHOTO_RETENTION_DAYS = 30
+# Allow a failed database save to be retried before removing its upload.
+UNLINKED_PHOTO_GRACE_HOURS = 24
 
 # -- season length (D-06 in OPEN_DECISIONS.md) ------------------------------
 # Calendar months are ambiguous; these day counts are a placeholder.

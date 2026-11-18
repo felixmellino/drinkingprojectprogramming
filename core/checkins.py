@@ -1,4 +1,7 @@
-"""Creating and validating drink entries."""
+"""Legacy check-in creation, preserved for existing seasons.
+
+New seasons use core.scoring_v1.create_scored_entry and database acceptance.
+"""
 
 from __future__ import annotations
 
@@ -54,7 +57,7 @@ def create_drink_entry(
     amount: float | None,
     photo_ref: str,
     device_gps: tuple[float, float] | None,
-    photo_gps: tuple[float, float] | None,
+    accuracy_m: float | None,
     submitted_at: datetime,
     territories: list[Territory],
     recent_entries: list[DrinkEntry],
@@ -65,7 +68,7 @@ def create_drink_entry(
     if is_duplicate(membership_id, drink_type, submitted_at, recent_entries):
         raise CheckinRejected("duplicate_check_in")
 
-    location_check_result, territory_id = evaluate_location(device_gps, photo_gps, territories)
+    location_check_result, territory_id = evaluate_location(device_gps, accuracy_m, territories)
     if location_check_result in ("unavailable", "uncertain"):
         raise CheckinRejected(f"location_{location_check_result}")
 
