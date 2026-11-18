@@ -30,8 +30,9 @@ Source: team decision, 2026-11-17.
 ## Territories
 
 ### R-T01 Territory set
-The game starts with 12 hand-drawn Territories in Lisbon: 8 in Bairro Alto,
-Santa Catarina, and 3 in Santos. Their outlines live in one shared file,
+The game starts with 13 hand-drawn Territories: in Lisbon 8 in Bairro Alto,
+Santa Catarina and 3 in Santos, plus the Nova SBE campus in Carcavelos
+(for playing and demoing on campus). Their outlines live in one shared file,
 `data/territories.geojson`, as GeoJSON Polygons with a display `name`
 (for example "Shortys") and a short, permanent `id` (for example
 `shortys`: lowercase letters and digits, words joined by hyphens). The

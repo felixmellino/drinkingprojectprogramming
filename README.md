@@ -14,6 +14,9 @@ before submission.
 
 Requires Python 3.11+.
 
+SDK upgrade and live photo-storage verification, including daily GitHub
+Actions cleanup setup: [storage verification](docs/STORAGE_SDK_VERIFICATION.md).
+
 The team uses one shared Supabase project. Ask the Data owner for its
 credentials through a secure transfer and put them in the ignored local
 secrets file. If that project already has the schema, do not run `schema.sql`
@@ -31,12 +34,12 @@ in a real Supabase project's URL and key (never commit the real file — it's
 gitignored). Use the **server-only service-role key** for `SUPABASE_KEY`; never expose it
 in browser code. The account tables deny access through public/anonymous keys.
 
-New Supabase projects now show keys named "Publishable key" and "Secret
-key" instead of `anon`/`service_role`. The pinned `supabase==2.9.1` client
-only accepts the older JWT-style keys (starting `eyJ...`), so use the
-**legacy** `service_role` key: on the API Keys settings page, click "View
-legacy API keys" and copy `service_role` from there, not the new `sb_secret_...`
-one — that one raises `SupabaseException: Invalid API key`.
+The app pins `supabase==2.34.1` to support the current Storage bucket
+response, including its `versioning_status` field. Use Python 3.11 or newer
+(Python 3.12 is also supported). After pulling this upgrade, reinstall
+`requirements.txt` in your local environment and restart the app. Update
+the deployed environment too. Keep using the team's server-only credentials;
+an SDK upgrade does not require recreating the database or changing keys.
 
 For a **new database**, apply `schema.sql` via the Supabase SQL editor.
 Territories load automatically from `data/territories.geojson` into the
