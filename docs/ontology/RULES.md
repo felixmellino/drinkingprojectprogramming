@@ -68,16 +68,19 @@ Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
 ## Location
 
 ### R-L01 Location source
-A check-in's location is the phone's GPS reading taken when the player
-submits. GPS data stored in the photo is not used.
+The app follows the phone's GPS automatically while the Check-in or Map
+page is open; there is no button. The browser asks for permission once. A
+check-in uses the newest reading at the moment the player submits. GPS data
+stored in the photo is not used. Readings stay in the open session only and
+are never saved; only the check-in's result and territory are stored.
 
 | Case | Outcome |
 | --- | --- |
-| Allowed | A phone reading from the "Use my location" button on the Check-in page. |
-| Rejected | No phone reading (permission denied, no signal, timeout) or a malformed one: the check-in is not saved and the player retries (R2). Typed-in coordinates are not accepted. |
-| Boundary | A photo with GPS data that points somewhere else does not change the result. |
+| Allowed | The newest automatic phone reading (R-L02, R-L04 apply). |
+| Rejected | No phone reading (permission denied, no signal, unsupported browser) or a malformed one: Submit stays disabled, nothing is saved, and the page explains what to do (R2). Typed-in coordinates are not accepted. |
+| Boundary | A photo with GPS data that points somewhere else does not change the result. With the app closed or the phone locked, tracking pauses; the next reading arrives when the page is open again. |
 
-Source: Location & Territories block (Felix), 2026-11-17. Resolves D-09.
+Source: Location & Territories block (Felix), 2026-11-17, updated 2026-11-18 (automatic tracking). Resolves D-09.
 
 ### R-L02 Accuracy limit
 The phone reports how many metres its reading may be off. A reading off by
@@ -103,6 +106,19 @@ A point in a gap or outside every Territory counts as outside (R1).
 | Boundary | A point exactly on a shared border is assigned to one of the two Territories; which one is not defined. |
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-10 (edge handling).
+
+### R-L04 Fresh readings only
+A reading may be at most 60 seconds old when it is used. The app refreshes
+the reading at least every 30 seconds while the page is open, and whenever
+the player moves more than 20 m.
+
+| Case | Outcome |
+| --- | --- |
+| Allowed | A reading up to and including 60 s old. |
+| Rejected | A reading older than 60 s: Submit stays disabled until a fresh one arrives. A reading time more than 60 s in the future (wrong phone clock or tampering) is invalid. |
+| Boundary | Exactly 60 s old is accepted. |
+
+Source: Location & Territories block (Felix), 2026-11-18. Resolves D-10 (age).
 
 ## Direction agreed on 17 November 2026
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from core.models import DrinkEntry
-from core.territories import parse_territories, replay_leader, territory_owner, territory_standings
+from core.territories import capture_status, parse_territories, replay_leader, territory_owner, territory_standings
 
 TERRITORY_ID = "territory-a"
 
@@ -138,3 +138,34 @@ def test_parse_territories_rejects_duplicate_names():
 def test_parse_territories_rejects_a_non_collection():
     with pytest.raises(ValueError, match="FeatureCollection"):
         parse_territories({"type": "Feature"})
+
+
+# -- capture_status: what the map tells you about a territory ----------------
+
+def test_unclaimed_territory_is_free():
+    assert capture_status([], None, "me") == ("free", 0)
+
+
+def test_you_own_it_and_lead_by_the_gap_to_the_runner_up():
+    assert capture_status([("me", 7), ("B", 4)], "me", "me") == ("yours", 3)
+
+
+def test_you_own_it_alone_and_lead_by_all_your_points():
+    assert capture_status([("me", 5)], "me", "me") == ("yours", 5)
+
+
+def test_you_own_it_after_a_tie_and_lead_by_zero():
+    """R-R01: whoever reached the tie first keeps it."""
+    assert capture_status([("me", 4), ("B", 4)], "me", "me") == ("yours", 0)
+
+
+def test_someone_else_owns_it_you_need_one_more_than_the_gap():
+    assert capture_status([("B", 6), ("me", 2)], "B", "me") == ("theirs", 5)
+
+
+def test_you_have_no_points_there_yet():
+    assert capture_status([("B", 3)], "B", "me") == ("theirs", 4)
+
+
+def test_tied_but_not_owner_needs_one_point():
+    assert capture_status([("B", 4), ("me", 4)], "B", "me") == ("theirs", 1)

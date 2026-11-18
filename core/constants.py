@@ -33,6 +33,9 @@ DUPLICATE_WINDOW_SECONDS = 120
 
 MAX_GPS_ACCURACY_M = 50.0
 
+# A phone reading older than this many seconds is not used (R-L04).
+MAX_GPS_AGE_SECONDS = 60
+
 # -- photo privacy (R7 in RULES.md) -------------------------------------
 
 PHOTO_RETENTION_DAYS = 30

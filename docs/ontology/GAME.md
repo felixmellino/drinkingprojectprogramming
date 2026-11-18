@@ -65,8 +65,8 @@ settings/timezone/dates are frozen; changes start in a later season.
 
 The inherited season choices remain 7, 30 and 91 elapsed days. Calendar-month
 semantics, host roles and leaving/absence workflows remain team review items.
-Phone GPS capture, accuracy and borders are decided (R-L01–R-L03); the maximum
-age of a reading remains open (D-10).
+Phone GPS is followed automatically; accuracy, borders and reading age are
+decided (R-L01–R-L04).
 Friend confirmation remains a separate proposal, not an active v1 fallback.
 
 ## Minigames

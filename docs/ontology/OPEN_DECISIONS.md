@@ -15,7 +15,7 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-07 | Minigame interruption | If a Minigame is interrupted, does it count as the Player's one play for that evening? |
 | D-08 | Ownership timing | Implemented on Scoring: prior owner paid before captures; serialized database event order; corrections replay affected history. Exact same-event tie default is recorded in D-17. See [v1](SCORING_V1.md). |
 | D-09 | Location source | **Decided 2026-11-17**, see [R-L01](RULES.md#location): phone GPS at submission only, photo GPS is not used. |
-| D-10 | Location acceptance | Uncertainty and edge handling **decided 2026-11-17**, see [R-L02, R-L03](RULES.md#location). Still open: how old a phone reading may be. |
+| D-10 | Location acceptance | **Decided 2026-11-17/18**, see [R-L02, R-L03, R-L04](RULES.md#location): at most 50 m inaccuracy, the measured point decides at borders, readings at most 60 s old. |
 | D-11 | Photo validation | Trust-based category/size selection, with lobby photo review, is selected for the proposal; exact shot volume and stronger reuse detection remain unspecified. See [P-S02/P-S04](SCORING_PROPOSAL.md#p-s04). |
 | D-12 | Check-in limits | Implemented on Scoring: TWO-minute shared per-member/lobby cooldown; retain rejected form; retries award once; no fixed nightly count. See [v1](SCORING_V1.md). |
 | D-13 | Privacy | **Photo lifecycle decided 2026-11-17**, see R7: owner deletion preserves the score; photos expire 30 days after the season ends. The [photo workflow](WORKFLOWS.md#save-and-view-a-check-in-photo) defines stored data and lobby access. Still needed before real use: privacy contact, published notice, provider region and backup/deletion procedures, and scheduled cleanup. |

@@ -101,3 +101,24 @@ def territory_standings(entries: list[DrinkEntry], territory_id: str) -> list[tu
     for _ts, membership_id, points in _territory_events(entries, territory_id):
         totals[membership_id] = totals.get(membership_id, 0) + points
     return sorted(totals.items(), key=lambda item: item[1], reverse=True)
+
+
+def capture_status(rows: list[tuple[str, int]], owner: str | None, me: str) -> tuple[str, int]:
+    """What a territory means for one player on the map.
+
+    `rows` are the territory standings (membership_id, points) and `owner`
+    the current owner, both from the functions above. Returns one of:
+    - ("free", 0): nobody owns it yet; the next accepted drink there claims it.
+    - ("yours", lead): you own it; lead = how far ahead of the runner-up you are.
+    - ("theirs", needed): someone else owns it; needed = points you must add
+      to take it. A tie keeps the owner (R-R01), so you need one more point
+      than the gap.
+    Only base points from drinks in the territory count; owner income never
+    claims or defends a territory."""
+    points = dict(rows)
+    if owner is None:
+        return "free", 0
+    if owner == me:
+        others = [p for member, p in rows if member != me]
+        return "yours", points.get(me, 0) - (max(others) if others else 0)
+    return "theirs", points.get(owner, 0) - points.get(me, 0) + 1

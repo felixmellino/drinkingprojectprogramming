@@ -1,8 +1,8 @@
 """Log a drink with a required camera photo and the phone's GPS.
 
-The location comes from the "Use my location" button (phone_location.py),
-which asks the browser for the phone's GPS and its accuracy (R-L01, R-L02).
-GPS stored in the photo is not used.
+The location is followed automatically while the page is open
+(phone_location.py): the newest phone GPS reading is used if it is at most
+60 s old and accurate to 50 m (R-L01, R-L02, R-L04). Photo GPS is not used.
 """
 
 from dataclasses import replace
@@ -22,9 +22,9 @@ from core.checkins import CheckinRejected, create_drink_entry
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
-from core.location import evaluate_location, parse_phone_reading
+from core.location import evaluate_location
 from drink_entry_ui import context_line, page_header, section_heading
-from phone_location import phone_location_button
+from phone_location import current_location, track_location
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -120,26 +120,28 @@ with st.container(key="drink_ui_panel_selection"):
 
 with st.container(key="drink_ui_panel_location"):
     section_heading("03", "Location", "Your location assigns this drink to a territory.")
-    device_gps, accuracy_m, location_problem = parse_phone_reading(
-        phone_location_button(key=f"checkin_location_{photo_number}")
-    )
+    track_location()
+    device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
-        "not_requested": "Tap the button so we can check which territory you're in.",
-        "denied": "Location access is blocked. Allow location for this site in your browser settings, then tap the button again.",
-        "unavailable": "Your phone couldn't find its position. Move closer to a window or outside and tap the button again.",
-        "timeout": "Finding your position took too long. Tap the button again.",
+        "waiting": "Finding your location… Allow location access if your browser asks.",
+        "stale": "Your last location is more than a minute old. Finding a new one…",
+        "denied": "Location access is blocked. Allow location for this site in your browser settings, then reload the page.",
+        "unavailable": "Your phone can't find its position right now. Move closer to a window or outside.",
+        "timeout": "Finding your position is taking long. Keep the page open, it keeps trying.",
         "unsupported": "This browser can't share its location. Try another browser on your phone.",
-        "invalid": "Something went wrong reading your location. Tap the button again.",
+        "invalid": "Something went wrong reading your location. Reload the page.",
     }
-    if location_problem:
+    if location_problem in ("denied", "unsupported", "invalid"):
+        st.warning(location_messages[location_problem])
+    elif location_problem:
         st.caption(location_messages[location_problem])
     elif accuracy_m > MAX_GPS_ACCURACY_M:
         st.warning(
             f"Your location is only accurate to about {accuracy_m:.0f} m (we need {MAX_GPS_ACCURACY_M:.0f} m or better). "
-            "Step outside or wait a moment, then tap the button again."
+            "Step outside or wait a moment; it updates by itself."
         )
     else:
-        st.caption(f"Location found, accurate to about {accuracy_m:.0f} m.")
+        st.caption(f"Location found automatically, accurate to about {accuracy_m:.0f} m.")
     if modern and device_gps is not None and accuracy_m <= MAX_GPS_ACCURACY_M:
         try:
             territories = get_territories()
@@ -211,8 +213,8 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
             "unknown_drink_type": "Unrecognized drink type.",
             "missing_amount": "Enter an amount for this drink.",
             "duplicate_check_in": "You already logged this drink a moment ago.",
-            "location_unavailable": "We need your location. Tap “Use my location”, then submit again.",
-            "location_uncertain": "Your location isn't accurate enough yet. Tap “Update my location”, then submit again.",
+            "location_unavailable": "We need your location. Wait until it's found, then submit again.",
+            "location_uncertain": "Your location isn't accurate enough yet. Wait a moment, then submit again.",
         }
         st.error(messages.get(rejected.reason, rejected.reason))
     except PermissionError:

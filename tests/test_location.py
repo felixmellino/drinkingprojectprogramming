@@ -71,7 +71,7 @@ def test_overlapping_territories_are_uncertain():
     assert territory_id is None
 
 
-# -- parse_phone_reading: what the "Use my location" button sends back ----------
+# -- parse_phone_reading: what the automatic phone tracker sends ----------
 
 def test_phone_reading_is_turned_into_gps_and_accuracy():
     gps, accuracy, problem = parse_phone_reading({"lat": 38.7133, "lng": -9.1456, "accuracy_m": 12})
@@ -80,8 +80,8 @@ def test_phone_reading_is_turned_into_gps_and_accuracy():
     assert problem is None
 
 
-def test_button_not_pressed_yet():
-    assert parse_phone_reading(None) == (None, None, "not_requested")
+def test_no_reading_yet():
+    assert parse_phone_reading(None) == (None, None, "waiting")
 
 
 @pytest.mark.parametrize("error", ["denied", "unavailable", "timeout", "unsupported"])
@@ -115,3 +115,31 @@ def test_phone_reading_flows_into_the_location_check():
     assert evaluate_location(gps, accuracy, [TERRITORY]) == ("matched", TERRITORY.id)
     gps, accuracy, _ = parse_phone_reading({"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 80})
     assert evaluate_location(gps, accuracy, [TERRITORY]) == ("uncertain", None)
+
+
+# -- R-L04: a reading may be at most 60 seconds old --------------------
+
+NOW_MS = 1_800_000_000_000
+FRESH = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 10}
+
+
+@pytest.mark.parametrize("age_seconds", [0, 30, 60])
+def test_reading_up_to_60_seconds_old_is_used(age_seconds):
+    reading = {**FRESH, "taken_at_ms": NOW_MS - age_seconds * 1000}
+    assert parse_phone_reading(reading, now_ms=NOW_MS)[2] is None
+
+
+def test_reading_older_than_60_seconds_is_stale():
+    reading = {**FRESH, "taken_at_ms": NOW_MS - 60_001}
+    assert parse_phone_reading(reading, now_ms=NOW_MS) == (None, None, "stale")
+
+
+@pytest.mark.parametrize("taken_at", [None, "now", True, float("nan"), NOW_MS + 61_000])
+def test_missing_or_impossible_reading_time_is_invalid(taken_at):
+    reading = {**FRESH, "taken_at_ms": taken_at}
+    assert parse_phone_reading(reading, now_ms=NOW_MS) == (None, None, "invalid")
+
+
+def test_slightly_fast_phone_clock_is_tolerated():
+    reading = {**FRESH, "taken_at_ms": NOW_MS + 5_000}
+    assert parse_phone_reading(reading, now_ms=NOW_MS)[2] is None

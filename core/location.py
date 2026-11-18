@@ -1,4 +1,4 @@
-"""Matching the phone's GPS reading to a territory (R-L01 to R-L03).
+"""Matching the phone's GPS reading to a territory (R-L01 to R-L04).
 
 location_check_result meanings:
 - "unavailable": no phone GPS reading at all.
@@ -14,7 +14,9 @@ Photo GPS is not used (R-L01).
 
 from __future__ import annotations
 
-from core.constants import MAX_GPS_ACCURACY_M
+import math
+
+from core.constants import MAX_GPS_ACCURACY_M, MAX_GPS_AGE_SECONDS
 from core.models import Territory
 
 GPS = tuple[float, float]  # (lat, lng)
@@ -22,16 +24,22 @@ GPS = tuple[float, float]  # (lat, lng)
 BROWSER_LOCATION_ERRORS = {"denied", "unavailable", "timeout", "unsupported"}
 
 
-def parse_phone_reading(value: object) -> tuple[GPS | None, float | None, str | None]:
-    """Check what the browser's "Use my location" button sent back.
+def parse_phone_reading(
+    value: object, now_ms: float | None = None
+) -> tuple[GPS | None, float | None, str | None]:
+    """Check the newest reading the automatic phone tracker sent.
 
     Returns (device_gps, accuracy_m, problem). On success problem is None.
     Otherwise device_gps and accuracy_m are None and problem is one of:
-    "not_requested" (button not pressed yet), "denied", "unavailable",
-    "timeout", "unsupported" (reported by the browser), or "invalid"
-    (anything malformed, so a tampered request can't inject a location)."""
+    "waiting" (no reading yet), "denied", "unavailable", "timeout",
+    "unsupported" (reported by the browser), "stale" (older than
+    MAX_GPS_AGE_SECONDS, R-L04), or "invalid" (anything malformed, so a
+    tampered request can't inject a location).
+
+    `now_ms` is the current time in milliseconds since 1970. The app always
+    passes it; tests that don't care about age may leave it out."""
     if value is None:
-        return None, None, "not_requested"
+        return None, None, "waiting"
     if not isinstance(value, dict):
         return None, None, "invalid"
     if "error" in value:
@@ -44,6 +52,15 @@ def parse_phone_reading(value: object) -> tuple[GPS | None, float | None, str | 
         return None, None, "invalid"
     if not (-90 <= lat <= 90 and -180 <= lng <= 180 and accuracy >= 0):
         return None, None, "invalid"
+    if now_ms is not None:
+        taken_at = value.get("taken_at_ms")
+        if not isinstance(taken_at, (int, float)) or isinstance(taken_at, bool) or not math.isfinite(taken_at):
+            return None, None, "invalid"
+        age_seconds = (now_ms - taken_at) / 1000
+        if age_seconds < -MAX_GPS_AGE_SECONDS:  # far in the future: phone clock or tampering
+            return None, None, "invalid"
+        if age_seconds > MAX_GPS_AGE_SECONDS:
+            return None, None, "stale"
     return (float(lat), float(lng)), float(accuracy), None
 
 
