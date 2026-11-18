@@ -15,6 +15,7 @@ from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
+from app_navigation import bottom_navigation
 
 
 def require_login() -> str:
@@ -49,6 +50,7 @@ def require_login() -> str:
     if "player_id" not in st.session_state:
         show_accounts()
         st.stop()
+    bottom_navigation()
     return st.session_state["player_id"]
 
 

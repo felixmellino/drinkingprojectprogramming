@@ -26,7 +26,8 @@ unavailable; historical reset-code database objects are unused by the app.
 Check-in accepts camera JPEGs up to 10 MiB and 20 million pixels. The byte
 limit and image dimensions are checked before the pixels are decoded. The
 image is re-encoded with its orientation preserved and embedded metadata
-removed. GPS tags can support the location check. Saved entries keep the
+removed. Photo GPS is not used for the location check (R-L01); the phone's
+browser location and its reported accuracy are checked instead. Saved entries keep the
 verification result and territory, and have empty exact-coordinate fields.
 The photo setup migration clears exact coordinates from legacy entries too,
 preserving scores and territory assignments.

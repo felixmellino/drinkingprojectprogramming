@@ -67,7 +67,7 @@ contains no rules of its own — if you want to know whether something is
 | `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
-| `pages/3_Check_in.py` | Log a drink: pick the type and amount, take a photo, enter your location, and submit. |
+| `pages/3_Check_in.py` | Take a photo, pick the drink/size, use the phone-location button and submit. |
 | `pages/4_Standings.py` | Shows the season leaderboard and, for each territory, who currently owns it. |
 
 Every page follows the same shape: ask `data/db.py` for the data it needs,
@@ -205,6 +205,49 @@ own block from the table above):
    it's merged into main.
 
 Repeat from step 4 for the next small piece of your block.
+
+## Drink Entries presentation (Drink Entries & Scoring block)
+
+Check-in and Lobby photos share `drink_entry_ui.py` and
+`assets/drink_entries.css`. The helper renders escaped headings/context and
+simple decorative SVGs; the stylesheet applies only when that page header is
+present. Native Streamlit inputs keep their validation, labels and keyboard
+controls. Change the colors/spacing there instead of changing game rules or
+the shared account/navigation code. No new frontend dependency is needed.
+
+Check the three-step check-in on a phone-width screen, category/size changes,
+Shot without a size field, the points preview, the closed-window/cooldown
+messages, correction and confirmed image deletion. Photo management remains
+available after a failed image download; deletion keeps the score. The
+automated workflows are in `tests/test_scoring_ui.py` and
+`tests/test_photo_lifecycle.py`, including hostile display text and download
+failure. Real camera/GPS and Supabase setup still need the integration checks
+in `docs/SCORING_IMPLEMENTATION.md`.
+
+The Standings page now shares the visual header and uses `standings_ui.py`
+with `assets/standings.css` for the personal summary, ranked rows and territory
+cards. It displays the existing core helper results, preserving their exact
+quarter-points and tie order. It makes no new database writes. Keep future
+Data-block changes in the existing core/repository helpers; use the UI module
+for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
+unranked/empty states, service failures and escaped public display text.
+
+Authenticated pages now get the shared five-button bottom bar from
+`app_navigation.py`, called only after `shared.require_login` verifies the
+account. The plus opens Check-in; Leaderboard and Photo history are to its
+right. Use native `st.switch_page` to keep login/session state; do not replace
+these controls with hard browser links. Profile and Lobby retain their own
+workflows. `assets/navigation.css` provides the fixed bar and content clearance.
+
+Check-in requires a camera photo before rendering drink/size choices. Its
+Location card now calls `phone_location.py`: the browser asks for permission,
+then `core.location.parse_phone_reading` validates the returned coordinates and
+accuracy. R-L01–R-L03 accept at most 50 m uncertainty and ignore photo GPS.
+No manual coordinate inputs remain. Photo history lists up to four authorized images per page,
+with cards rendered by `photo_history_ui.py`; View details retains correction
+and deletion controls. Keep inline image bytes so private images never get a
+public Streamlit media URL. Test the routes, photo gate, gallery paging,
+entry selection and membership denial alongside the existing workflow tests.
 
 ## Profile friends (Identity block)
 
