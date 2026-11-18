@@ -14,9 +14,9 @@ editor. Do not rerun `schema.sql` on an existing project. New projects apply
 `schema.sql`, photo setup and migration 005 in that order. Migration 005 can
 be run again safely; it does not delete old entries or re-score old seasons.
 
-`005_friendships.sql`, merged from the Identity block, is a separate migration
-for Profile friends. Both files use the prefix `005`; identify them by their
-complete filenames. Existing databases need the friendship migration as well
+`006_friendships.sql`, merged from the Identity block, is a separate migration
+for Profile friends. It was previously named `005_friendships.sql`; only the filename changed.
+Do not rerun it if it was already applied under that name. Existing databases need the friendship migration as well
 for that feature. It is already included in `schema.sql` for fresh databases.
 
 Keep the server service-role credential in local/deployment secrets. The new

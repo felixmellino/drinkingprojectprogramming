@@ -211,7 +211,7 @@ four building blocks, and the team's workflow rules.
 
 ### Profile friends
 
-For existing databases, apply `migrations/005_friendships.sql` once after
+For existing databases, apply `migrations/006_friendships.sql` once after
 migration 004. Fresh databases running `schema.sql` already include it.
 Restart the app, log in and open **Profile**. Search any player's username
 (partial and case-insensitive), send a request, then use the recipient's
@@ -226,8 +226,9 @@ sessions. Real PostgreSQL concurrency, migration installation and saved
 state after a server restart still require verification against Supabase;
 see the Profile friends checklist in `docs/WORKING_GUIDE.md`.
 
-The two `005_...` files are separate migrations: `005_friendships.sql` adds
-friends, while `005_scoring_v1.sql` adds scoring. Existing databases need each
-file for its corresponding feature; applying one does not apply the other.
-Fresh databases already include friends in `schema.sql`, but still need
-`005_scoring_v1.sql` after photo setup as described above.
+Migration `005_scoring_v1.sql` adds scoring; `006_friendships.sql` adds
+friends. The friendship migration was previously named `005_friendships.sql`;
+only its filename changed. If the old filename was already applied, do not
+run it again under the new name. Existing databases need each feature's
+migration once. Fresh databases already include friends in `schema.sql`, but
+still need `005_scoring_v1.sql` after photo setup as described above.
