@@ -109,10 +109,62 @@ def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     page = open_checkin()
     assert not page.exception
     assert not page.radio and not any(item.label == "Submit" for item in page.button)
-    assert any("Take a photo to choose" in item.value for item in page.info)
+    assert 'checkin_pending_photo' not in page.session_state
     state["photo"] = captured
     page.run()
     assert not page.exception and radio(page, "Drink") and radio(page, "Size")
+
+
+def test_capture_unmounts_camera_and_retake_opens_fresh_camera(ui, monkeypatch):
+    state, _ = ui
+    camera = Mock(side_effect=lambda key: state['photo'] if key.endswith('_0') else None)
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
+    page = open_checkin()
+    assert camera.call_count == 1 and len(page.get('html')) == 1
+    capture = page.session_state['checkin_capture'][1]
+    radio(page, 'Drink').set_value('wine').run()
+    assert camera.call_count == 1, 'Details reruns must not remount a stopped camera'
+    assert page.session_state['checkin_capture'][1] == capture
+    button(page, 'Retake photo').click().run()
+    assert camera.call_count == 2
+    assert camera.call_args.kwargs['key'] == 'checkin_photo_1'
+    assert 'checkin_capture' not in page.session_state and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and not page.get('html') and state['calls'] == 0
+
+
+def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypatch):
+    state, _ = ui
+    camera = Mock(side_effect=lambda key: state['photo'] if key.endswith('_0') else None)
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
+    page = open_checkin()
+    set_location(page, state)
+    button(page, 'Submit').click().run()
+    assert not page.exception and any('Logged!' in item.value for item in page.success)
+    assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and button(page, 'New check-in')
+    page.session_state['checkin_open_camera'] = True
+    page.run()
+    assert not page.exception and camera.call_count == 2 and not page.radio
+
+
+def test_changing_context_discards_pending_photo(ui, monkeypatch):
+    state, _ = ui
+    page = open_checkin()
+    monkeypatch.setattr('shared.require_active_membership', lambda: ('another-member', 'lobby', 'season'))
+    page.run()
+    assert not page.exception and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and state['calls'] == 0
+
+
+def test_closing_camera_saves_nothing(ui, monkeypatch):
+    from camera_capture import CameraCancelled
+    state, _ = ui
+    monkeypatch.setattr('camera_capture.camera_photo', Mock(side_effect=CameraCancelled))
+    switch = Mock()
+    monkeypatch.setattr(st, 'switch_page', switch)
+    page = open_checkin()
+    assert not page.exception and state['calls'] == 0 and not page.radio
+    switch.assert_called_once_with('pages/2_Lobby.py')
 
 
 def test_location_starts_before_camera_capture(ui, monkeypatch):

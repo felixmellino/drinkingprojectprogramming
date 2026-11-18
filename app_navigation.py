@@ -31,6 +31,8 @@ def bottom_navigation(active: str | None = None, *, navigate=None) -> None:
             with column, st.container(key=f"wego_nav_{name}"):
                 if st.button(label, key=f"bottom_nav_{name}", icon=icon, width="stretch",
                              type="primary" if name == "checkin" else "tertiary"):
+                    if name == "checkin":
+                        st.session_state['checkin_open_camera'] = True
                     navigate(str(Path(__file__).parent / page))
                 if name == "checkin":
                     st.caption("Check in")

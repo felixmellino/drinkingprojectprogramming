@@ -24,10 +24,15 @@ These presentation choices introduce no new scoring or database rules.
   preview. Closed-window/cooldown messages appear before the form, and Submit
   spans the available width. Camera permission remains controlled by the browser.
 - Follow-up, 18 November 2026: tapping the central + mounts the camera
-  automatically with a compact heading. There is one shutter action after
-  browser permission; no separate Enable camera button or gallery picker.
-  The captured image stays in a rounded frame above the drink/size controls;
-  Retake clears that capture and opens the camera again. The camera stops
+  into a full-viewport stage, hiding page navigation while taking the photo.
+  The camera has a bottom-centre circular shutter, a front/back switch and
+  Close (returns to Lobby without saving). Browser chrome/permission prompts
+  remain browser-controlled; there is no separate Enable camera or gallery step.
+  Taking the photo automatically opens the form: rounded photo preview,
+  Retake, then drink/size controls and location. Retake discards the pending
+  capture and returns to the full-screen camera. Success shows the receipt;
+  New check-in or + starts the next photo. Pending photos are session-only,
+  bound to player/membership/season, and are not saved until Submit. The camera stops
   after capture, when backgrounded and when leaving the page. A blocked or
   unavailable camera has a clear message and Retry control.
 - Location tracking starts as soon as Check-in opens, while the player is

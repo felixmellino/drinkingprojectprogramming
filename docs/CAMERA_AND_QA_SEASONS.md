@@ -5,11 +5,25 @@ Browser permission is still required. `camera_capture.py` is the Streamlit
 bridge to `components/drink_camera/index.html`; it replaces the native
 camera widget's separate enable step without automating browser prompts.
 
-The component prefers the rear camera, uses no microphone, captures JPEG
-at at most 1600 pixels on its longest edge, and displays the image in a
-rounded frame. Capture stops the media stream. Retake clears the submitted
-component value, releases the old capture and opens a fresh stream. Navigation,
-backgrounding and late permission responses release the stream as well.
+The camera has its own full-viewport stage: a rear-camera preview, bottom-centre
+circular shutter, front/back switch and close button. It uses no microphone.
+Browser chrome and permission prompts remain controlled by the browser; this
+is an in-app camera, not a launch of the phone's native Camera application.
+Single-camera devices may return the same camera for either preference.
+
+Taking the photo automatically leaves the camera stage and opens the form,
+with a rounded photo preview, Retake, drink/size controls, location and Submit.
+The JPEG matches the preview's centre crop (including front-camera mirroring),
+and is at most 1600 pixels on its longest edge. Capture, switching cameras,
+closing, backgrounding and navigation stop the old media stream, including
+late permission responses. Retake opens a fresh full-screen camera.
+
+Validated pending photos live only in the signed-in Streamlit session and
+are bound to player, membership and season. GPS reruns retain that photo and
+submission ID without remounting the camera. Retake or a context change clears
+the old capture; a server restart loses an unsaved photo. Nothing is uploaded
+until Submit. Success clears pending bytes and keeps the receipt visible;
+New check-in or the navigation + explicitly starts another capture.
 
 The server validates the base64 transport and capture UUID, applies the
 existing byte/pixel/decode limits, strips metadata and retains a stable
@@ -41,7 +55,7 @@ season and starting location before capture.
 
 `node tests/camera_component.cjs` checks the actual camera JavaScript with
 synthetic media objects: automatic opening, no reopen on GPS rerenders,
-capture/retake, permission denial/retry, navigation and background cancellation.
+capture/crop/mirroring, front/back switch, close, permission denial/retry, navigation and background cancellation.
 It never requests a real camera. The optional isolated PostgreSQL suite in
 `tests/scoring_postgres.cjs` also checks the server's Wednesday 08:00/Sunday
 18:00 boundaries and QA-rule persistence after restart; see
