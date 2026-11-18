@@ -1,16 +1,16 @@
 """Profile menu and forms. Validation and saved data live in core/data."""
 from datetime import datetime, timezone
+from html import escape
+from pathlib import Path
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
-from core.leaderboard import season_leaderboard
-from core.scoring_v1 import utc
-from core.territories import territory_owner
+from core.profile_stats import all_time_stats, lobby_finished
+from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
 from friends_ui import show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
-from shared import get_territories
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 OPTIONS = [
@@ -26,7 +26,7 @@ def show_profile(player):
     show_picture_identity(player.id, player.id, st.session_state.get("player_display_name", player.display_name))
     view = st.session_state.get("profile_view", "menu")
     if view == "menu":
-        st.caption("Your account, friends and season progress.")
+        st.caption("Your account, friends and lifetime progress.")
         for key, label, icon in OPTIONS:
             if st.button(label, icon=icon, width="stretch", key=f"profile_{key}"):
                 st.session_state["profile_view"] = key
@@ -100,40 +100,33 @@ def show_security(player):
 
 def show_stats(player_id):
     st.header("My stats")
-    lobby_id = st.session_state.get("current_lobby_id")
-    if not lobby_id:
-        st.info("Choose a lobby on the Lobby page to see your stats.")
-        return
+    st.caption("All-time personal stats · Finished lobbies only")
     memberships = db.list_memberships_for_player(player_id)
-    member = next((m for m in memberships if m.lobby_id == lobby_id), None)
-    if not member:
-        st.warning("You no longer belong to this lobby. Choose another on the Lobby page.")
-        return
     now = datetime.now(timezone.utc)
-    seasons = db.list_seasons_for_lobby(lobby_id)
-    season = next((s for s in seasons if utc(s.starts_at) <= now < utc(s.ends_at)), None)
-    st.caption(st.session_state.get("current_lobby_name", "Selected lobby"))
-    if not season:
-        st.info("This lobby has no current season. Open Lobby to start the next one.")
-        return
-    entries = db.list_drink_entries(season.id)
-    ranking = season_leaderboard(entries)
-    team_mode = st.session_state.get("current_lobby_mode") == "team" or getattr(member, "team_id", None) is not None
-    identity = member.team_id if team_mode else member.id
-    if team_mode:
-        st.caption("Team stats · Combined points and territories for your team.")
-        if not identity:
-            st.info("Join a team from your lobby before checking in.")
-            return
-    rank = next((i for i, (mid, _) in enumerate(ranking, 1) if mid == identity), None)
-    points = next((points for mid, points in ranking if mid == identity), 0)
-    left, middle, right = st.columns(3)
-    left.metric("Team season points" if team_mode else "Season points", str(points))
-    middle.metric("Rank", f"#{rank}" if rank else "Unranked")
-    try:
-        owned = sum(territory_owner(entries, t.id) == identity for t in get_territories())
-        right.metric("Territories owned", owned)
-    except SERVICE_ERRORS:
-        right.metric("Territories owned", "Unavailable")
-        st.warning("Territory counts couldn't be loaded. Reopen My stats to retry.")
-    st.caption("Current season only. Points and rank follow the same rules as Leaderboard.")
+    finished_memberships = []
+    entries = []
+    for member in memberships:
+        seasons = db.list_seasons_for_lobby(member.lobby_id)
+        if not lobby_finished(seasons, now):
+            continue
+        finished_memberships.append(member)
+        for season in seasons:
+            entries.extend(db.list_drink_entries(season.id))
+    stats = all_time_stats(finished_memberships, entries)
+    css = (Path(__file__).parent / "assets" / "profile_stats.css").read_text(encoding="utf-8")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    cards = [
+        ("Total points", format_points(stats.points), "Your points from finished lobbies"),
+        ("Drinks", str(stats.drinks), "Accepted check-ins"),
+        ("Lobbies played", str(stats.lobbies), "Finished lobbies you scored in"),
+        ("Total Wins", str(stats.wins), "Individual and team victories"),
+    ]
+    markup = '<section class="profile-stats" aria-label="All-time statistics from finished lobbies">'
+    for label, value, detail in cards:
+        markup += (f'<article class="profile-stat"><span>{escape(label)}</span>'
+                   f'<strong>{escape(value)}</strong><small>{escape(detail)}</small></article>')
+    st.markdown(markup + "</section>", unsafe_allow_html=True)
+    st.caption("Your drink points plus personal territory-owner bonuses from individual lobbies. "
+               "Team scores and team owner bonuses are excluded. Active lobbies count after they finish.")
+    if not stats.lobbies:
+        st.info("No scored drinks in finished lobbies yet. Your totals will appear here after a lobby finishes.")

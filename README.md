@@ -282,8 +282,11 @@ still need `005_scoring_v1.sql` after photo setup as described above.
 Profile opens Edit profile, Friends, My stats and Account & security as
 separate views with Back to Profile. Log out signs out immediately. Players
 can edit username/first name/surname; email stays read-only. Password changes
-require the current password and sign out all devices. My stats uses the
-selected lobby's current season (points, rank and territories owned).
+require the current password and sign out all devices. My stats shows Total points, Drinks, Lobbies played and Total Wins across
+finished lobbies, independently of the selected lobby. Active lobbies count
+only after they finish. Points include the player's own drinks and individual
+territory-owner income; team scores and team owner income are excluded.
+Total Wins includes both individual and team season victories.
 Name/password changes need no new migration beyond the account indexes/access
 rules already described above. Profile pictures need migration 008 below.
 

@@ -326,3 +326,30 @@ the same lobby lock; accepted entry identity is immutable. Team writes and
 reads require the authenticated app's existing member checks; anonymous and
 Supabase authenticated roles have no access to the team table or write RPCs.
 Source: contributor's explicit team-mode choices, 18 November 2026.
+
+## Profile statistics
+
+### R-P01 Lifetime statistics from finished lobbies
+
+Profile → My stats shows four cards: Total points, Drinks, Lobbies played,
+and Total Wins. Include only retained lobbies whose competitions have all
+ended (`now >= ends_at`); do not depend on the selected lobby. In older
+multi-season lobbies, include every season once the whole lobby has ended.
+
+Points sum the player's own accepted drink awards across those seasons, plus
+personal territory-owner income in individual seasons. Replay each season
+separately so corrections and owner income agree with standings. Team scores,
+teammates' drinks and team owner income are excluded from personal points.
+Drinks counts accepted positive-point check-ins, including verified outside
+locations and entries whose photo has since expired or been deleted.
+Lobbies played counts distinct finished lobbies with at least one such drink.
+Total Wins counts seasons won individually or by the player's team, using
+existing leaderboard tie-breaking. Empty seasons have no winner.
+
+Allowed: five finished lobbies with 11 personal points each show 55 points.
+Rejected: counting an active lobby, a teammate's drink as one's own, or
+counting a duplicate entry twice. Boundary: a lobby counts at its end
+instant; no history shows zero on all four cards. A history-load failure
+shows an error rather than a partial total. No scores or entities are changed.
+
+Source: contributor request and clarified answers, 18 November 2026.
