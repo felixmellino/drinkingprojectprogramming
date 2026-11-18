@@ -27,6 +27,21 @@ three options: one week, one month, or three months.
 
 Source: team decision, 2026-11-17.
 
+### R-R03 One competition per lobby
+A lobby runs for its chosen 7/30/91-day duration exactly once. At its
+competition's end timestamp it becomes a past lobby automatically and cannot
+start another season. Start a new lobby for another competition. Keep the
+existing Season entity/IDs for scoring and history; retain older multi-season
+records unchanged, using their latest competition for the overview.
+
+Allowed: create/join a lobby and start its first competition, or retry setup
+when no season was saved. Rejected: adding a second competition even after
+expiry. Boundary: `now == ends_at` is past; existing check-in cutoff applies.
+The database serializes season inserts per lobby to reject concurrent renewals.
+
+Source: contributor decision, 2026-11-18; supersedes same-lobby renewal in the
+earlier scoring contract. Photo access and ranking rules are unchanged.
+
 ## Territories
 
 ### R-T01 Territory set

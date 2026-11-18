@@ -213,3 +213,24 @@ incoming/outgoing requests; unrelated search results use initials.
 Storage failures retain the name editor and a clear picture status. Account
 pictures need `008_profile_pictures.sql`; friend data needs the existing
 `006_friendships.sql`. Neither script is applied automatically on app startup.
+
+## Lobby overview (implemented 18 November 2026)
+
+- Show only the signed-in player's joined lobbies, with no lobby/season dropdown.
+- Active Lobbies are light green, latest competition start first. Each shows
+  lobby name, leader's public username, a small authorized picture (otherwise
+  initials), and time until finish plus the exact lobby-time finish timestamp.
+- Automatically select the newest running lobby on opening/refresh. Open lobby
+  selects its card and opens Standings; View results does so for past lobbies.
+- Past Lobbies are light grey, latest finish first: name, winner's public
+  username and finish timestamp. No scored entries reads **No Leader** in both
+  lists. Service failure reads Standings unavailable, never an invented result.
+- A timed fragment refreshes the list/countdown every 60 seconds while open,
+  rechecks memberships and moves expired cards at the next refresh. Server
+  check-ins still enforce the exact finish boundary independently of the UI.
+- Create lobby / Join with a code remain below. Duration is fixed; no renewal
+  or season selection is offered. Incomplete setup has a retry form. Future
+  legacy competitions are labelled Upcoming instead of shown as running.
+- R-R03 governs one competition per lobby. Existing multiple-season history
+  is retained; only its latest competition is summarized. Picture privacy
+  remains A11; lobby membership alone does not grant picture access.

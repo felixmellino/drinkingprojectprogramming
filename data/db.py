@@ -167,7 +167,7 @@ def _scoring_rpc(name: str, parameters: dict):
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby or entry.") from None
         if reason in {"invalid_selection", "scoring_closed", "cooldown", "correction_closed", "correction_conflict",
-                      "invalid_territory", "invalid_photo", "season_still_active", "invalid_timezone", "invalid_rules"}:
+                      "invalid_territory", "invalid_photo", "season_still_active", "lobby_already_started", "invalid_timezone", "invalid_rules"}:
             raise CheckinRejected(reason) from None
         if reason == "scoring_setup_required" or error.code in {"42703", "PGRST202", "PGRST204"}:
             raise RuntimeError("Scoring setup is required. Ask the Data owner to apply migration 005.") from None
@@ -176,6 +176,9 @@ def _scoring_rpc(name: str, parameters: dict):
 
 def start_scoring_season(player_id: str, lobby_id: str, length_choice: str, timezone_name: str) -> Season:
     from core.scoring_v1 import new_rules
+    # Friendly early rejection; migration 009 enforces this atomically too.
+    if list_seasons_for_lobby(lobby_id):
+        raise CheckinRejected("lobby_already_started")
     rows = _scoring_rpc("start_scoring_season", {"actor_player": player_id, "target_lobby": lobby_id,
         "length_choice": length_choice, "zone_name": timezone_name, "frozen_rules": new_rules()})
     return _row_to_season(rows[0])

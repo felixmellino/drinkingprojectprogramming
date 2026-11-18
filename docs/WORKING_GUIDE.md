@@ -268,3 +268,22 @@ request again, cancel, request again and decline. Try again immediately
 (rejected), then at ten minutes (allowed). A third account must see
 neither friendship nor requests. Restart Streamlit and log back into both
 accounts to confirm saved requests/friends and decline timestamps survive.
+
+## Lobby overview (Identity block, 18 November 2026)
+
+`pages/2_Lobby.py` retains create/join and calls `lobby_ui.py` for the visible
+joined-lobby list. `core/lobby_overview.py` derives status/countdown from saved
+Season dates; `assets/lobbies.css` styles green running/grey past cards. Leaders
+come from `season_leader`; pictures use the existing authorized byte loader.
+No new shared model fields or runtime dependencies are needed.
+
+The contributor replaced same-lobby season renewal with R-R03: one competition
+per lobby. `data/db.py` rejects renewals early; migration 009 enforces the rule
+atomically, including direct inserts. Existing history remains intact. Review
+and apply 009 after 005 before deployment. Verify with `python -m pytest -q`
+and `python scripts/verify_single_competition_lobbies.py` (optional local SQL
+test tools as in LOBBY_MIGRATION_REVIEW.md). For deployed verification, join two
+running lobbies and one finished lobby, check newest-first auto-selection,
+private-picture initials and both Open lobby / View results; restart, log in
+again, and confirm the same saved dates/results and ordering remain. A lobby
+at its finish boundary must reject check-ins and appear as past on refresh.

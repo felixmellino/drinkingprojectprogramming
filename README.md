@@ -101,9 +101,10 @@ Do not rerun `schema.sql` on the shared existing project. New projects also need
 migration 005 after the base schema and photo setup.
 
 Existing populated seasons remain legacy, preserving their points and rules.
-New lobbies start scoring v1 with a chosen timezone. After a season ends,
-current members can start the next season from Lobby. Its rules, timezone and
-dates are frozen; scores and territory ownership start fresh in its new ID.
+New lobbies start scoring v1 with a chosen timezone. Each lobby runs one
+competition; after its duration ends it stays in Past Lobbies and cannot be
+renewed. Create another lobby for a new competition. Rules, timezone and
+dates are frozen; historical points and ownership are preserved.
 
 The new scoring provides the 1-5 category/size table, additional 25% owner
 season income, exact quarters, Thu 18:00-Sun 18:00 lobby-time eligibility,
@@ -289,3 +290,25 @@ are independent.
 The owner-managed lobby feature remains deferred. See
 [`docs/LOBBY_MIGRATION_REVIEW.md`](docs/LOBBY_MIGRATION_REVIEW.md) for the
 scope, deployment checks and exact disposable PostgreSQL test commands.
+
+### Lobby cards and fixed duration (18 November 2026)
+
+Lobby lists all joined lobbies directly: running competitions newest-started
+first in green, then Past Lobbies newest-finished first in grey. It selects
+the newest running lobby automatically. Open lobby / View results selects
+that card and opens its standings. Cards use public usernames, existing
+ranking/tie rules, and authorized profile pictures with initials as fallback.
+No scores shows **No Leader**, including finished lobbies. Create and join
+remain below the list. The countdown/list refresh every minute while open.
+
+Apply [`migrations/009_single_competition_lobbies.sql`](migrations/009_single_competition_lobbies.sql)
+after migration 005 for atomic database enforcement of one competition per
+lobby. Existing multi-season history is retained; its latest competition
+summarizes that lobby. No season renewal control remains. A failed initial
+season setup can be retried on the incomplete lobby card.
+
+Validation: `python -m pytest -q`; optional disposable SQL checks:
+`python scripts/verify_single_competition_lobbies.py` with the isolated test
+packages documented in `docs/LOBBY_MIGRATION_REVIEW.md`.
+Shared database installation and deployed/restart checks remain the Data
+owner's integration step after review; no migration runs on app startup.

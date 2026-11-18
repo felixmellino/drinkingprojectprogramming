@@ -24,7 +24,8 @@ def test_pagination_loads_more_than_postgrest_default_row_limit():
 
 
 @pytest.mark.parametrize("reason,exception", [("permission_denied",PermissionError), ("cooldown",CheckinRejected),
-    ("correction_closed",CheckinRejected), ("correction_conflict",CheckinRejected), ("scoring_setup_required",RuntimeError)])
+    ("correction_closed",CheckinRejected), ("correction_conflict",CheckinRejected),
+    ("lobby_already_started",CheckinRejected), ("scoring_setup_required",RuntimeError)])
 def test_rpc_errors_become_safe_actionable_errors(monkeypatch,reason,exception):
     client=Mock()
     client.rpc.return_value.execute.side_effect = APIError({"code":"P0001","message":reason,"details":None,"hint":None})
@@ -71,3 +72,13 @@ def test_v1_cannot_bypass_transaction_functions_through_legacy_insert_helpers(mo
     with pytest.raises(RuntimeError,match="save_drink_entry_photo"):
         db.insert_drink_entry(entry("one","Mia","shot",None,0))
     get_client.assert_not_called()
+
+
+def test_finished_lobby_cannot_start_another_competition(monkeypatch):
+    # An existing competition prevents renewal even after its finish date.
+    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [season()])
+    rpc = Mock()
+    monkeypatch.setattr(db, "_scoring_rpc", rpc)
+    with pytest.raises(CheckinRejected, match="lobby_already_started"):
+        db.start_scoring_season("player", "lobby", "1_week", "Europe/Lisbon")
+    rpc.assert_not_called()
