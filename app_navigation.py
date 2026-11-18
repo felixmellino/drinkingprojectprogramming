@@ -1,4 +1,6 @@
 """Bottom navigation using native Streamlit page switching, preserving login."""
+from __future__ import annotations
+
 from pathlib import Path
 from urllib.parse import urlsplit
 

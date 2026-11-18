@@ -1,4 +1,6 @@
 """Friendship rules. Only public usernames leave the search function."""
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 
 DECLINE_WAIT = timedelta(minutes=10)
