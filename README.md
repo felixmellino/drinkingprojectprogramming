@@ -273,3 +273,19 @@ verification. These scripts have not been applied to the shared project by
 this local implementation.
 
 Tests: `python -m pytest tests/test_profile_photo.py tests/test_profile_picture_db.py tests/test_profile_picture_ui.py -q`.
+
+### Lobby migration 007 compatibility revision
+
+After schema/account setup and `005_scoring_v1.sql`, the revised
+[`007_lobby_battles.sql`](migrations/007_lobby_battles.sql) adds a private,
+read-only lobby snapshot view. It preserves the current create/join/start
+flow and scoring rules. Use the revised file from reviewed, merged `main`;
+the original recovered SQL in PR #17 is incompatible and must not be run.
+If an old `lobby_states` table already exists, stop for separate migration
+review. Do not drop it or rerun the base schema. No new runtime dependencies
+or application write calls are required. Friends and profile-picture setup
+are independent.
+
+The owner-managed lobby feature remains deferred. See
+[`docs/LOBBY_MIGRATION_REVIEW.md`](docs/LOBBY_MIGRATION_REVIEW.md) for the
+scope, deployment checks and exact disposable PostgreSQL test commands.

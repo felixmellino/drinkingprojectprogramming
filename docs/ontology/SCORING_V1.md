@@ -112,3 +112,13 @@ remains D-14. Minigame nights, multipliers and interruptions remain separate.
 No leaving/absence or exceptional moderation workflow is introduced. The
 historical three-page PDF and its original source snapshot are kept for
 review traceability; this file is the current implemented contract.
+
+## Lobby migration 007 compatibility revision
+
+The 18 November compatibility PR preserves this contract and the current
+create/join/start-season flow. Its revised migration exposes a server-only,
+read-only lobby snapshot view; it introduces no owner role, player minimum,
+capacity limit, invitation/removal workflow, calendar-month change or new
+scoring gate. Migration 005 stays authoritative. The original recovered
+lobby-battles draft is superseded; review and verification are recorded in
+[the migration handoff](../LOBBY_MIGRATION_REVIEW.md).
