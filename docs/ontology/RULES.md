@@ -208,7 +208,7 @@ implementation setting, not a scoring rule. SMTP is not required.
 | F2 | Friendship requires an explicit request and acceptance by the recipient. | Only the recipient may accept or decline a pending request; only the sender may cancel it. Reject self-requests, duplicate requests, requests between existing friends, and responses to non-pending requests. An opposite-direction request does not automatically accept. |
 | F3 | Declining a request starts a 10-minute waiting period. | Neither player can create a new request for that pair before 10 minutes have elapsed; exactly 10 minutes is allowed. This pair-wide interpretation prevents reversing a request to bypass the wait. Cancellation does not start a waiting period. |
 | F4 | Accepted friends appear in both players' private lists. | Each player can see only their own relationships. Either friend may remove the friendship, removing it from both lists. Removal allows a new request, which again needs acceptance. No friendship changes points, lobby membership or photo access. |
-| F5 | Requests are managed on Profile and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; no email notifications. Concurrent actions cannot overwrite an unseen change. |
+| F5 | Requests are managed on Profile or beside lobby members and stored across sessions. | Incoming requests offer Accept/Decline, outgoing requests offer Cancel, and accepted friends offer Remove. Refresh friends reloads changes made by other players; lobby member controls reload with Refresh lobbies and the 60-second lobby refresh. No email notifications. Concurrent actions cannot overwrite an unseen change. |
 
 Implementation: `core/friends.py` holds validation and search rules;
 `friends_ui.py` renders controls using the authenticated session's player ID;
@@ -246,6 +246,27 @@ server service key is the only database role with friendship access.
   and re-encode JPEG without embedded metadata. Current images remain until
   replaced or removed. Failed writes can leave inaccessible uploads; remove
   unlinked uploads after a 24-hour grace period through server maintenance.
+
+### Lobby member controls (agreed 18 November 2026)
+
+- Joined lobby cards display their invite code alongside the name, leader and
+  timing. Only joined lobbies are shown.
+- Clicking a lobby card opens a popup over the blurred/dimmed overview showing
+  its name, invite code and, in individual mode, all current member usernames, including players
+  with no points. This works for active, past, upcoming and incomplete lobbies.
+  There is no top-three preview. View leaderboard below the members closes
+  the popup and opens the full Leaderboard for that lobby. Close, ×, outside
+  click and Escape dismiss it. Long lists scroll; no scoring rules change.
+- Create lobby and Join with a code are separate top-of-overview buttons.
+  Forms open in dismissible modals over a blurred/dimmed background. Cancel,
+  ×, outside click and Escape do not save. Successful creation/join opens
+  that lobby's member or team popup with a notice. Existing options and validation stay.
+- Each member row shows only the viewer's relationship: You, Friends, Request
+  sent, Incoming friend request with Accept/Decline, or Add friend. F2–F5
+  still apply, including the decline waiting period and concurrent-write checks.
+  No new friendship rules, account fields or lobby-wide picture access.
+- Membership is rechecked before showing members. Service failures show an
+  error; unavailable friendship state disables actions without hiding usernames.
 
 ## Team lobbies (R-TEAM01–R-TEAM05, authorised 18 November 2026)
 

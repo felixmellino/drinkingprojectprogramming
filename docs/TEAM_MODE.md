@@ -27,7 +27,7 @@ review of the code and the normal pull-request workflow remain required.
 - `migrations/010_team_lobbies.sql`: automatic team creation, atomic capacity,
   random assignment, member-only edits, entry team snapshots and SQL replay.
 - `data/db.py`: existing backward-compatible row readers and team API calls.
-- `pages/2_Lobby.py`, `lobby_ui.py`, `team_ui.py`: creation and team dialogs.
+- `pages/2_Lobby.py`, `lobby_ui.py`, `lobby_forms_ui.py`, `team_ui.py`: overview, shared Create/Join dialogs, individual member/friend popup and team cards.
 - Standings, Map, Check-in, photo history and Profile stats use team identity
   in team lobbies; check-in photo authorship remains individual.
 
@@ -87,5 +87,22 @@ Before/after: 9 individual lobbies, 14 memberships, 7 seasons, 4 drink entries.
 The season checksum and all pre-existing drink-entry fields matched exactly
 (excluding newly added nullable team columns). No test records were inserted
 into the shared database. The SQL editor remains on the all-passed summary.
-Application code is still local on TeamModeAddition; this database update
-does not publish or merge it.
+Application code remains on TeamModeAddition until reviewed and merged; the
+database update does not publish or merge the application code.
+
+## PR 33 integration with current main
+
+The conflict resolution retains main's clickable lobby cards, individual
+member/friend popup, dismiss/cancel behavior and shared `lobby_forms_ui.py`.
+Team mode is added to that shared Create dialog; the card router opens team
+cards for team lobbies. Both detail types use `_opened_lobby_id`, while
+`_lobby_dialog` selects only Create/Join, ensuring at most one dialog per run.
+Successful creation/join opens the appropriate member or team popup; teams
+retain retry setup, Close and View leaderboard.
+
+Verification: `.venv/bin/python -m pytest -q` passed all 469 tests. Added
+coverage checks team creation through the shared form, popup switching and
+dismissal, team selection for navigation, and incomplete-team-lobby retry.
+Synthetic browser checks confirm both individual member/friend controls and
+team cards remain available after the merge. No scoring or database migration
+changed in this integration.

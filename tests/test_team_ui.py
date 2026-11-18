@@ -28,7 +28,7 @@ def ui(monkeypatch):
     monkeypatch.setattr('shared.show_logged_in_as',lambda:None)
     monkeypatch.setattr(db,'list_memberships_for_player',lambda _: [me])
     monkeypatch.setattr(db,'list_lobbies',lambda:[lobby])
-    monkeypatch.setattr(db,'list_seasons_for_lobby',lambda _: [season])
+    monkeypatch.setattr(db,'list_seasons_for_lobby',lambda _: [state['season']] if state['season'] else [])
     monkeypatch.setattr(db,'list_memberships_for_lobby',lambda _:members)
     monkeypatch.setattr(db,'list_lobby_teams',lambda *_:teams)
     monkeypatch.setattr(db,'list_public_usernames',lambda:[{'id':'me','display_name':'Myself'},{'id':'other','display_name':'Someone'}])
@@ -155,3 +155,40 @@ def test_membership_revoked_between_team_reads_shows_error(ui):
     assert not at.exception
     assert any('membership is no longer available' in error.value for error in at.error)
     assert not any((b.key or '').startswith('join_team_') for b in at.button)
+
+
+def test_team_popup_switches_to_create_and_stays_closed_after_cancel(ui):
+    at=open_lobby(page())
+    assert any((b.key or '').startswith('join_team_') for b in at.button)
+    at.button(key='open_create_lobby').click().run()
+    assert not at.exception and '_opened_lobby_id' not in at.session_state
+    assert any(t.label=='Lobby name' for t in at.text_input)
+    assert not any((b.key or '').startswith('join_team_') for b in at.button)
+    next(b for b in at.button if b.label=='Cancel').click().run()
+    at.run()
+    assert not at.exception and not at.text_input
+    assert not any((b.key or '').startswith('join_team_') for b in at.button)
+
+
+def test_team_popup_close_and_leaderboard_clear_open_state(ui,monkeypatch):
+    at=open_lobby(page())
+    at.button(key='close_lobby_teams').click().run()
+    at.run()
+    assert not at.exception and '_opened_lobby_id' not in at.session_state
+    assert not any((b.key or '').startswith('join_team_') for b in at.button)
+    nav=Mock()
+    monkeypatch.setattr('team_ui.st.switch_page',nav)
+    open_lobby(at)
+    next(b for b in at.button if b.label=='View leaderboard').click().run()
+    assert not at.exception
+    assert '_opened_lobby_id' not in at.session_state
+    assert at.session_state['current_lobby_mode']=='team'
+    nav.assert_called_once_with('pages/4_Standings.py')
+
+
+def test_incomplete_team_lobby_retains_retry_setup(ui):
+    ui['season']=None
+    at=open_lobby(page())
+    assert not at.exception
+    assert any(b.label=='Start lobby' for b in at.button)
+    assert any((b.key or '').startswith('join_team_') for b in at.button)

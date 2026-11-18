@@ -23,11 +23,12 @@ def avatar(name, photo=None):
 
 def dismiss_lobby_dialog():
     st.session_state.pop('_lobby_dialog', None)
+    st.session_state.pop('_opened_lobby_id', None)
 
 
 @st.dialog("Lobby teams", width="large", on_dismiss=dismiss_lobby_dialog)
 def open_team_lobby(player_id, lobby, season, *, finished=False):
-    notice = st.session_state.pop('_team_notice', None)
+    notice = st.session_state.pop('_team_notice', None) or st.session_state.pop('_lobby_notice', None)
     if notice:
         st.success(notice)
     try:
@@ -108,3 +109,9 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     if season and st.button('View leaderboard', width='stretch'):
         dismiss_lobby_dialog()
         st.switch_page('pages/4_Standings.py')
+    if season is None:
+        from lobby_ui import retry_setup
+        retry_setup(player_id, lobby)
+    if st.button('Close', key='close_lobby_teams'):
+        dismiss_lobby_dialog()
+        st.rerun()

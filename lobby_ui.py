@@ -16,12 +16,14 @@ from core.lobby_overview import latest_season, lobby_status, time_left
 from core.profile_photo import initials
 from core.scoring_v1 import utc
 from profile_picture_ui import PICTURE_ERRORS, load_picture
+from friends_ui import friendship_action
+from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
 
 
 def clear_selection():
-    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id', 'current_lobby_mode'):
+    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id', 'current_lobby_mode', 'current_team_id'):
         st.session_state.pop(key, None)
 
 
@@ -54,26 +56,186 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
     st.markdown(f'<article class="lobby-card lobby-{status}"><p class="lobby-meta">{meta}</p>'
                 f'<h3>{escape(lobby.name)}</h3><div class="lobby-person">{avatar}<span>{result}</span></div>'
-                f'<p class="lobby-countdown">{escape(timing)}</p></article>', unsafe_allow_html=True)
+                f'<p class="lobby-countdown">{escape(timing)}</p>'
+                f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
 
 
-@st.fragment(run_every='60s')
-def show_lobbies(player_id, memberships):
-    css = (Path(__file__).parent / 'assets/lobbies.css').read_text()
-    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+def show_lobby_members(player_id, lobby_id):
+    """Show public usernames and only the viewer's own friendship state."""
+    st.subheader('Lobby members')
+    try:
+        members = db.list_memberships_for_lobby(lobby_id)
+        if not any(m.player_id == player_id for m in members):
+            st.error('You are no longer a member of this lobby.')
+            return
+        names = {p['id']: p['display_name'] for p in db.list_public_usernames()}
+    except (*LOAD_ERRORS, OSError):
+        st.error('Lobby members could not be loaded. Use Refresh lobbies to try again.')
+        return
+    try:
+        relationships = db.list_friendships(player_id)
+    except (*LOAD_ERRORS, OSError):
+        relationships = None
+        st.warning('Friend requests are unavailable. Use Refresh lobbies to try again.')
+    by_other = {r['recipient_id'] if r['sender_id'] == player_id else r['sender_id']: r
+                for r in relationships or []}
+    for other in sorted({m.player_id for m in members},
+                        key=lambda pid: (names.get(pid, '').casefold(), pid)):
+        username, controls = st.columns([2, 3])
+        with username:
+            st.text(names.get(other, 'Unknown player'))
+        with controls:
+            relationship = by_other.get(other, {})
+            status = relationship.get('status')
+            if other == player_id:
+                st.caption('You')
+            elif relationships is None:
+                st.caption('Friend status unavailable')
+            elif status == 'accepted':
+                st.caption('Friends')
+            elif status == 'pending' and relationship['recipient_id'] == player_id:
+                st.caption('Incoming friend request')
+                accept, decline = st.columns(2)
+                with accept:
+                    friendship_action(player_id, 'Accept', other, 'accept',
+                                      key_prefix=f'lobby_{lobby_id}', refresh_label='Refresh lobbies')
+                with decline:
+                    friendship_action(player_id, 'Decline', other, 'decline',
+                                      key_prefix=f'lobby_{lobby_id}', refresh_label='Refresh lobbies')
+            elif status == 'pending':
+                st.caption('Request sent')
+            else:
+                if status == 'declined':
+                    st.caption('After a decline, wait 10 minutes before sending another request.')
+                friendship_action(player_id, 'Add friend', other, 'request',
+                                  key_prefix=f'lobby_{lobby_id}', refresh_label='Refresh lobbies')
+
+
+def show_overview_actions(player_id):
+    create, join = st.columns(2)
+    with create:
+        if st.button('Create a lobby', key='open_create_lobby', icon=':material/add:', type='primary', width='stretch'):
+            dismiss_members()
+            st.session_state['_lobby_dialog'] = 'create'
+    with join:
+        if st.button('Join with a code', key='open_join_lobby', icon=':material/login:', width='stretch'):
+            dismiss_members()
+            st.session_state['_lobby_dialog'] = 'join'
+
+    if st.session_state.get('_lobby_dialog') == 'create':
+        create_dialog(player_id)
+    elif st.session_state.get('_lobby_dialog') == 'join':
+        join_dialog(player_id)
+
+
+def show_summary(player_id, lobby, season, status, now):
+    leader_name, photo, available = None, None, True
+    entries = []
+    if season:
+        try:
+            entries = db.list_drink_entries(season.id)
+            leader = season_leader(entries)
+            if leader:
+                if lobby.game_mode == 'team':
+                    teams = db.list_lobby_teams(player_id, lobby.id)
+                    winning = next((team for team in teams if team.id == leader), None)
+                    leader_name = winning.name if winning else 'Team'
+                    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
+                else:
+                    leader_name = db.membership_display_name(leader, lobby.id)
+                if status == 'active' and lobby.game_mode == 'individual':
+                    members = db.list_memberships_for_lobby(lobby.id)
+                    owner = next((m.player_id for m in members if m.id == leader), None)
+                    if owner:
+                        try:
+                            photo = load_picture(player_id, owner)
+                        except PICTURE_ERRORS:
+                            pass
+        except LOAD_ERRORS:
+            available = False
+    card(lobby, season, status, now, leader_name, photo, available)
+    return entries, available
+
+
+def retry_setup(player_id, lobby):
+    with st.expander('Retry lobby setup'):
+        with st.form(f'retry_setup_{lobby.id}'):
+            duration = st.radio('Lobby duration', ['1_week', '1_month', '3_months'],
+                                format_func=lambda value: value.replace('_', ' '), horizontal=True)
+            zone = st.text_input('Lobby timezone', value='Europe/Lisbon')
+            test_mode = st.checkbox('Test season: Wednesday 08:00–Sunday 18:00',
+                                    key=f'retry_test_season_{lobby.id}')
+            retry = st.form_submit_button('Start lobby')
+        if retry:
+            try:
+                db.start_scoring_season(player_id, lobby.id, duration, zone,
+                                        **({'test_mode': True} if test_mode else {}))
+            except (PermissionError, CheckinRejected, *LOAD_ERRORS):
+                st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
+            else:
+                st.rerun()
+
+
+def dismiss_members():
+    st.session_state.pop('_opened_lobby_id', None)
+
+
+def close_members_button():
+    if st.button('Close', key='close_lobby_members'):
+        dismiss_members()
+        st.rerun()
+
+
+@st.dialog('Lobby members', dismissible=True, on_dismiss=dismiss_members)
+def show_lobby_details(player_id, lobby, membership, season):
+    # Recheck on each dialog interaction, including friendship reruns.
+    try:
+        if not any(m.player_id == player_id for m in db.list_memberships_for_lobby(lobby.id)):
+            st.error('You are no longer a member of this lobby.')
+            close_members_button()
+            return
+    except LOAD_ERRORS:
+        st.error('Lobby access could not be checked. Close and refresh lobbies to try again.')
+        close_members_button()
+        return
+    select_lobby(lobby, membership, season)
     notice = st.session_state.pop('_lobby_notice', None)
     if notice:
         st.success(notice)
-    st.button('Refresh lobbies')
+    st.subheader(lobby.name)
+    st.caption('Invite code')
+    st.code(lobby.invite_code, language=None)
+    with st.container(key='lobby_members', border=False):
+        show_lobby_members(player_id, lobby.id)
+    st.divider()
+    if season:
+        if st.button('View leaderboard', width='stretch'):
+            dismiss_members()
+            st.switch_page('pages/4_Standings.py')
+    else:
+        st.caption('The leaderboard will be available once lobby setup is complete.')
+        retry_setup(player_id, lobby)
+    close_members_button()
+
+
+@st.fragment(run_every='60s')
+def show_lobbies(player_id):
+    css = (Path(__file__).parent / 'assets/lobbies.css').read_text()
+    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
     # Timed refreshes must not retain access after a membership is removed.
     try:
         memberships = db.list_memberships_for_player(player_id)
     except LOAD_ERRORS:
+        st.button('Refresh lobbies')
         st.error('Your lobby access could not be checked. Use Refresh lobbies to try again.')
         return
+    if st.session_state.get('_opened_lobby_id') not in {m.lobby_id for m in memberships}:
+        st.session_state.pop('_opened_lobby_id', None)
+    show_overview_actions(player_id)
+    st.button('Refresh lobbies')
     if not memberships:
         clear_selection()
-        st.info('You have not joined any lobbies yet. Create one or join with a code below.')
+        st.info('You have not joined any lobbies yet. Create one or join with a code above.')
         return
     try:
         lobbies = {l.id: l for l in db.list_lobbies()}
@@ -94,9 +256,12 @@ def show_lobbies(player_id, memberships):
         groups[lobby_status(season, now)].append((lobby, membership, season))
     for status in ('active', 'past', 'upcoming'):
         groups[status].sort(key=lambda row: (utc(row[2].ends_at if status == 'past' else row[2].starts_at), row[0].id), reverse=True)
-    # Re-evaluate on every refresh, including the exact finish boundary.
-    # Opening another card navigates immediately, so it stays selected there.
-    if groups['active']:
+    # Keep an explicitly opened lobby selected while refreshing its members.
+    opened = next((row for rows in groups.values() for row in rows
+                   if row[0].id == st.session_state.get('_opened_lobby_id')), None)
+    if opened:
+        select_lobby(*opened)
+    elif groups['active']:
         select_lobby(*groups['active'][0])
         st.caption(f'Automatically selected: {groups["active"][0][0].name}')
     else:
@@ -110,54 +275,17 @@ def show_lobbies(player_id, memberships):
         if not rows:
             st.caption('No active lobbies.' if status == 'active' else 'No past lobbies yet.')
         for lobby, membership, season in rows:
-            leader_name, photo, available = None, None, True
-            if season:
-                try:
-                    leader = season_leader(db.list_drink_entries(season.id))
-                    if leader:
-                        if lobby.game_mode == 'team':
-                            teams = db.list_lobby_teams(player_id, lobby.id)
-                            winning = next((t for t in teams if t.id == leader), None)
-                            leader_name = winning.name if winning else 'Team'
-                            photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
-                        else:
-                            leader_name = db.membership_display_name(leader, lobby.id)
-                        if status == 'active' and lobby.game_mode == 'individual':
-                            members = db.list_memberships_for_lobby(lobby.id)
-                            owner = next((m.player_id for m in members if m.id == leader), None)
-                            if owner:
-                                try:
-                                    photo = load_picture(player_id, owner)
-                                except PICTURE_ERRORS:
-                                    pass
-                except LOAD_ERRORS:
-                    available = False
-            card(lobby, season, status, now, leader_name, photo, available)
-            if status in ('active', 'past'):
-                if st.button('View results' if status == 'past' else 'Open lobby', key=f'open_lobby_{lobby.id}', width='stretch'):
-                    select_lobby(lobby, membership, season)
-                    if lobby.game_mode == 'team':
-                        st.session_state["_lobby_dialog"] = lobby.id
-                    else:
-                        st.switch_page('pages/4_Standings.py')
-            if st.session_state.get('_lobby_dialog') == lobby.id and status in ('active', 'past'):
-                from team_ui import open_team_lobby
-                select_lobby(lobby, membership, season)
-                open_team_lobby(player_id, lobby, season, finished=status == 'past')
-            if status == 'setup':
-                with st.expander('Retry lobby setup'):
-                    with st.form(f'retry_setup_{lobby.id}'):
-                        duration = st.radio('Lobby duration', ['1_week', '1_month', '3_months'],
-                                            format_func=lambda value: value.replace('_', ' '), horizontal=True)
-                        zone = st.text_input('Lobby timezone', value='Europe/Lisbon')
-                        test_mode = st.checkbox('Test season: Wednesday 08:00–Sunday 18:00',
-                                                key=f'retry_test_season_{lobby.id}')
-                        retry = st.form_submit_button('Start lobby')
-                    if retry:
-                        try:
-                            db.start_scoring_season(player_id, lobby.id, duration, zone,
-                                                    **({'test_mode': True} if test_mode else {}))
-                        except (PermissionError, CheckinRejected, *LOAD_ERRORS):
-                            st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
-                        else:
-                            st.rerun()
+            with st.container(key=f'lobby_card_{lobby.id}', gap=None):
+                show_summary(player_id, lobby, season, status, now)
+                if st.button('View lobby →', key=f'open_lobby_{lobby.id}',
+                             help=f'Open {lobby.name}', width='stretch'):
+                    dismiss_dialog()
+                    st.session_state['_opened_lobby_id'] = lobby.id
+                    st.rerun()
+    if opened and not st.session_state.get('_lobby_dialog'):
+        lobby, membership, season = opened
+        if lobby.game_mode == 'team':
+            from team_ui import open_team_lobby
+            open_team_lobby(player_id, lobby, season, finished=lobby_status(season, now) == 'past')
+        else:
+            show_lobby_details(player_id, *opened)

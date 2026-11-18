@@ -231,19 +231,36 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - Show only the signed-in player's joined lobbies, with no lobby/season dropdown.
 - Active Lobbies are light green, latest competition start first. Each shows
   lobby name, leader's public username, a small authorized picture (otherwise
-  initials), and time until finish plus the exact lobby-time finish timestamp.
-- Automatically select the newest running lobby on opening/refresh. Open lobby
-  selects its card and opens Standings; View results does so for past lobbies.
+  initials), invite code, and time until finish plus the exact lobby-time finish timestamp.
+- Automatically select the newest running lobby unless a lobby is explicitly open.
+  The whole card is a keyboard-accessible button labelled View lobby → opening
+  a dismissible popup over the blurred/dimmed overview. This works for active,
+  past, upcoming and incomplete lobbies.
+- The popup shows only the lobby name, invite code and member list, with the
+  existing friendship controls. It has no leaderboard preview, leader or
+  countdown; those summaries remain on overview cards. Long lists scroll.
+  View leaderboard sits below the members and closes the popup to open the
+  full Leaderboard for that lobby. Close, ×, outside click and Escape dismiss
+  it and leave the overview visible. Membership is checked on each interaction.
+- Member rows show public usernames, You/Friends/Request sent status, Add friend
+  for unrelated players, and Accept/Decline for incoming requests. Existing
+  friendship rules apply; only your own relationships are exposed.
 - Past Lobbies are light grey, latest finish first: name, winner's public
   username and finish timestamp. No scored entries reads **No Leader** in both
   lists. Service failure reads Standings unavailable, never an invented result.
 - A timed fragment refreshes the list/countdown every 60 seconds while open,
   rechecks memberships and moves expired cards at the next refresh. Server
   check-ins still enforce the exact finish boundary independently of the UI.
-- Create a lobby / Join with a code are buttons at the top of the page,
-  above the joined lobby lists. Each opens its own dialog. Duration is fixed; no renewal
-  or season selection is offered. Incomplete setup has a retry form. Future
-  legacy competitions are labelled Upcoming instead of shown as running.
+- Create lobby / Join with a code are individual buttons above the list.
+  Each opens a native modal over a subtly blurred, dimmed, non-interactive
+  background. Cancel, ×, outside click and Escape dismiss without saving.
+  Existing duration/timezone/test-season and invite-code controls remain.
+  Invalid submissions stay in the modal with errors. Success closes it,
+  opens the lobby member or team popup and displays a success message.
+- Duration is fixed; no renewal or season selection is offered. Incomplete
+  setup has a retry form in the member popup. A failed initial season start opens
+  that popup with a notice, so retrying cannot create another lobby by mistake.
+  Future legacy competitions are labelled Upcoming instead of running.
 - R-R03 governs one competition per lobby. Existing multiple-season history
   is retained; only its latest competition is summarized. Picture privacy
   remains A11; lobby membership alone does not grant picture access.
