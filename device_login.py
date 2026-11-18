@@ -1,4 +1,6 @@
 """Remember a device using an opaque token, never the player's password."""
+from __future__ import annotations
+
 from pathlib import Path
 import uuid
 
