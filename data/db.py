@@ -562,6 +562,57 @@ def allow_login_attempt(player_id: str) -> bool:
     return bool(get_client().rpc("allow_login_attempt", {"target_player": player_id}).execute().data)
 
 
+def _player_by_email(email: str) -> Player | None:
+    rows = get_client().table("players").select("*").eq("email", email).limit(1).execute().data
+    return Player(**rows[0]) if rows else None
+
+
+def request_password_reset(email: str) -> None:
+    from core.auth import normalize_email
+    from core.password_recovery import new_reset_code, reset_code_hash
+    from password_email import email_settings, send_reset_email
+
+    email = normalize_email(email)
+    settings = email_settings()  # Configuration failures must not reveal account existence.
+    player = _player_by_email(email)
+    if not player or not allow_login_attempt(player.id):
+        return
+    code = new_reset_code()
+    stored_hash = reset_code_hash(code, player.pin_hash)
+    issued = get_client().rpc("issue_password_reset", {
+        "target_player": player.id, "new_code_hash": stored_hash,
+    }).execute().data
+    if issued:
+        try:
+            send_reset_email(email, code, settings)
+        except RuntimeError:
+            # Same public response for unknown accounts and delivery failures.
+            # Remove only this failed code; do not remove a concurrent replacement.
+            (get_client().table("password_resets").delete().eq("player_id", player.id)
+             .eq("code_hash", stored_hash).execute())
+
+
+def reset_password(email: str, code: str, password: str, confirmation: str) -> None:
+    from core.auth import hash_password, normalize_email, validate_password, verify_password
+    from core.password_recovery import RESET_ERROR, reset_code_hash
+
+    email = normalize_email(email)
+    validate_password(password, confirmation)
+    player = _player_by_email(email)
+    if not player or not allow_login_attempt(player.id):
+        raise ValueError(RESET_ERROR)
+    stored_hash = reset_code_hash(code, player.pin_hash)
+    # Do not reveal whether a proposed password matches an account's current one.
+    if verify_password(password, player.pin_hash):
+        raise ValueError(RESET_ERROR)
+    consumed = get_client().rpc("consume_password_reset", {
+        "target_email": email, "supplied_code_hash": stored_hash,
+        "new_password_hash": hash_password(password),
+    }).execute().data
+    if not consumed:
+        raise ValueError(RESET_ERROR)
+
+
 def _profile_actor(player_id: str, credential_version: str) -> Player:
     player = get_player(player_id)
     if not player or player.pin_hash != credential_version:

@@ -109,9 +109,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 - Required fields: real first name, real surname, unique username, unique
   login email, password of at least 8 characters and password confirmation.
 - Returning users log in with email and password; registration does not
-  require email verification. Password recovery is currently unavailable.
+  require email verification. Log in offers **Forgot password?** (18 November 2026).
 - A single Create account / Log in selector shows one form at a time.
-- No password-recovery or upgrade option is shown.
+- Forgot password shows a registered-email request form and a reset form for
+  account email, emailed code, new password and confirmation. Request responses
+  do not disclose whether an email is registered. Show success/error clearly and
+  offer Back to log in; a reset does not automatically authenticate. Codes expire
+  after 15 minutes. No upgrade option is shown.
 - Login includes an optional Remember password checkbox, keeping the device
   signed in for 30 days. Logout cancels remembered access on that device.
 - All game pages require authentication. Account rules are in `RULES.md` (A1–A7).
@@ -207,7 +211,7 @@ four opens a separate view with **Back to Profile**. Logout is immediate.
   change form requiring current password, new password and confirmation.
   Existing password length rules and login throttling apply. A successful
   change signs out this device; all other active/remembered sign-ins become
-  invalid on their next check. No password recovery is introduced.
+  invalid on their next check. Logged-out password recovery is described above.
 
 Authorized by the contributor's Profile choices on 18 November 2026. Account
 updates use existing columns and unique indexes, so no new migration is needed.

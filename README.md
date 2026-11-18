@@ -93,9 +93,36 @@ Migration 004 restricts game tables, including lobby invite codes, to the
 server's service-role key. Fresh databases get these restrictions in the
 schema. All app database access continues through `data/db.py`.
 
-Password recovery is currently unavailable; no SMTP configuration is needed.
-Existing databases need no migration for this removal. Historical account SQL
-still defines unused reset-code objects; the app no longer calls them.
+Password recovery uses Brevo's HTTPS API and the existing server-only
+`issue_password_reset` / `consume_password_reset` functions from migration 001.
+No new database migration is required if 001 is already applied. Configure these
+server-only settings locally and in Streamlit Community Cloud → Settings → Secrets:
+
+```toml
+BREVO_API_KEY = "your-restricted-transactional-email-key"
+BREVO_SENDER_EMAIL = "wegopub@outlook.com"
+BREVO_SENDER_NAME = "WeGoPub"
+```
+
+Use a verified sender and a key with Transactional email access. Keep real keys
+out of Git. With an Outlook sender, Brevo substitutes an `@brevosend.com` domain.
+The team's configured key expires 18 February 2027 (and may expire after 90 days
+of inactivity); replace it in Secrets before expiry. No Brevo dashboard template
+is required: `password_email.py` sends HTML and plain text versions directly.
+
+On Log in, choose **Forgot password?**, request a code and enter it with a new
+password. Codes expire after 15 minutes, work once, and a new request replaces
+the previous code. Requests have a one-minute per-account cooldown; requests and
+reset attempts share the existing ten-attempt / 15-minute account throttle.
+If no email arrives, check spam, Brevo's transactional Logs, sender verification,
+API-key permissions/expiry and the daily sending quota. The public response stays
+the same for unknown addresses, throttled requests and delivery failures.
+
+Before merging, test a real reset in a test account on the branch with Brevo
+configured: restart the app between requesting and consuming the code; verify
+old-password rejection, new-password login, code reuse rejection and invalidation
+of existing/remembered sign-ins. Also check a code at its 15-minute expiry. These
+live checks must not reset a teammate's account.
 
 To enable check-in photos, run
 [`migrations/setup_checkin_photo_storage.sql`](migrations/setup_checkin_photo_storage.sql)

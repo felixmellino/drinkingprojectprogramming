@@ -75,13 +75,13 @@ def test_invalid_registration_creates_nothing():
 
 
 @pytest.mark.parametrize("path", ["app.py", "pages/1_Profile.py", "pages/2_Lobby.py"])
-def test_login_has_no_password_recovery(path):
+def test_login_offers_password_recovery(path):
     at = AppTest.from_file(str(ROOT / path)).run()
     at.radio(key="account_action").set_value("Log in").run()
     assert not at.exception
     assert not at.expander
     assert [field.label for field in at.text_input] == ["Email", "Password"]
-    assert [button.label for button in at.button] == ["Log in"]
+    assert [button.label for button in at.button] == ["Log in", "Forgot password?"]
     assert [box.label for box in at.checkbox] == ["Remember password"]
 
 
@@ -249,3 +249,47 @@ if st.button("Lose server session"):
         assert requests[0] != requests[-1]
         assert restore.call_count == 2
         assert not at.text_input
+
+
+def recovery_screen():
+    at = AppTest.from_file(str(ROOT / "app.py")).run()
+    at.radio(key="account_action").set_value("Log in").run()
+    form(at, "Forgot password?").click().run()
+    assert not at.exception
+    return at
+
+
+def test_recovery_request_and_return_to_login():
+    with patch("data.db.request_password_reset") as request:
+        at = recovery_screen()
+        fill(at, "Registered email", "mia@example.com")
+        form(at, "Send reset code").click().run()
+        request.assert_called_once_with("mia@example.com")
+        assert not at.exception
+        assert "If an account exists" in at.info[0].value
+        form(at, "Back to log in").click().run()
+        assert not at.exception
+        assert any(field.label == "Password" for field in at.text_input)
+
+
+def test_recovery_success_does_not_sign_in():
+    with patch("data.db.reset_password") as reset:
+        at = recovery_screen()
+        for label, value in [("Account email", "mia@example.com"), ("Reset code", "ABCD1234ABCD1234"),
+                             ("New password", "newpass8"), ("Confirm new password", "newpass8")]:
+            fill(at, label, value)
+        form(at, "Reset password").click().run()
+        reset.assert_called_once_with("mia@example.com", "ABCD1234ABCD1234", "newpass8", "newpass8")
+        assert not at.exception
+        assert at.success
+        assert "player_id" not in at.session_state
+
+
+def test_recovery_failure_remains_usable():
+    with patch("data.db.reset_password", side_effect=ValueError("The reset code is incorrect or expired.")):
+        at = recovery_screen()
+        form(at, "Reset password").click().run()
+        assert not at.exception
+        assert at.error
+        assert not at.success
+        assert "player_id" not in at.session_state
