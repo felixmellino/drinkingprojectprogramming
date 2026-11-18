@@ -27,7 +27,7 @@
   font-weight: 700;
 }
 .drink-eyebrow {
-  color: var(--drink-green);
+  color: var(--brand-ink);
   font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.2em;
@@ -81,9 +81,9 @@
   place-items: center;
   flex: 0 0 34px;
   height: 34px;
-  background: var(--accent-soft);
+  background: var(--brand-soft);
   border-radius: var(--radius-sm);
-  color: var(--drink-green);
+  color: var(--brand-ink);
   font-weight: 750;
   font-size: 0.75rem;
 }

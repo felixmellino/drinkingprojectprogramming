@@ -298,13 +298,28 @@ verify that the selected drink type/size is accurate or that it was consumed.
 | A1 | Game pages require authentication; first visit offers registration and login. | A returning player logs in without recreating an account. Logged-out access stops before any game content or actions. |
 | A2 | Registration requires first name, surname, username, email and a personally chosen password entered twice. | Reject empty names, malformed email, mismatched passwords and passwords shorter than 8 characters. Eight characters are accepted; implementation also rejects whitespace-only passwords and bounds input length. |
 | A3 | Username and email must each be unique, ignoring case and surrounding whitespace. | Duplicate submissions cannot create another account, including concurrent submissions. Only username is public; name and email stay private. |
-| A4 | Login uses email and password, without registration email verification. Password recovery is currently unavailable (removed 17 November 2026). | Incorrect credentials leave credentials and game points unchanged. No reset-code request or password-reset form is offered. |
+| A4 | Login uses email and password, without registration email verification. Password recovery is available through the registered email (authorised 18 November 2026). | Incorrect credentials leave credentials and game points unchanged. The login screen offers Forgot password and a code-based reset form. |
 | A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
-| A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade or password-recovery controls. |
+| A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade controls; Log in offers Forgot password. |
 | A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
 
 Login throttling (ten attempts per account per 15 minutes) is a security
-implementation setting, not a scoring rule. SMTP is not required.
+implementation setting, not a scoring rule. Recovery requests and reset attempts
+share this throttle. Brevo's HTTPS API sends recovery emails; SMTP is not required.
+
+- A11 (authorised 18 November 2026): Forgot password sends a random 16-character
+  hexadecimal code, grouped with hyphens for readability, to the registered email.
+  The database stores only a hash bound to the current password hash. Codes expire
+  at 15 minutes (the exact expiry is rejected) and can be consumed once, atomically
+  with the password update. A new request replaces the prior code, with at least
+  one minute between requests. Changing the password invalidates outstanding codes
+  on their next credential lookup. Invalid input, missing/expired/used codes and
+  throttled resets leave passwords and points unchanged. The new password follows
+  A2 and must differ from the old one. Reset does not automatically sign in;
+  existing active and remembered sign-ins fail their next credential check.
+  Requests give the same public message for unknown accounts, throttling and email
+  delivery failures. Delivery failures remove only their own pending code.
+  Names, game records, player ID and email remain unchanged.
 
 ## Friends (agreed 17 November 2026)
 

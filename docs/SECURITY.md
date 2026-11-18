@@ -18,8 +18,16 @@ For existing projects, `migrations/004_server_game_tables.sql` also protects
 lobby invite codes, territory definitions, arenas and minigame attempts.
 Public clients cannot bypass the app to read invites or change game state.
 Fresh databases get the same restrictions from `schema.sql`. The account
-migrations protect credentials and remembered sessions. Password recovery is currently
-unavailable; historical reset-code database objects are unused by the app.
+migrations protect credentials, remembered sessions and reset codes. Password
+recovery uses the existing server-only reset RPCs: hashed random 64-bit codes,
+15-minute expiry, atomic single-use consumption, a one-minute issuance cooldown,
+and the persisted login throttle shared by request/reset operations. Email is sent
+through Brevo's HTTPS API using a server-only restricted key. The app sends HTML
+and plain text without embedding remote images. Provider errors and recipient
+information are not shown to players. Request response wording is identical for
+unknown accounts, throttling and delivery failures; this does not guarantee equal
+network timing. Changing a password invalidates active and remembered sign-ins
+through the existing credential-version checks. Recovery never changes game data.
 
 ## Image handling
 

@@ -6,7 +6,7 @@
 .lobby-person {display:flex;align-items:center;gap:10px;overflow-wrap:anywhere;}
 .lobby-avatar {display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--surface-raised);color:var(--text);font-size:12px;font-weight:700;}
 .lobby-avatar img {width:100%;height:100%;object-fit:cover;}
-.lobby-countdown {font-weight:600;margin:14px 0 0;}
+.lobby-countdown {font-weight:600;margin:14px 0 0;color:var(--brand-ink);}
 
 /* The native button covers the card: pointer, keyboard and screen-reader access. */
 [class*="st-key-lobby_card_"] {position:relative;border-radius:18px;margin:8px 0;}
@@ -23,10 +23,10 @@
   align-items:flex-end;justify-content:flex-end;padding:18px 20px;
 }
 [class*="st-key-lobby_card_"] [data-testid="stButton"] button p {font-weight:600;}
-[class*="st-key-lobby_card_"] [data-testid="stButton"] button:hover {background:color-mix(in srgb,var(--accent) 4%,transparent);border-color:var(--border);}
+[class*="st-key-lobby_card_"] [data-testid="stButton"] button:hover {background:color-mix(in srgb,var(--accent) 4%,transparent);border-color:var(--accent-ink);}
 [class*="st-key-lobby_card_"] [data-testid="stButton"] button:focus-visible {outline:3px solid var(--accent-ink);outline-offset:3px;}
 /* Streamlit supplies focus trapping, backdrop interaction blocking and dismissal. */
-[data-testid="stDialog"] {backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);background:rgba(12,30,22,.32);}
+[data-testid="stDialog"] {backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);background:rgba(10,20,30,.35);}
 
 /* Keep long member lists scrollable while the leaderboard action stays below. */
 [data-testid="stDialog"] .st-key-lobby_members {max-height:45vh;overflow-y:auto;overflow-x:hidden;padding-right:8px;}

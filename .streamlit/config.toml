@@ -6,11 +6,11 @@ maxUploadSize = 10
 [browser]
 gatherUsageStats = false
 
-# Design system "Rush" (see assets/theme.css for the full token set).
+# Design system "Tennis" (see assets/theme.css for the full token set).
 [theme]
-base = "dark"
-primaryColor = "#F0E1CE"
-backgroundColor = "#1A2841"
-secondaryBackgroundColor = "#22334F"
-textColor = "#F0E1CE"
+base = "light"
+primaryColor = "#2C99D6"
+backgroundColor = "#F4F9FC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#142B3D"
 font = "sans serif"

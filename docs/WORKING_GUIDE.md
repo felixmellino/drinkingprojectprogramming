@@ -273,7 +273,13 @@ Wednesday 08:00–Sunday 18:00 window. Normal seasons keep Thursday 18:00–Sund
 
 ## Profile friends (Identity block)
 
-`pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
+`pages/1_Profile.py` reaches `friends_ui.py` through `profile_ui.py` after login.
+The Friends view has four native card buttons styled by `assets/friends.css`.
+Each opens one dismissible dialog; Profile actions keep it open after saving,
+with a success notice and fresh data. Removal uses an inline confirmation.
+The optional success notice in `friendship_action` is used only by Profile;
+Lobby controls keep their existing behavior. No migration is needed for this
+layout change. `core/friends.py`
 contains search and request rules and needs no database. `data/db.py`
 fetches only public usernames for search, loads the current player's
 relationships, validates an action, then calls `save_friendship` to save
