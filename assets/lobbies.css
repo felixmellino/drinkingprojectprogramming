@@ -1,7 +1,7 @@
-.lobby-card {background:var(--surface);color:var(--text);border:var(--border-width) solid var(--accent-ink);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:20px;margin:12px 0 8px;}
+.lobby-card {background:var(--surface);color:var(--text);border:var(--border-width) solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:20px;margin:12px 0 8px;}
 .lobby-card.lobby-past {background:var(--surface);color:var(--text-muted);border-color:var(--border);box-shadow:none;opacity:.72;}
 .lobby-card.lobby-setup,.lobby-card.lobby-upcoming {background:var(--accent-soft);border-color:var(--border);}
-.lobby-card h3 {margin:5px 0 14px;font-size:1.5rem;color:inherit;font-family:var(--font-display);font-weight:400;overflow-wrap:anywhere;}
+.lobby-card h3 {margin:5px 0 14px;font-size:1.3rem;color:inherit;font-family:var(--font-display);font-weight:650;overflow-wrap:anywhere;}
 .lobby-card .lobby-meta {font-size:.85rem;opacity:.8;margin:0 0 8px;}
 .lobby-person {display:flex;align-items:center;gap:10px;overflow-wrap:anywhere;}
 .lobby-avatar {display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--surface-raised);color:var(--text);font-size:12px;font-weight:700;}

@@ -274,8 +274,13 @@ four building blocks, and the team's workflow rules.
   location, followed automatically. To test or demo a territory you're not
   standing in, open Chrome DevTools → More tools → Sensors → Location and set
   the coordinates (e.g. 38.7133, -9.1456 lands in Shortys).
-- **Chug Duel is implemented locally.** Apply migration 011 after 010 before
-  enabling it in the deployed app; see [CHUG_DUEL.md](docs/CHUG_DUEL.md).
+- **Chug Duel is implemented and merged.** Migration 011 was applied to the
+  shared database on 18 November 2026; live setup checks passed. New databases
+  need 011 after 010, then 012 for unlimited QA-lobby minigame replays.
+  Migration 012 was also applied to the shared project on 18 November 2026;
+  the QA replay UI update requires deployment with the new Python code.
+  Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
+  [CHUG_DUEL.md](docs/CHUG_DUEL.md).
   Other minigames remain future work. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame

@@ -2,12 +2,12 @@
 import streamlit as st
 import data.db as db
 from minigames_ui import render_minigames, _error, SERVICE_ERRORS
-from shared import require_login, require_active_membership
+from shared import require_login, require_active_membership, selected_season
 
 player = require_login()
 member, lobby_id, season_id = require_active_membership()
 try:
-    season = next((s for s in db.list_seasons_for_lobby(lobby_id) if s.id == season_id), None)
+    season = selected_season(lobby_id, season_id)
     lobby = next((l for l in db.list_lobbies() if l.id == lobby_id), None)
     if not season or not lobby:
         st.info("Choose a lobby and season on the Lobby page.")

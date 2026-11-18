@@ -143,9 +143,14 @@ fields change season replay without changing original territory base awards
 or owner income. Both entries keep their own private image copy and frozen
 team identity. See RULES.md R-M01–R-M05 and [the handoff](../CHUG_DUEL.md).
 
-The separate outgoing/incoming allowances are unique by membership and
+Normal-season outgoing/incoming allowances are unique by membership and
 game-night date, so they are per lobby and cannot be bypassed by selecting a
-different opponent. Other proposed games/items remain unimplemented.
+different opponent. Migration 012 adds a server-derived `test_mode` flag,
+copied from the frozen season's boolean QA setting on every insert/update.
+QA rows are exempt from the nightly unique indexes; a caller cannot opt a
+normal duel into this exception. Active/pending game restrictions still apply
+and finished attempts remain saved for history. Other proposed games/items
+remain unimplemented.
 
 ### Arena
 

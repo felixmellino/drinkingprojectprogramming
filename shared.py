@@ -9,7 +9,7 @@ contain no game rules themselves.
 import streamlit as st
 
 import data.db as db
-from core.models import Territory
+from core.models import Player, Season, Territory
 from data.territory_file import load_territories, territory_file_version
 from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
@@ -25,6 +25,12 @@ def require_login() -> str:
     """Stop the page and prompt a login if nobody is logged in. Returns
     the logged-in player's id otherwise."""
     apply_theme()  # design system on every page, including the login screen
+    st.session_state.pop("_validated_player", None)
+    # Generic navigation has no private data. Handle a switch before repeating
+    # this page's network reads; the destination always validates login afresh.
+    navigation_rendered = "player_id" in st.session_state
+    if navigation_rendered:
+        bottom_navigation()
     token = sync_storage()
     if token is None and "player_id" not in st.session_state and not st.session_state.get("_remember_attempted"):
         st.info("Checking your saved sign-in…")
@@ -54,6 +60,8 @@ def require_login() -> str:
             st.session_state["_remember_attempted"] = True
             queue_storage("clear")
             st.info("Please log in again.")
+        else:
+            st.session_state["_validated_player"] = player
     if "player_id" not in st.session_state:
         notice = st.session_state.pop("_profile_notice", None)
         if notice:
@@ -64,7 +72,9 @@ def require_login() -> str:
         restore_selection(st.session_state["player_id"])
     except (APIError, RequestError, RuntimeError):
         st.warning("Your saved lobby could not be loaded. Retry by reopening a page, or choose a lobby on the Lobby page.")
-    bottom_navigation()
+    # Restored sessions did not have navigation at entry; render it once now.
+    if not navigation_rendered:
+        bottom_navigation()
     ask_for_location()  # browser asks "Allow location?" right after login (R-L01)
     return st.session_state["player_id"]
 
@@ -75,33 +85,47 @@ def require_active_membership() -> tuple[str, str, str]:
     if "current_membership_id" not in st.session_state:
         st.info("Choose a lobby on the Lobby page to continue.")
         st.stop()
-    try:
-        memberships = db.list_memberships_for_player(st.session_state["player_id"])
-    except (APIError, RequestError, RuntimeError):
-        st.error("Lobby access could not be checked. Try again.")
-        st.stop()
-    if not any(m.id == st.session_state["current_membership_id"]
-               and m.lobby_id == st.session_state.get("current_lobby_id") for m in memberships):
-        st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
-        st.stop()
-    selected = next(m for m in memberships if m.id == st.session_state["current_membership_id"])
-    st.session_state["current_team_id"] = getattr(selected, "team_id", None)
+    st.session_state.pop("_validated_season", None)
     if not st.session_state.get("current_season_id"):
         st.info("Start or select a season on the Lobby page first.")
         st.stop()
     try:
-        seasons = db.list_seasons_for_lobby(st.session_state["current_lobby_id"])
+        selected, season = db.membership_context(st.session_state["player_id"],
+            st.session_state["current_membership_id"], st.session_state.get("current_lobby_id"),
+            st.session_state["current_season_id"])
     except (APIError, RequestError, RuntimeError):
-        st.error("Season access could not be checked. Try again.")
+        st.error("Lobby and season access could not be checked. Try again.")
         st.stop()
-    if not any(s.id == st.session_state["current_season_id"] for s in seasons):
+    if selected is None:
+        st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
+        st.stop()
+    if season is None:
         st.error("This season does not belong to the selected lobby. Choose a season again.")
         st.stop()
+    st.session_state["current_team_id"] = selected.team_id
+    st.session_state["_validated_season"] = season
     return (
         st.session_state["current_membership_id"],
         st.session_state["current_lobby_id"],
         st.session_state["current_season_id"],
     )
+
+
+def authenticated_player() -> Player:
+    """Reuse the fresh account read made by this page's require_login call."""
+    player = st.session_state.get("_validated_player")
+    if player is None or player.id != st.session_state.get("player_id"):
+        raise RuntimeError("Please sign in again to load your profile.")
+    return player
+
+
+def selected_season(lobby_id: str, season_id: str) -> Season | None:
+    """Reuse this page's validated season without a second database read."""
+    season = st.session_state.get("_validated_season")
+    if season and season.id == season_id and season.lobby_id == lobby_id:
+        return season
+    # Supports callers that establish their own membership context.
+    return next((s for s in db.list_seasons_for_lobby(lobby_id) if s.id == season_id), None)
 
 
 def get_territories() -> list[Territory]:

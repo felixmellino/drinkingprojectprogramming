@@ -15,6 +15,17 @@ real_get_choice = db.get_lobby_choice
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def membership_service(ui, monkeypatch):
+    # Match main's joined membership/season lookup using the same fake data.
+    def context(player_id, membership_id, lobby_id, season_id):
+        member = next((m for m in ui['members'] if m.player_id == player_id
+                       and m.id == membership_id and m.lobby_id == lobby_id), None)
+        game = next((s for s in ui['seasons'].get(lobby_id, []) if s.id == season_id), None)
+        return (member, game) if member else (None, None)
+    monkeypatch.setattr(db, 'membership_context', context)
+
+
 def restored_page(player='me'):
     return AppTest.from_string(f'''
 import streamlit as st
@@ -98,7 +109,8 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     monkeypatch.setattr('shared.require_login', real_require_login)
     monkeypatch.setattr('shared.sync_storage', lambda: '')
     monkeypatch.setattr('shared.ask_for_location', lambda: None)
-    monkeypatch.setattr('shared.bottom_navigation', lambda: None)
+    navigation = Mock()
+    monkeypatch.setattr('shared.bottom_navigation', navigation)
     monkeypatch.setattr(db, 'get_player', lambda pid: SimpleNamespace(email='me@example.com', pin_hash='credential'))
     monkeypatch.setattr(db, 'list_players', lambda: [])
     monkeypatch.setattr('shared.get_territories', lambda: [])
@@ -111,6 +123,7 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert at.session_state['current_lobby_id'] == 'old'
         assert not any('Choose a lobby' in i.value for i in at.info)
         assert any('Season leaderboard' in m.value for m in at.markdown)
+    assert navigation.call_count == 2  # Once per fresh page, including restoration.
 
 
 def test_database_preference_is_scoped_to_player_and_survives_new_client(ui, monkeypatch):

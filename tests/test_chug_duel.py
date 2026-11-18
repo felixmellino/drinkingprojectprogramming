@@ -4,9 +4,9 @@ from decimal import Decimal
 
 import pytest
 
-from core.chug_duel import allowances, component_action, next_reset, night_id, validate_invitation, validate_pair
+from core.chug_duel import allowances, component_action, next_reset, night_id, unlimited_plays, validate_invitation, validate_pair
 from core.models import Lobby, LobbyMembership
-from core.scoring_v1 import can_correct, replay_season
+from core.scoring_v1 import can_correct, new_rules, replay_season
 from core.leaderboard import season_leaderboard
 from tests.test_scoring_v1 import START, entry, season
 
@@ -56,6 +56,28 @@ def test_pair_and_invitation_validation():
     validate_pair(replace(a, team_id="red"), replace(b, team_id="blue"), team)
     with pytest.raises(ValueError):
         validate_invitation(a, b, lobby, season(), "beer", "large", START - timedelta(seconds=1), [])
+
+
+@pytest.mark.parametrize("flag,unlimited", [(True, True), (False, False), (None, False), ("true", False), (1, False)])
+def test_only_boolean_frozen_test_mode_enables_unlimited_plays(flag, unlimited):
+    game = season()
+    game.scoring_rules["test_mode"] = flag
+    duel = {"game_night": "2026-11-19", "challenger_id": "a", "opponent_id": "b", "status": "completed"}
+    assert unlimited_plays(game) is unlimited
+    assert allowances("a", "2026-11-19", [duel], season=game) == (unlimited, True)
+    assert allowances("b", "2026-11-19", [duel], season=game) == (True, unlimited)
+
+
+def test_repeated_test_duels_allowed_but_normal_lobby_and_closed_window_rejected():
+    a, b, lobby = pair()
+    played = [dict(game_night="2026-11-19", challenger_id="a", opponent_id="b", status=status)
+              for status in ("completed", "aborted", "completed")]
+    qa = replace(season(), scoring_rules=new_rules(test_mode=True))
+    assert validate_invitation(a, b, lobby, qa, "beer", "large", START, played) == 3
+    with pytest.raises(ValueError, match="already used"):
+        validate_invitation(a, b, replace(lobby, name="Test lobby"), season(), "beer", "large", START, played)
+    with pytest.raises(ValueError, match="scoring is open"):
+        validate_invitation(a, b, lobby, qa, "beer", "large", START + timedelta(days=3), played)
 
 
 def test_transfer_changes_only_season_and_survives_input_ordering():

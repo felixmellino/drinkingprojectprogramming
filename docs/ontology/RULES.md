@@ -29,6 +29,17 @@ role remains available after a finished game.
 Source: contributor's explicit answers, 18 November 2026. This is an explicit
 exception to the earlier shared-one-minigame-per-night design for Chug Duel.
 
+QA exception, contributor decision 18 November 2026: when the season's frozen
+`scoring_rules.test_mode` is the JSON boolean `true`, players may challenge and
+accept repeatedly without a daily/nightly count limit, including after a
+started abort. Show Unlimited in both allowance indicators. A lobby name or
+a caller-supplied flag cannot enable this. Existing QA seasons also qualify.
+One pending outgoing invitation and one accepted/started duel per member still
+apply, as do the scoring window, season end, photo/GPS rules, countdown,
+two-minute check-in cooldown and exactly-once point transfer. A player may
+repeat only after the previous game has ended. Normal seasons retain the two
+separate nightly allowances. This is enforced in Python and migration 012.
+
 ### R-M03 Shared check-in and base-point transfer
 
 After acceptance the host takes one shared fresh photo and supplies their
@@ -64,6 +75,14 @@ First tap wins even when browser events arrive close together. Completed
 results are immutable, including retries with a different winner. Physical
 completion is trust-based; the app only records the tap.
 
+Host presentation, contributor request 18 November 2026: once started, show
+the two named halves in a fixed full-viewport board. Hide app navigation and
+disable page scrolling through Ready, countdown, GO and the outcome. Keep
+the same board mounted while the server arms the game; show all three
+countdown seconds without restarting them on refresh polling. A compact
+exit retains the existing no-winner abort action. Keep the confirmed outcome
+visible until the host chooses Back to Minigames, then restore navigation.
+
 Source: contributor's explicit shared-device decision, 18 November 2026;
 three seconds and first-browser-event handling are operational defaults.
 
@@ -95,6 +114,8 @@ and hour 8. Normal seasons retain Thursday 18:00–Sunday 18:00. All other rules
 and server validation still apply, including GPS, photos, cooldown, points
 and corrections. The snapshot stays frozen; existing seasons are not changed.
 This exception does not change minigame night boundaries.
+R-M02 additionally allows unlimited sequential minigame replays in these QA
+seasons; it does not remove cooldowns or permit overlapping games.
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 

@@ -28,14 +28,13 @@ from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from drink_entry_ui import context_line, page_header, section_heading
 from phone_location import current_location, track_location
-from shared import get_territories, require_active_membership, require_login, show_logged_in_as
+from shared import get_territories, require_active_membership, require_login, selected_season, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
-seasons = db.list_seasons_for_lobby(lobby_id)
-season = next((item for item in seasons if item.id == season_id), None)
+season = selected_season(lobby_id, season_id)
 if season is None:
     st.info("Choose a season on the Lobby page first.")
     st.stop()

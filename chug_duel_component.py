@@ -11,5 +11,7 @@ def duel_board(duel: dict, challenger: str, opponent: str):
     css = (Path(__file__).parent / "assets" / "theme.css").read_text(encoding="utf-8")
     tokens = css[css.index(":root {"):css.index("/* Base */")]
     return _board(duel_id=duel["id"], challenger=challenger, opponent=opponent,
+                  state=duel["status"], winner=("challenger" if duel.get("winner_id") == duel["challenger_id"]
+                    else "opponent" if duel.get("winner_id") == duel["opponent_id"] else None),
                   play_at=duel.get("play_at"), server_now=current_time().isoformat(), tokens=tokens,
                   key=f"chug_board_{duel['id']}", default=None)

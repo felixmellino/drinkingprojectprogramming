@@ -45,6 +45,14 @@ normal-season defaults and minigame night rules remain unchanged. Test
 points stay inside the separate QA lobby. Never change the server clock
 or edit an active season's snapshot to enable testing.
 
+QA seasons also allow unlimited sequential Chug Duel replays after migration
+012 (R-M02). Minigames shows Unlimited for both roles, including after an
+earlier win or abort. The frozen boolean test flag controls this, not the
+lobby's name. Finish/end the active game before another; photo/GPS, ordinary
+two-minute check-in cooldown, scoring window and scoring rules still apply.
+The ordinary Wednesday-window setting itself needs no extra migration;
+unlimited minigame attempts require 012 after 011.
+
 ## Verification
 
 Run the normal Python suite with `python -m pytest -q`.

@@ -74,7 +74,7 @@ def service(monkeypatch):
     monkeypatch.setattr(db, "invite_chug_duel", invite)
     monkeypatch.setattr(db, "chug_duel_action", action)
     monkeypatch.setattr(db, "start_chug_duel", start)
-    state.update(lobby=lobby, members=members)
+    state.update(lobby=lobby, members=members, game=game)
     return state
 
 
@@ -107,17 +107,26 @@ def test_invite_accept_on_other_session_shared_capture_and_result(service):
     host.run()
     button(host, "Save shared check-in & open duel").click().run()
     assert not host.exception and service["starts"] == 1
+    assert not host.metric and not any(b.label == "Refresh duels" for b in host.button)
     guest.run()
     assert any("challenger's phone" in item.value for item in guest.info)
     did = service["duels"][0]["id"]
     service["board"] = {"duel_id": did, "phase": "ready"}
     host.run()
     assert service["duels"][0]["play_at"]
+    assert host.session_state["chug_focused_duel"] == did
+    assert not host.metric and button(host, "End without winner")
     service["board"] = {"duel_id": did, "phase": "result", "winner": "opponent"}
     host.run()
     guest.run()
     assert not host.exception and not guest.exception
     assert any("Bob won" in item.value for item in guest.success)
+    assert host.session_state["chug_focused_duel"] == did
+    assert button(host, "Back to Minigames")
+    assert not any(b.label == "End without winner" for b in host.button)
+    button(host, "Back to Minigames").click().run()
+    assert not host.exception and any("Bob won" in item.value for item in host.success)
+    assert "chug_focused_duel" not in host.session_state
     # A fresh session recovers the saved outcome instead of opening a new game.
     reopened = open_page("pb", "b")
     assert any("Bob won" in item.value for item in reopened.success)
@@ -152,3 +161,65 @@ def test_team_opponent_choices_exclude_own_team(service):
     page = open_page()
     assert not page.exception and not any(b.label == "Send challenge" for b in page.button)
     assert any("rival team" in item.value for item in page.info)
+
+
+def test_arm_failure_keeps_focused_board_and_abort_restores_the_lobby(service, monkeypatch):
+    host = open_page()
+    button(host, "Send challenge").click().run()
+    duel = service["duels"][0]
+    duel["status"] = "started"
+    host.run()
+    did = duel["id"]
+    assert host.session_state["chug_focused_duel"] == did
+    service["board"] = {"duel_id": did, "phase": "ready"}
+    original = db.chug_duel_action
+    def fail_arm(actor, did, action, winner=None):
+        if action == "arm":
+            raise RuntimeError("Duel service temporarily unavailable. Retry shortly.")
+        return original(actor, did, action, winner)
+    monkeypatch.setattr(db, "chug_duel_action", fail_arm)
+    host.run()
+    assert not host.exception and host.error
+    assert host.session_state["chug_focused_duel"] == did
+    assert not host.metric and button(host, "End without winner")
+    button(host, "End without winner").click().run()
+    assert not host.exception and duel["status"] == "aborted"
+    assert button(host, "Back to Minigames")
+    button(host, "Back to Minigames").click().run()
+    assert not host.exception and host.metric
+    assert any("normal drink points" in item.value for item in host.caption)
+
+
+def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(service):
+    from core.scoring_v1 import new_rules
+    service["game"].scoring_rules = new_rules(test_mode=True)
+    host = open_page()
+    for status in ("completed", "aborted", "completed"):
+        assert not host.exception and [m.value for m in host.metric] == ["Unlimited", "Unlimited"]
+        button(host, "Send challenge").click().run()
+        guest = open_page("pb", "b")
+        assert not button(guest, "Accept duel").disabled
+        button(guest, "Accept duel").click().run()
+        duel = service["duels"][-1]
+        duel["status"] = "started"
+        host.run()
+        duel.update(status=status, winner_id="a" if status == "completed" else None)
+        host.run()
+        button(host, "Back to Minigames").click().run()
+    assert len(service["duels"]) == 3
+    reopened = open_page()
+    assert not reopened.exception and button(reopened, "Send challenge")
+    assert [m.value for m in reopened.metric] == ["Unlimited", "Unlimited"]
+    assert any("cooldown still applies" in item.value for item in reopened.caption)
+
+
+def test_normal_season_still_blocks_used_challenge_even_with_test_in_lobby_name(service):
+    service["lobby"].name = "Test lobby"
+    host = open_page()
+    button(host, "Send challenge").click().run()
+    duel = service["duels"][0]
+    duel.update(status="completed", winner_id="a")
+    host.run()
+    assert not host.exception
+    assert not any(b.label == "Send challenge" for b in host.button)
+    assert host.metric[0].value == "Used / reserved"
