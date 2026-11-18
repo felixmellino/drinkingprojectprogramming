@@ -150,7 +150,7 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
         revoke.assert_called_once_with(token)
         assert "player_id" not in at.session_state
 
-    with patch("device_login._browser_storage", return_value={"request_id": "read", "token": token, "available": True}), \
+    with patch("device_login._browser_storage", side_effect=lambda **c: {"request_id": c["request_id"], "token": token, "available": True}), \
          patch("data.db.get_remembered_player", return_value=player), \
          patch("data.db.get_player", return_value=player):
         fresh = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
@@ -186,3 +186,66 @@ def test_invalid_saved_token_is_cleared_without_access():
         assert not at.exception
         assert "player_id" not in at.session_state
         assert at.radio(key="account_action").options == ["Create account", "Log in"]
+
+
+def test_delayed_browser_read_waits_then_restores_without_login_form():
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    requests = []
+
+    def delayed_browser(**command):
+        requests.append(command["request_id"])
+        if len(requests) == 1:
+            return None
+        return {"request_id": command["request_id"], "token": "saved-token", "available": True}
+
+    with patch("device_login._browser_storage", side_effect=delayed_browser), \
+         patch("data.db.get_remembered_player", return_value=player) as restore, \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        assert not at.exception
+        assert not at.radio
+        assert not at.text_input
+        assert "player_id" not in at.session_state
+        restore.assert_not_called()
+        at.run()
+        assert not at.exception
+        assert at.session_state["player_id"] == player.id
+        assert requests[0] == requests[1]
+        assert not at.text_input
+
+
+def test_surviving_browser_bridge_restores_after_server_state_is_lost():
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    # Model an iframe that remembers the last request even after the server
+    # loses its widget state. It will not send the same request twice.
+    last_request = None
+    requests = []
+
+    def surviving_browser(**command):
+        nonlocal last_request
+        requests.append(command["request_id"])
+        if command["request_id"] == last_request:
+            return None
+        last_request = command["request_id"]
+        return {"request_id": last_request, "token": "saved-token", "available": True}
+
+    script = '''
+import streamlit as st
+from shared import require_login
+require_login()
+if st.button("Lose server session"):
+    st.session_state.clear()
+    st.rerun()
+'''
+    with patch("device_login._browser_storage", side_effect=surviving_browser), \
+         patch("data.db.get_remembered_player", return_value=player) as restore, \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_string(script).run()
+        assert not at.exception
+        assert at.session_state["player_id"] == player.id
+        form(at, "Lose server session").click().run()
+        assert not at.exception
+        assert at.session_state["player_id"] == player.id
+        assert requests[0] != requests[-1]
+        assert restore.call_count == 2
+        assert not at.text_input

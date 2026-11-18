@@ -22,6 +22,9 @@ def require_login() -> str:
     """Stop the page and prompt a login if nobody is logged in. Returns
     the logged-in player's id otherwise."""
     token = sync_storage()
+    if token is None and "player_id" not in st.session_state and not st.session_state.get("_remember_attempted"):
+        st.info("Checking your saved sign-in…")
+        st.stop()
     if token is not None and not st.session_state.get("_remember_attempted"):
         if token:
             try:
