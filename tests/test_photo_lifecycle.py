@@ -247,6 +247,40 @@ def test_other_member_can_view_but_has_no_delete_button(store, monkeypatch):
     assert not page.button and not page.checkbox
 
 
+def test_legacy_photo_detail_displays_the_original_drink_and_points(store, monkeypatch):
+    store.rows["entry"]["drink_type"] = "beer"
+    page = photo_page(monkeypatch)
+    assert not page.exception
+    markup = "\n".join(item.value for item in page.markdown)
+    assert "Beer" in markup and "+5 season pts" in markup
+    assert store.rows["entry"]["points_awarded"] == 5
+
+
+def test_photo_context_treats_usernames_and_territories_as_text(store, monkeypatch):
+    payload = '<img src=x onerror="alert(1)">'
+    store.rows["entry"]["lobby_memberships"]["players"]["display_name"] = payload
+    store.rows["entry"]["territories"]["name"] = payload
+    page = photo_page(monkeypatch)
+    assert not page.exception
+    markup = "\n".join(element.value for element in page.markdown)
+    assert payload not in markup
+    assert "&lt;img" in markup
+
+
+def test_owner_can_delete_when_photo_download_service_fails(store, monkeypatch):
+    def unavailable(*args):
+        raise RuntimeError("Download unavailable")
+    monkeypatch.setattr(db, "download_checkin_photo", unavailable)
+    page = photo_page(monkeypatch)
+    assert not page.exception and page.error
+    page.checkbox[0].check().run()
+    delete_button(page).click().run()
+    assert not page.exception
+    assert any("score is unchanged" in message.value for message in page.success)
+    assert not store.files
+    assert store.rows["entry"]["points_awarded"] == 5
+
+
 def test_photo_page_can_retry_deletion_after_file_removed_and_database_failed(store, monkeypatch):
     page = photo_page(monkeypatch)
     page.checkbox[0].check().run()

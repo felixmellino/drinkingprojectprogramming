@@ -10,10 +10,74 @@ Interface structure proposal. Colors, typography, icons, dimensions and
 other detailed design choices remain undecided. Gameplay rules belong in
 `RULES.md`; step-by-step journeys belong in `WORKFLOWS.md`.
 
-## Overall structure
+## Drink Entries interface (implemented 17 November 2026)
 
-- Bottom navigation: **Profile | Standings | Check in | Map | Memories**.
-- Check in is the central action for adding a drink.
+The Drink Entries block has a mobile layout on Check-in and Lobby photos.
+`drink_entry_ui.py` supplies escaped headings/context and decorative inline
+SVGs; `assets/drink_entries.css` styles only pages carrying that header.
+Native Streamlit controls retain their accessible labels and keyboard input.
+These presentation choices introduce no new scoring or database rules.
+
+- Check-in starts with the camera. Drink/size controls appear only after a
+  fresh photo is present, followed by the location status and submission.
+  Drink/size choices have large selectable areas and an immediate points
+  preview. Closed-window/cooldown messages appear before the form, and Submit
+  spans the available width. Camera permission remains controlled by the browser.
+- Manual coordinate inputs are explicitly labelled as demo inputs until the
+  Location block supplies actual device GPS. Temporary coordinate fields live
+  in a collapsed Demo location expander. A preview is not evidence of
+  automatic verification. Missing/uncertain location still rejects submission.
+- Photo history opens a newest-first gallery of the lobby's retained entries,
+  four per page, with username, territory, image, drink/size, base season and
+  territory awards, applicable owner income and photo-receipt/submission time.
+  Native Older/Newer controls make every retained entry reachable while limiting
+  image downloads. Each image download rechecks membership. Missing/removed
+  images retain their entry details and score.
+- View details opens that specific entry's full breakdown, exact timestamps,
+  correction audit and permitted actions. A single-entry history opens its
+  detail directly. All photos returns to the gallery. Exact timestamps remain
+  available in expanders. The owner's separate Manage your photo expander
+  keeps explicit permanent-deletion confirmation; removal preserves scores.
+- Images remain inline authorized bytes, with no public media URLs. Raw GPS
+  retention, image metadata stripping and lobby access follow R6/R7 unchanged.
+
+The shared navigation and Standings refresh below were explicitly requested
+as follow-ups. Account/lobby behavior and the map remain separate blocks. The
+broader screen proposal below remains a future design outline.
+
+## Standings interface (implemented 17 November 2026)
+
+- Personal summary: current rank, exact season total and territories owned.
+  Unranked members have no invented position. An unavailable territory service
+  shows an unknown count, rather than zero.
+- Season leaderboard: numbered top-three badges, username initials, a YOU
+  marker and highlighted current-player row. Exact quarter-points remain
+  visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
+  the UI never re-sorts or changes the tie rule.
+- Territory cards show each owner, explicit unclaimed states, every recorded
+  player total and relative bars based only on base territory points. Cards
+  stack on narrow screens. These bars do not represent a capture threshold.
+- Refresh standings reloads the current season. Service failures show a retry
+  message, without writing entries or replacing unavailable scores with zero.
+- `standings_ui.py` escapes public usernames and territory names. It reuses
+  the page header and adds `assets/standings.css`; core rules, database APIs,
+  membership checks and season scope are unchanged.
+
+## Bottom navigation (requested 17 November 2026)
+
+- Authenticated pages use **Profile | Lobby | + Check in | Leaderboard | Photo history**.
+- The large central plus opens the camera-first Check-in. Leaderboard and
+  Photo history sit to its right. These are the English player-facing names.
+- Native Streamlit page switching preserves the signed-in session and normal
+  server-side access checks. The bar remains visible when a lobby still needs
+  to be selected; it is absent before login. The former sidebar navigation is
+  hidden on signed-in pages, and content leaves space above the fixed bar.
+- `app_navigation.py` renders the shared bar after `require_login` verifies
+  identity. `assets/navigation.css` controls its five-slot layout and safe-area
+  spacing. It makes no changes to account fields, lobby rules or scoring.
+
+## Broader structure proposal
+
 - Shared header: current lobby and Season, with access to lobby switching
   and the invite code.
 - First opening: Profile creation. Returning players with a completed
@@ -52,10 +116,11 @@ other detailed design choices remain undecided. Gameplay rules belong in
 
 ## Check in
 
-- Drink type and drink size selection.
-- Camera action and captured-photo preview.
+- Camera action and captured-photo preview first.
+- Drink type and drink size selection after capture.
 - Detected territory and current owner.
-- Points summary: base points, any territory reduction and estimated total.
+- Points summary: base season/territory points and additional owner income,
+  following the current scoring v1 contract.
 - Submit, Back and Cancel controls.
 - Submission status and resulting points or an error message.
 
@@ -69,8 +134,10 @@ other detailed design choices remain undecided. Gameplay rules belong in
 
 ## Memories
 
-- Personal visit photos arranged chronologically, with dates and bar names.
-- Selecting a photo opens the corresponding visit detail.
+- Implemented as Photo history: retained lobby photos arranged chronologically,
+  with the player, territory, drink/size, points and timestamp.
+- Selecting View details opens the corresponding check-in detail. Bars are not
+  part of the location or scoring model.
 
 ## Visit detail
 
@@ -80,4 +147,4 @@ other detailed design choices remain undecided. Gameplay rules belong in
 
 ## Scoring proposal: screen changes awaiting approval
 
-See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04). The proposed Check-in uses four category buttons, Small/Medium/Large where applicable, and an automatic points preview. It shows a two-minute wait when necessary and the next opening outside the weekly window. History shows precise lobby-time timestamps, base awards, owner income and correction history. Earlier territory-reduction labels in this screen draft are superseded only if the team approves the additional-income proposal.
+See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [SCORING_V1.md](SCORING_V1.md) for the implemented contract. Check-in uses four category choices, Small/Medium/Large where applicable, and an automatic points preview. It shows a two-minute wait when necessary and the next opening outside the weekly window. History shows precise lobby-time timestamps, base awards, owner income and correction history. Earlier territory-reduction labels in the future Map outline above are historical; scoring v1 uses additional owner income instead.

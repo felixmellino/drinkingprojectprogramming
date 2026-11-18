@@ -17,6 +17,7 @@ from core.checkins import CheckinRejected, create_drink_entry
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
 from core.location import evaluate_location
+from drink_entry_ui import context_line, page_header, section_heading
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -29,11 +30,15 @@ if season is None:
     st.info("Choose a season on the Lobby page first.")
     st.stop()
 modern = season.scoring_version == "v1"
+rules = rules_for(season) if modern else None
 now = current_time()
 recent_entries = db.list_drink_entries_for_membership(membership_id)
 
-st.title("Check in")
-st.caption("Your lobby can view saved drink photos with your username, capture time and territory.")
+page_header("Check in", "Capture the moment. Then choose your drink and size.")
+if modern:
+    lobby_time = now.astimezone(ZoneInfo(season.timezone_name))
+    context_line(st.session_state.get("current_lobby_name", "Your lobby"),
+                 f"{lobby_time:%a %d %b · %H:%M %Z} · {season.timezone_name}")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -46,75 +51,6 @@ if saved_result is not None:
         st.success(f"Logged! +{points} points.")
     if owner_income and owner_income[0]:
         st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income[0]) / 4)} season points. You kept all your points.")
-
-size = None
-amount = None
-if modern:
-    rules = rules_for(season)
-    st.caption(f"Lobby time: {now.astimezone(ZoneInfo(season.timezone_name)):%a %d %b %Y %H:%M:%S %Z} · {season.timezone_name}")
-    drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get, horizontal=True)
-    if drink_type != "shot":
-        size = st.radio("Size", options=list(SIZE_LABELS), format_func=lambda value: size_label(drink_type, value, rules), horizontal=True)
-    else:
-        st.caption("One shot serving. No size selection needed.")
-    preview = base_points(drink_type, size, rules)
-    st.info(f"Your points: +{preview} season points, and +{preview} territory points if your location matches a territory.")
-    st.caption("Another territory owner's 25% season income is additional; your points stay the same.")
-else:
-    st.caption("This existing season keeps its original scoring rules. New seasons use the new scoring system.")
-    drink_type = st.selectbox("Drink type", options=["beer", "wine", "shot", "longdrink"])
-    if drink_type in ("beer", "wine"):
-        amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
-
-photo_number = st.session_state.get("checkin_photo_number", 0)
-photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
-capture = st.session_state.get("checkin_capture")
-if photo is not None:
-    capture_key = (membership_id, season_id, photo.file_id)
-    if capture is None or capture[0] != capture_key:
-        capture = (capture_key, str(uuid4()), current_time())
-        st.session_state["checkin_capture"] = capture
-else:
-    st.session_state.pop("checkin_capture", None)
-
-st.caption("TODO: real GPS capture. Enter your current coordinates manually for now.")
-device_lat = st.number_input(
-    "Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f", key=f"checkin_lat_{photo_number}"
-)
-device_lng = st.number_input(
-    "Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f", key=f"checkin_lng_{photo_number}"
-)
-
-if modern and device_lat is not None and device_lng is not None:
-    try:
-        territories = get_territories()
-        preview_result, preview_territory = evaluate_location((device_lat, device_lng), None, territories)
-        if preview_result == "matched":
-            name = next(t.name for t in territories if t.id == preview_territory)
-            owner = replay_season(db.list_drink_entries(season_id)).owners.get(preview_territory)
-            st.text(f"Detected territory: {name}")
-            if owner == membership_id:
-                st.text("You currently own this territory. Your check-in earns normal base points.")
-            elif owner:
-                owner_name = db.membership_display_name(owner, lobby_id)
-                income = format_points(Decimal(preview) / 4)
-                st.text(f"Current owner: {owner_name} · estimated additional owner income: {income} season points")
-            else:
-                st.text("Currently unclaimed. No owner income on its first accepted check-in.")
-        elif preview_result == "outside":
-            st.info(f"Outside game territories: +{preview} season points, no territory points or owner income.")
-        st.caption("Preview only. Location evidence, ownership and eligibility are checked again on submission.")
-    except (APIError, RequestError, RuntimeError):
-        st.warning("The territory preview is unavailable. It will be checked again on submission.")
-
-
-# Recover a lost successful reply even after the scoring window closes.
-recovered = next((item for item in recent_entries if capture and item.id == capture[1]), None)
-if recovered is not None:
-    st.session_state["checkin_saved_result"] = (recovered.points_awarded, recovered.location_check_result, recovered.owner_bonus_quarters)
-    st.session_state["checkin_photo_number"] = photo_number + 1
-    st.session_state.pop("checkin_capture", None)
-    st.rerun()
 
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
 closed = period_closed or (modern and not scoring_open(now, season))
@@ -131,7 +67,96 @@ if waiting:
     st.warning(f"Wait {waiting // 60}:{waiting % 60:02d} before your next check-in. Your photo and selections stay here.")
     st.button("Refresh remaining wait")
 
-if st.button("Submit", disabled=photo is None or closed or bool(waiting)) and photo is not None and capture is not None:
+with st.container(key="drink_ui_panel_camera"):
+    section_heading("01", "Take a photo", "Start with a fresh photo of your drink.")
+    photo_number = st.session_state.get("checkin_photo_number", 0)
+    photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
+    st.caption("Shared only with your lobby, alongside your username, photo receipt time and territory.")
+    capture = st.session_state.get("checkin_capture")
+    if photo is not None:
+        capture_key = (membership_id, season_id, photo.file_id)
+        if capture is None or capture[0] != capture_key:
+            capture = (capture_key, str(uuid4()), current_time())
+            st.session_state["checkin_capture"] = capture
+    else:
+        st.session_state.pop("checkin_capture", None)
+
+if photo is None:
+    st.info("Take a photo to choose the drink and size.")
+    st.stop()
+
+size = None
+amount = None
+with st.container(key="drink_ui_panel_selection"):
+    section_heading("02", "Choose your drink", "One drink, one size. Your points update as you choose.")
+    if modern:
+        with st.container(key="drink_ui_drinks"):
+            drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
+                                  horizontal=True, width="stretch")
+        if drink_type != "shot":
+            with st.container(key="drink_ui_sizes"):
+                size = st.radio("Size", options=list(SIZE_LABELS),
+                                format_func=lambda value: size_label(drink_type, value, rules),
+                                horizontal=True, width="stretch")
+        else:
+            st.caption("One shot serving. No size selection needed.")
+        preview = base_points(drink_type, size, rules)
+        point_word = "point" if preview == 1 else "points"
+        with st.container(key="drink_ui_points"):
+            st.info(f"**+{preview} season {point_word}**  \n+{preview} territory {point_word} if your location matches a territory.")
+        st.caption("Another territory owner's 25% season income is additional; your points stay the same.")
+    else:
+        st.caption("This existing season keeps its original scoring rules. New seasons use the new scoring system.")
+        drink_type = st.selectbox("Drink type", options=["beer", "wine", "shot", "longdrink"])
+        if drink_type in ("beer", "wine"):
+            amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
+
+with st.container(key="drink_ui_panel_location"):
+    section_heading("03", "Location", "Your location assigns this drink to a territory.")
+    st.info("Automatic phone location is not connected yet. Location verification is still required before saving.")
+    with st.expander("Demo location"):
+        st.caption("Temporary test inputs while automatic GPS is being connected.")
+        lat_column, lng_column = st.columns(2)
+        with lat_column:
+            device_lat = st.number_input(
+                "Latitude", min_value=-90.0, max_value=90.0, value=None, format="%.6f", key=f"checkin_lat_{photo_number}"
+            )
+        with lng_column:
+            device_lng = st.number_input(
+                "Longitude", min_value=-180.0, max_value=180.0, value=None, format="%.6f", key=f"checkin_lng_{photo_number}"
+            )
+    if modern and device_lat is not None and device_lng is not None:
+        try:
+            territories = get_territories()
+            preview_result, preview_territory = evaluate_location((device_lat, device_lng), None, territories)
+            if preview_result == "matched":
+                name = next(t.name for t in territories if t.id == preview_territory)
+                owner = replay_season(db.list_drink_entries(season_id)).owners.get(preview_territory)
+                context_line("Detected territory", name)
+                if owner == membership_id:
+                    st.text("You currently own this territory. Your check-in earns normal base points.")
+                elif owner:
+                    owner_name = db.membership_display_name(owner, lobby_id)
+                    income = format_points(Decimal(preview) / 4)
+                    st.text(f"Current owner: {owner_name} · estimated additional owner income: {income} season points")
+                else:
+                    st.text("Currently unclaimed. No owner income on its first accepted check-in.")
+            elif preview_result == "outside":
+                st.info(f"Outside game territories: +{preview} season points, no territory points or owner income.")
+            st.caption("Preview only. Location evidence, ownership and eligibility are checked again on submission.")
+        except (APIError, RequestError, RuntimeError):
+            st.warning("The territory preview is unavailable. It will be checked again on submission.")
+
+
+# Recover a lost successful reply even after the scoring window closes.
+recovered = next((item for item in recent_entries if capture and item.id == capture[1]), None)
+if recovered is not None:
+    st.session_state["checkin_saved_result"] = (recovered.points_awarded, recovered.location_check_result, recovered.owner_bonus_quarters)
+    st.session_state["checkin_photo_number"] = photo_number + 1
+    st.session_state.pop("checkin_capture", None)
+    st.rerun()
+
+if st.button("Submit", type="primary", width="stretch", disabled=photo is None or closed or bool(waiting)) and photo is not None and capture is not None:
     submitted_at = current_time() if modern else datetime.now().astimezone()
     _, capture_id, captured_at = capture
     device_gps = None

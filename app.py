@@ -17,4 +17,4 @@ if "current_lobby_name" in st.session_state:
     st.caption(f"Current lobby: **{st.session_state['current_lobby_name']}**")
 else:
     st.info("Head to the Lobby page to create or join a lobby.")
-st.caption("Use the sidebar to navigate: Profile, Lobby, Check in, Standings.")
+st.caption("Use the + below to add a check-in, or open Leaderboard and Photo history.")

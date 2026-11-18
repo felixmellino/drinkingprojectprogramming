@@ -96,6 +96,19 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
 
 
+def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
+    state, _ = ui
+    captured = state["photo"]
+    state["photo"] = None
+    page = open_checkin()
+    assert not page.exception
+    assert not page.radio and not any(item.label == "Submit" for item in page.button)
+    assert any("Take a photo to choose" in item.value for item in page.info)
+    state["photo"] = captured
+    page.run()
+    assert not page.exception and radio(page, "Drink") and radio(page, "Size")
+
+
 def test_outside_window_blocks_submission_and_shows_next_opening(ui):
     state, _ = ui
     state["now"] = START + timedelta(days=3)
@@ -228,3 +241,49 @@ def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     page.run()
     assert not page.exception and any("membership is no longer" in item.value for item in page.error)
     records.assert_not_called()
+
+
+def test_history_gallery_paginates_authorized_photos_and_opens_the_chosen_entry(ui, monkeypatch):
+    state, game = ui
+    models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(5)]
+    photos = [{"id": model.id, "username": "Mia", "captured_at": None,
+               "submitted_at": model.submitted_at.isoformat(), "is_owner": True,
+               "has_photo": True, "timezone_name": game.timezone_name, "rule_version": "v1",
+               "entry": model, "season": game, "corrected_at": None, "income_recipient": None,
+               "location": "matched", "territory": TERRITORY.name} for model in reversed(models)]
+    photos[0]["username"] = '<img src=x onerror="alert(1)">'
+    downloads = []
+    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: photos)
+    def download(player, lobby, entry_id):
+        assert (player, lobby) == ("player", "lobby")
+        downloads.append(entry_id)
+        return state["photo"].getvalue()
+    monkeypatch.setattr(db, "download_checkin_photo", download)
+    page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
+    assert not page.exception
+    assert downloads == ["photo-4", "photo-3", "photo-2", "photo-1"]
+    assert len(page.get("html")) == 4
+    markup = "\n".join(item.value for item in page.markdown)
+    assert "&lt;img" in markup and photos[0]["username"] not in markup
+    assert "+1 season pts" in markup and "Small" in markup
+    button(page, "Older photos").click().run()
+    assert not page.exception and len(page.get("html")) == 1
+    assert button(page, "Older photos").disabled
+    button(page, "View details").click().run()
+    assert not page.exception
+    assert page.selectbox[0].value == "photo-0"
+    assert any("+1 season" in item.value for item in page.text)
+    button(page, "All photos").click().run()
+    assert not page.exception and button(page, "View details")
+
+
+def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
+    _, game = ui
+    models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(2)]
+    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: [{"id": model.id} for model in models])
+    def denied(*args):
+        raise PermissionError("Membership revoked")
+    monkeypatch.setattr(db, "download_checkin_photo", denied)
+    page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
+    assert not page.exception and page.error
+    assert not page.get("html")

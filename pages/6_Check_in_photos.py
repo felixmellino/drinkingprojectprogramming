@@ -14,6 +14,8 @@ import data.db as db
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
+from drink_entry_ui import context_line, page_header, section_heading
+from photo_history_ui import photo_card, photo_metadata
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -32,7 +34,7 @@ player_id = require_login()
 show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
-st.title("Lobby photos")
+page_header("Photo history", "Every moment, with the player, place, drink and points together.", photos=True)
 st.caption(f"Photos are available until {PHOTO_RETENTION_DAYS} days after their season ends. Deleting your photo keeps your score.")
 if st.session_state.pop("photo_deleted", False):
     st.success("Photo deleted. Your score is unchanged.")
@@ -45,11 +47,6 @@ try:
         st.info("Your lobby has no check-in photos available.")
         st.stop()
 
-    entries_by_id = {item["id"]: item for item in entries}
-    selected_id = st.selectbox("Check-in", list(entries_by_id), format_func=lambda value: entry_label(entries_by_id[value]))
-    if selected_id is None:
-        st.stop()
-    entry = entries_by_id[selected_id]
 except PermissionError:
     st.error("Choose a lobby you belong to to view its photos.")
     st.stop()
@@ -57,20 +54,56 @@ except (APIError, RequestError, RuntimeError, StorageException):
     st.error("We couldn't load the photo. Try again.")
     st.stop()
 
-# Keep deletion available if a previous attempt removed the file but its
-# database update failed. Loading a missing file must not block that retry.
-if entry["is_owner"] and entry["has_photo"]:
-    confirmed = st.checkbox("Permanently delete this photo", key=f"confirm_delete_{entry['id']}")
-    if st.button("Delete my photo", disabled=not confirmed):
-        try:
-            db.delete_checkin_photo(player_id, lobby_id, entry["id"])
-        except PermissionError:
-            st.error("Only the photo's owner can delete it.")
-        except (APIError, RequestError, RuntimeError, StorageException):
-            st.error("We couldn't finish deleting the photo. Try again.")
-        else:
-            st.session_state["photo_deleted"] = True
+entries_by_id = {item["id"]: item for item in entries}
+detail_id = st.session_state.get("history_detail_id")
+if detail_id not in entries_by_id:
+    st.session_state.pop("history_detail_id", None)
+    detail_id = None
+
+if len(entries) > 1 and detail_id is None:
+    page_size = 4
+    last_page = (len(entries) - 1) // page_size
+    page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
+    first = page_number * page_size
+    visible_entries = entries[first:first + page_size]
+    st.caption(f"Showing {first + 1}–{first + len(visible_entries)} of {len(entries)} check-ins · newest first")
+    for offset in range(0, len(visible_entries), 2):
+        for column, item in zip(st.columns(2), visible_entries[offset:offset + 2]):
+            with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
+                try:
+                    photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
+                except PermissionError:
+                    st.error("Your lobby access could not be confirmed. Choose a lobby again.")
+                    st.stop()
+                except (APIError, RequestError, RuntimeError, StorageException):
+                    st.warning("This photo could not be loaded. Its details are still available.")
+                    photo = None
+                photo_card(item, photo)
+                if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
+                    st.session_state["history_detail_id"] = item["id"]
+                    st.rerun()
+    newer, _, older = st.columns(3)
+    with newer:
+        if st.button("Newer photos", disabled=page_number == 0):
+            st.session_state["history_page"] = page_number - 1
             st.rerun()
+    with older:
+        if st.button("Older photos", disabled=page_number == last_page):
+            st.session_state["history_page"] = page_number + 1
+            st.rerun()
+    st.stop()
+
+if len(entries) > 1 and st.button("All photos"):
+    st.session_state.pop("history_detail_id", None)
+    st.rerun()
+with st.container(key="drink_ui_panel_picker"):
+    section_heading("01", "Check-in details", "Photo, points and available actions.")
+    ids = list(entries_by_id)
+    selected_id = st.selectbox("Check-in", ids, index=ids.index(detail_id) if detail_id else 0,
+                               format_func=lambda value: entry_label(entries_by_id[value]))
+if selected_id is None:
+    st.stop()
+entry = entries_by_id[selected_id]
 
 try:
     photo = db.download_checkin_photo(player_id, lobby_id, entry["id"])
@@ -79,40 +112,43 @@ except PermissionError:
     st.stop()
 except (APIError, RequestError, RuntimeError, StorageException):
     st.error("We couldn't load the photo. Try again.")
-    st.stop()
+    photo = None
 
-if photo is None:
-    st.info("This check-in's photo is unavailable.")
-else:
-    # Inline the bytes after authorization so Streamlit does not create a media URL.
-    encoded = b64encode(photo).decode("ascii")
-    st.html(f'<img src="data:image/jpeg;base64,{encoded}" alt="Drink check-in photo" style="max-width:100%;height:auto">')
-
+with st.container(key="drink_ui_panel_photo"):
+    location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
+    context_line(entry["username"], location or "No territory assigned")
+    if photo is None:
+        st.info("This check-in's photo is unavailable.")
+        st.caption("Removing a photo keeps the check-in and its score.")
+    else:
+        # Inline authorized bytes; do not create a public Streamlit media URL.
+        encoded = b64encode(photo).decode("ascii")
+        st.html(f'<img class="drink-photo" src="data:image/jpeg;base64,{encoded}" alt="Drink check-in photo">')
     time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
     st.text(f"{time_label} · {entry_label(entry)}")
-    location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
-    if location:
-        st.text(location)
 
 # Scores and revision history remain visible after photo deletion.
 if entry.get("rule_version") == "v1":
     model, season = entry["entry"], entry["season"]
     zone = season.timezone_name
-    st.text(f"Submitted · {show_time(entry['submitted_at'], zone)}")
-    if entry["captured_at"]:
-        st.text(f"Photo received · {show_time(entry['captured_at'], zone)}")
-    selection = DRINK_LABELS.get(model.drink_type, model.drink_type)
-    if model.size:
-        selection += f" · {size_label(model.drink_type, model.size, season.scoring_rules)}"
-    st.text(selection)
-    territory_points = model.points_awarded if model.location_check_result == "matched" else 0
-    st.text(f"Drinker: +{model.points_awarded} season points · +{territory_points} territory points")
-    if model.owner_bonus_quarters:
-        income = format_points(Decimal(model.owner_bonus_quarters) / 4)
-        st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")
-    else:
-        st.text("No owner income for this check-in.")
-    st.caption("Awards reflect the current corrected history. Corrections elsewhere can change the owner-income recipient.")
+    with st.container(key="drink_ui_panel_details"):
+        section_heading("02", "Points & details", "The current award for this check-in.")
+        selection = DRINK_LABELS.get(model.drink_type, model.drink_type)
+        if model.size:
+            selection += f" · {size_label(model.drink_type, model.size, season.scoring_rules)}"
+        st.text(selection)
+        territory_points = model.points_awarded if model.location_check_result == "matched" else 0
+        st.text(f"Drinker: +{model.points_awarded} season points · +{territory_points} territory points")
+        if model.owner_bonus_quarters:
+            income = format_points(Decimal(model.owner_bonus_quarters) / 4)
+            st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")
+        else:
+            st.text("No owner income for this check-in.")
+        st.caption("Awards reflect the current corrected history. Corrections elsewhere can change the owner-income recipient.")
+    with st.expander("Exact timestamps"):
+        st.text(f"Submitted · {show_time(entry['submitted_at'], zone)}")
+        if entry["captured_at"]:
+            st.text(f"Photo received · {show_time(entry['captured_at'], zone)}")
     if model.revision:
         st.text(f"Corrected · {show_time(entry['corrected_at'], zone)} · revision {model.revision}")
         try:
@@ -129,17 +165,20 @@ if entry.get("rule_version") == "v1":
         with st.expander("Correct drink or size"):
             st.caption("Available for two minutes after the original submission, before season end. A correction can change later owner income and territory ownership.")
             key = f"correct_{model.id}_{model.revision}"
-            chosen_drink = st.radio("Correct drink", list(DRINK_LABELS),
-                index=list(DRINK_LABELS).index(model.drink_type), format_func=DRINK_LABELS.get,
-                horizontal=True, key=f"{key}_drink")
+            with st.container(key="drink_ui_drinks"):
+                chosen_drink = st.radio("Correct drink", list(DRINK_LABELS),
+                    index=list(DRINK_LABELS).index(model.drink_type), format_func=DRINK_LABELS.get,
+                    horizontal=True, width="stretch", key=f"{key}_drink")
             chosen_size = None
             if chosen_drink != "shot":
-                chosen_size = st.radio("Correct size", list(SIZE_LABELS),
-                    index=list(SIZE_LABELS).index(model.size) if model.size in SIZE_LABELS else 0,
-                    format_func=lambda value: size_label(chosen_drink, value, season.scoring_rules), horizontal=True, key=f"{key}_size")
+                with st.container(key="drink_ui_sizes"):
+                    chosen_size = st.radio("Correct size", list(SIZE_LABELS),
+                        index=list(SIZE_LABELS).index(model.size) if model.size in SIZE_LABELS else 0,
+                        format_func=lambda value: size_label(chosen_drink, value, season.scoring_rules),
+                        horizontal=True, width="stretch", key=f"{key}_size")
             st.info(f"Corrected base award: {base_points(chosen_drink, chosen_size, season.scoring_rules)} points")
             unchanged = chosen_drink == model.drink_type and chosen_size == model.size
-            if st.button("Save correction", key=f"{key}_save", disabled=unchanged):
+            if st.button("Save correction", key=f"{key}_save", type="primary", width="stretch", disabled=unchanged):
                 try:
                     db.correct_checkin(player_id, lobby_id, model.id, chosen_drink, chosen_size, model.revision)
                 except PermissionError:
@@ -154,3 +193,25 @@ if entry.get("rule_version") == "v1":
                 else:
                     st.session_state["checkin_corrected"] = True
                     st.rerun()
+
+else:
+    with st.container(key="drink_ui_panel_details"):
+        section_heading("02", "Drink & points", "Original details for this historical check-in.")
+        photo_metadata(entry)
+
+# Keep deletion available even when the download failed, so partial deletions
+# can still be retried. This action never changes the scored entry.
+if entry["is_owner"] and entry["has_photo"]:
+    with st.expander("Manage your photo"):
+        st.caption("Permanently remove the image. Your check-in, points and owner income stay.")
+        confirmed = st.checkbox("Permanently delete this photo", key=f"confirm_delete_{entry['id']}")
+        if st.button("Delete my photo", disabled=not confirmed):
+            try:
+                db.delete_checkin_photo(player_id, lobby_id, entry["id"])
+            except PermissionError:
+                st.error("Only the photo's owner can delete it.")
+            except (APIError, RequestError, RuntimeError, StorageException):
+                st.error("We couldn't finish deleting the photo. Try again.")
+            else:
+                st.session_state["photo_deleted"] = True
+                st.rerun()

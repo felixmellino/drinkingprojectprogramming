@@ -206,6 +206,47 @@ own block from the table above):
 
 Repeat from step 4 for the next small piece of your block.
 
+## Drink Entries presentation (Drink Entries & Scoring block)
+
+Check-in and Lobby photos share `drink_entry_ui.py` and
+`assets/drink_entries.css`. The helper renders escaped headings/context and
+simple decorative SVGs; the stylesheet applies only when that page header is
+present. Native Streamlit inputs keep their validation, labels and keyboard
+controls. Change the colors/spacing there instead of changing game rules or
+the shared account/navigation code. No new frontend dependency is needed.
+
+Check the three-step check-in on a phone-width screen, category/size changes,
+Shot without a size field, the points preview, the closed-window/cooldown
+messages, correction and confirmed image deletion. Photo management remains
+available after a failed image download; deletion keeps the score. The
+automated workflows are in `tests/test_scoring_ui.py` and
+`tests/test_photo_lifecycle.py`, including hostile display text and download
+failure. Real camera/GPS and Supabase setup still need the integration checks
+in `docs/SCORING_IMPLEMENTATION.md`.
+
+The Standings page now shares the visual header and uses `standings_ui.py`
+with `assets/standings.css` for the personal summary, ranked rows and territory
+cards. It displays the existing core helper results, preserving their exact
+quarter-points and tie order. It makes no new database writes. Keep future
+Data-block changes in the existing core/repository helpers; use the UI module
+for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
+unranked/empty states, service failures and escaped public display text.
+
+Authenticated pages now get the shared five-button bottom bar from
+`app_navigation.py`, called only after `shared.require_login` verifies the
+account. The plus opens Check-in; Leaderboard and Photo history are to its
+right. Use native `st.switch_page` to keep login/session state; do not replace
+these controls with hard browser links. Profile and Lobby retain their own
+workflows. `assets/navigation.css` provides the fixed bar and content clearance.
+
+Check-in requires a camera photo before rendering drink/size choices. Automatic
+GPS integration remains with the Location owner; temporary manual inputs are
+in Demo location. Photo history lists up to four authorized images per page,
+with cards rendered by `photo_history_ui.py`; View details retains correction
+and deletion controls. Keep inline image bytes so private images never get a
+public Streamlit media URL. Test the routes, photo gate, gallery paging,
+entry selection and membership denial alongside the existing workflow tests.
+
 ## Profile friends (Identity block)
 
 `pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
