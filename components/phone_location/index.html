@@ -3,6 +3,8 @@
 <body>
 <script>
 // Follows the phone's GPS automatically while the page is open (R-L01).
+// With the argument once=true it only asks once: used right after login so
+// the browser shows its "Allow location?" prompt straight away.
 // Sends {lat, lng, accuracy_m, taken_at_ms} to Streamlit when the player
 // first gets a fix, moves more than MIN_MOVE_M, crosses the 50 m accuracy
 // limit, or every HEARTBEAT_MS so the reading stays fresh (R-L04).
@@ -60,7 +62,7 @@ function onError(error) {
   }
 }
 
-function start() {
+function start(once) {
   if (started) return;
   started = true;
   if (!navigator.geolocation) {
@@ -68,13 +70,19 @@ function start() {
     return;
   }
   const options = {enableHighAccuracy: true, maximumAge: 5000, timeout: 20000};
+  if (once) {
+    navigator.geolocation.getCurrentPosition(onPosition, onError, options);
+    return;
+  }
   navigator.geolocation.watchPosition(onPosition, onError, options);
   // Standing still produces no new watch events, so ask again regularly.
   setInterval(() => navigator.geolocation.getCurrentPosition(onPosition, onError, options), HEARTBEAT_MS);
 }
 
 window.addEventListener("message", (event) => {
-  if (event.source === window.parent && event.data.type === "streamlit:render") start();
+  if (event.source === window.parent && event.data.type === "streamlit:render") {
+    start(Boolean(event.data.args && event.data.args.once));
+  }
 });
 send("streamlit:componentReady", {apiVersion: 1});
 send("streamlit:setFrameHeight", {height: 0});

@@ -16,6 +16,7 @@ from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
 from app_navigation import bottom_navigation
+from phone_location import ask_for_location
 
 
 def require_login() -> str:
@@ -54,6 +55,7 @@ def require_login() -> str:
         show_accounts()
         st.stop()
     bottom_navigation()
+    ask_for_location()  # browser asks "Allow location?" right after login (R-L01)
     return st.session_state["player_id"]
 
 

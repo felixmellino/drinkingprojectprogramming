@@ -30,6 +30,19 @@ def track_location() -> None:
         st.session_state[_READING_KEY] = value
 
 
+def ask_for_location() -> None:
+    """Ask for the phone's location once per login session, right after
+    login, so the browser's permission prompt appears straight away. After
+    the browser has answered (allowed or blocked), other pages don't ask
+    again; only Check-in and Map keep following the location."""
+    if st.session_state.get("_location_asked"):
+        return
+    value = _phone_location(once=True, key="location_permission", default=None)
+    if value is not None:
+        st.session_state[_READING_KEY] = value
+        st.session_state["_location_asked"] = True
+
+
 def current_location():
     """(device_gps, accuracy_m, problem) for the newest reading in this
     session; problem is None when the reading can be used."""
