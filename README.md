@@ -331,17 +331,25 @@ scope, deployment checks and exact disposable PostgreSQL test commands.
 
 Lobby lists all joined lobbies directly: running competitions newest-started
 first in green, then Past Lobbies newest-finished first in grey. It selects
-the newest running lobby automatically. Open lobby / View results selects
-that card and opens its standings. Cards use public usernames, existing
+the newest running lobby automatically. Clicking anywhere on a card opens
+a popup showing the lobby name, invite code and all members over the blurred
+lobby overview. Long member lists scroll. View leaderboard below the list
+closes the popup and opens the full Leaderboard for that lobby; there is no
+top-three preview. Close, ×, outside click and Escape dismiss the popup.
+Member rows offer Add friend or Accept/Decline for incoming requests, with
+You/Friends/Request sent status where appropriate. Create lobby and Join with
+a code are separate buttons above the list, opening dismissible dialogs over
+a blurred/dimmed background. Successful creation/join opens the lobby member popup.
+Cards use public usernames, existing
 ranking/tie rules, and authorized profile pictures with initials as fallback.
 No scores shows **No Leader**, including finished lobbies. Create and join
-remain below the list. The countdown/list refresh every minute while open.
+remain above the list. The countdown/list refresh every minute while open.
 
 Apply [`migrations/009_single_competition_lobbies.sql`](migrations/009_single_competition_lobbies.sql)
 after migration 005 for atomic database enforcement of one competition per
 lobby. Existing multi-season history is retained; its latest competition
 summarizes that lobby. No season renewal control remains. A failed initial
-season setup can be retried on the incomplete lobby card.
+season setup can be retried in the incomplete lobby’s member popup.
 
 Validation: `python -m pytest -q`; optional disposable SQL checks:
 `python scripts/verify_single_competition_lobbies.py` with the isolated test
