@@ -6,6 +6,7 @@ turns them into map shapes, colours and text. No game rules live here.
 
 from __future__ import annotations
 
+import math
 import re
 from html import escape
 
@@ -21,6 +22,17 @@ COLOURS = {
     "free": [180, 178, 169, 110],   # grey
 }
 LEGEND = {"yours": "🟢 Yours", "theirs": "🔴 Someone else's", "free": "⚪ Unclaimed"}
+HOVER_COLOUR = [255, 196, 0, 170]  # amber, on the area under the pointer
+
+# Quick-zoom buttons: which territory ids belong to which part of the city.
+# Ids that aren't in the territory file are simply skipped.
+AREAS = {
+    "Bairro Alto": ["rua-dos-mouros", "cheers-irish-pub", "le-pub", "shortys",
+                    "party-street", "outer-bairro", "rua-da-rosa", "autschan"],
+    "Santos": ["santa-catarina", "tower-bar", "santos-kiosk", "after8"],
+    "Nova SBE": ["nova-sbe"],
+}
+ME = "📍 Me"
 
 
 def markdown_safe(text: str) -> str:
@@ -35,6 +47,7 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
         owner = territory_owner(entries, territory.id)
         standings = territory_standings(entries, territory.id)
         status, number = capture_status(standings, owner, me)
+        needed = number if status == "theirs" else None
         my_points = dict(standings).get(me, 0)
         owner_name = names.get(owner, "Unknown player") if owner else "Nobody"
         if status == "free":
@@ -49,13 +62,59 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
             "status": status,
             "owner": owner_name,
             "my_points": my_points,
+            "needed": needed,
             "detail": detail,
             "boundary": territory.boundary,
         })
     return rows
 
 
-def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None) -> None:
+def summary(rows: list[dict]) -> dict:
+    """Numbers for the cards above the map. 'easiest' is the territory someone
+    else owns that needs the fewest points to take (None if there's none)."""
+    yours = sum(1 for row in rows if row["status"] == "yours")
+    free = sum(1 for row in rows if row["status"] == "free")
+    theirs = [row for row in rows if row["status"] == "theirs"]
+    easiest = None
+    if theirs:
+        best = min(theirs, key=lambda row: (row["needed"], row["name"]))
+        easiest = (best["name"], best["needed"])
+    return {"yours": yours, "total": len(rows), "free": free, "easiest": easiest}
+
+
+def render_summary(rows: list[dict]) -> None:
+    numbers = summary(rows)
+    owned, free, easiest = st.columns(3)
+    owned.metric("Yours", f"{numbers['yours']} of {numbers['total']}")
+    free.metric("Unclaimed", numbers["free"], help="Your next drink in one of these claims it.")
+    if numbers["easiest"]:
+        name, needed = numbers["easiest"]
+        easiest.metric("Easiest to take", name, f"{needed} point{'s' if needed != 1 else ''} needed",
+                       delta_color="off")
+    else:
+        easiest.metric("Easiest to take", "—")
+
+
+def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None) -> pdk.ViewState:
+    """Where the map starts: on you, or zoomed to fit one part of the city."""
+    if focus == ME and location is not None:
+        return pdk.ViewState(latitude=location[0], longitude=location[1], zoom=15.5)
+    ids = set(AREAS.get(focus, []))
+    points = [p for row in rows if row["id"] in ids for p in row["boundary"]["coordinates"][0]]
+    if not points:  # unknown area: show everything
+        points = [p for row in rows for p in row["boundary"]["coordinates"][0]]
+    lngs, lats = [p[0] for p in points], [p[1] for p in points]
+    # Zoom so the area's width and height fit a phone-sized map (~340 x 400 px).
+    # The map library draws the whole world 512 px wide at zoom 0.
+    span_lng = max(max(lngs) - min(lngs), 1e-4)
+    span_lat = max(max(lats) - min(lats), 1e-4) / math.cos(math.radians(sum(lats) / len(lats)))
+    zoom = min(math.log2(340 * 360 / (512 * span_lng)), math.log2(400 * 360 / (512 * span_lat))) - 0.2
+    return pdk.ViewState(latitude=(min(lats) + max(lats)) / 2, longitude=(min(lngs) + max(lngs)) / 2,
+                         zoom=max(11.0, min(zoom, 17.0)))
+
+
+def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
+               focus: str = "Bairro Alto") -> None:
     features = [
         {
             "type": "Feature",
@@ -76,6 +135,8 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             "GeoJsonLayer",
             {"type": "FeatureCollection", "features": features},
             pickable=True,
+            auto_highlight=True,
+            highlight_color=HOVER_COLOUR,
             stroked=True,
             filled=True,
             get_fill_color="properties.fill",
@@ -92,14 +153,10 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                       radius_min_pixels=7, get_fill_color=[24, 95, 165, 255],
                       get_line_color=[255, 255, 255, 255], stroked=True, line_width_min_pixels=2),
         ]
-    # Centre of all 12 territories (Santos to Bairro Alto), wide enough for phones.
-    view = pdk.ViewState(latitude=38.7094, longitude=-9.1500, zoom=13.7)
-    if location is not None:
-        view = pdk.ViewState(latitude=location[0], longitude=location[1], zoom=15)
     st.pydeck_chart(
         pdk.Deck(
             layers=layers,
-            initial_view_state=view,
+            initial_view_state=view_for(rows, focus, location),
             map_provider="carto",
             map_style="light",
             tooltip={"html": "<b>{name}</b><br/>{detail}<br/>{points}"},

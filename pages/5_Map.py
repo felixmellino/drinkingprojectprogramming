@@ -48,5 +48,14 @@ elif problem == "denied":
 else:
     st.caption("Finding your location…")
 
-map_ui.render_map(rows, location, accuracy_m)
+map_ui.render_summary(rows)
+
+# Quick zoom: jump between the parts of the city that have territories.
+usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
+options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS)
+focus = st.segmented_control("Show", options, default=options[0], key="map_focus") or options[0]
+if focus not in options:  # e.g. "Me" was picked but the location is gone now
+    focus = options[0]
+
+map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus)
 map_ui.territory_list(rows)

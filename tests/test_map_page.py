@@ -87,3 +87,45 @@ def test_inaccurate_location_is_not_used(phone):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 90, "taken_at_ms": time.time() * 1000}
     page = open_map()
     assert not page.info and any("only accurate to about 90 m" in c.value for c in page.caption)
+
+
+# -- Summary cards and quick zoom ---------------------------------------
+
+def test_summary_counts_yours_free_and_easiest_capture(phone):
+    page = open_map()
+    metrics = {m.label: m.value for m in page.metric}
+    assert metrics["Yours"] == "1 of 3"
+    assert metrics["Unclaimed"] == "1"
+    assert metrics["Easiest to take"] == "Bairro Alto"
+
+
+def test_quick_zoom_offers_the_areas_and_me_only_with_a_location(phone):
+    page = open_map()
+    assert page.get("button_group")[0].proto.options and not any(
+        "Me" in o.content for o in page.get("button_group")[0].proto.options)
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    page = open_map()
+    assert "Me" in page.get("button_group")[0].proto.options[0].content
+
+
+def test_summary_helper_picks_the_cheapest_territory_to_take():
+    import map_ui
+    rows = [
+        {"name": "A", "status": "theirs", "needed": 5},
+        {"name": "B", "status": "theirs", "needed": 2},
+        {"name": "C", "status": "yours", "needed": None},
+        {"name": "D", "status": "free", "needed": None},
+    ]
+    assert map_ui.summary(rows) == {"yours": 1, "total": 4, "free": 1, "easiest": ("B", 2)}
+    assert map_ui.summary([])["easiest"] is None
+
+
+def test_zoom_fits_an_area_and_centres_on_it():
+    import map_ui
+    rows = [{"id": "nova-sbe", "boundary": {"coordinates": [[[-9.328, 38.673], [-9.323, 38.673],
+                                                              [-9.323, 38.679], [-9.328, 38.673]]]}}]
+    view = map_ui.view_for(rows, "Nova SBE", None)
+    assert abs(view.latitude - 38.676) < 0.001 and abs(view.longitude - -9.3255) < 0.001
+    assert 14 <= view.zoom <= 17
+    me = map_ui.view_for(rows, map_ui.ME, (38.7, -9.1))
+    assert (me.latitude, me.longitude) == (38.7, -9.1)
