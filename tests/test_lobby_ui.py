@@ -7,6 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import data.db as db
+from core.friends import transition
 from core.lobbies import create_season
 from core.models import Lobby, LobbyMembership
 from tests.test_scoring_v1 import entry
@@ -30,7 +31,20 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))
-    monkeypatch.setattr(db, 'list_memberships_for_lobby', lambda lid: [Obj(id='leo', player_id='leo-id')])
+    state['lobby_members'] = {l.id: [m for m in members if m.lobby_id == l.id] + [Obj(id='leo', player_id='leo-id')] for l in lobbies}
+    state['users'] = [{'id': 'me', 'display_name': 'MyUsername'}, {'id': 'leo-id', 'display_name': 'Leo'}]
+    state['relationships'] = []
+    monkeypatch.setattr(db, 'list_memberships_for_lobby', lambda lid: state['lobby_members'][lid])
+    monkeypatch.setattr(db, 'list_public_usernames', lambda: state['users'])
+    monkeypatch.setattr(db, 'list_friendships', lambda pid: [r.copy() for r in state['relationships'] if pid in (r['sender_id'], r['recipient_id'])])
+    def change(actor, other, action):
+        current = next((r for r in state['relationships'] if {r['sender_id'], r['recipient_id']} == {actor, other}), None)
+        row = transition(actor, other, action, current, datetime.now(timezone.utc))
+        if current:
+            state['relationships'].remove(current)
+        state['relationships'].append({**row, 'updated_at': datetime.now(timezone.utc).isoformat()})
+    state['change'] = Mock(side_effect=change)
+    monkeypatch.setattr(db, 'change_friendship', state['change'])
     state['picture'] = Mock(return_value=None)
     monkeypatch.setattr('lobby_ui.load_picture', state['picture'])
     return state
@@ -62,8 +76,9 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert at.session_state['current_season_id'] == ui['seasons']['new'][0].id
     assert not any(s.label in ('Your lobbies', 'View season') for s in at.selectbox)
     assert any(b.label == 'Create lobby' for b in at.button)
-    assert any(b.label == 'Join lobby' for b in at.button)
+    assert any(b.label == 'Join with a code' for b in at.button)
     assert not any(b.label == 'Start next scoring season' for b in at.button)
+    assert len([b for b in at.button if b.label == 'View lobby →']) == 3
 
 
 def test_leader_uses_existing_tie_rule_public_name_and_private_photo_fallback(ui):
@@ -129,6 +144,7 @@ def test_join_invalid_code_keeps_lists_and_saves_nothing(ui, monkeypatch):
     save = Mock()
     monkeypatch.setattr(db, 'insert_membership', save)
     at = page()
+    click(at, 'Join with a code')
     next(v for v in at.text_input if v.label == 'Invite code').input('badcode')
     click(at, 'Join lobby')
     assert not at.exception and any("doesn't match" in e.value for e in at.error)
@@ -136,13 +152,21 @@ def test_join_invalid_code_keeps_lists_and_saves_nothing(ui, monkeypatch):
     save.assert_not_called()
 
 
-def test_opening_a_card_selects_its_membership_and_navigates(ui, monkeypatch):
+def test_opening_a_card_shows_members_then_navigates_to_standings(ui, monkeypatch):
     nav = Mock()
     monkeypatch.setattr('lobby_ui.st.switch_page', nav)
     at = page()
     next(b for b in at.button if b.key == 'open_lobby_old').click().run()
     assert not at.exception
     assert at.session_state['current_lobby_id'] == 'old'
+    nav.assert_not_called()
+    assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
+    assert len([b for b in at.button if b.label == 'Add friend']) == 1
+    assert len(cards(at)) == 3
+    assert any(b.label == 'Create lobby' for b in at.button)
+    assert any(c.value == 'OLDER' for c in at.code)
+    assert not any(h.value == 'Top 3 players' for h in at.subheader)
+    click(at, 'View leaderboard')
     nav.assert_called_once_with('pages/4_Standings.py')
 
 
@@ -154,6 +178,7 @@ def test_past_only_and_incomplete_setup_have_no_invented_active_lobby(ui):
     ui['seasons']['past'] = []
     at.run()
     assert not at.exception and 'Setup incomplete' in cards(at)[0]
+    open_members(at, 'past')
     assert any(b.label == 'Start lobby' for b in at.button)
 
 
@@ -166,15 +191,241 @@ def test_last_membership_removed_clears_selection(ui):
 
 
 def test_joining_valid_code_updates_the_visible_list_once(ui, monkeypatch):
-    save = Mock(side_effect=ui['members'].append)
+    def insert(m):
+        ui['members'].append(m)
+        ui['lobby_members'][m.lobby_id].append(m)
+    save = Mock(side_effect=insert)
     monkeypatch.setattr(db, 'insert_membership', save)
     at = page()
+    click(at, 'Join with a code')
     next(v for v in at.text_input if v.label == 'Invite code').input('private')
     click(at, 'Join lobby')
     assert not at.exception
     assert any('Not joined' in s for s in cards(at))
     assert at.session_state['current_lobby_id'] == 'secret'
     assert save.call_count == 1
+    assert any('Joined Not joined' in n.value for n in at.success)
+    click(at, 'Close')
+    click(at, 'Join with a code')
     next(v for v in at.text_input if v.label == 'Invite code').input('private')
     click(at, 'Join lobby')
     assert not at.exception and save.call_count == 1
+
+
+def test_invite_codes_visible_and_escaped(ui):
+    ui['lobbies'][0].invite_code = '<script>bad</script>'
+    at = page()
+    assert not at.exception
+    assert 'Invite code: <strong>NEWEST</strong>' in cards(at)[0]
+    assert 'Invite code: <strong>PAST</strong>' in cards(at)[2]
+    assert '&lt;script&gt;bad&lt;/script&gt;' in cards(at)[1]
+
+
+def open_members(at, lid='new'):
+    return next(b for b in at.button if b.key == f'open_lobby_{lid}').click().run()
+
+
+def test_request_sent_persists_across_fresh_pages_and_recipient_can_accept(ui, monkeypatch):
+    at = open_members(page())
+    click(at, 'Add friend')
+    assert not at.exception
+    ui['change'].assert_called_once_with('me', 'leo-id', 'request')
+    fresh = open_members(page())
+    assert any(c.value == 'Request sent' for c in fresh.caption)
+    assert not any(b.label in ('Add friend', 'Accept', 'Decline') for b in fresh.button)
+    monkeypatch.setattr('shared.require_login', lambda: 'leo-id')
+    ui['members'] = [LobbyMembership('leo', 'leo-id', 'new', datetime.now(timezone.utc))]
+    recipient = open_members(page())
+    assert any(c.value == 'Incoming friend request' for c in recipient.caption)
+    click(recipient, 'Accept')
+    assert not recipient.exception
+    assert any(c.value == 'Friends' for c in recipient.caption)
+    assert not any(b.label in ('Add friend', 'Accept', 'Decline') for b in recipient.button)
+
+
+def test_decline_and_cooldown_leave_request_unchanged(ui):
+    ui['relationships'] = [{'sender_id': 'leo-id', 'recipient_id': 'me', 'status': 'pending'}]
+    at = open_members(page())
+    click(at, 'Decline')
+    assert not at.exception
+    assert ui['relationships'][0]['status'] == 'declined'
+    click(at, 'Add friend')
+    assert not at.exception
+    assert any('10 minutes' in e.value for e in at.error)
+    assert ui['relationships'][0]['status'] == 'declined'
+
+
+def test_members_service_failure_and_friend_service_failure(ui, monkeypatch):
+    def fail(*args):
+        raise RuntimeError('offline')
+    monkeypatch.setattr(db, 'list_friendships', fail)
+    at = open_members(page())
+    assert not at.exception
+    assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
+    assert at.warning and not any(b.label == 'Add friend' for b in at.button)
+    monkeypatch.setattr(db, 'list_public_usernames', fail)
+    at.run()
+    assert not at.exception
+    assert any('members could not be loaded' in e.value for e in at.error)
+
+
+def test_removed_membership_hides_open_members_and_actions(ui):
+    at = open_members(page())
+    ui['members'] = [m for m in ui['members'] if m.lobby_id != 'new']
+    at.run()
+    assert not at.exception
+    assert not at.text and '_opened_lobby_id' not in at.session_state
+    assert not any(b.label == 'Add friend' for b in at.button)
+
+
+def test_stale_membership_fails_closed(ui):
+    ui['lobby_members']['new'] = [Obj(id='leo', player_id='leo-id')]
+    at = open_members(page())
+    assert not at.exception and any('no longer a member' in e.value for e in at.error)
+    assert not at.text and not any(b.label == 'Add friend' for b in at.button)
+
+
+def test_other_lobby_members_and_unrelated_relationships_are_private(ui):
+    ui['users'].append({'id': 'outsider', 'display_name': 'OutsideUsername'})
+    ui['relationships'] = [{'sender_id': 'outsider', 'recipient_id': 'leo-id', 'status': 'accepted'}]
+    at = open_members(page())
+    assert not at.exception
+    assert 'OutsideUsername' not in {t.value for t in at.text}
+    assert not any(c.value == 'Friends' for c in at.caption)
+    assert any(b.label == 'Add friend' for b in at.button)
+
+
+def test_concurrent_request_error_is_visible_without_crashing(ui):
+    from postgrest.exceptions import APIError
+    ui['change'].side_effect = APIError({'code': '40001', 'message': 'changed', 'details': None, 'hint': None})
+    at = open_members(page())
+    click(at, 'Add friend')
+    assert not at.exception
+    assert any('Refresh lobbies' in e.value for e in at.error)
+    assert not ui['relationships']
+
+
+def test_switching_open_lobbies_shows_only_one_member_list(ui):
+    at = open_members(page(), 'old')
+    assert at.session_state['current_lobby_id'] == 'old'
+    at.run()
+    assert at.session_state['current_lobby_id'] == 'old'
+    click(at, 'Close')
+    open_members(at, 'new')
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert len([h for h in at.subheader if h.value == 'Lobby members']) == 1
+    click(at, 'Close')
+    assert not at.exception
+    assert not at.text
+
+
+def test_overview_forms_are_hidden_until_opened_and_cancel_saves_nothing(ui, monkeypatch):
+    save_lobby, save_member = Mock(), Mock()
+    monkeypatch.setattr(db, 'insert_lobby', save_lobby)
+    monkeypatch.setattr(db, 'insert_membership', save_member)
+    at = page()
+    assert not at.text_input and not at.radio and not at.tabs
+    click(at, 'Create lobby')
+    assert not at.exception
+    assert any(v.label == 'Lobby name' for v in at.text_input)
+    assert not any(v.label == 'Invite code' for v in at.text_input)
+    click(at, 'Cancel')
+    assert not at.exception and not at.text_input
+    click(at, 'Join with a code')
+    assert any(v.label == 'Invite code' for v in at.text_input)
+    click(at, 'Cancel')
+    assert not at.exception and not at.text_input
+    save_lobby.assert_not_called()
+    save_member.assert_not_called()
+
+
+def test_create_empty_name_keeps_dialog_open_and_writes_nothing(ui, monkeypatch):
+    save = Mock()
+    monkeypatch.setattr(db, 'insert_lobby', save)
+    at = page()
+    click(at, 'Create lobby')
+    [b for b in at.button if b.label == 'Create lobby'][-1].click().run()
+    assert not at.exception and any('name is required' in e.value for e in at.error)
+    assert any(v.label == 'Lobby name' for v in at.text_input)
+    save.assert_not_called()
+
+
+def test_create_success_opens_details_and_keeps_duration_timezone_and_test_mode(ui, monkeypatch):
+    monkeypatch.setattr(db, 'insert_lobby', ui['lobbies'].append)
+    def save_member(m):
+        ui['members'].append(m)
+        ui['lobby_members'][m.lobby_id] = [m]
+    monkeypatch.setattr(db, 'insert_membership', save_member)
+    def start(pid, lid, length, zone, **options):
+        game = create_season(lid, length, datetime.now(timezone.utc), zone, **options)
+        ui['seasons'][lid] = [game]
+        return game
+    start_mock = Mock(side_effect=start)
+    monkeypatch.setattr(db, 'start_scoring_season', start_mock)
+    at = page()
+    click(at, 'Create lobby')
+    next(v for v in at.text_input if v.label == 'Lobby name').input('My new lobby')
+    at.radio[0].set_value('3_months')
+    at.selectbox[0].set_value('America/New_York')
+    at.checkbox[0].check()
+    [b for b in at.button if b.label == 'Create lobby'][-1].click().run()
+    assert not at.exception
+    created = ui['lobbies'][-1]
+    start_mock.assert_called_once_with('me', created.id, '3_months', 'America/New_York', test_mode=True)
+    assert at.session_state['_opened_lobby_id'] == created.id
+    assert len(cards(at)) == 4 and any('My new lobby' in card for card in cards(at))
+    assert any('Lobby created!' in e.value for e in at.success)
+    assert not at.text_input and any(b.label == 'Close' for b in at.button)
+
+
+def test_member_popup_keeps_overview_and_has_no_ranking_preview(ui):
+    ui['entries'] = [entry('1', 'leo', 'shot', None, 0, territory=None)]
+    ui['names'] = {'leo': 'Leo'}
+    at = open_members(page())
+    assert not at.exception
+    assert len(cards(at)) == 3
+    assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
+    assert not any(h.value == 'Top 3 players' for h in at.subheader)
+    assert not any(t.value.endswith(' pts') for t in at.text)
+    assert any(c.value == 'NEWEST' for c in at.code)
+    assert any(b.label == 'View leaderboard' for b in at.button)
+
+
+def test_member_popup_works_when_standings_are_unavailable(ui, monkeypatch):
+    def fail(_):
+        raise RuntimeError('offline')
+    monkeypatch.setattr(db, 'list_drink_entries', fail)
+    at = open_members(page())
+    assert not at.exception
+    assert any(b.label == 'Add friend' for b in at.button)
+    assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
+
+
+def test_join_service_failure_stays_in_dialog(ui, monkeypatch):
+    at = page()
+    click(at, 'Join with a code')
+    def fail():
+        raise RuntimeError('offline')
+    monkeypatch.setattr(db, 'list_lobbies', fail)
+    click(at, 'Join lobby')
+    assert not at.exception and any('Could not load lobbies' in e.value for e in at.error)
+    assert any(v.label == 'Invite code' for v in at.text_input)
+
+
+def test_close_member_popup_stays_closed_on_refresh(ui):
+    at = open_members(page())
+    click(at, 'Close')
+    at.run()
+    assert not at.exception and not at.text
+    assert '_opened_lobby_id' not in at.session_state
+    assert len(cards(at)) == 3
+
+
+def test_switching_from_members_to_create_opens_only_one_dialog(ui):
+    at = open_members(page())
+    click(at, 'Create lobby')
+    assert not at.exception
+    assert '_opened_lobby_id' not in at.session_state
+    assert any(v.label == 'Lobby name' for v in at.text_input)
+    assert not any(b.label == 'Close' for b in at.button)
