@@ -26,11 +26,15 @@ HOVER_COLOUR = [25, 57, 47, 90]  # the app's dark green, lightly over the area u
 
 # Quick-zoom buttons: which territory ids belong to which part of the city.
 # Ids that aren't in the territory file are simply skipped.
+_BAIRRO_ALTO = ["rua-dos-mouros", "cheers-irish-pub", "le-pub", "shortys",
+                "party-street", "outer-bairro", "rua-da-rosa", "autschan"]
 AREAS = {
-    "Bairro Alto": ["rua-dos-mouros", "cheers-irish-pub", "le-pub", "shortys",
-                    "party-street", "outer-bairro", "rua-da-rosa", "autschan"],
-    "Santos": ["santa-catarina", "tower-bar", "santos-kiosk", "after8"],
-    "Nova SBE": ["nova-sbe"],
+    "Bairro Alto": _BAIRRO_ALTO,
+    "Lisbon": _BAIRRO_ALTO + [
+        "santa-catarina", "tower-bar", "santos-kiosk", "after8", "principe-real",
+        "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
+        "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
+    "Nova SBE": ["nova-sbe", "carcavelos-beach"],
 }
 ME = "📍 Me"
 ALL = "All"

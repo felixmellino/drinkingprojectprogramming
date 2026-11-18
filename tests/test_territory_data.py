@@ -83,8 +83,8 @@ def deepest_overlap_m(ring_a, ring_b):
 
 # -- R-T01: every territory is a named, closed polygon in Lisbon --------------
 
-def test_file_has_the_thirteen_starting_territories():
-    assert len(load_features()) == 13
+def test_file_has_the_twenty_five_territories():
+    assert len(load_features()) == 25
 
 
 def test_app_loader_reads_every_territory_with_its_permanent_id():
@@ -93,7 +93,7 @@ def test_app_loader_reads_every_territory_with_its_permanent_id():
     territories = load_territories()
     file_ids = [f["properties"]["id"] for f in load_features()]
     assert [t.id for t in territories] == file_ids
-    assert len(set(file_ids)) == 13
+    assert len(set(file_ids)) == 25
 
 
 def test_every_territory_has_a_unique_name():
@@ -154,6 +154,9 @@ def test_overlap_check_allows_a_shared_border():
         ("K Urban Beach Club", (38.70386, -9.15543), "After8"),
         ("Rua da Rosa, middle", (38.7133, -9.1456), "Shortys"),
         ("Nova SBE main building", (38.6782, -9.3259), "Nova SBE Campus"),
+        ("Largo de Camões", (38.71057, -9.14343), "Chiado"),
+        ("Jardim do Príncipe Real", (38.71628, -9.14861), "Príncipe Real"),
+        ("Rua Nova do Carvalho", (38.70723, -9.14380), "Pink Street"),
     ],
 )
 def test_known_places_match_their_territory(place, lat_lng, expected_name):
@@ -163,9 +166,9 @@ def test_known_places_match_their_territory(place, lat_lng, expected_name):
     assert next(t.name for t in territories if t.id == territory_id) == expected_name
 
 
-def test_largo_de_camoes_is_outside_every_territory():
-    """Gap case (R-T02): a drink here counts for the season only."""
-    result, territory_id = evaluate_location((38.71057, -9.14343), None, load_territories())
+def test_praca_do_comercio_is_outside_every_territory():
+    """Outside case (R1): beyond the covered centre a drink counts for the season only."""
+    result, territory_id = evaluate_location((38.7075, -9.1365), None, load_territories())
     assert result == "outside"
     assert territory_id is None
 
