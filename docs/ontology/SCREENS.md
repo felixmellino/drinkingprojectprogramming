@@ -288,3 +288,15 @@ full-width buttons in two columns directly below the page title. Forms are
 shown only in their respective popups. Successful joining closes the popup
 and refreshes the lobby cards; an invalid code keeps the popup open with its
 error. Creation settings and team rules remain unchanged.
+
+## Chug Duel playing view (18 November 2026)
+
+After the shared check-in is saved, the host sees two named tap targets that
+fill the app viewport. Both tap once to get ready, then the same board shows
+3, 2, 1 and GO. Early finish taps are ignored. Navigation and page scrolling
+stay disabled; server updates do not move or remount the board. The first
+finish tap locks the result locally, which is then confirmed by the server.
+The winner remains visible on this board until Back to Minigames restores
+the normal page. A small × preserves End without winner. The recipient's
+device continues to show the running game's status and then its result.
+Rules, limits and awards remain R-M01–R-M05.

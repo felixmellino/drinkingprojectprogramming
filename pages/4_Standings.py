@@ -7,6 +7,7 @@ from postgrest.exceptions import APIError
 import data.db as db
 from core.leaderboard import season_leaderboard
 from core.territories import territory_owner, territory_standings
+from core.scoring_v1 import replay_season
 from drink_entry_ui import context_line, page_header, section_heading
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
@@ -39,7 +40,8 @@ if team_mode:
     membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
     if not membership_id:
         st.info("Open this lobby on the Lobby page and join a team before checking in.")
-leaderboard = season_leaderboard(entries)
+snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
+leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 context_line(st.session_state.get("current_lobby_name", "Your lobby"),
              f"{len(memberships)} members · {len(leaderboard)} ranked this season")
 
@@ -50,8 +52,8 @@ owner_counts = {}
 territories_available = True
 try:
     for territory in get_territories():
-        owner = territory_owner(entries, territory.id)
-        rows = territory_standings(entries, territory.id)
+        owner = snapshot.owners.get(territory.id) if snapshot else territory_owner(entries, territory.id)
+        rows = snapshot.territory_rows(territory.id) if snapshot else territory_standings(entries, territory.id)
         territory_data.append((territory, owner, rows))
         if owner:
             owner_counts[owner] = owner_counts.get(owner, 0) + 1

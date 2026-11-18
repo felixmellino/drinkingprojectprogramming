@@ -2,12 +2,11 @@
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
-import data.db as db
 from profile_ui import show_profile
-from shared import require_login
+from shared import require_login, authenticated_player
 
 player_id = require_login()
 try:
-    show_profile(db.get_player(player_id))
+    show_profile(authenticated_player())
 except (APIError, RequestError, RuntimeError, OSError):
     st.error("Profile is unavailable. Please try again later.")

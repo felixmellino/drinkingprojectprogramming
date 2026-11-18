@@ -5,6 +5,23 @@
 .st-key-chug_camera_stage iframe { width:100vw!important; height:100dvh!important; border:0; }
 body:has(.st-key-chug_camera_stage) [data-testid="stHeader"],
 body:has(.st-key-chug_camera_stage) .st-key-wego_bottom_nav { display:none!important; }
+.st-key-chug_duel_stage { position:fixed!important; inset:0; z-index:100000;
+  width:100vw!important; max-width:none!important; height:100dvh!important;
+  margin:0!important; padding:0!important; background:var(--bg); overflow:hidden; }
+.st-key-chug_duel_stage iframe { display:block; width:100vw!important; height:100dvh!important; border:0; }
+html:has(.st-key-chug_duel_stage), body:has(.st-key-chug_duel_stage),
+body:has(.st-key-chug_duel_stage) [data-testid="stMain"] {
+  overflow:hidden!important; overscroll-behavior:none; }
+body:has(.st-key-chug_duel_stage) [data-testid="stHeader"],
+body:has(.st-key-chug_duel_stage) [data-testid="stSidebar"],
+body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!important; }
+.st-key-chug_duel_controls { position:fixed!important; top:calc(12px + env(safe-area-inset-top,0px));
+  right:calc(12px + env(safe-area-inset-right,0px)); width:auto!important; z-index:100001; }
+.st-key-chug_duel_controls button { min-height:44px; background:var(--bg); border:var(--border-width) solid var(--border); }
+.st-key-chug_duel_controls button:has([data-testid="stIconMaterial"]) { width:44px; height:44px; padding:0; border-radius:50%; }
+.st-key-chug_duel_controls button:has([data-testid="stIconMaterial"]) [data-testid="stMarkdownContainer"] {
+  position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+.st-key-chug_duel_stage [data-testid="stAlert"] { position:fixed; bottom:64px; left:16px; right:16px; z-index:100002; }
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetric"] { background:var(--surface);
   border:var(--border-width) solid var(--border); border-radius:var(--radius-lg); padding:12px; }
 @media(max-width:480px) {

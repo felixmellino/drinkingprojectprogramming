@@ -11,7 +11,7 @@ from storage3.utils import StorageException
 import data.db as db
 from camera_capture import CameraCancelled, camera_photo
 from chug_duel_component import duel_board
-from core.chug_duel import allowances, component_action, night_id, next_reset, validate_pair, ERRORS
+from core.chug_duel import allowances, component_action, night_id, next_reset, unlimited_plays, validate_pair, ERRORS
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
@@ -36,6 +36,26 @@ def _act(player, duel, action, winner=None):
         st.rerun()
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
         _error(error)
+
+
+def _focused_duel(player, duel, labels):
+    """Keep one keyed board in the same screen position through all play phases."""
+    with st.container(key="chug_duel_stage"):
+        value = duel_board(duel, labels.get(duel["challenger_id"], "Challenger"),
+                           labels.get(duel["opponent_id"], "Opponent"))
+        with st.container(key="chug_duel_controls"):
+            if duel["status"] == "started":
+                # A compact exit is separate from both large finish targets.
+                if st.button("End without winner", icon=":material/close:",
+                             key=f"abort_{duel['id']}", help="End the duel. Both keep their normal drink points."):
+                    _act(player, duel, "abort")
+            elif st.button("Back to Minigames", key=f"chug_done_{duel['id']}"):
+                st.session_state.pop("chug_focused_duel", None)
+                st.rerun()
+        if duel["status"] == "started":
+            action = component_action(value, duel)
+            if action:
+                _act(player, duel, *action)
 
 
 def _capture_and_start(player, lobby, season, duel):
@@ -95,10 +115,12 @@ def _capture_and_start(player, lobby, season, duel):
 
 def render_minigames(player, member, lobby, season):
     rules = rules_for(season)
+    unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    page_header("Minigames", "Chug Duel · Pick your rival. One shared screen.", compact=True)
-    context_line(lobby.name, f"Evening resets at 06:00 · {season.timezone_name}")
+    page_header("Minigames", "Chug Duel · Challenge someone in your lobby.", compact=True, section="MINIGAMES")
+    context_line(lobby.name, "Test season · Unlimited minigame plays" if unlimited
+                 else f"Evening resets at 06:00 · {season.timezone_name}")
     track_location()
     try:
         members = db.list_memberships_for_lobby(lobby.id)
@@ -119,11 +141,23 @@ def render_minigames(player, member, lobby, season):
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
             _error(error)
             return
-        outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels)
+        running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
+        if running:
+            st.session_state["chug_focused_duel"] = running["id"]
+        focused = running or next((d for d in duels if d["id"] == st.session_state.get("chug_focused_duel")
+            and d["challenger_id"] == member and d["status"] in {"completed", "aborted"}), None)
+        if focused:
+            _focused_duel(player, focused, labels)
+            return
+        st.session_state.pop("chug_focused_duel", None)
+        outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
         columns = st.columns(2)
-        columns[0].metric("Challenge", "Available" if outgoing else "Used / reserved")
-        columns[1].metric("Accept", "Available" if incoming else "Used / reserved")
-        st.caption(f"One challenge + one acceptance per lobby and evening. Next reset: {next_reset(now, season.timezone_name):%a %H:%M %Z}.")
+        columns[0].metric("Challenge", "Unlimited" if unlimited else "Available" if outgoing else "Used / reserved")
+        columns[1].metric("Accept", "Unlimited" if unlimited else "Available" if incoming else "Used / reserved")
+        if unlimited:
+            st.caption("TEST SEASON · Play minigames as often as you like. Finish or end the current duel first. The normal check-in cooldown still applies.")
+        else:
+            st.caption(f"One challenge + one acceptance per lobby and evening. Next reset: {next_reset(now, season.timezone_name):%a %H:%M %Z}.")
         if st.button("Refresh duels", key="chug_refresh"):
             st.rerun()
 
@@ -160,14 +194,7 @@ def render_minigames(player, member, lobby, season):
                     if st.button("Cancel before start", key=f"abort_{duel['id']}"):
                         _act(player, duel, "cancel" if host else "abort")
                 else:
-                    if host:
-                        st.caption("Each player taps Ready on their half. After GO, the first finish tap wins. Results are trust-based.")
-                        value = duel_board(duel, labels.get(cid, "Challenger"), labels.get(oid, "Opponent"))
-                        action = component_action(value, duel)
-                        if action:
-                            _act(player, duel, *action)
-                    else:
-                        st.info("Duel running on the challenger's phone. Your result appears here automatically.")
+                    st.info("Duel running on the challenger's phone. Your result appears here automatically.")
                     if st.button("End without winner", key=f"abort_{duel['id']}"):
                         _act(player, duel, "abort")
 
@@ -213,5 +240,6 @@ def render_minigames(player, member, lobby, season):
             else:
                 st.text(f"{labels.get(duel['challenger_id'], 'Lobby member')} vs {labels.get(duel['opponent_id'], 'Lobby member')} · {duel['status'].capitalize()}")
                 if duel["status"] == "aborted":
-                    st.caption("No point transfer. Both keep their normal drink points; the started allowances stay used.")
+                    st.caption("No point transfer. Both keep their normal drink points. You can play again in this test season." if unlimited
+                               else "No point transfer. Both keep their normal drink points; the started allowances stay used.")
     live_duels()

@@ -360,7 +360,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
 def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     monkeypatch.setattr("shared.require_login",lambda:"player")
     monkeypatch.setattr("shared.show_logged_in_as",lambda:None)
-    monkeypatch.setattr(db,"list_memberships_for_player",lambda _:[])
+    monkeypatch.setattr(db,"membership_context",lambda *args:(None, None))
     records=Mock()
     monkeypatch.setattr(db,"list_drink_entries",records)
     page=AppTest.from_file(ROOT/"pages/4_Standings.py", default_timeout=10)

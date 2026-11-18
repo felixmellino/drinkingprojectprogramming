@@ -21,8 +21,15 @@ def next_reset(now: datetime, timezone_name: str) -> datetime:
     return datetime(day.year, day.month, day.day, RESET_HOUR, tzinfo=zone)
 
 
-def allowances(member_id: str, night: str, duels: list[dict]) -> tuple[bool, bool]:
-    """One outgoing and one incoming reserved/played duel in the selected lobby."""
+def unlimited_plays(season) -> bool:
+    """Only the frozen QA flag enables unlimited replays, never a lobby name."""
+    return rules_for(season).get("test_mode") is True
+
+
+def allowances(member_id: str, night: str, duels: list[dict], *, season=None) -> tuple[bool, bool]:
+    """Normal nightly role limits; QA seasons can repeat after a game ends."""
+    if season is not None and unlimited_plays(season):
+        return True, True
     used = [d for d in duels if d["game_night"] == night and d["status"] in RESERVED_STATUSES]
     return (not any(d["challenger_id"] == member_id for d in used),
             not any(d["opponent_id"] == member_id for d in used))
@@ -44,8 +51,8 @@ def validate_invitation(challenger, opponent, lobby, season, drink, size, now, d
     if season.lobby_id != lobby.id or not scoring_open(now, season):
         raise ValueError("Duels are available only while this season's scoring is open.")
     points = base_points(drink, size, rules_for(season))
-    outgoing, _ = allowances(challenger.id, night_id(now, season.timezone_name), duels)
-    _, incoming = allowances(opponent.id, night_id(now, season.timezone_name), duels)
+    outgoing, _ = allowances(challenger.id, night_id(now, season.timezone_name), duels, season=season)
+    _, incoming = allowances(opponent.id, night_id(now, season.timezone_name), duels, season=season)
     if not outgoing:
         raise ValueError("You have already used your challenge for this evening.")
     if not incoming:

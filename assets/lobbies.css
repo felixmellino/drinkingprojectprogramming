@@ -1,7 +1,7 @@
-.lobby-card {background:var(--surface);color:var(--text);border:var(--border-width) solid var(--accent-ink);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:20px;margin:12px 0 8px;}
+.lobby-card {background:var(--surface);color:var(--text);border:var(--border-width) solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:20px;margin:12px 0 8px;}
 .lobby-card.lobby-past {background:var(--surface);color:var(--text-muted);border-color:var(--border);box-shadow:none;opacity:.72;}
 .lobby-card.lobby-setup,.lobby-card.lobby-upcoming {background:var(--accent-soft);border-color:var(--border);}
-.lobby-card h3 {margin:5px 0 14px;font-size:1.5rem;color:inherit;font-family:var(--font-display);font-weight:400;overflow-wrap:anywhere;}
+.lobby-card h3 {margin:5px 0 14px;font-size:1.3rem;color:inherit;font-family:var(--font-display);font-weight:650;overflow-wrap:anywhere;}
 .lobby-card .lobby-meta {font-size:.85rem;opacity:.8;margin:0 0 8px;}
 .lobby-person {display:flex;align-items:center;gap:10px;overflow-wrap:anywhere;}
 .lobby-avatar {display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;overflow:hidden;background:var(--surface-raised);color:var(--text);font-size:12px;font-weight:700;}
@@ -19,12 +19,12 @@
 [class*="st-key-lobby_card_"] [data-testid="stButton"] {position:absolute;inset:0;z-index:1;}
 [class*="st-key-lobby_card_"] [data-testid="stButton"] button {
   position:absolute;inset:0;width:100%;height:100%;border-radius:18px;border:2px solid transparent;
-  background:transparent;color:#183c2e;box-shadow:none;
+  background:transparent;color:var(--accent-ink);box-shadow:none;
   align-items:flex-end;justify-content:flex-end;padding:18px 20px;
 }
 [class*="st-key-lobby_card_"] [data-testid="stButton"] button p {font-weight:600;}
-[class*="st-key-lobby_card_"] [data-testid="stButton"] button:hover {background:rgba(24,60,46,.04);border-color:#90b59f;}
-[class*="st-key-lobby_card_"] [data-testid="stButton"] button:focus-visible {outline:3px solid #28744f;outline-offset:3px;}
+[class*="st-key-lobby_card_"] [data-testid="stButton"] button:hover {background:color-mix(in srgb,var(--accent) 4%,transparent);border-color:var(--border);}
+[class*="st-key-lobby_card_"] [data-testid="stButton"] button:focus-visible {outline:3px solid var(--accent-ink);outline-offset:3px;}
 /* Streamlit supplies focus trapping, backdrop interaction blocking and dismissal. */
 [data-testid="stDialog"] {backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);background:rgba(12,30,22,.32);}
 

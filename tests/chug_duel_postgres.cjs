@@ -131,6 +131,39 @@ async function replay(season){
  const race=await Promise.allSettled([action(5,317,'accept'),action(5,318,'accept')]);
  assert.equal(race.filter(r=>r.status==='fulfilled').length,1);
  assert.match(String(race.find(r=>r.status==='rejected').reason),/duel_limit/);
+ // Existing QA games must gain unlimited repeats when migration 012 is applied.
+ await q('insert into lobbies(id,name,invite_code) values($1,$2,$3)',[uid(103),'QA games','QAGAMES']);
+ for(let p=1;p<=3;p++)await q('insert into lobby_memberships(id,player_id,lobby_id) values($1,$2,$3)',[uid(40+p),uid(p),uid(103)]);
+ const qaRules={...rules,test_mode:true,start_weekday:2,start_hour:8};
+ const qa=(await q('select * from start_scoring_season($1,$2,$3,$4,$5)',[uid(1),uid(103),'1_month','Europe/Lisbon',qaRules])).rows[0].id;
+ await invite(1,400,42,qa);await action(2,400,'accept');await start(1,400);await action(1,400,'arm');
+ await clock('2026-11-20T06:00:06Z');await action(1,400,'finish',41);
+ await assert.rejects(invite(1,401,42,qa),/duel_limit/);
+ const normalBeforeQA=await replay(season);
+ const qaMigration=fs.readFileSync('migrations/012_qa_minigames.sql','utf8');
+ await pg.exec(qaMigration);await pg.exec(qaMigration);
+ assert.equal((await q('select test_mode from chug_duels where id=$1',[uid(400)])).rows[0].test_mode,true);
+ await q('update chug_duels set test_mode=true where id=$1',[uid(301)]);
+ assert.equal((await q('select test_mode from chug_duels where id=$1',[uid(301)])).rows[0].test_mode,false);
+ await assert.rejects(invite(1,402,12,season),/duel_limit/); // normal rules still enforced
+ await assert.rejects(q(`insert into chug_duels(id,season_id,challenger_id,opponent_id,game_night,drink_type,size,status,created_at,expires_at,test_mode)
+   values($1,$2,$3,$4,'2026-11-20','beer','large','accepted',$5,$5::timestamptz+interval '10 minutes',true)`,
+   [uid(403),season,uid(11),uid(12),now]),/duplicate key/);
+ await invite(1,404,42,qa);await action(2,404,'accept');
+ await assert.rejects(start(1,404),/cooldown/); // QA replays retain ordinary check-in rules
+ await clock('2026-11-20T06:02:03Z');await start(1,404);await action(1,404,'arm');
+ await clock('2026-11-20T06:02:06Z');await action(1,404,'finish',42);
+ await action(1,404,'finish',41); // retries cannot transfer points twice
+ await invite(1,405,42,qa);await action(2,405,'accept');
+ await clock('2026-11-20T06:04:03Z');await start(1,405);await action(1,405,'abort');
+ await invite(1,406,42,qa);await action(2,406,'accept');
+ await assert.rejects(invite(3,407,42,qa),/duel_busy/); // unlimited is sequential
+ await action(1,406,'cancel');
+ assert.equal((await invite(1,408,42,qa)).test_mode,true);
+ await action(2,408,'decline');
+ assert.deepEqual((await replay(qa)).quarters,{[uid(41)]:36,[uid(42)]:36});
+ assert.equal((await q('select count(*)::int n from drink_entries where season_id=$1 and duel_transfer_to is not null',[qa])).rows[0].n,2);
+ assert.deepEqual(await replay(season),normalBeforeQA);
  // Authoritative closing window and public-role denial.
  await clock('2026-11-22T18:00:00Z');
  await assert.rejects(invite(6,319,13,season),/scoring_closed/);
@@ -139,9 +172,11 @@ async function replay(season){
  await assert.rejects(invite(1,320,12,season),/permission denied/);
  await pg.exec('reset role');
  const saved=await replay(season);
+ const savedQA=await replay(qa);
  await pg.close();pg=new PGlite(statePath);
  assert.deepEqual(await replay(season),saved);
+ assert.deepEqual(await replay(qa),savedQA);
  assert.equal((await action(1,301,'finish',12)).winner_id,uid(11));
  assert.deepEqual(await replay(season),saved);
- console.log('PASS: migration repeat; invite/accept/decline/cancel; participant and public-role denial; two-entry atomic start; cooldown rollback; countdown; 6/0 season/team transfer once; unchanged territories/income; role limits; expiry/abort; midnight/06:00; competing accepts; restart persistence.');
+ console.log('PASS: migration repeat; authorization; atomic start; cooldown rollback; countdown; 6/0 transfer once; unchanged territories/income; normal role limits; expiry/abort; midnight/06:00; competing accepts; 012 QA backfill, unlimited sequential repeats, server-derived test flag, normal-limit spoof rejection, unchanged normal standings; restart persistence.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(pg)await pg.close();});

@@ -46,6 +46,16 @@ def open_map():
     return AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10).run()
 
 
+def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
+    from unittest.mock import Mock
+    from core.scoring_v1 import replay_season
+    replay = Mock(wraps=replay_season)
+    monkeypatch.setattr('map_ui.replay_season', replay)
+    page = open_map()
+    assert not page.exception and len(page.get('deck_gl_json_chart')) == 1
+    replay.assert_called_once()
+
+
 def card(page):
     """The floating location card over the map (HTML in a markdown block)."""
     return next(m.value for m in page.markdown if 'class="game-card"' in m.value)

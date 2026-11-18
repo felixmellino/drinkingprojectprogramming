@@ -1,8 +1,10 @@
 # Chug Duel implementation handoff
 
 Contributor-authorised rules, 18 November 2026, recorded in RULES.md
-R-M01–R-M05. Implemented locally; migration 011 and live database/phone
-verification remain pending. The earlier minigame proposal is historical.
+R-M01–R-M05. Migrations 011 and 012 were applied to the team's shared Supabase project
+on 18 November 2026 with explicit contributor authorization. Live schema/RPC
+and read-backed page checks passed; real two-phone verification remains
+pending. The earlier minigame proposal is historical.
 
 ## Player workflow
 
@@ -21,6 +23,12 @@ pointer/keyboard event locks the outcome before a network round trip. Only the
 host can submit the winner. Participants trust each other about physical
 completion; neither the camera nor the app proves a drink was emptied.
 
+The host's playing board fills the app viewport and disables page scrolling
+and bottom navigation. The same component stays mounted from Ready through
+the visible 3/2/1 countdown, GO and the saved result. A compact × can end the
+game without a winner; Back to Minigames dismisses an ended/result board and
+restores navigation. Receiving players continue to use their normal page.
+
 Example outside all territories: two 3-point drinks give 3/3 at start, then
 6/0 on a recorded win. A started abort keeps 3/3. Territory-linked entries
 still give each competitor 3 territory points. Owner income is calculated
@@ -34,10 +42,20 @@ Thus a loser can still have owner income in addition to the zero base award.
 - `minigames_ui.py` / `pages/7_Minigames.py`: invite, accept/decline, capture,
   readiness, board, result, abort and three-second polling. Identity and lobby
   checks run before rendering; every mutation checks again on the server.
+  The host's started duel is rendered first in a stable `chug_duel_stage`
+  container, replacing the lobby list while playing. Its ID stays focused
+  through completion/abort until explicit dismissal. `assets/minigames.css`
+  pins the stage/iframe to the viewport and disables surrounding scrolling
+  and navigation only while that stage exists. Server state still determines
+  results and expiry; this presentation change needs no database migration.
 - `components/chug_duel/index.html` / `chug_duel_component.py`: browser timing,
   touch halves and keyboard access. Names use textContent; no public text is
   inserted as HTML. Countdown uses a server-time anchor and a monotonic
   browser clock, so phone wall-clock settings do not bypass it.
+  The local countdown deadline is set once per server `play_at`, and never
+  reset by polling. A live Ready acknowledgement shows a full three seconds,
+  even if part of the server's minimum delay elapsed during the round trip.
+  Reopening an already armed game uses its saved server deadline.
 - `data/db.py`: membership-checked, metadata-stripped shared capture and RPCs.
   No exact GPS is stored or passed to SQL. One capture produces two private
   JPEG copies at the existing entry-owned paths. Each player can delete their
@@ -80,7 +98,42 @@ can subsequently play their opposite role that evening. A different lobby
 has independent allowances. Team membership is checked again on start;
 scored entries then retain the existing immutable team identities.
 
+QA replay exception (R-M02): the frozen boolean `scoring_rules.test_mode=true`
+removes outgoing/incoming nightly count limits. Both indicators read Unlimited;
+completed/aborted games permit another match in the same roles and night.
+Migration 012 derives a `chug_duels.test_mode` flag from the actual season,
+backfills existing attempts and exempts only those rows from the role-specific
+unique indexes. Caller-supplied flags are overwritten; duel identity is frozen.
+The helper still rejects simultaneous active games and one pending outgoing
+invitation remains the limit. Existing normal seasons retain their limits.
+Photo/GPS evidence, window/end boundaries, two-minute cooldown and all scoring
+and idempotency rules still apply; test points remain in their own lobby.
+
 ## Verification
+
+Unlimited QA follow-up, 18 November 2026: full Python suite **516 passed**;
+the isolated PostgreSQL suite verified migration 012 twice, backfilling older
+QA attempts, repeat games in the same roles/night after wins and aborts,
+exactly-once transfers, cooldowns, non-overlap, restart persistence, and normal
+limits even with a forged test flag. The two-session browser suite repeated
+challenge/accept/play after a win, aborted a second game and challenged again;
+both indicators stayed Unlimited. Migration 012 was applied to shared Supabase
+on the same day. Live read-only checks confirmed both existing finished QA
+games were replay-eligible, saved flags matched frozen season rules, and the
+actual page rendered Unlimited with a new challenge available using live
+read services. Record counts and stored point fields matched the pre-migration
+baseline. No live game or score was created by these checks. The new Python/UI
+changes still require commit/merge/deployment to update the hosted app.
+
+Full-screen UI follow-up, 18 November 2026: fixed the reported jump after both
+Ready taps by keeping the host board in a stable, fixed viewport stage through
+the result. Full Python suite **508 passed**. The browser suite verified the
+same iframe at the same viewport coordinates through Ready, 3/2/1, GO and
+saved winner; wheel scrolling, portrait/landscape resizing, restored navigation,
+keyboard finish, an ended game and resuming an already armed game were checked.
+This UI follow-up is local and awaits commit/deployment; no new migration or
+live state change is required. Real phone browser chrome and touch behavior
+remain part of the device check below.
 
 Verified locally on 18 November 2026: full Python suite **507 passed**;
 isolated PGlite integration **passed**, including disk reopen; actual browser
@@ -88,6 +141,19 @@ board and two independent synthetic Streamlit sessions **passed**. The browser
 workflow used the real camera component with a fake video device, synthetic
 GPS/services, and 390 px mobile plus desktop screenshots. Real phone hardware
 and the shared Supabase deployment were not used. `git diff --check` passed.
+
+Live setup follow-up, 18 November 2026: the deployed page's setup error was
+traced to missing `chug_duels` and RPCs. Applied the unchanged migration 011
+through the authenticated Supabase SQL Editor, after confirming the dashboard
+project matched the app's configured database. Supabase returned success.
+All four app-facing RPCs were reachable and rejected an unauthorized dummy
+actor. A valid existing membership could read its duel list. The actual
+Minigames page rendered with live read services in AppTest, using a supplied
+valid membership context: no setup errors, both allowances available. This
+was not a browser login or a completed live game. Existing counts of players,
+memberships, seasons, teams and drink entries were unchanged; no test duel,
+account or score was created. Real phone camera/GPS and a full two-device
+game remain the final deployment checks.
 
 Run from the repository root:
 
@@ -126,13 +192,16 @@ first-tap lock and escaped names). `CHUG_QA_URL` can target an explicitly
 synthetic localhost Streamlit fixture for a two-browser workflow and mobile
 screenshots. It refuses remote hosts. QA images stay under ignored `.venv`.
 
-## Before live use
+## Deployment and remaining phone checks
 
-Apply `migrations/011_chug_duel.sql` after 010 through the team's normal
-database migration process, then deploy the reviewed branch through a PR.
-No shared/live migration is claimed applied by this change. With two real
+For a new database, apply `migrations/011_chug_duel.sql` after 010, then
+`migrations/012_qa_minigames.sql` for unlimited QA replays through the
+team's normal database migration process. The shared project already received
+011 and 012 on 18 November 2026; the original feature was merged through PR #40.
+Deploy the QA UI update so the hosted page also exposes replay actions. With two real
 accounts on phones, verify invitation updates, permissions for the common
 camera/GPS, touch halves/countdown, both histories and the leaderboard. Repeat
 after a Streamlit restart; check cancellation and a started abort, then
-confirm the separate outgoing/incoming limits. For true concurrency, use two
+confirm the separate outgoing/incoming limits in a normal lobby and repeated
+sequential replays in a QA lobby. For true concurrency, use two
 database connections to race acceptance/start/result against the same lobby.
