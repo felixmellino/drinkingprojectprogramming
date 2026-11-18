@@ -17,6 +17,7 @@ from postgrest.exceptions import APIError
 from httpx import RequestError
 from app_navigation import bottom_navigation
 from theme import apply_theme
+from lobby_selection import restore_selection
 from phone_location import ask_for_location
 
 
@@ -59,6 +60,10 @@ def require_login() -> str:
             st.success(notice)
         show_accounts()
         st.stop()
+    try:
+        restore_selection(st.session_state["player_id"])
+    except (APIError, RequestError, RuntimeError):
+        st.warning("Your saved lobby could not be loaded. Retry by reopening a page, or choose a lobby on the Lobby page.")
     bottom_navigation()
     ask_for_location()  # browser asks "Allow location?" right after login (R-L01)
     return st.session_state["player_id"]
@@ -68,7 +73,7 @@ def require_active_membership() -> tuple[str, str, str]:
     """Stop the page with a message if no lobby is selected yet. Returns
     (membership_id, lobby_id, season_id) otherwise."""
     if "current_membership_id" not in st.session_state:
-        st.info("Create or join a lobby on the Lobby page first.")
+        st.info("Choose a lobby on the Lobby page to continue.")
         st.stop()
     try:
         memberships = db.list_memberships_for_player(st.session_state["player_id"])

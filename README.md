@@ -405,3 +405,34 @@ leaderboard and territory ownership. Existing lobbies remain individual.
 Before using team mode, the Data owner must review/apply
 [`migrations/010_team_lobbies.sql`](migrations/010_team_lobbies.sql) after 005
 and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).
+
+
+### Remembered lobby selection
+
+Apply [`migrations/012_player_lobby_choices.sql`](migrations/012_player_lobby_choices.sql)
+once before deploying this version (also required for new databases).
+It adds a server-only account preference; existing Player/Lobby models and
+scoring records are unchanged. The last explicitly selected lobby follows the
+player across devices. Reopening switches a finished selection to the newest
+active lobby. Removed membership requires selecting a lobby again.
+
+Verify locally with `python -m pytest tests/test_lobby_selection.py tests/test_lobby_ui.py -q`.
+These tests exercise fresh Streamlit sessions, real Leaderboard initialization,
+account isolation, expiry fallback, access rejection and save failures with a
+mock data service. Migration 012 was applied to the configured Supabase project on 18 November
+2026: all seven SQL checks passed, and a saved preference survived a fresh
+Python process/database client. Nonmember writes were rejected without
+changing the preference; all temporary test records were removed.
+
+Browser verification on 18 November 2026 passed in a freshly started local
+app against the shared database: choose the older of two active QA lobbies,
+close its popup, open Leaderboard, fully reload the page and sign in again
+without opening Lobby. Leaderboard restored the older chosen lobby correctly.
+The temporary QA account and both lobbies were removed after verification.
+
+The public app still showed the old lobby-selection prompt on direct
+Leaderboard access during the same check. Deploy this branch's app changes,
+then repeat the browser check at the public URL. Finished-lobby fallback and
+revoked membership are covered by automated tests; deployed browser checks
+remain. The automated suite uses mocks and does not apply migrations or
+require database credentials.

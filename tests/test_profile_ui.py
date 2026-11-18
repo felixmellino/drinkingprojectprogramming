@@ -20,6 +20,8 @@ def click(at, label):
 
 @pytest.fixture
 def repo(monkeypatch):
+    # Profile fixtures have no lobby repository; restoration has its own tests.
+    monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
     monkeypatch.setattr('data.db.download_profile_picture', lambda *args: None)
     state = {'player': Player('self', 'Mia', 'Mia', 'Silva', hash_password('password8'), 'mia@example.test')}
     monkeypatch.setattr('device_login._browser_storage', lambda **c: {'request_id': c['request_id'], 'token': '', 'available': True})
