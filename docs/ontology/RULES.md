@@ -69,8 +69,10 @@ Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
 ## Location
 
 ### R-L01 Location source
-The app follows the phone's GPS automatically while the Check-in or Map
-page is open; there is no button. The browser asks for permission once. A
+Right after login, on every page, the app asks the phone for its location
+once, so the browser shows its "Allow location?" prompt straight away. The
+Check-in and Map pages then keep following the GPS automatically; there is
+no button. A
 check-in uses the newest reading at the moment the player submits. GPS data
 stored in the photo is not used. Readings stay in the open session only and
 are never saved; only the check-in's result and territory are stored.
