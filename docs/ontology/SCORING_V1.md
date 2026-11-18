@@ -82,12 +82,13 @@ its result without another audit row or awards.
 Each new v1 season stores its complete rules and timezone. Its dates, lobby,
 duration label, rules and timezone are frozen. Existing populated legacy
 seasons cannot be converted to v1 by an update and retain original points and
-scoring behaviour. Agreed changes apply to a later season, not old records.
+scoring behaviour. Agreed changes apply to new lobbies, not old records.
 
-Use the existing 7/30/91-day duration choices. Once no active/future season
-remains, any current member may start the next one; v1 creation is serialised
-to prevent overlapping seasons. New season IDs reset scores/ownership
-without deleting old history. Host-only management and calendar-month semantics
+Use the existing 7/30/91-day duration choices. As decided on 18 November
+2026 (RULES.md R-R03), a lobby has one competition and cannot be renewed.
+New competitions require new lobbies. Migration 009 serializes inserts to
+reject a second season, retaining any existing multi-season history. New
+lobbies start with fresh scores/ownership without deleting old history. Host-only management and calendar-month semantics
 remain team review items; no host role was invented.
 
 ## P-S14-P-S15: history, access and images

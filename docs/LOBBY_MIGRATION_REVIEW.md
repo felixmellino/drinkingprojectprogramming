@@ -24,8 +24,9 @@ frozen rules, tie/ownership replay and exact-quarter owner income. No
 `is_active` column, ten-player limit, automatic owner assignment, new waiting
 room, invitation flow or membership-removal behavior is introduced.
 
-The current app still creates/joins lobbies and starts seasons as before.
-Any current member can start a new season after all earlier seasons end;
+Historical 007 behavior: the app created/joined lobbies and allowed renewal.
+**Superseded 18 November 2026 by R-R03 and migration 009:** each new lobby now
+has one competition and cannot be renewed; existing history is retained. The
 7/30/91 elapsed-day durations and the season's frozen timezone remain.
 Check-ins use Thursday 18:00 inclusive to Sunday 18:00 exclusive in that
 season's timezone. Legacy scoring records stay legacy. Host roles and

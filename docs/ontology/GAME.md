@@ -61,7 +61,7 @@ old history. Exact ordering/defaults are documented in the v1 contract.
 An author can correct drink/size for two minutes, before season end. Record
 the revision and replay affected ownership and subsequent owner income from
 the original event position. An image deletion keeps points. The season's
-settings/timezone/dates are frozen; changes start in a later season.
+settings/timezone/dates are frozen; changes start in a new lobby’s competition (R-R03).
 
 The inherited season choices remain 7, 30 and 91 elapsed days. Calendar-month
 semantics, host roles and leaving/absence workflows remain team review items.

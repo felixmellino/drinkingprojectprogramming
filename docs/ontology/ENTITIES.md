@@ -65,7 +65,7 @@ The pair `player_id` and `lobby_id` identifies one membership. A second join req
 
 ### Season
 
-A dated competition in a lobby. Keeping a Season ID on each action lets the app show a new competition alongside results from an earlier one.
+The one dated competition in a lobby (R-R03, agreed 18 November 2026). Keeping a Season ID on each action preserves existing scoring/history references. New competitions require a new lobby; existing multi-season history is retained.
 
 | Attribute | Type | Meaning |
 | --- | --- | --- |
@@ -74,7 +74,7 @@ A dated competition in a lobby. Keeping a Season ID on each action lets the app 
 | `starts_at` | Timestamp | When the competition begins. |
 | `ends_at` | Timestamp | When the competition ends. |
 
-A Season can contain several game nights. The calendar and the rules for actions around midnight belong in `RULES.md`. The working assumption is that each lobby has its own Seasons and can reuse the same Lisbon territories.
+A Season can contain several game nights. The calendar and the rules for actions around midnight belong in `RULES.md`. Each new lobby has one Season and reuses the same Lisbon territories.
 
 ## Map and drink entries
 

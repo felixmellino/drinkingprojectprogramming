@@ -1,6 +1,6 @@
 """Use the actual Streamlit widgets with frozen clocks and isolated services."""
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 import time
@@ -213,16 +213,18 @@ def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
 
 def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch):
     from core.lobbies import create_season
-    members, games, calls = [], [], []
+    members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
     monkeypatch.setattr(db,"list_memberships_for_player",lambda _:list(members))
-    monkeypatch.setattr(db,"insert_lobby",lambda _:None)
+    monkeypatch.setattr(db,"insert_lobby",lobbies.append)
+    monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))
+    monkeypatch.setattr(db,"list_drink_entries",lambda _:[])
     monkeypatch.setattr(db,"insert_membership",members.append)
     monkeypatch.setattr(db,"list_seasons_for_lobby",lambda _:list(games))
     def start(player,lobby,length,zone):
         calls.append((player,lobby,length,zone))
-        game=create_season(lobby,length,START,zone)
+        game=create_season(lobby,length,datetime.now(timezone.utc),zone)
         games.append(game)
         return game
     monkeypatch.setattr(db,"start_scoring_season",start)
