@@ -1,41 +1,76 @@
-# Recovered lobby-battles migration: review only
+# Lobby migration 007: compatibility-only revision
 
-`migrations/007_lobby_battles.sql` restores the original local
-`006_lobby_battles.sql` from GitHub Desktop's `Lobbiecreation` stash
-(commit `abb1979`). Only its filename and opening comments changed.
-The stash is retained; it has not been applied to the current checkout.
+The original SQL was recovered from GitHub Desktop's `Lobbiecreation` stash
+(`abb1979`) and published in PR #17 for review. It has **not** been applied to
+the shared Supabase project: the read-only check on 18 November confirmed
+that `lobby_states` was absent. The contributor authorised a compatibility PR
+on 18 November and explicitly chose to preserve the current lobby flow.
 
-Merge the Friends rename (`005_friendships.sql` → `006_friendships.sql`)
-first. Keep `005_scoring_v1.sql` unchanged: the team reports it is already
-applied to the shared project. Renaming Friends does not mean an installed
-Friends migration should be run again.
+## Scope
 
-## Do not apply to the shared database yet
+The revised `007_lobby_battles.sql` creates a server-only, read-only
+`lobby_states` **view** over `lobbies`, `lobby_memberships` and `seasons`.
+Snapshots always reflect the canonical records, including new lobbies and
+joins made by the existing app. Seasons include their original IDs, dates,
+timezones, scoring versions and frozen rules. No duplicate writable JSON
+aggregate or missing application module is needed to keep this view current.
+The historical filename is retained; it does not activate the old owner-
+managed lobby feature.
 
-This is publication of the original SQL for teammate review, not approval
-to deploy the lobby-battles feature or a claim of scoring-v1 compatibility.
+The unsafe original `save_lobby_state` RPC and `guard_battle_entry` trigger
+are omitted. Migration 005's existing functions remain authoritative for
+season creation, scoring windows, duplicate handling, cooldowns, corrections,
+frozen rules, tie/ownership replay and exact-quarter owner income. No
+`is_active` column, ten-player limit, automatic owner assignment, new waiting
+room, invitation flow or membership-removal behavior is introduced.
 
-- The recovered `guard_battle_entry` trigger enforces Thursday noon through
-  Sunday in Lisbon. Current scoring v1 uses Thursday 18:00 to Sunday 18:00
-  in the season timezone. Resolve this conflict against the current ontology
-  before applying; do not silently replace the agreed scoring contract.
-- The SQL adds `lobby_memberships.is_active`, `lobby_states`, a save RPC and
-  a drink-entry trigger. Its companion lobby-state code is still in the
-  local stash and is not part of this SQL-only PR. Current main does not
-  create a lobby-state row when creating a lobby; the recovered trigger
-  would therefore reject check-ins for newly created lobbies.
-- Review season creation and the JSON aggregate against the frozen scoring
-  fields and transactions introduced by scoring v1. The recovered RPC was
-  written before those changes and inserts only the older season columns.
-- The migration is once-only. It seeds existing lobbies and aborts if any
-  legacy lobby has more than ten members. Review ownership seeding and
-  membership history with the team, and back up before any future run.
-- The stash also contains a separate `007_lobby_timezones.sql` follow-up.
-  It is not included here and must get a new, unused number before release.
+The current app still creates/joins lobbies and starts seasons as before.
+Any current member can start a new season after all earlier seasons end;
+7/30/91 elapsed-day durations and the season's frozen timezone remain.
+Check-ins use Thursday 18:00 inclusive to Sunday 18:00 exclusive in that
+season's timezone. Legacy scoring records stay legacy. Host roles and
+calendar-month semantics remain open team decisions, not migration defaults.
 
-Validation for this recovery: executable SQL matches the stashed original;
-only comments differ. No SQL was run against Supabase. After resolving the
-integration points, validate on a disposable database with current main's
-schema and scoring migration, including accepted/rejected check-ins,
-existing/new lobbies, concurrent leave/check-in, season creation and restart
-persistence, before scheduling a shared-project migration.
+## Review and application
+
+1. Review this PR and the disposable PostgreSQL checks below before merging.
+2. The Data owner confirms schema/account setup and scoring migration 005
+   exist, backs up the database, then applies **the revised file from merged
+   main**. Do not use the recovered file from the old PR #17 commit.
+3. If the old draft was applied in another environment, stop. Creating this
+   view over an existing `lobby_states` table fails without dropping or
+   rewriting that table. That environment needs its own reviewed migration.
+4. Repeat execution is safe when the compatible view already exists. No
+   reseeding or scoring writes occur. Friends 006 and profile pictures 008
+   remain separate migrations and do not need to be rerun for this change.
+
+The full owner-managed lobby feature remains deferred. Its source stash and
+old timezone follow-up are retained locally. They must not be restored or
+applied wholesale over scoring v1.
+
+## Verification
+
+Runtime dependencies are unchanged. Optional isolated SQL test tools:
+
+```bash
+python3 -m venv /tmp/wegopub-lobby-test
+/tmp/wegopub-lobby-test/bin/python -m pip install -r requirements.txt
+/tmp/wegopub-lobby-test/bin/python -m pip install pgserver==0.1.4 'psycopg[binary]==3.2.13' fasteners==0.20
+/tmp/wegopub-lobby-test/bin/python scripts/verify_lobby_scoring_compat.py
+/tmp/wegopub-lobby-test/bin/python -m pytest -q
+```
+
+The SQL script creates and destroys its own local PostgreSQL cluster, uses
+synthetic fixtures, and never reads Supabase secrets or connects to an
+existing database. In the disposable copy only, migration 005's server receipt
+clock is fixed to exercise real weekly boundaries without waiting for Thursday.
+Production migration 005 is unchanged.
+
+Checks cover populated legacy/v1 preservation; ordinary create/join/start
+writes; new/renamed lobby snapshots; member versus nonmember starts; 7/30/91
+days; frozen rules/timezones; Python/SQL weekly boundaries in Lisbon and New
+York; accepted check-ins; idempotent duplicate retries; rejection of cooldowns,
+outsiders and closed windows; correction audit/conflicts; owner income; server-only read access;
+repeat migration execution; real server restart; and refusal to overwrite an
+old draft table. The regular Streamlit form tests retain the existing lobby
+flow. Shared-project application and live verification wait for review.
