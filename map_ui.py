@@ -34,7 +34,7 @@ AREAS = {
         "santa-catarina", "tower-bar", "santos-kiosk", "after8", "principe-real",
         "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
         "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
-    "Nova SBE": ["nova-sbe", "carcavelos-beach"],
+    "Nova SBE": ["nova-sbe"],
 }
 ME = "📍 Me"
 ALL = "All"
