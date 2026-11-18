@@ -9,10 +9,10 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-01 | Owner advantage | Implemented on Scoring: additional 25% prior-owner income, season only, exact quarters, no visitor deduction/self-income/cap. Team review and migration pending. See [v1](SCORING_V1.md). |
 | D-02 | Points per Drink | Implemented on Scoring: four categories and frozen fixed size table; Large bonuses embedded. Legacy seasons preserved. Team review pending. See [v1](SCORING_V1.md). |
 | D-03 | Territory areas | **Decided 2026-11-17**, see [R-T01 and R-T02](RULES.md#territories). Nova SBE campus added 2026-11-18. Still open: possibly Praça das Flores. |
-| D-04 | Special items | Which special items do Minigames give, and what does each one do? |
+| D-04 | Special items | Chug Duel explicitly uses a base-season-point transfer instead of items (R-M03, contributor decision 18 November 2026). Items/effects for other games remain open. |
 | D-05 | Game Night boundaries | Implemented on Scoring: continuous Thu 18:00 inclusive-Sun 18:00 exclusive in the season timezone; database scoring-request receipt is authoritative. Outside submissions blocked. Minigame nights remain separate. See [v1](SCORING_V1.md). |
 | D-06 | Season follow-ups | The three length choices are decided in [R-R02](RULES.md#r-r02-season-length); that decision is closed. Scoring retains their existing 7/30/91 elapsed-day implementation. Remaining review: calendar-month semantics and host roles. Decided 18 November 2026 in R-R03: one competition per lobby, no renewal; a new competition requires a new lobby. Existing history is retained. See [v1](SCORING_V1.md). |
-| D-07 | Minigame interruption | If a Minigame is interrupted, does it count as the Player's one play for that evening? |
+| D-07 | Minigame interruption | **Decided for Chug Duel**, R-M02/R-M05: reserve on acceptance; consume on start; resume after disconnect; a started abort retains both normal drink awards and consumes the used roles. Other games remain open. |
 | D-08 | Ownership timing | Implemented on Scoring: prior owner paid before captures; serialized database event order; corrections replay affected history. Exact same-event tie default is recorded in D-17. See [v1](SCORING_V1.md). |
 | D-09 | Location source | **Decided 2026-11-17**, see [R-L01](RULES.md#location): phone GPS at submission only, photo GPS is not used. |
 | D-10 | Location acceptance | **Decided 2026-11-17/18**, see [R-L02, R-L03, R-L04](RULES.md#location): at most 50 m inaccuracy, the measured point decides at borders, readings at most 60 s old. |
@@ -23,6 +23,8 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-15 | Entry corrections | Implemented on Scoring: author can correct drink/size before original submission +120s and season end. Timely edits may finish after weekly closing. Audit and downstream replay included; defaults await team review. See [v1](SCORING_V1.md). |
 | D-16 | Frozen scoring rules and timezone | Implemented on Scoring: v1 season dates, lobby, rules, version and timezone immutable. New rules start in later seasons; populated legacy seasons cannot be upgraded in place. See [v1](SCORING_V1.md). |
 | D-17 | Exact ties and concurrent ordering | Working default: database acceptance order resolves concurrent entries. Within one event, a season-score tie preserves the previously higher-ranked owner recipient. All other ties use earliest reaching order. Team review pending. See [v1](SCORING_V1.md). |
+| D-18 | Minigame selection and unlocks | **Chug Duel selected and implemented locally**, R-M01–R-M05; migration 011 and deployed verification pending. Delayed reaction and other games from the [earlier proposal](MINIGAMES_PROPOSAL.md) remain future ideas, with unlocks/targets undecided. |
+| D-19 | Nightly allowance scope and duels | **Decided for Chug Duel**, contributor 18 November 2026: one outgoing plus one incoming per membership/lobby/night; reset 06:00 season timezone; atomic reservations and start, ten-minute phase expiry, one shared capture/location, host split screen. See [handoff](../CHUG_DUEL.md). The old weekly helper is unused by Chug Duel. |
 
 Design consideration: an ownership reduction can make leaders harder to
 catch. Test the agreed percentage with sample standings before fixing it.

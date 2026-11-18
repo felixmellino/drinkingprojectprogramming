@@ -88,6 +88,9 @@ class DrinkEntry:
     revision: int = 0
     team_id: str | None = None
     owner_team_id: str | None = None
+    duel_id: str | None = None
+    duel_transfer_to: str | None = None  # saved winner's competitor (team or member)
+    duel_transfer_order: int | None = None  # result event, after both base entries
 
 
 @dataclass

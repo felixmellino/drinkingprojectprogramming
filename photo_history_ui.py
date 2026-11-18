@@ -36,7 +36,8 @@ def photo_metadata(entry: dict) -> None:
         award = "Points unavailable"
     else:
         territory_points = points if entry["location"] == "matched" else 0
-        award = f"+{format_points(points)} season pts · +{format_points(territory_points)} territory pts"
+        season_points = entry.get("duel_season_points", points) if entry.get("duel_id") else points
+        award = f"+{format_points(season_points)} season pts · +{format_points(territory_points)} territory pts"
     timestamp = entry.get("captured_at") or entry["submitted_at"]
     zone = ZoneInfo(entry.get("timezone_name", "UTC"))
     time = utc(datetime.fromisoformat(timestamp)).astimezone(zone)
@@ -45,6 +46,8 @@ def photo_metadata(entry: dict) -> None:
                 f'<p class="history-award">{escape(award)}</p>'
                 f'<p class="history-time">{time_label} · {time:%d %b %Y · %H:%M %Z}</p></div>',
                 unsafe_allow_html=True)
+    if entry.get("duel_id"):
+        st.caption("Chug Duel · Shared capture · Drink selection agreed by both players.")
     bonus = model.owner_bonus_quarters if model else entry.get("owner_bonus_quarters", 0)
     if bonus:
         income = format_points(Decimal(bonus) / 4)

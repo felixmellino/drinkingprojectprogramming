@@ -247,7 +247,9 @@ four building blocks, and the team's workflow rules.
   location, followed automatically. To test or demo a territory you're not
   standing in, open Chrome DevTools → More tools → Sensors → Location and set
   the coordinates (e.g. 38.7133, -9.1456 lands in Shortys).
-- **The Minigames page isn't built yet.** See the build order in
+- **Chug Duel is implemented locally.** Apply migration 011 after 010 before
+  enabling it in the deployed app; see [CHUG_DUEL.md](docs/CHUG_DUEL.md).
+  Other minigames remain future work. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season

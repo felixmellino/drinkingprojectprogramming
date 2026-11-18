@@ -273,6 +273,8 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         owner_membership_id=r.get("owner_membership_id"), owner_bonus_quarters=r.get("owner_bonus_quarters", 0),
         corrected_at=datetime.fromisoformat(r["corrected_at"]) if r.get("corrected_at") else None,
         revision=r.get("revision", 0), team_id=r.get("team_id"), owner_team_id=r.get("owner_team_id"),
+        duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
+        duel_transfer_order=r.get("duel_transfer_order"),
     )
 
 
@@ -380,6 +382,7 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
 
 def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
     rows = _all_rows(_lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
+    transfers = {row["duel_id"]: row for row in rows if row.get("duel_id") and row.get("duel_transfer_to")}
     names = {row.get("membership_id"): row["lobby_memberships"]["players"]["display_name"] for row in rows}
     team_names = ({team.id: team.name for team in list_lobby_teams(player_id, lobby_id)}
                   if any(row.get("team_id") for row in rows) else {})
@@ -404,6 +407,10 @@ def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
             "corrected_at": row.get("corrected_at"), "revision": row.get("revision", 0),
             "entry": _row_to_drink_entry(row) if row.get("rule_version") == "v1" else None,
             "season": _row_to_season(row["seasons"]) if row.get("rule_version") == "v1" else None,
+            "duel_id": row.get("duel_id"),
+            "duel_season_points": (0 if row.get("duel_transfer_to") else row.get("points_awarded", 0)
+                + (transfers[row["duel_id"]]["points_awarded"]
+                   if row.get("duel_id") in transfers else 0)),
         }
         for row in rows
         if datetime.now(timezone.utc) < photo_expires_at(datetime.fromisoformat(row["seasons"]["ends_at"]))
@@ -511,6 +518,80 @@ def cleanup_checkin_photos(*, apply: bool = False) -> dict[str, int]:
 
 
 # -- minigame attempts ------------------------------------------------
+
+def _duel_rpc(name: str, parameters: dict) -> list[dict]:
+    from core.chug_duel import ERRORS
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        reason = error.message.strip()
+        if reason == "permission_denied":
+            raise PermissionError(ERRORS[reason]) from None
+        if reason in ERRORS:
+            raise ValueError(ERRORS[reason]) from None
+        if error.code in {"42P01", "42703", "PGRST202", "PGRST204"} or reason == "scoring_setup_required":
+            raise RuntimeError("Chug Duel setup is not complete. Please contact the app organizer.") from None
+        raise
+
+
+def list_chug_duels(player_id: str, season_id: str) -> list[dict]:
+    return _duel_rpc("list_chug_duels", {"actor_player": player_id, "target_season": season_id})
+
+
+def invite_chug_duel(player_id: str, season_id: str, invitation_id: str,
+                     opponent_id: str, drink: str, size: str | None) -> dict:
+    return _duel_rpc("invite_chug_duel", {"actor_player": player_id, "target_season": season_id,
+        "invitation_id": invitation_id, "opponent_member": opponent_id,
+        "selected_drink": drink, "selected_size": size})[0]
+
+
+def chug_duel_action(player_id: str, duel_id: str, action: str, winner_id: str | None = None) -> dict:
+    return _duel_rpc("chug_duel_action", {"actor_player": player_id, "target_duel": duel_id,
+        "selected_action": action, "winning_member": winner_id})[0]
+
+
+def start_chug_duel(player_id: str, lobby_id: str, season_id: str, duel_id: str,
+                    photo: bytes, photo_received_at: datetime, device_gps, accuracy_m) -> dict:
+    """One shared capture, two private copies with existing owner/retention rules.
+
+    Both scored entries and the started state commit in one database transaction.
+    Exact coordinates never leave this Python process.
+    """
+    from core.checkin_photo import prepare_checkin_photo
+    from core.scoring_v1 import create_scored_entry, current_time, utc
+    from core.chug_duel import ERRORS
+    duel = next((d for d in list_chug_duels(player_id, season_id) if d["id"] == duel_id), None)
+    if not duel:
+        raise PermissionError(ERRORS["permission_denied"])
+    members = list_memberships_for_player(player_id)
+    if not any(m.id == duel["challenger_id"] and m.lobby_id == lobby_id for m in members):
+        raise PermissionError(ERRORS["permission_denied"])
+    season = next((s for s in list_seasons_for_lobby(lobby_id) if s.id == season_id), None)
+    if season is None:
+        raise PermissionError(ERRORS["permission_denied"])
+    if duel["status"] in {"started", "completed", "aborted"}:
+        return duel  # recover a committed start without replacing its images
+    if duel["status"] != "accepted":
+        raise ValueError(ERRORS["duel_unavailable"])
+    now = current_time()
+    if not utc(datetime.fromisoformat(duel["accepted_at"])) <= utc(photo_received_at) <= now:
+        raise ValueError(ERRORS["invalid_photo"])
+    _, cleaned = prepare_checkin_photo(photo)
+    from data.territory_file import load_territories
+    territories = load_territories()
+    entries = []
+    for role in ("challenger", "opponent"):
+        mid, eid = duel[f"{role}_id"], duel[f"{role}_entry_id"]
+        entries.append(create_scored_entry(mid, season, duel["drink_type"], duel.get("size"),
+            _checkin_photo_path(lobby_id, eid), device_gps, accuracy_m, now, territories,
+            list_drink_entries_for_membership(mid), entry_id=eid))
+    upsert_territories(territories)
+    bucket = _private_photo_bucket()
+    for entry in entries:
+        bucket.upload(entry.photo_ref, cleaned, {"content-type": "image/jpeg", "upsert": "true"})
+    return _duel_rpc("start_chug_duel", {"actor_player": player_id, "target_duel": duel_id,
+        "verified_territory": entries[0].territory_id, "location_result": entries[0].location_check_result,
+        "photo_received_at": utc(photo_received_at).isoformat()})[0]
 
 def list_minigame_attempts_for_membership(membership_id: str) -> list[MinigameAttempt]:
     rows = (
