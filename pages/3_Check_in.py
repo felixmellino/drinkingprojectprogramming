@@ -17,6 +17,7 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from camera_capture import camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
@@ -41,12 +42,15 @@ modern = season.scoring_version == "v1"
 rules = rules_for(season) if modern else None
 now = current_time()
 recent_entries = db.list_drink_entries_for_membership(membership_id)
+track_location()
 
-page_header("Check in", "Capture the moment. Then choose your drink and size.")
+page_header("Check in", "Take a photo. Choose your drink. Post.", compact=True)
 if modern:
     lobby_time = now.astimezone(ZoneInfo(season.timezone_name))
     context_line(st.session_state.get("current_lobby_name", "Your lobby"),
                  f"{lobby_time:%a %d %b · %H:%M %Z} · {season.timezone_name}")
+    if rules.get('test_mode'):
+        st.info('TEST SEASON · Posting is open Wednesday 08:00–Sunday 18:00 in the lobby timezone.')
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -89,7 +93,11 @@ if waiting:
 with st.container(key="drink_ui_panel_camera"):
     section_heading("01", "Take a photo", "Start with a fresh photo of your drink.")
     photo_number = st.session_state.get("checkin_photo_number", 0)
-    photo = st.camera_input("Take a fresh photo of your drink", key=f"checkin_photo_{photo_number}")
+    try:
+        photo = camera_photo(key=f"checkin_photo_{photo_number}")
+    except InvalidCheckinPhoto as error:
+        st.error(str(error))
+        st.stop()
     st.caption("Shared only with your lobby, alongside your username, photo receipt time and territory.")
     capture = st.session_state.get("checkin_capture")
     if photo is not None:
@@ -132,7 +140,6 @@ with st.container(key="drink_ui_panel_selection"):
 
 with st.container(key="drink_ui_panel_location"):
     section_heading("03", "Location", "Your location assigns this drink to a territory.")
-    track_location()
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
         "waiting": "Finding your location… Allow location access if your browser asks.",

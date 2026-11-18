@@ -18,10 +18,10 @@ async function clock(value) {
   currentTime = value;
   await q('update public.test_clock set at_time=$1',[value]);
 }
-async function accept(player, member, capture, drink, size, season, outside=false) {
+async function accept(player, member, capture, drink, size, season, outside=false, lobby=100) {
   return (await q('select * from public.accept_scoring_checkin($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
     [uid(player),uid(capture),uid(member),season,drink,size,outside?null:'shortys',outside?'outside':'matched',
-     `${uid(100)}/${uid(capture)}.jpg`,currentTime])).rows[0];
+     `${uid(lobby)}/${uid(capture)}.jpg`,currentTime])).rows[0];
 }
 async function correct(player,capture,drink,size,revision=0) {
   return (await q('select * from public.correct_scoring_checkin($1,$2,$3,$4,$5)',
@@ -146,8 +146,31 @@ async function checkPythonReplay(season) {
   assert.deepEqual(reopened,saved);
   assert.equal((await q('select count(*)::int as n from drink_entry_revisions')).rows[0].n,2);
   assert.equal((await q('select points_awarded from drink_entries where id=$1',[uid(201)])).rows[0].points_awarded,99);
+  // New QA seasons use an explicit frozen window. Existing seasons stay unchanged.
+  await pg.exec(fs.readFileSync('migrations/009_single_competition_lobbies.sql','utf8'));
+  await pg.exec(`insert into lobbies(id,name,invite_code) values('${uid(600)}','QA camera','QA600');
+    insert into lobby_memberships(id,player_id,lobby_id) values('${uid(601)}','${uid(1)}','${uid(600)}');`);
+  const qaRules = JSON.parse(execFileSync(python, ['-c',
+    'import json; from core.scoring_v1 import new_rules; print(json.dumps(new_rules(test_mode=True)))'], {encoding:'utf8'}));
+  await clock('2026-11-18T07:59:59Z');
+  const qa = (await q('select * from public.start_scoring_season($1,$2,$3,$4,$5)',
+    [uid(1),uid(600),'1_week','Europe/Lisbon',qaRules])).rows[0];
+  await assert.rejects(accept(1,601,602,'beer','small',qa.id,false,600),/scoring_closed/);
+  await clock('2026-11-18T08:00:00Z');
+  await accept(1,601,602,'beer','small',qa.id,false,600);
+  assert.equal((await q('select public._scoring_window_open($1,$2,$3) as open',
+    [currentTime,'Europe/Lisbon',rules])).rows[0].open,false);
+  await clock('2026-11-22T17:59:59Z');
+  await accept(1,601,603,'beer','small',qa.id,false,600);
+  await clock('2026-11-22T18:00:00Z');
+  await assert.rejects(accept(1,601,604,'beer','small',qa.id,false,600),/scoring_closed/);
+  await assert.rejects(q("update seasons set scoring_rules=$1 where id=$2",[rules,qa.id]),/season_rules_frozen/);
+  await pg.close(); pg=new PGlite(statePath);
+  const qaRestored = (await q('select scoring_rules from seasons where id=$1',[qa.id])).rows[0].scoring_rules;
+  assert.deepEqual(qaRestored,qaRules);
+  assert.deepEqual((await q('select scoring_rules from seasons where id=$1',[season])).rows[0].scoring_rules,rules);
   await pg.close();
-  console.log('PostgreSQL checks passed: migration repeat, legacy preservation, exact table, frozen season, authoritative cutoff, shared cooldown, captures, corrections/replay, retry recovery, access control, new season reset and persistence after restart.');
+  console.log('PostgreSQL checks passed: migration repeat, legacy preservation, exact table, frozen season, authoritative cutoff, shared cooldown, captures, corrections/replay, retry recovery, access control, new season reset, QA Wednesday/Sunday boundaries and rule persistence after restart.');
 })().catch(async error=>{
   console.error(error.stack);
   if(pg)await pg.close().catch(()=>{});

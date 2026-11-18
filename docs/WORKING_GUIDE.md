@@ -67,7 +67,7 @@ contains no rules of its own — if you want to know whether something is
 | `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
-| `pages/3_Check_in.py` | Take a photo, pick the drink/size, use the phone-location button and submit. |
+| `pages/3_Check_in.py` | Camera opens automatically; take a photo, pick drink/size, review live location and submit. |
 | `pages/4_Standings.py` | Shows the season leaderboard and, for each territory, who currently owns it. |
 
 Every page follows the same shape: ask `data/db.py` for the data it needs,
@@ -239,8 +239,10 @@ right. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
-Check-in requires a camera photo before rendering drink/size choices. Its
-Location card calls `phone_location.track_location()`, which follows the
+Check-in mounts `camera_capture.py` / `components/drink_camera/` automatically,
+then requires a photo before rendering drink/size choices. The browser still
+controls camera permission. Capture stops the camera; Retake starts a new
+capture. `phone_location.track_location()` starts at page entry, following the
 phone's GPS automatically (no button); `current_location()` then validates the
 newest reading with `core.location.parse_phone_reading`. R-L01–R-L04 accept at
 most 50 m uncertainty and 60 s age and ignore photo GPS. No manual coordinate
@@ -250,6 +252,10 @@ with cards rendered by `photo_history_ui.py`; View details retains correction
 and deletion controls. Keep inline image bytes so private images never get a
 public Streamlit media URL. Test the routes, photo gate, gallery paging,
 entry selection and membership denial alongside the existing workflow tests.
+
+Create lobby / Retry setup can explicitly select a QA season, with a frozen
+Wednesday 08:00–Sunday 18:00 window. Normal seasons keep Thursday 18:00–Sunday
+18:00. See `docs/CAMERA_AND_QA_SEASONS.md` for setup and verification.
 
 ## Profile friends (Identity block)
 

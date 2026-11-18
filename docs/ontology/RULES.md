@@ -1,5 +1,16 @@
 # Rules
 
+## QA season exception (18 November 2026)
+
+For explicitly selected **test seasons only**, posting opens Wednesday at
+08:00 inclusive and closes Sunday at 18:00 exclusive in the season's lobby
+timezone. Create lobby / Retry lobby setup opt in with an unchecked checkbox;
+the choice is stored as `scoring_rules.test_mode=true` with start weekday 2
+and hour 8. Normal seasons retain Thursday 18:00–Sunday 18:00. All other rules
+and server validation still apply, including GPS, photos, cooldown, points
+and corrections. The snapshot stays frozen; existing seasons are not changed.
+This exception does not change minigame night boundaries.
+
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 
 ## Scoring v1 working implementation

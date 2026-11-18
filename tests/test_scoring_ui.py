@@ -44,7 +44,7 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
-    monkeypatch.setattr(st, "camera_input", lambda label, key: state["photo"] if key.endswith("_0") else None)
+    monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
     # The automatic location tracker is a browser component AppTest can't run;
     # this returns what the phone would send (None = no reading yet).
     monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: state["location"])
@@ -113,6 +113,16 @@ def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     state["photo"] = captured
     page.run()
     assert not page.exception and radio(page, "Drink") and radio(page, "Size")
+
+
+def test_location_starts_before_camera_capture(ui, monkeypatch):
+    state, _ = ui
+    state['photo'] = None
+    tracking = Mock(return_value=None)
+    monkeypatch.setattr('phone_location._phone_location', tracking)
+    page = open_checkin()
+    assert not page.exception and tracking.called
+    assert not any(item.label == 'Submit' for item in page.button)
 
 
 def test_outside_window_blocks_submission_and_shows_next_opening(ui):
@@ -260,7 +270,8 @@ def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
     client.table.return_value.upsert.assert_not_called()
 
 
-def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch):
+@pytest.mark.parametrize('test_mode', [False, True])
+def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_mode):
     from core.lobbies import create_season
     members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
@@ -271,19 +282,22 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch):
     monkeypatch.setattr(db,"list_drink_entries",lambda _:[])
     monkeypatch.setattr(db,"insert_membership",members.append)
     monkeypatch.setattr(db,"list_seasons_for_lobby",lambda _:list(games))
-    def start(player,lobby,length,zone):
+    def start(player,lobby,length,zone, **options):
         calls.append((player,lobby,length,zone))
-        game=create_season(lobby,length,datetime.now(timezone.utc),zone)
+        game=create_season(lobby,length,datetime.now(timezone.utc),zone, **options)
         games.append(game)
         return game
     monkeypatch.setattr(db,"start_scoring_season",start)
     page=AppTest.from_file(ROOT/"pages/2_Lobby.py", default_timeout=10).run()
     next(item for item in page.text_input if item.label=="Lobby name").input("New friends")
     next(item for item in page.selectbox if item.label=="Lobby timezone").set_value("America/New_York")
+    next(item for item in page.checkbox if item.key == 'create_test_season').set_value(test_mode)
     button(page,"Create lobby").click().run()
     assert not page.exception
     assert games[0].scoring_version=="v1" and games[0].timezone_name=="America/New_York"
     assert games[0].scoring_rules["points"]["shot"]["standard"]==4
+    assert bool(games[0].scoring_rules.get('test_mode')) is test_mode
+    assert games[0].scoring_rules['start_weekday'] == (2 if test_mode else 3)
     assert calls[0][0]=="player" and page.session_state["current_season_id"]==games[0].id
 
 

@@ -40,9 +40,12 @@ def current_time() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def new_rules() -> dict:
+def new_rules(*, test_mode: bool = False) -> dict:
     """A new season gets its own snapshot, never the mutable module object."""
-    return deepcopy(_RULES)
+    rules = deepcopy(_RULES)
+    if test_mode:
+        rules.update(test_mode=True, start_weekday=2, start_hour=8)
+    return rules
 
 
 def rules_for(season: Season) -> dict:

@@ -113,7 +113,10 @@ History includes point breakdowns and revision records. See the
 [implementation/Data handoff](docs/SCORING_IMPLEMENTATION.md) and
 [current ontology contract](docs/ontology/SCORING_V1.md) for defaults, testing
 commands and the remaining live checks. The three-page PDF is the historical
-team-review proposal. Real device GPS integration remains Location work.
+team-review proposal. Camera and phone GPS now start automatically when
+Check-in opens. For Wednesday testing, create a new lobby with **Test season**
+selected; its window is Wednesday 08:00–Sunday 18:00. Normal and existing
+seasons retain their rules. See [camera and QA seasons](docs/CAMERA_AND_QA_SEASONS.md).
 
 ### Run the app
 

@@ -54,6 +54,12 @@ is authoritative; photo receipt and phone time do not backdate a submission.
 The UI preview is rechecked after upload. Outside the window/season, block
 new entries, save no points and show the next opening where one exists.
 
+Explicit QA seasons may opt into Wednesday 08:00–Sunday 18:00 instead.
+The selected `test_mode=true`, start weekday 2 and start hour 8 are stored
+in the same frozen snapshot. Normal defaults and existing seasons stay
+unchanged; server receipt time, the season bounds and every other validation
+still apply. See [camera and QA setup](../CAMERA_AND_QA_SEASONS.md).
+
 ## P-S10-P-S11: cooldown and retry
 
 Exactly 120 seconds between accepted entries, per membership/lobby, across

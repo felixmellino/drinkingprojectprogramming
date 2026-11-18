@@ -39,7 +39,9 @@ with create_tab:
         length_choice = st.radio("Lobby duration", options=["1_week", "1_month", "3_months"],
                                  format_func=lambda value: value.replace("_", " "), horizontal=True)
         timezone_name = st.selectbox("Lobby timezone", zones, index=zones.index("Europe/Lisbon"))
-        st.caption("Scoring opens Thu 18:00–Sun 18:00 in this timezone. When the duration ends, this lobby closes permanently.")
+        test_mode = st.checkbox("Test season: Wednesday 08:00–Sunday 18:00", key="create_test_season",
+                                help="For QA lobbies only. The selected rules stay fixed for this season.")
+        st.caption("Normal scoring: Thu 18:00–Sun 18:00. Test scoring: Wed 08:00–Sun 18:00. Both use the lobby timezone. When the duration ends, this lobby closes permanently.")
         create_submitted = st.form_submit_button("Create lobby")
 
     if create_submitted:
@@ -54,7 +56,8 @@ with create_tab:
             st.session_state["current_lobby_id"] = lobby.id
             st.session_state["current_lobby_name"] = lobby.name
             try:
-                season = db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name)
+                season = db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
+                                                 **({"test_mode": True} if test_mode else {}))
             except (APIError, RequestError, RuntimeError, CheckinRejected):
                 st.error("The lobby was created, but its scoring season could not start. Ask the Data owner to apply migration 005, then use Retry lobby setup on its card.")
                 st.stop()

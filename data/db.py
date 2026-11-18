@@ -174,13 +174,13 @@ def _scoring_rpc(name: str, parameters: dict):
         raise
 
 
-def start_scoring_season(player_id: str, lobby_id: str, length_choice: str, timezone_name: str) -> Season:
+def start_scoring_season(player_id: str, lobby_id: str, length_choice: str, timezone_name: str, *, test_mode: bool = False) -> Season:
     from core.scoring_v1 import new_rules
     # Friendly early rejection; migration 009 enforces this atomically too.
     if list_seasons_for_lobby(lobby_id):
         raise CheckinRejected("lobby_already_started")
     rows = _scoring_rpc("start_scoring_season", {"actor_player": player_id, "target_lobby": lobby_id,
-        "length_choice": length_choice, "zone_name": timezone_name, "frozen_rules": new_rules()})
+        "length_choice": length_choice, "zone_name": timezone_name, "frozen_rules": new_rules(test_mode=test_mode)})
     return _row_to_season(rows[0])
 
 
