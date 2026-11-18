@@ -155,7 +155,7 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- City map with the 13 territories coloured for the viewer: green = yours,
+- City map with the 24 territories coloured for the viewer: green = yours,
   red = someone else's, grey = unclaimed.
 - Tapping a territory shows its name, what it means for you and your points
   there: "Unclaimed: your next drink here claims it", "Yours: you lead by X
@@ -167,10 +167,10 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   blocked, stale or worse than 50 m.
 - Hovering or tapping an area tints it in the app's dark green.
 - The base map shows streets, parks and water in colour (Carto Voyager).
-- Three cards below the map: territories you own (e.g. "1 of 13"),
+- Three cards below the map: territories you own (e.g. "1 of 24"),
   unclaimed territories, and the easiest one to take (fewest points needed).
 - Small quick-zoom buttons right above the map jump to "Bairro Alto",
-  "Santos", "Nova SBE" or "All" (and "📍 Me" when your location is usable),
+  "Lisbon", "Nova SBE" or "All" (and "📍 Me" when your location is usable),
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
@@ -236,18 +236,55 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - Show only the signed-in player's joined lobbies, with no lobby/season dropdown.
 - Active Lobbies are light green, latest competition start first. Each shows
   lobby name, leader's public username, a small authorized picture (otherwise
-  initials), and time until finish plus the exact lobby-time finish timestamp.
-- Automatically select the newest running lobby on opening/refresh. Open lobby
-  selects its card and opens Standings; View results does so for past lobbies.
+  initials), invite code, and time until finish plus the exact lobby-time finish timestamp.
+- Automatically select the newest running lobby unless a lobby is explicitly open.
+  The whole card is a keyboard-accessible button labelled View lobby → opening
+  a dismissible popup over the blurred/dimmed overview. This works for active,
+  past, upcoming and incomplete lobbies.
+- The popup shows only the lobby name, invite code and member list, with the
+  existing friendship controls. It has no leaderboard preview, leader or
+  countdown; those summaries remain on overview cards. Long lists scroll.
+  View leaderboard sits below the members and closes the popup to open the
+  full Leaderboard for that lobby. Close, ×, outside click and Escape dismiss
+  it and leave the overview visible. Membership is checked on each interaction.
+- Member rows show public usernames, You/Friends/Request sent status, Add friend
+  for unrelated players, and Accept/Decline for incoming requests. Existing
+  friendship rules apply; only your own relationships are exposed.
 - Past Lobbies are light grey, latest finish first: name, winner's public
   username and finish timestamp. No scored entries reads **No Leader** in both
   lists. Service failure reads Standings unavailable, never an invented result.
 - A timed fragment refreshes the list/countdown every 60 seconds while open,
   rechecks memberships and moves expired cards at the next refresh. Server
   check-ins still enforce the exact finish boundary independently of the UI.
-- Create lobby / Join with a code remain below. Duration is fixed; no renewal
-  or season selection is offered. Incomplete setup has a retry form. Future
-  legacy competitions are labelled Upcoming instead of shown as running.
+- Create lobby / Join with a code are individual buttons above the list.
+  Each opens a native modal over a subtly blurred, dimmed, non-interactive
+  background. Cancel, ×, outside click and Escape dismiss without saving.
+  Existing duration/timezone/test-season and invite-code controls remain.
+  Invalid submissions stay in the modal with errors. Success closes it,
+  opens the lobby member or team popup and displays a success message.
+- Duration is fixed; no renewal or season selection is offered. Incomplete
+  setup has a retry form in the member popup. A failed initial season start opens
+  that popup with a notice, so retrying cannot create another lobby by mistake.
+  Future legacy competitions are labelled Upcoming instead of running.
 - R-R03 governs one competition per lobby. Existing multiple-season history
   is retained; only its latest competition is summarized. Picture privacy
   remains A11; lobby membership alone does not grant picture access.
+
+## Team lobby extension (18 November 2026)
+
+Create lobby now opens a dialog with Individual/Team selection. Team settings
+react immediately and expose count, capacity and Random/Players choose.
+Open lobby on a team card opens a dialog showing the numbered teams, member
+identities, occupancy and combined points. Available teams have Join buttons
+in manual mode. Clicking one's own team name opens its name/picture editor;
+other teams have no editing controls. A View leaderboard action opens the
+combined team standings. Map, leaderboard and My stats show team totals and
+ownership; Check-in blocks unassigned members and previews team ownership.
+The lobby card's Leader/Winner also names the leading team. Individual lobby
+navigation remains as described above. R-TEAM01–R-TEAM05 govern these flows.
+
+Lobby action placement updated 18 November 2026: both entry points are
+full-width buttons in two columns directly below the page title. Forms are
+shown only in their respective popups. Successful joining closes the popup
+and refreshes the lobby cards; an invalid code keeps the popup open with its
+error. Creation settings and team rules remain unchanged.

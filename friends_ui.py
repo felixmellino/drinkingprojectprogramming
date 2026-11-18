@@ -8,6 +8,23 @@ from core.friends import search_usernames
 from profile_picture_ui import picture_identity, show_picture_identity
 
 
+def friendship_action(player_id, label, other, operation, *, key_prefix="friend", refresh_label="Refresh friends"):
+    if st.button(label, key=f"{key_prefix}_{operation}_{other}"):
+        try:
+            db.change_friendship(player_id, other, operation)
+        except ValueError as exc:
+            st.error(str(exc))
+        except APIError as exc:
+            if exc.code == "40001":
+                st.error(f"This request changed. {refresh_label} and try again.")
+            else:
+                st.error("Could not update friends. Please try again later.")
+        except (RuntimeError, OSError, RequestError):
+            st.error("Could not update friends. Please try again later.")
+        else:
+            st.rerun()
+
+
 def show_friends(player_id: str):
     st.header("Friends")
     st.caption("Your friends list is private. Search finds usernames across the app.")
@@ -29,20 +46,7 @@ def show_friends(player_id: str):
             picture_identity(names.get(other, "Unknown player"), size=40)
 
     def action(label, other, operation):
-        if st.button(label, key=f"friend_{operation}_{other}"):
-            try:
-                db.change_friendship(player_id, other, operation)
-            except ValueError as exc:
-                st.error(str(exc))
-            except APIError as exc:
-                if exc.code == "40001":
-                    st.error("This request changed. Refresh friends and try again.")
-                else:
-                    st.error("Could not update friends. Please try again later.")
-            except (RuntimeError, OSError, RequestError):
-                st.error("Could not update friends. Please try again later.")
-            else:
-                st.rerun()
+        friendship_action(player_id, label, other, operation)
 
     st.subheader("Incoming requests")
     incoming = [(other, r) for other, r in by_other.items() if r["status"] == "pending" and r["recipient_id"] == player_id]

@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 from core.checkins import CheckinRejected
 from core.location import evaluate_location
 from core.models import DrinkEntry, Season, Territory
+from core.teams import competitor
 
 VERSION = "v1"
 DRINK_LABELS = {"beer": "Beer", "wine": "Wine", "shot": "Shot", "mixed": "Mixed drink"}
@@ -207,7 +208,7 @@ def replay_season(entries: list[DrinkEntry]) -> Replay:
         points = entry.points_awarded
         if points <= 0 or entry.location_check_result not in ("matched", "outside"):
             continue
-        member = entry.membership_id
+        member = competitor(entry)
         territory = entry.territory_id if entry.location_check_result == "matched" else None
         owner = state.owners.get(territory) if territory else None
         bonus = points if entry.rule_version == VERSION and owner and owner != member else 0

@@ -7,6 +7,7 @@ so that drink entries can reference a territory id.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -14,6 +15,12 @@ from core.models import Territory
 from core.territories import parse_territories
 
 TERRITORY_FILE = Path(__file__).resolve().parent / "territories.geojson"
+
+
+def territory_file_version(path: Path = TERRITORY_FILE) -> str:
+    """A fingerprint of the file's contents. It changes whenever anyone edits
+    the file, so the app knows to load and copy the territories again."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def load_territories(path: Path = TERRITORY_FILE) -> list[Territory]:

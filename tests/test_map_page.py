@@ -46,6 +46,15 @@ def open_map():
     return AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10).run()
 
 
+def card(page):
+    """The floating location card over the map (HTML in a markdown block)."""
+    return next(m.value for m in page.markdown if 'class="game-card"' in m.value)
+
+
+def hud(page):
+    return next(m.value for m in page.markdown if 'class="game-hud"' in m.value)
+
+
 def table(page):
     return {row["Territory"]: row for row in page.dataframe[0].value.to_dict("records")}
 
@@ -54,11 +63,11 @@ def test_list_shows_owner_colour_and_capture_gap(phone):
     page = open_map()
     assert not page.exception
     rows = table(page)
-    assert rows["Bairro Alto"]["Status"] == "🔴 Someone else's"
+    assert rows["Bairro Alto"]["Status"] == "Someone else's"
     assert rows["Bairro Alto"]["What it means"] == "Owned by **rival**: you need 2 more points to take it."
-    assert rows["Le Pub"]["Status"] == "🟢 Yours"
+    assert rows["Le Pub"]["Status"] == "Yours"
     assert rows["Le Pub"]["What it means"] == "Yours: you lead by 5 points."
-    assert rows["After8"]["Status"] == "⚪ Unclaimed"
+    assert rows["After8"]["Status"] == "Unclaimed"
     assert len(page.get("deck_gl_json_chart")) == 1
 
 
@@ -66,37 +75,42 @@ def test_your_position_names_the_territory_you_are_in(phone):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
     assert not page.exception
-    message = page.info[0].value
+    message = card(page)
     assert "Bairro Alto" in message and "you need 2 more points" in message
-    assert r"\*\*rival\*\*" in message  # a username can't inject Markdown
+    assert any(b.label == "Check in here" for b in page.button)
 
 
 def test_outside_every_territory(phone):
     phone["location"] = {"lat": OUTSIDE[0], "lng": OUTSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
-    assert "outside the game territories" in page.info[0].value
+    assert "Outside the map" in card(page)
 
 
 def test_no_location_yet_still_shows_the_map(phone):
     page = open_map()
-    assert not page.info and any("Finding your location" in c.value for c in page.caption)
+    assert "Finding you" in card(page)
     assert len(page.get("deck_gl_json_chart")) == 1
 
 
 def test_inaccurate_location_is_not_used(phone):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 90, "taken_at_ms": time.time() * 1000}
     page = open_map()
-    assert not page.info and any("only accurate to about 90 m" in c.value for c in page.caption)
+    assert "Not precise enough" in card(page) and "about 90 m" in card(page)
 
 
 # -- Summary cards and quick zoom ---------------------------------------
 
-def test_summary_counts_yours_free_and_easiest_capture(phone):
+def test_hud_counts_yours_and_free(phone):
     page = open_map()
-    metrics = {m.label: m.value for m in page.metric}
-    assert metrics["Yours"] == "1 of 3"
-    assert metrics["Unclaimed"] == "1"
-    assert metrics["Easiest to take"] == "Bairro Alto"
+    assert "<strong>1</strong> / 3 · 1 free" in hud(page)
+
+
+def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
+    monkeypatch.setattr(db, "list_players", lambda: [
+        SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="<b>x</b>")])
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    message = card(open_map())
+    assert "&lt;b&gt;x&lt;/b&gt;" in message and "<b>x</b>" not in message
 
 
 def test_quick_zoom_offers_the_areas_and_me_only_with_a_location(phone):

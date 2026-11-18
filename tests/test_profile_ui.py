@@ -82,30 +82,54 @@ def test_invalid_edit_and_password_change(repo):
     assert any('Password changed' in s.value for s in at.success)
 
 
-def test_stats_no_lobby_and_current_season(repo, monkeypatch):
+def stats_text(at):
+    from html import unescape
+    import re
+    return ' '.join(unescape(re.sub('<[^>]+>', ' ', ''.join(m.value for m in at.markdown if '<section class="profile-stats"' in m.value))).split())
+
+
+def test_stats_finished_lobbies_without_selection_and_fresh_session(repo, monkeypatch):
+    from tests.test_scoring_v1 import entry
+    now = datetime.now(timezone.utc)
+    memberships = [SimpleNamespace(id=f'm{i}', lobby_id=f'l{i}') for i in range(6)]
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: memberships)
+    def seasons(lid):
+        end = now + timedelta(days=1) if lid == 'l5' else now - timedelta(days=1)
+        return [SimpleNamespace(id=lid, ends_at=end)]
+    monkeypatch.setattr('data.db.list_seasons_for_lobby', seasons)
+    def entries(sid):
+        assert sid != 'l5', 'Active lobby must not count'
+        i = int(sid[1:])
+        return [replace(entry(sid, f'm{i}', 'beer', 'small', 0), season_id=sid, points_awarded=11)]
+    monkeypatch.setattr('data.db.list_drink_entries', entries)
     at = page(repo)
     click(at, 'My stats')
-    assert any('Choose a lobby' in msg.value for msg in at.info)
-    now = datetime.now(timezone.utc)
-    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [SimpleNamespace(id='member', lobby_id='lobby')])
-    current = SimpleNamespace(id='current', starts_at=now-timedelta(days=1), ends_at=now+timedelta(days=1))
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [current])
-    from tests.test_scoring_v1 import entry
-    from tests.test_checkins import TERRITORY
-    entries = [entry('one', 'member', 'beer', 'large', 0)]
-    monkeypatch.setattr('data.db.list_drink_entries', lambda sid: entries if sid == 'current' else pytest.fail('Wrong season'))
-    monkeypatch.setattr('profile_ui.get_territories', lambda: [TERRITORY])
-    at.session_state['current_lobby_id'] = 'lobby'
-    at.session_state['current_season_id'] = 'old'
+    text = stats_text(at)
+    assert 'Total points 55' in text and 'Drinks 5' in text
+    assert 'Lobbies played 5' in text and 'Total Wins 5' in text
+    at.session_state['current_lobby_id'] = 'l5'
     at.run()
-    assert not at.exception
-    assert [m.value for m in at.metric] == ['3', '#1', '1']
-    entries.clear()
+    assert stats_text(at) == text
+    fresh = page(repo)
+    click(fresh, 'My stats')
+    assert stats_text(fresh) == text
+
+
+def test_stats_empty_and_load_failure(repo, monkeypatch):
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [])
+    at = page(repo)
+    click(at, 'My stats')
+    assert 'Total points 0' in stats_text(at) and 'Total Wins 0' in stats_text(at)
+    assert at.info
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [SimpleNamespace(lobby_id='lobby')])
+    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [])
     at.run()
-    assert [m.value for m in at.metric] == ['0', 'Unranked', '0']
-    monkeypatch.setattr('profile_ui.get_territories', lambda: (_ for _ in ()).throw(RuntimeError('offline')))
+    assert 'Total points 0' in stats_text(at)
+    def unavailable(_):
+        raise RuntimeError('offline')
+    monkeypatch.setattr('data.db.list_seasons_for_lobby', unavailable)
     at.run()
-    assert at.metric[2].value == 'Unavailable'
+    assert not at.exception and at.error and not stats_text(at)
 
 
 def test_save_failure_keeps_form_and_identity(repo, monkeypatch):

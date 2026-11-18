@@ -13,11 +13,10 @@ from core.location import evaluate_location
 from phone_location import current_location, track_location
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
-require_login()
+player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
-st.title("Map")
 map_ui.load_styles()
 
 track_location()
@@ -31,32 +30,47 @@ except (APIError, RequestError, RuntimeError):
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
+if st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries):
+    try:
+        names = {t.id: t.name for t in db.list_lobby_teams(player_id, lobby_id)}
+    except (APIError, RequestError, RuntimeError, PermissionError):
+        st.error("Teams could not be loaded. Reload to try again.")
+        st.stop()
+    membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
+    st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
 rows = map_ui.territory_rows(territories, entries, membership_id, names)
 
+# Where am I? Decides the bottom card and whether "Me" is offered.
 location, accuracy_m, problem = current_location()
-if location is not None and accuracy_m <= MAX_GPS_ACCURACY_M:
+usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
+here, status = None, "waiting"
+if usable_location:
     result, territory_id = evaluate_location(location, accuracy_m, territories)
     here = next((row for row in rows if row["id"] == territory_id), None)
-    if result == "matched" and here:
-        st.info(f"You are in **{map_ui.markdown_safe(here['name'])}**. {map_ui.markdown_safe(here['detail'])}")
-    else:
-        st.info("You are outside the game territories. Drinks here count for season points only.")
+    status = "matched" if result == "matched" and here else "outside"
 elif location is not None:
-    st.caption(f"Your location is only accurate to about {accuracy_m:.0f} m, so it isn't used yet.")
+    status = "inaccurate"
 elif problem == "denied":
-    st.caption("Location access is blocked, so the map can't show where you are.")
-else:
-    st.caption("Finding your location…")
+    status = "denied"
 
-# Quick zoom: jump between the parts of the city that have territories.
-# The map comes right after it so it's the first big thing on the page.
-usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
-options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
-focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
-                             label_visibility="collapsed") or options[0]
-if focus not in options:  # e.g. "Me" was picked but the location is gone now
-    focus = options[0]
+# HUD floating over the top of the map: lobby, score, quick zoom.
+with st.container(key="game_hud"):
+    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
+    options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
+    focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
+                                 label_visibility="collapsed") or options[0]
+    if focus not in options:  # e.g. "Me" was picked but the location is gone now
+        focus = options[0]
 
-map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus)
-map_ui.render_summary(rows)
-map_ui.territory_list(rows)
+with st.container(key="game_map"):
+    map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus)
+
+# Card floating over the bottom of the map: where you are, and check in.
+with st.container(key="game_card"):
+    map_ui.location_card(here, status, accuracy_m)
+    if st.button("Check in here", key="map_checkin", type="primary", icon=":material/add_location_alt:", width="stretch"):
+        st.switch_page("pages/3_Check_in.py")
+
+map_ui.legend()
+with st.expander("All territories", icon=":material/list:"):
+    map_ui.territory_list(rows)

@@ -1,5 +1,6 @@
 """Ownership feedback for an accepted check-in, using existing replay rules."""
 from core.models import DrinkEntry
+from core.teams import competitor
 from core.scoring_v1 import entry_order, replay_season
 
 
@@ -16,4 +17,4 @@ def captured_territory(entry_id: str, entries: list[DrinkEntry]) -> str | None:
                  and entry_order(entry) < entry_order(saved)]
     before = replay_season(preceding).owners.get(saved.territory_id)
     after = replay_season(preceding + [saved]).owners.get(saved.territory_id)
-    return saved.territory_id if before != saved.membership_id and after == saved.membership_id else None
+    return saved.territory_id if before != competitor(saved) and after == competitor(saved) else None

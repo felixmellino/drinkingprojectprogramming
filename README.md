@@ -5,10 +5,43 @@ and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
 
-**Deployed URL:** TODO — not deployed yet.
+**Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:** TODO — add all four members' names and student numbers here
 before submission.
+
+## Hosting (deployed app)
+
+The public app runs on **Streamlit Community Cloud** at
+https://wegopubnow.streamlit.app/ and uses the team's shared Supabase project
+(region West EU) as its database and photo storage.
+
+- **Source:** repository `felixmellino/drinkingprojectprogramming`, branch
+  `main`, main file `app.py`. Every merge into `main` redeploys the app
+  automatically within a few minutes.
+- **Python:** 3.14 (chosen when the app was created; it can only be changed by
+  deleting and re-creating the app). Dependencies come from the pinned
+  `requirements.txt`.
+- **Secrets:** set in the app's Settings → Secrets, never in the repository:
+  ```
+  SUPABASE_URL = "https://<project>.supabase.co"
+  SUPABASE_KEY = "<legacy service_role key, starts with eyJ>"
+  ```
+  Use the legacy `service_role` key (Supabase → Project Settings → API Keys →
+  Legacy API keys). The newer `sb_secret_…` key is rejected with
+  "Invalid API key".
+- **Territories:** on its first start after a deploy, the app copies
+  `data/territories.geojson` into the database (`shared.get_territories()`),
+  so editing the file and merging is all that's needed.
+- **Location on phones:** browsers only share GPS over HTTPS and after the
+  player allows it. The app asks once right after login. On iPhone, if it
+  says location is blocked: Settings → Privacy & Security → Location Services
+  → Safari Websites → While Using the App; then in Safari tap "aA" →
+  Website Settings → Location → Allow.
+- **Before a demo:** the free plan puts the app to sleep after a few days
+  without visitors. Open the URL once beforehand and click "Wake up" if shown.
+- **Check-ins** are only scored Thursday 18:00 – Sunday 18:00 (lobby time);
+  the map and location work at any time.
 
 ## Local setup
 
@@ -153,6 +186,13 @@ revokes the current device's token and clears its storage; a password change
 invalidates all remembered tokens. If browser storage is blocked, login still
 works for the current visit. Serve the deployed app over HTTPS.
 
+On reconnect, each new server session requests the saved token with a fresh
+request ID, even if the browser's storage component is still open. The account
+form waits for that read before appearing. Regression coverage in
+`tests/test_account_ui.py` checks delayed reads and lost server state; token
+expiry, password changes and logout remain covered by
+`tests/test_remembered_sessions.py`.
+
 Existing player IDs and all linked game records are retained. Legacy accounts
 without an email cannot use email login: an administrator must link the correct
 email and replace their credential hash while retaining the original player ID.
@@ -242,8 +282,11 @@ still need `005_scoring_v1.sql` after photo setup as described above.
 Profile opens Edit profile, Friends, My stats and Account & security as
 separate views with Back to Profile. Log out signs out immediately. Players
 can edit username/first name/surname; email stays read-only. Password changes
-require the current password and sign out all devices. My stats uses the
-selected lobby's current season (points, rank and territories owned).
+require the current password and sign out all devices. My stats shows Total points, Drinks, Lobbies played and Total Wins across
+finished lobbies, independently of the selected lobby. Active lobbies count
+only after they finish. Points include the player's own drinks and individual
+territory-owner income; team scores and team owner income are excluded.
+Total Wins includes both individual and team season victories.
 Name/password changes need no new migration beyond the account indexes/access
 rules already described above. Profile pictures need migration 008 below.
 
@@ -298,20 +341,38 @@ scope, deployment checks and exact disposable PostgreSQL test commands.
 
 Lobby lists all joined lobbies directly: running competitions newest-started
 first in green, then Past Lobbies newest-finished first in grey. It selects
-the newest running lobby automatically. Open lobby / View results selects
-that card and opens its standings. Cards use public usernames, existing
+the newest running lobby automatically. Clicking anywhere on a card opens
+a popup showing the lobby name, invite code and all members over the blurred
+lobby overview. Long member lists scroll. View leaderboard below the list
+closes the popup and opens the full Leaderboard for that lobby; there is no
+top-three preview. Close, ×, outside click and Escape dismiss the popup.
+Member rows offer Add friend or Accept/Decline for incoming requests, with
+You/Friends/Request sent status where appropriate. Create lobby and Join with
+a code are separate buttons above the list, opening dismissible dialogs over
+a blurred/dimmed background. Successful creation/join opens the lobby member popup.
+Cards use public usernames, existing
 ranking/tie rules, and authorized profile pictures with initials as fallback.
 No scores shows **No Leader**, including finished lobbies. Create and join
-remain below the list. The countdown/list refresh every minute while open.
+remain above the list. The countdown/list refresh every minute while open.
 
 Apply [`migrations/009_single_competition_lobbies.sql`](migrations/009_single_competition_lobbies.sql)
 after migration 005 for atomic database enforcement of one competition per
 lobby. Existing multi-season history is retained; its latest competition
 summarizes that lobby. No season renewal control remains. A failed initial
-season setup can be retried on the incomplete lobby card.
+season setup can be retried in the incomplete lobby’s member popup.
 
 Validation: `python -m pytest -q`; optional disposable SQL checks:
 `python scripts/verify_single_competition_lobbies.py` with the isolated test
 packages documented in `docs/LOBBY_MIGRATION_REVIEW.md`.
 Shared database installation and deployed/restart checks remain the Data
 owner's integration step after review; no migration runs on app startup.
+
+## Individual and team lobbies
+
+Create lobby offers Individual (default) or Team, with team count, maximum
+members per team and random/manual joining. Team members can rename their
+team and take/upload a team picture. Combined team points decide both the
+leaderboard and territory ownership. Existing lobbies remain individual.
+Before using team mode, the Data owner must review/apply
+[`migrations/010_team_lobbies.sql`](migrations/010_team_lobbies.sql) after 005
+and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).

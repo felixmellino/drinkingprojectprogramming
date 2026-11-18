@@ -10,19 +10,24 @@ import streamlit as st
 
 import data.db as db
 from core.models import Territory
-from data.territory_file import load_territories
+from data.territory_file import load_territories, territory_file_version
 from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
 from app_navigation import bottom_navigation
+from theme import apply_theme
 from phone_location import ask_for_location
 
 
 def require_login() -> str:
     """Stop the page and prompt a login if nobody is logged in. Returns
     the logged-in player's id otherwise."""
+    apply_theme()  # design system on every page, including the login screen
     token = sync_storage()
+    if token is None and "player_id" not in st.session_state and not st.session_state.get("_remember_attempted"):
+        st.info("Checking your saved sign-in…")
+        st.stop()
     if token is not None and not st.session_state.get("_remember_attempted"):
         if token:
             try:
@@ -74,6 +79,8 @@ def require_active_membership() -> tuple[str, str, str]:
                and m.lobby_id == st.session_state.get("current_lobby_id") for m in memberships):
         st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
         st.stop()
+    selected = next(m for m in memberships if m.id == st.session_state["current_membership_id"])
+    st.session_state["current_team_id"] = getattr(selected, "team_id", None)
     if not st.session_state.get("current_season_id"):
         st.info("Start or select a season on the Lobby page first.")
         st.stop()
@@ -92,15 +99,21 @@ def require_active_membership() -> tuple[str, str, str]:
     )
 
 
-@st.cache_resource(show_spinner=False)
 def get_territories() -> list[Territory]:
     """The game's territories, read from data/territories.geojson (R-T01).
 
-    The first call after the app starts also copies them into the database,
-    because drink entries store a territory id that must exist there. The
-    result is cached for the whole server process, so after editing the
-    file, restart the app. If the database is unreachable the error is not
-    cached and the next page load tries again."""
+    They are loaded and copied into the database once per version of the
+    file (drink entries store a territory id that must exist there), then
+    kept in memory. When the file changes, e.g. after a merge, the next page
+    load picks up the new version by itself; no restart needed. If the
+    database is unreachable the error is not cached and the next page load
+    tries again."""
+    return _load_and_sync(territory_file_version())
+
+
+@st.cache_resource(show_spinner=False, max_entries=1)
+def _load_and_sync(version: str) -> list[Territory]:
+    # `version` is only the cache key: a new file version means a new load.
     territories = load_territories()
     db.upsert_territories(territories)
     return territories

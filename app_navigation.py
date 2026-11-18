@@ -39,5 +39,5 @@ def bottom_navigation(active: str | None = None, *, navigate=None) -> None:
     if active and active != "checkin":
         # Only trusted route names from DESTINATIONS enter the selector.
         if active in {item[0] for item in DESTINATIONS}:
-            st.markdown(f'<style>.st-key-wego_nav_{active} button {{background:#e8f2e2;color:#176c50;}}</style>',
+            st.markdown(f'<style>.st-key-wego_nav_{active} button {{background:var(--surface-raised);color:var(--accent-ink);}}</style>',
                         unsafe_allow_html=True)

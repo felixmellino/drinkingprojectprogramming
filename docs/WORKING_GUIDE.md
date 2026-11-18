@@ -86,6 +86,18 @@ function it called, not in the page itself.
 | `AGENTS.md` | Course requirements, grading criteria, and the team's own workflow rules. |
 | `README.md` | How to set up, run, and test the app locally, plus what's not built yet. |
 
+## Design system (direction "Rush")
+
+The look of the whole app lives in one place: `assets/theme.css` (colour,
+type and shape tokens such as `--bg`, `--accent`, `--territory-yours`, plus
+base styles for Streamlit's own widgets) and the `[theme]` block in
+`.streamlit/config.toml`. `theme.py` loads it on every page through
+`shared.require_login()`. Page styles in `assets/*.css` only use these
+variables; never add hard-coded colours there. Rules: green/red/grey are
+reserved for territory status, the cream accent is the action colour, and
+the vintage red (`--brand`) appears only in the wordmark and the 1st-place
+medal. Icons are Material Symbols (`:material/name:`), no emojis.
+
 ## How `docs/ontology/` connects to the code
 
 `docs/ontology/` is the design, written first, in plain English. `core/`
@@ -277,7 +289,7 @@ accounts to confirm saved requests/friends and decline timestamps survive.
 
 ## Lobby overview (Identity block, 18 November 2026)
 
-`pages/2_Lobby.py` retains create/join and calls `lobby_ui.py` for the visible
+`pages/2_Lobby.py` calls `lobby_ui.py` for the visible
 joined-lobby list. `core/lobby_overview.py` derives status/countdown from saved
 Season dates; `assets/lobbies.css` styles green running/grey past cards. Leaders
 come from `season_leader`; pictures use the existing authorized byte loader.
@@ -290,6 +302,54 @@ and apply 009 after 005 before deployment. Verify with `python -m pytest -q`
 and `python scripts/verify_single_competition_lobbies.py` (optional local SQL
 test tools as in LOBBY_MIGRATION_REVIEW.md). For deployed verification, join two
 running lobbies and one finished lobby, check newest-first auto-selection,
-private-picture initials and both Open lobby / View results; restart, log in
+private-picture initials, card navigation and View leaderboard; restart, log in
 again, and confirm the same saved dates/results and ordering remain. A lobby
 at its finish boundary must reject check-ins and appear as past on refresh.
+
+### Lobby members and friend requests (18 November 2026)
+
+`lobby_ui.py` adds invite codes to joined cards. A native button styled over
+all of each card opens a native member dialog over the blurred overview.
+The card shows View lobby →. CSS stretches both Streamlit's element wrapper
+and the button over the card; stretching only the button leaves its click
+area below the card. For browser QA, click the card's title, centre and
+bottom action area and verify each opens the popup, then check keyboard focus.
+In individual mode the popup contains the name, invite code, scrollable member list and a
+View leaderboard button below it, with no top-three preview. All native
+close paths clear the opened-lobby session state so refresh cannot reopen it.
+`lobby_forms_ui.py` holds Create/Join dialogs. Opening one closes the member
+popup; only one dialog is called in a run. Creation/join success opens the
+member or team popup with a notice. An initial season-start failure keeps Retry
+lobby setup available in that popup. Member controls reuse
+`friends_ui.friendship_action` and the existing `core/friends.py` and database
+transition logic, so Profile and Lobby read/write the same relationships.
+No migration or new dependencies are needed (existing migration 006 is required).
+Friendship lookup failures keep the username list but hide actions; membership
+is checked again before loading usernames or friendship state.
+
+Verify with `python -m pytest tests/test_lobby_ui.py tests/test_friends_ui.py
+ tests/test_friends.py tests/test_friends_db.py -q` (one line). The AppTest
+workflow sends requests, opens fresh sessions, accepts/declines, rejects a
+request during the decline cooldown, and checks access/error states.
+With a configured database, use two accounts in one lobby: send a request,
+refresh as the recipient, decline then verify the cooldown; later send again
+and accept. Restart Streamlit and confirm the request/friendship remains in
+both Lobby and Profile. These live database/restart checks remain manual.
+
+## Team lobbies (Identity, Scoring and Standings)
+
+See [TEAM_MODE.md](TEAM_MODE.md) for the cross-block handoff, migration 010,
+source mapping and verification commands. This contributor-authorized shared
+model change adds teams without changing individual lobbies. Replay uses
+saved entry team identities for totals, territory ownership and income.
+Every teammate should explain why team joins/scoring use one database lock,
+why a teammate does not pay owner income, and why a scored member cannot
+switch teams. Rule source: R-TEAM01–R-TEAM05 in the ontology.
+
+Team mode is integrated into these same entry points. `lobby_forms_ui.py`
+contains the mode/count/capacity/assignment controls; the card router opens
+`team_ui.py` for teams and the member/friend dialog for individual lobbies.
+Both use `_opened_lobby_id` and clear it on dismissal; `_lobby_dialog` is
+reserved for Create/Join. Opening Create/Join closes either detail popup,
+and successful creation/join selects the saved lobby and opens its matching
+popup. This preserves the member UI from main and the team competition rules.

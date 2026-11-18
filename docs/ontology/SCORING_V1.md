@@ -129,3 +129,13 @@ capacity limit, invitation/removal workflow, calendar-month change or new
 scoring gate. Migration 005 stays authoritative. The original recovered
 lobby-battles draft is superseded; review and verification are recorded in
 [the migration handoff](../LOBBY_MIGRATION_REVIEW.md).
+
+## Team-mode extension (18 November 2026)
+
+R-TEAM01–R-TEAM05 extend this contract for newly created team lobbies. Replace
+the scoring competitor with the entry's immutable team ID. Combine members'
+base points in each territory and season; pay prior-owner income only for a
+rival team's entry, to the owning team. Individual seasons keep their existing
+behavior. Replay, correction order, quarter points, ties and per-player
+cooldown remain unchanged. See [TEAM_MODE.md](../TEAM_MODE.md) for migration
+010 and verification. Team scores are the competition's sole ranked totals.

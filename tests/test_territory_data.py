@@ -83,8 +83,8 @@ def deepest_overlap_m(ring_a, ring_b):
 
 # -- R-T01: every territory is a named, closed polygon in Lisbon --------------
 
-def test_file_has_the_thirteen_starting_territories():
-    assert len(load_features()) == 13
+def test_file_has_the_twenty_four_territories():
+    assert len(load_features()) == 24
 
 
 def test_app_loader_reads_every_territory_with_its_permanent_id():
@@ -93,7 +93,7 @@ def test_app_loader_reads_every_territory_with_its_permanent_id():
     territories = load_territories()
     file_ids = [f["properties"]["id"] for f in load_features()]
     assert [t.id for t in territories] == file_ids
-    assert len(set(file_ids)) == 13
+    assert len(set(file_ids)) == 24
 
 
 def test_every_territory_has_a_unique_name():
@@ -154,6 +154,10 @@ def test_overlap_check_allows_a_shared_border():
         ("K Urban Beach Club", (38.70386, -9.15543), "After8"),
         ("Rua da Rosa, middle", (38.7133, -9.1456), "Shortys"),
         ("Nova SBE main building", (38.6782, -9.3259), "Nova SBE Campus"),
+        ("Carcavelos beach, part of the Nova area", (38.6790, -9.3360), "Nova SBE Campus"),
+        ("Largo de Camões", (38.71057, -9.14343), "Chiado"),
+        ("Jardim do Príncipe Real", (38.71628, -9.14861), "Príncipe Real"),
+        ("Rua Nova do Carvalho", (38.70723, -9.14380), "Pink Street"),
     ],
 )
 def test_known_places_match_their_territory(place, lat_lng, expected_name):
@@ -163,9 +167,9 @@ def test_known_places_match_their_territory(place, lat_lng, expected_name):
     assert next(t.name for t in territories if t.id == territory_id) == expected_name
 
 
-def test_largo_de_camoes_is_outside_every_territory():
-    """Gap case (R-T02): a drink here counts for the season only."""
-    result, territory_id = evaluate_location((38.71057, -9.14343), None, load_territories())
+def test_praca_do_comercio_is_outside_every_territory():
+    """Outside case (R1): beyond the covered centre a drink counts for the season only."""
+    result, territory_id = evaluate_location((38.7075, -9.1365), None, load_territories())
     assert result == "outside"
     assert territory_id is None
 
@@ -211,3 +215,34 @@ def test_upsert_territories_with_nothing_to_copy_does_not_call_the_database(monk
 
     monkeypatch.setattr(db, "get_client", fail)
     db.upsert_territories([])
+
+
+# -- The app notices when the territory file changes --------------------------
+
+def test_file_version_changes_with_the_contents(tmp_path):
+    from data.territory_file import territory_file_version
+    path = tmp_path / "territories.geojson"
+    path.write_text('{"type": "FeatureCollection", "features": []}')
+    first = territory_file_version(path)
+    assert territory_file_version(path) == first
+    path.write_text('{"type": "FeatureCollection", "features": [ ]}')
+    assert territory_file_version(path) != first
+
+
+def test_new_file_version_is_loaded_and_copied_again(monkeypatch):
+    """A merge that edits the file must reach the app without a restart."""
+    import shared
+    shared._load_and_sync.clear()
+    copies, version = [], {"now": "v1"}
+    monkeypatch.setattr(shared, "territory_file_version", lambda: version["now"])
+    monkeypatch.setattr(shared, "load_territories", lambda: [version["now"]])
+    monkeypatch.setattr(db, "upsert_territories", lambda territories: copies.append(list(territories)))
+
+    assert shared.get_territories() == ["v1"]
+    assert shared.get_territories() == ["v1"]
+    assert copies == [["v1"]]  # same file: loaded and copied once
+
+    version["now"] = "v2"
+    assert shared.get_territories() == ["v2"]
+    assert copies == [["v1"], ["v2"]]  # changed file: picked up by itself
+    shared._load_and_sync.clear()

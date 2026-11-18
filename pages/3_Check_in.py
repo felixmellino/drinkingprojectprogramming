@@ -41,6 +41,13 @@ if season is None:
     st.stop()
 modern = season.scoring_version == "v1"
 rules = rules_for(season) if modern else None
+team_mode = st.session_state.get("current_lobby_mode") == "team"
+competitor_id = st.session_state.get("current_team_id") if team_mode else membership_id
+if team_mode and not competitor_id:
+    st.info("Open this lobby on the Lobby page and join a team before checking in.")
+    st.stop()
+if team_mode:
+    st.caption("Team mode · Your check-ins add to your team’s season and territory totals.")
 now = current_time()
 recent_entries = db.list_drink_entries_for_membership(membership_id)
 track_location()
@@ -73,7 +80,7 @@ if photo is None and not st.session_state.get('checkin_posted'):
     # Only the camera occupies the viewport. GPS continues in its hidden component.
     st.markdown("""<style>
       .st-key-checkin_camera_stage {position:fixed!important;inset:0;z-index:100000;
-        width:100vw!important;max-width:none!important;background:#080d0b;overflow:hidden;}
+        width:100vw!important;max-width:none!important;background:var(--bg,#1A2841);overflow:hidden;}
       .st-key-checkin_camera_stage iframe {width:100vw!important;height:100dvh!important;border:0;}
       body:has(.st-key-checkin_camera_stage) [data-testid="stHeader"],
       body:has(.st-key-checkin_camera_stage) [data-testid="stSidebar"],
@@ -126,7 +133,7 @@ if saved_result is not None:
                 territory_name = next((t.name for t in get_territories() if t.id == territory_id), "the territory")
                 # Plain text prevents a territory label from injecting Markdown.
                 st.success("Territory captured!")
-                st.text(f"You captured {territory_name}!")
+                st.text(f"Your team captured {territory_name}!" if team_mode else f"You captured {territory_name}!")
                 st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
         except (APIError, RequestError, RuntimeError, ValueError):
             st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
@@ -160,7 +167,7 @@ with st.container(key='drink_ui_panel_camera'):
     # Keep the preview inside the authenticated session, not a public media URL.
     encoded = b64encode(photo.getvalue()).decode('ascii')
     st.html(f'<img src="data:image/jpeg;base64,{encoded}" alt="Your drink photo" '
-            'style="display:block;width:100%;max-height:320px;object-fit:contain;border-radius:22px;background:#edf2e9">')
+            'style="display:block;width:100%;max-height:320px;object-fit:contain;border-radius:var(--radius-lg,16px);background:var(--surface,#22334F)">')
     if st.button('Retake photo', icon=':material/photo_camera:', width='stretch'):
         reset_camera()
         st.rerun()
@@ -223,10 +230,11 @@ with st.container(key="drink_ui_panel_location"):
                 name = next(t.name for t in territories if t.id == preview_territory)
                 owner = replay_season(db.list_drink_entries(season_id)).owners.get(preview_territory)
                 context_line("Detected territory", name)
-                if owner == membership_id:
-                    st.text("You currently own this territory. Your check-in earns normal base points.")
+                if owner == competitor_id:
+                    st.text("Your team currently owns this territory. No owner income from teammates." if team_mode else "You currently own this territory. Your check-in earns normal base points.")
                 elif owner:
-                    owner_name = db.membership_display_name(owner, lobby_id)
+                    owner_name = (next((t.name for t in db.list_lobby_teams(player_id, lobby_id) if t.id == owner), "Team")
+                                  if team_mode else db.membership_display_name(owner, lobby_id))
                     income = format_points(Decimal(preview) / 4)
                     st.text(f"Current owner: {owner_name} · estimated additional owner income: {income} season points")
                 else:
@@ -274,6 +282,7 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
         st.error(str(error))
     except CheckinRejected as rejected:
         messages = {
+            "team_required": "Open your lobby and join a team before checking in.",
             "scoring_closed": "Scoring has closed. Refresh to see the next opening.",
             "cooldown": "Wait two minutes between check-ins. Your photo and selections are kept; refresh the remaining wait.",
             "invalid_selection": "Choose a supported drink and size.",

@@ -21,7 +21,7 @@ from supabase import Client, create_client
 from postgrest.exceptions import APIError
 from core.checkins import CheckinRejected
 
-from core.models import Arena, DrinkEntry, Lobby, LobbyMembership, MinigameAttempt, Player, Season, Territory
+from core.models import Arena, DrinkEntry, Lobby, LobbyMembership, MinigameAttempt, Player, Season, Territory, Team
 
 _client: Client | None = None
 CHECKIN_PHOTO_BUCKET = "check-in-photos"
@@ -93,13 +93,17 @@ def insert_player(player: Player) -> None:
 
 def list_lobbies() -> list[Lobby]:
     rows = get_client().table("lobbies").select("*").execute().data
-    return [Lobby(id=r["id"], name=r["name"], invite_code=r["invite_code"]) for r in rows]
+    return [Lobby(id=r["id"], name=r["name"], invite_code=r["invite_code"],
+                  game_mode=r.get("game_mode", "individual"), team_count=r.get("team_count"),
+                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment")) for r in rows]
 
 
 def insert_lobby(lobby: Lobby) -> None:
-    get_client().table("lobbies").insert(
-        {"id": lobby.id, "name": lobby.name, "invite_code": lobby.invite_code}
-    ).execute()
+    row = {"id": lobby.id, "name": lobby.name, "invite_code": lobby.invite_code}
+    if lobby.game_mode == "team":
+        row.update(game_mode=lobby.game_mode, team_count=lobby.team_count,
+                   team_capacity=lobby.team_capacity, team_assignment=lobby.team_assignment)
+    get_client().table("lobbies").insert(row).execute()
 
 
 def list_memberships_for_player(player_id: str) -> list[LobbyMembership]:
@@ -110,6 +114,7 @@ def list_memberships_for_player(player_id: str) -> list[LobbyMembership]:
             player_id=r["player_id"],
             lobby_id=r["lobby_id"],
             joined_at=datetime.fromisoformat(r["joined_at"]),
+            team_id=r.get("team_id"),
         )
         for r in rows
     ]
@@ -123,6 +128,7 @@ def list_memberships_for_lobby(lobby_id: str) -> list[LobbyMembership]:
             player_id=r["player_id"],
             lobby_id=r["lobby_id"],
             joined_at=datetime.fromisoformat(r["joined_at"]),
+            team_id=r.get("team_id"),
         )
         for r in rows
     ]
@@ -167,7 +173,7 @@ def _scoring_rpc(name: str, parameters: dict):
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby or entry.") from None
         if reason in {"invalid_selection", "scoring_closed", "cooldown", "correction_closed", "correction_conflict",
-                      "invalid_territory", "invalid_photo", "season_still_active", "lobby_already_started", "invalid_timezone", "invalid_rules"}:
+                      "team_required", "invalid_territory", "invalid_photo", "season_still_active", "lobby_already_started", "invalid_timezone", "invalid_rules"}:
             raise CheckinRejected(reason) from None
         if reason == "scoring_setup_required" or error.code in {"42703", "PGRST202", "PGRST204"}:
             raise RuntimeError("Scoring setup is required. Ask the Data owner to apply migration 005.") from None
@@ -266,7 +272,7 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         size=r.get("size"), rule_version=r.get("rule_version", "legacy"), event_order=r.get("event_order"),
         owner_membership_id=r.get("owner_membership_id"), owner_bonus_quarters=r.get("owner_bonus_quarters", 0),
         corrected_at=datetime.fromisoformat(r["corrected_at"]) if r.get("corrected_at") else None,
-        revision=r.get("revision", 0),
+        revision=r.get("revision", 0), team_id=r.get("team_id"), owner_team_id=r.get("owner_team_id"),
     )
 
 
@@ -375,6 +381,8 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
 def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
     rows = _all_rows(_lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
     names = {row.get("membership_id"): row["lobby_memberships"]["players"]["display_name"] for row in rows}
+    team_names = ({team.id: team.name for team in list_lobby_teams(player_id, lobby_id)}
+                  if any(row.get("team_id") for row in rows) else {})
     return [
         {
             "id": row["id"],
@@ -391,7 +399,8 @@ def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
             "drink_type": row.get("drink_type"), "size": row.get("size"),
             "rule_version": row.get("rule_version", "legacy"), "base_points": row.get("points_awarded", 0),
             "owner_bonus_quarters": row.get("owner_bonus_quarters", 0),
-            "income_recipient": names.get(row.get("owner_membership_id"), "Lobby member"),
+            "income_recipient": (team_names.get(row.get("owner_team_id"), "Team") if row.get("team_id")
+                                 else names.get(row.get("owner_membership_id"), "Lobby member")),
             "corrected_at": row.get("corrected_at"), "revision": row.get("revision", 0),
             "entry": _row_to_drink_entry(row) if row.get("rule_version") == "v1" else None,
             "season": _row_to_season(row["seasons"]) if row.get("rule_version") == "v1" else None,
@@ -784,3 +793,48 @@ def cleanup_profile_pictures(*, apply: bool = False) -> int:
                 bucket.remove([path])
             count += 1
     return count
+
+
+# -- lobby teams (private to joined lobby members) -----------------------
+def list_lobby_teams(player_id: str, lobby_id: str) -> list[Team]:
+    if not any(m.lobby_id == lobby_id for m in list_memberships_for_player(player_id)):
+        raise PermissionError("Only lobby members can view teams.")
+    rows = get_client().table("lobby_teams").select("*").eq("lobby_id", lobby_id).order("number").execute().data
+    return [Team(r["id"], r["lobby_id"], r["number"], r["name"], r.get("photo_base64")) for r in rows]
+
+
+def _team_rpc(name: str, parameters: dict):
+    messages = {
+        "team_full": "That team is full. Choose another team.",
+        "lobby_full": "This lobby is full.",
+        "team_locked": "Your team is locked after your first scored check-in.",
+        "random_team_locked": "Teams are assigned at random in this lobby.",
+        "lobby_finished": "This lobby has finished. Teams are frozen.",
+        "invalid_team": "Choose a team in this lobby.",
+        "invalid_team_name": "Use a team name of 1–40 characters.",
+        "permission_denied": "Only members of this team can edit it.",
+    }
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        reason = getattr(error, "message", "")
+        if reason in messages:
+            raise ValueError(messages[reason]) from None
+        if error.code == "23505":
+            raise ValueError("Another team in this lobby already uses that name.") from None
+        raise
+
+
+def choose_lobby_team(player_id: str, lobby_id: str, team_id: str) -> None:
+    _team_rpc("choose_lobby_team", {"actor_player": player_id, "target_lobby": lobby_id, "target_team": team_id})
+
+
+def edit_lobby_team(player_id: str, team_id: str, name: str, raw_photo: bytes | None = None, *, remove_photo=False) -> None:
+    import base64
+    from core.teams import team_name
+    from core.profile_photo import prepare_profile_photo
+    photo = base64.b64encode(prepare_profile_photo(raw_photo)).decode("ascii") if raw_photo is not None else None
+    if photo and len(photo) > 524288:
+        raise ValueError("Choose a simpler picture.")
+    _team_rpc("edit_lobby_team", {"actor_player": player_id, "target_team": team_id,
+        "new_name": team_name(name), "new_photo": photo, "change_photo": raw_photo is not None or remove_photo})
