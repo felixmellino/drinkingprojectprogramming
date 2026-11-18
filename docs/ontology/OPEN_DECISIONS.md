@@ -8,7 +8,7 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | --- | --- | --- |
 | D-01 | Owner advantage | Implemented on Scoring: additional 25% prior-owner income, season only, exact quarters, no visitor deduction/self-income/cap. Team review and migration pending. See [v1](SCORING_V1.md). |
 | D-02 | Points per Drink | Implemented on Scoring: four categories and frozen fixed size table; Large bonuses embedded. Legacy seasons preserved. Team review pending. See [v1](SCORING_V1.md). |
-| D-03 | Territory areas | **Decided 2026-11-17**, see [R-T01 and R-T02](RULES.md#territories). Still open: Territories around Nova SBE (Carcavelos) for demos, and possibly Praça das Flores. |
+| D-03 | Territory areas | **Decided 2026-11-17**, see [R-T01 and R-T02](RULES.md#territories). Nova SBE campus added 2026-11-18. Still open: possibly Praça das Flores. |
 | D-04 | Special items | Which special items do Minigames give, and what does each one do? |
 | D-05 | Game Night boundaries | Implemented on Scoring: continuous Thu 18:00 inclusive-Sun 18:00 exclusive in the season timezone; database scoring-request receipt is authoritative. Outside submissions blocked. Minigame nights remain separate. See [v1](SCORING_V1.md). |
 | D-06 | Season follow-ups | The three length choices are decided in [R-R02](RULES.md#r-r02-season-length); that decision is closed. Scoring retains their existing 7/30/91 elapsed-day implementation. Remaining review: calendar-month semantics and host roles. A new season ID resets scores/owners without deleting history; currently any member can start it after the last ends. See [v1](SCORING_V1.md). |

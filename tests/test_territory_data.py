@@ -25,10 +25,10 @@ METRES_PER_DEG_LAT = 110_574
 OVERLAP_TOLERANCE_M = 0.5
 SAMPLE_STEP_M = 1.0
 
-# Rough box around central Lisbon, written as (lng, lat) like GeoJSON.
-# Catches swapped coordinates, which would land somewhere in Ethiopia.
-LISBON_LNG = (-9.25, -9.05)
-LISBON_LAT = (38.68, 38.80)
+# Rough box around Lisbon and Carcavelos (Nova SBE), as (lng, lat) like
+# GeoJSON. Catches swapped coordinates, which would land in Ethiopia.
+LISBON_LNG = (-9.40, -9.05)
+LISBON_LAT = (38.65, 38.80)
 
 
 def load_features():
@@ -83,8 +83,8 @@ def deepest_overlap_m(ring_a, ring_b):
 
 # -- R-T01: every territory is a named, closed polygon in Lisbon --------------
 
-def test_file_has_the_twelve_starting_territories():
-    assert len(load_features()) == 12
+def test_file_has_the_thirteen_starting_territories():
+    assert len(load_features()) == 13
 
 
 def test_app_loader_reads_every_territory_with_its_permanent_id():
@@ -93,7 +93,7 @@ def test_app_loader_reads_every_territory_with_its_permanent_id():
     territories = load_territories()
     file_ids = [f["properties"]["id"] for f in load_features()]
     assert [t.id for t in territories] == file_ids
-    assert len(set(file_ids)) == 12
+    assert len(set(file_ids)) == 13
 
 
 def test_every_territory_has_a_unique_name():
@@ -153,6 +153,7 @@ def test_overlap_check_allows_a_shared_border():
         ("Jardim do Alto de Santa Catarina", (38.70963, -9.14765), "Santa Catarina"),
         ("K Urban Beach Club", (38.70386, -9.15543), "After8"),
         ("Rua da Rosa, middle", (38.7133, -9.1456), "Shortys"),
+        ("Nova SBE main building", (38.6782, -9.3259), "Nova SBE Campus"),
     ],
 )
 def test_known_places_match_their_territory(place, lat_lng, expected_name):
