@@ -4,35 +4,8 @@
     {
       "name": "drinkingprojectprogramming-streamlit",
       "runtimeExecutable": "/Users/nikla1/Documents/Documents - Niklas’s MacBook Air/Master NOVA SBE /Classes/Intro to Programming/Group Project/drinkingprojectprogramming/.venv/bin/streamlit",
-      "runtimeArgs": [
-        "run",
-        "app.py",
-        "--server.port",
-        "8502",
-        "--server.headless",
-        "true"
-      ],
+      "runtimeArgs": ["run", "app.py", "--server.port", "8502", "--server.headless", "true"],
       "port": 8502
-    },
-    {
-      "name": "wegopub-local",
-      "runtimeExecutable": "/Users/felixmellino/.local/bin/uv",
-      "runtimeArgs": [
-        "run",
-        "--no-project",
-        "--python",
-        "3.12",
-        "--with-requirements",
-        "/Users/felixmellino/Desktop/drinkingprojectprogramming/requirements.txt",
-        "streamlit",
-        "run",
-        "/Users/felixmellino/Desktop/drinkingprojectprogramming/app.py",
-        "--server.port",
-        "8501",
-        "--server.headless",
-        "true"
-      ],
-      "port": 8501
     }
   ]
 }
