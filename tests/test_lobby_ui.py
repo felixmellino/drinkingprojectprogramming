@@ -24,6 +24,10 @@ def ui(monkeypatch):
     seasons = {l.id: [create_season(l.id, '1_week', now - timedelta(days=offset))]
                for l, offset in zip(lobbies, [2, 1, 10, 0])}
     state = dict(lobbies=lobbies, members=members, seasons=seasons, entries=[], names={})
+    state['choices'] = {}
+    state['save_choice'] = Mock(side_effect=lambda pid, lid: state['choices'].__setitem__(pid, lid))
+    monkeypatch.setattr(db, 'save_lobby_choice', state['save_choice'])
+    monkeypatch.setattr(db, 'get_lobby_choice', lambda pid: state['choices'].get(pid))
     monkeypatch.setattr('shared.require_login', lambda: 'me')
     monkeypatch.setattr('shared.show_logged_in_as', lambda: None)
     monkeypatch.setattr(db, 'list_memberships_for_player', lambda _: state['members'])
@@ -477,3 +481,33 @@ def test_shared_create_dialog_opens_saved_team_lobby(ui, monkeypatch):
     assert any('Join a team below' in i.value for i in at.info)
     assert len([b for b in at.button if (b.key or '').startswith('join_team_')]) == 2
     assert not any(h.value == 'Lobby members' for h in at.subheader)
+
+
+def test_close_and_refresh_keep_explicit_choice_without_resaving(ui):
+    at = open_members(page(), 'old')
+    click(at, 'Close')
+    at.run()
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'old'
+    assert '_opened_lobby_id' not in at.session_state
+    assert ui['choices'] == {'me': 'old'}
+    ui['save_choice'].assert_called_once_with('me', 'old')
+
+
+def test_failed_preference_save_keeps_selection_and_can_retry(ui):
+    ui['save_choice'].side_effect = RuntimeError('offline')
+    at = open_members(page(), 'old')
+    assert not at.exception and at.session_state['current_lobby_id'] == 'old'
+    assert any('could not be saved' in w.value for w in at.warning)
+    ui['save_choice'].side_effect = lambda pid, lid: ui['choices'].__setitem__(pid, lid)
+    at.run()
+    assert not at.exception and ui['choices']['me'] == 'old'
+
+
+def test_rechoosing_same_lobby_overrides_another_devices_choice(ui):
+    at = open_members(page(), 'old')
+    click(at, 'Close')
+    ui['choices']['me'] = 'new'  # Another device selected a different lobby.
+    open_members(at, 'old')
+    assert not at.exception and ui['choices']['me'] == 'old'
+    assert ui['save_choice'].call_count == 2

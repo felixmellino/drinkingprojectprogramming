@@ -14,6 +14,9 @@ from tests.test_scoring_v1 import season
 
 @pytest.fixture
 def auth(monkeypatch):
+    # These tests isolate fresh account/membership checks; lobby restoration
+    # has a separate persistent repository in test_lobby_selection.
+    monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
     player = Player('player', 'Mia', 'Mia', 'S', 'version', 'private@example.test')
     reader = Mock(return_value=player)
     monkeypatch.setattr(db, 'get_player', reader)

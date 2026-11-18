@@ -17,20 +17,10 @@ from core.profile_photo import initials
 from core.scoring_v1 import utc
 from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
+from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
-
-
-def clear_selection():
-    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id', 'current_lobby_mode', 'current_team_id'):
-        st.session_state.pop(key, None)
-
-
-def select_lobby(lobby, membership, season):
-    st.session_state.update(current_membership_id=membership.id,
-                            current_lobby_id=lobby.id, current_lobby_name=lobby.name, current_lobby_mode=lobby.game_mode,
-                            current_season_id=season.id if season else None)
 
 
 def finish_label(season):
@@ -259,9 +249,19 @@ def show_lobbies(player_id):
     # Keep an explicitly opened lobby selected while refreshing its members.
     opened = next((row for rows in groups.values() for row in rows
                    if row[0].id == st.session_state.get('_opened_lobby_id')), None)
+    selected = next((row for rows in groups.values() for row in rows
+                     if row[0].id == st.session_state.get('current_lobby_id')
+                     and lobby_status(row[2], now) != 'past'), None)
     if opened:
+        st.session_state.pop('_lobby_choice_required', None)
         select_lobby(*opened)
-    elif groups['active']:
+        try:
+            remember_choice(player_id, opened[0].id)
+        except (PermissionError, *LOAD_ERRORS):
+            st.warning('This lobby is selected for this visit, but your choice could not be saved. Reopen it to retry.')
+    elif selected:
+        select_lobby(*selected)
+    elif groups['active'] and not st.session_state.get('_lobby_choice_required'):
         select_lobby(*groups['active'][0])
         st.caption(f'Automatically selected: {groups["active"][0][0].name}')
     else:
@@ -281,6 +281,7 @@ def show_lobbies(player_id):
                              help=f'Open {lobby.name}', width='stretch'):
                     dismiss_dialog()
                     st.session_state['_opened_lobby_id'] = lobby.id
+                    st.session_state['_lobby_choice_pending'] = lobby.id
                     st.rerun()
     if opened and not st.session_state.get('_lobby_dialog'):
         lobby, membership, season = opened

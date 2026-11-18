@@ -106,6 +106,20 @@ def insert_lobby(lobby: Lobby) -> None:
     get_client().table("lobbies").insert(row).execute()
 
 
+def get_lobby_choice(player_id: str) -> str | None:
+    rows = get_client().table("player_lobby_choices").select("lobby_id").eq("player_id", player_id).execute().data
+    return rows[0]["lobby_id"] if rows else None
+
+
+def save_lobby_choice(player_id: str, lobby_id: str) -> None:
+    # Context is never authorization: validate before saving and on every use.
+    if not any(m.lobby_id == lobby_id for m in list_memberships_for_player(player_id)):
+        raise PermissionError("You are no longer a member of this lobby.")
+    get_client().table("player_lobby_choices").upsert(
+        {"player_id": player_id, "lobby_id": lobby_id}, on_conflict="player_id"
+    ).execute()
+
+
 def list_memberships_for_player(player_id: str) -> list[LobbyMembership]:
     rows = get_client().table("lobby_memberships").select("*").eq("player_id", player_id).execute().data
     return [

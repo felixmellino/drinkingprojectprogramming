@@ -362,6 +362,22 @@ reserved for Create/Join. Opening Create/Join closes either detail popup,
 and successful creation/join selects the saved lobby and opens its matching
 popup. This preserves the member UI from main and the team competition rules.
 
+
+## Remembered lobby context (18 November 2026)
+
+`lobby_selection.py` owns session context and restoration. `shared.require_login`
+restores after authentication, before any page uses the context. The Lobby
+page saves explicit choices through `data/db.py`; closing a dialog keeps the
+context. Migration 012 stores one preference per account behind service-role
+access. Do not treat a saved lobby ID as authorization; existing membership
+checks still run on every protected workflow. See the remembered-selection
+workflow in `docs/ontology/WORKFLOWS.md` and the migration/verification steps
+in README. Automated fresh-session tests mock the persistent data service;
+migration 012 was applied on 18 November 2026, with seven SQL checks passing
+and fresh-process persistence verified against the configured Supabase project.
+Temporary verification records were removed. A deployed browser restart check
+remains a release step.
+
 ## Page responsiveness and shared styling
 
 See [PAGE_PERFORMANCE.md](PAGE_PERFORMANCE.md) for the 18 November cleanup,

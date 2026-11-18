@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from streamlit.testing.v1 import AppTest
 
 from core.friends import transition
@@ -117,3 +119,10 @@ def test_friend_service_failure_preserves_profile():
         assert at.error
         button(at, "Back to Profile").click().run()
         assert any(b.label == "Log out" for b in at.button)
+
+
+# These tests isolate account/profile workflows; lobby restoration is covered
+# end-to-end with its own persistent fake repository in test_lobby_selection.
+@pytest.fixture(autouse=True)
+def isolate_lobby_restoration(monkeypatch):
+    monkeypatch.setattr('shared.restore_selection', lambda player_id: None)

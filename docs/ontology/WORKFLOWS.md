@@ -110,3 +110,30 @@ the points count from the moment the other player confirms.
 ## Proposed scoring workflow - review pending
 
 The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.
+
+
+## Remember the selected lobby (18 November 2026)
+
+Contributor decision: the last lobby explicitly chosen as the context for
+lobby-specific pages is saved per player in the database, across devices,
+logouts and app restarts. Opening a joined lobby card or successfully
+creating/joining a lobby selects it. Closing its popup and refreshing the
+Lobby page keep that selection. Automatic selection never overwrites the
+player's explicit saved choice, and restoration never reopens a popup.
+
+After authentication, restore the saved lobby before rendering Leaderboard,
+Map, Check-in, Minigames or Photo history. Recheck current membership and load
+current lobby mode, team and season from the database. A preference grants
+no access. If membership has been removed, require a choice on the Lobby page.
+If the saved competition has finished, select the newest active competition
+(by start timestamp, then lobby ID). With no active alternative, require a
+choice; finished results remain available by opening their lobby explicitly.
+A player without a saved choice also defaults to their newest active lobby.
+Upcoming/incomplete saved lobbies stay selected; existing workflow checks
+explain when a season or team is still needed.
+
+The same running session keeps its own context when another device changes
+the account preference. Reopening restores the latest successfully saved
+explicit choice. A failed preference write leaves the lobby usable for the
+current visit and shows a retry message. A failed restoration is retried on
+the next page load; existing access checks still apply.

@@ -18,6 +18,7 @@ def dismiss_dialog():
 def open_created_lobby(lobby_id, message):
     dismiss_dialog()
     st.session_state['_opened_lobby_id'] = lobby_id
+    st.session_state['_lobby_choice_pending'] = lobby_id
     st.session_state['_lobby_notice'] = message
     st.rerun()
 

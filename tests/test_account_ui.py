@@ -295,3 +295,10 @@ def test_recovery_failure_remains_usable():
         assert at.error
         assert not at.success
         assert "player_id" not in at.session_state
+
+
+# These tests isolate account/profile workflows; lobby restoration is covered
+# end-to-end with its own persistent fake repository in test_lobby_selection.
+@pytest.fixture(autouse=True)
+def isolate_lobby_restoration(monkeypatch):
+    monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
