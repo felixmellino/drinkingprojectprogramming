@@ -122,9 +122,31 @@ Read-only connection checks on 17 November 2026 reached the shared project
 and confirmed the core tables and account email column. The drink-entry
 `photo_captured_at` column was missing (PostgreSQL code 42703), and the
 `check-in-photos` bucket could not be retrieved. No shared records or schema
-were changed. The Data owner still needs to apply the reviewed photo setup
-and game-table security migrations. A successful service-role request alone
-does not verify public-client restrictions.
+were changed.
+
+The Data owner applied `migrations/004_server_game_tables.sql` and
+`migrations/setup_checkin_photo_storage.sql` on 18 November 2026 and
+verified, independently and against the live project (not just a
+successful service-role request): the `photo_captured_at` column exists,
+the `check-in-photos` bucket exists and is private, and an anonymous
+Supabase client is denied (a real permission error, not just an empty
+result) on both `territories` and `players`. No records existed to lose;
+the shared project held 12 territories and zero players, lobbies, or
+drink entries throughout.
+
+A separate blocker was found: the installed `supabase==2.9.1` /
+`storage3==0.8.2` client cannot parse the live Storage API's bucket
+response (`SyncBucket.__init__() got an unexpected keyword argument
+'versioning_status'`), which blocked photo upload, download, and cleanup
+through the app. Unrelated to the migrations above.
+
+The Data owner installed Python 3.11.18 (via pyenv) and validated
+`supabase==2.34.1` in an isolated environment on 18 November 2026: the
+app's own `_private_photo_bucket()` succeeds against the live project,
+and the full suite passes (258/258) on Python 3.11 with this version.
+`requirements.txt` is updated on a separate branch, not yet merged -- the
+whole team needs Python 3.11+ installed before this lands, and the
+rollout should be coordinated with whoever owns this security review.
 
 The live check should include a successful upload and reopen after an app
 restart, an outsider being denied, removal of a viewer's membership, and
