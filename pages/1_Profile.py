@@ -1,18 +1,13 @@
-"""Private account details and logout."""
-
+"""Private account menu; each option opens a focused view."""
 import streamlit as st
-from shared import require_login
+from httpx import RequestError
+from postgrest.exceptions import APIError
 import data.db as db
-from device_login import log_out
-from friends_ui import show_friends
+from profile_ui import show_profile
+from shared import require_login
 
 player_id = require_login()
-player = db.get_player(player_id)
-st.title("Profile")
-st.success(f"Logged in as **{player.display_name}**")
-st.text(f"Name: {player.first_name} {player.last_name} (private)")
-st.text(f"Email: {player.email} (private)")
-if st.button("Log out"):
-    log_out()
-
-show_friends(player_id)
+try:
+    show_profile(db.get_player(player_id))
+except (APIError, RequestError, RuntimeError, OSError):
+    st.error("Profile is unavailable. Please try again later.")

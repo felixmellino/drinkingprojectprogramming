@@ -259,7 +259,7 @@ fetches only public usernames for search, loads the current player's
 relationships, validates an action, then calls `save_friendship` to save
 it only if the relationship version has not changed. The SQL transaction
 serializes updates for a player pair, including the first request.
-Apply `migrations/005_friendships.sql` once to an existing database.
+Apply `migrations/006_friendships.sql` once to an existing database.
 No Player fields or lobby behavior change. See RULES.md F1–F5.
 
 Verify with `python -m pytest tests/test_friends.py tests/test_friends_ui.py tests/test_friends_db.py -q`. With a configured database,

@@ -208,7 +208,7 @@ four building blocks, and the team's workflow rules.
 
 ### Profile friends
 
-For existing databases, apply `migrations/005_friendships.sql` once after
+For existing databases, apply `migrations/006_friendships.sql` once after
 migration 004. Fresh databases running `schema.sql` already include it.
 Restart the app, log in and open **Profile**. Search any player's username
 (partial and case-insensitive), send a request, then use the recipient's
@@ -223,8 +223,50 @@ sessions. Real PostgreSQL concurrency, migration installation and saved
 state after a server restart still require verification against Supabase;
 see the Profile friends checklist in `docs/WORKING_GUIDE.md`.
 
-The two `005_...` files are separate migrations: `005_friendships.sql` adds
-friends, while `005_scoring_v1.sql` adds scoring. Existing databases need each
-file for its corresponding feature; applying one does not apply the other.
-Fresh databases already include friends in `schema.sql`, but still need
-`005_scoring_v1.sql` after photo setup as described above.
+Migration `005_scoring_v1.sql` adds scoring; `006_friendships.sql` adds
+friends. The friendship migration was previously named `005_friendships.sql`;
+only its filename changed. If the old filename was already applied, do not
+run it again under the new name. Existing databases need each feature's
+migration once. Fresh databases already include friends in `schema.sql`, but
+still need `005_scoring_v1.sql` after photo setup as described above.
+
+### Profile menu
+
+Profile opens Edit profile, Friends, My stats and Account & security as
+separate views with Back to Profile. Log out signs out immediately. Players
+can edit username/first name/surname; email stays read-only. Password changes
+require the current password and sign out all devices. My stats uses the
+selected lobby's current season (points, rank and territories owned).
+Name/password changes need no new migration beyond the account indexes/access
+rules already described above. Profile pictures need migration 008 below.
+
+Validation: `python -m pytest tests/test_profile.py tests/test_profile_ui.py tests/test_account_ui.py tests/test_friends_ui.py -q`.
+Before deployment, use a test account to save a name change, restart Streamlit,
+then verify it remains saved and its friends/scores remain linked. Change that
+test account's password, verify old credentials and remembered devices fail,
+and log in with the new password. Automated persistence checks use a fake
+repository; they do not replace this live Supabase check.
+
+### Profile pictures
+
+The Data owner applies [`migrations/008_profile_pictures.sql`](migrations/008_profile_pictures.sql)
+after account setup, for both new and existing databases. It creates the
+server-only picture reference table and private `profile-pictures` storage
+bucket. Do not rerun `schema.sql` on the shared project. Friends visibility
+also needs the existing `006_friendships.sql` migration.
+
+Edit profile offers Upload photo / Take photo, an automatic circular centre
+crop preview and Save picture. JPEG, PNG and WebP are supported (10 MiB,
+20 megapixels; still images). Saved pictures persist across devices. Replace
+or Remove picture is available; removal shows initials. Pictures appear in
+Profile and friend lists/requests, with access checked against current
+accepted/pending relationships. They do not appear in unrelated search results.
+
+Schedule `python -m data.cleanup_profile_pictures --apply` daily to remove
+unlinked uploads older than 24 hours; omit `--apply` for a dry run. Current
+pictures are kept. Apply the migration and complete the live camera/library,
+restart and audience checks in `docs/SECURITY.md` before claiming deployment
+verification. These scripts have not been applied to the shared project by
+this local implementation.
+
+Tests: `python -m pytest tests/test_profile_photo.py tests/test_profile_picture_db.py tests/test_profile_picture_ui.py -q`.
