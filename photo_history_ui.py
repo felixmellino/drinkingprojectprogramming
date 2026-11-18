@@ -1,4 +1,6 @@
 """Photo-card presentation using authorized image bytes and stored entry values."""
+from __future__ import annotations
+
 from base64 import b64encode
 from datetime import datetime
 from decimal import Decimal
