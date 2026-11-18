@@ -30,10 +30,16 @@ def create_player(display_name: str, first_name: str, last_name: str, email: str
     )
 
 
-def create_lobby(name: str) -> Lobby:
+def create_lobby(name: str, game_mode: str = "individual", *, team_count: int | None = None,
+                 team_capacity: int | None = None, team_assignment: str | None = None) -> Lobby:
+    from core.teams import validate_config
+    name = name.strip()
     if not name:
         raise ValueError("name is required")
-    return Lobby(id=str(uuid.uuid4()), name=name, invite_code=generate_invite_code())
+    validate_config(game_mode, team_count, team_capacity, team_assignment)
+    return Lobby(id=str(uuid.uuid4()), name=name, invite_code=generate_invite_code(),
+                 game_mode=game_mode, team_count=team_count, team_capacity=team_capacity,
+                 team_assignment=team_assignment)
 
 
 def join_lobby(

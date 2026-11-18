@@ -23,13 +23,13 @@ LOAD_ERRORS = (APIError, RequestError, RuntimeError)
 
 
 def clear_selection():
-    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id'):
+    for key in ('current_membership_id', 'current_lobby_id', 'current_lobby_name', 'current_season_id', 'current_lobby_mode', 'current_team_id'):
         st.session_state.pop(key, None)
 
 
 def select_lobby(lobby, membership, season):
     st.session_state.update(current_membership_id=membership.id,
-                            current_lobby_id=lobby.id, current_lobby_name=lobby.name,
+                            current_lobby_id=lobby.id, current_lobby_name=lobby.name, current_lobby_mode=lobby.game_mode,
                             current_season_id=season.id if season else None)
 
 
@@ -49,6 +49,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
         meta += ' · Test season (Wed 08:00–Sun 18:00)'
+    if lobby.game_mode == 'team':
+        meta += f' · Team mode · {lobby.team_count} × {lobby.team_capacity}'
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
               f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
@@ -112,11 +114,11 @@ def show_lobby_members(player_id, lobby_id):
 def show_overview_actions(player_id):
     create, join = st.columns(2)
     with create:
-        if st.button('Create lobby', icon=':material/add:', width='stretch'):
+        if st.button('Create a lobby', key='open_create_lobby', icon=':material/add:', type='primary', width='stretch'):
             dismiss_members()
             st.session_state['_lobby_dialog'] = 'create'
     with join:
-        if st.button('Join with a code', icon=':material/login:', width='stretch'):
+        if st.button('Join with a code', key='open_join_lobby', icon=':material/login:', width='stretch'):
             dismiss_members()
             st.session_state['_lobby_dialog'] = 'join'
 
@@ -134,8 +136,14 @@ def show_summary(player_id, lobby, season, status, now):
             entries = db.list_drink_entries(season.id)
             leader = season_leader(entries)
             if leader:
-                leader_name = db.membership_display_name(leader, lobby.id)
-                if status == 'active':
+                if lobby.game_mode == 'team':
+                    teams = db.list_lobby_teams(player_id, lobby.id)
+                    winning = next((team for team in teams if team.id == leader), None)
+                    leader_name = winning.name if winning else 'Team'
+                    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
+                else:
+                    leader_name = db.membership_display_name(leader, lobby.id)
+                if status == 'active' and lobby.game_mode == 'individual':
                     members = db.list_memberships_for_lobby(lobby.id)
                     owner = next((m.player_id for m in members if m.id == leader), None)
                     if owner:
@@ -275,4 +283,9 @@ def show_lobbies(player_id):
                     st.session_state['_opened_lobby_id'] = lobby.id
                     st.rerun()
     if opened and not st.session_state.get('_lobby_dialog'):
-        show_lobby_details(player_id, *opened)
+        lobby, membership, season = opened
+        if lobby.game_mode == 'team':
+            from team_ui import open_team_lobby
+            open_team_lobby(player_id, lobby, season, finished=lobby_status(season, now) == 'past')
+        else:
+            show_lobby_details(player_id, *opened)

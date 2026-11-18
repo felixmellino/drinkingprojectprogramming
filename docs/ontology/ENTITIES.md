@@ -48,7 +48,10 @@ A group of players who compete together. The draft assumes a private lobby with 
 | --- | --- | --- |
 | `id` | ID | Stable lobby identifier. |
 | `name` | Text | Name shown to members. |
-| `invite_code` | Text | Code used to join the lobby in the proposed flow. |
+| `invite_code` | Text | Code used to join the lobby. |
+| `game_mode` | Text | `individual` (existing/default) or `team`. |
+| `team_count`, `team_capacity` | Integer, optional | Fixed number of teams and maximum members per team. |
+| `team_assignment` | Text, optional | `manual` or `random` in team mode. |
 
 ### LobbyMembership
 
@@ -60,8 +63,16 @@ Connects one player to one lobby. This is the identity attached to game actions 
 | `player_id` | Player ID | The person who joined. |
 | `lobby_id` | Lobby ID | The group they joined. |
 | `joined_at` | Timestamp | When they joined. |
+| `team_id` | Team ID, optional | Same-lobby team; locked after first accepted score. |
 
 The pair `player_id` and `lobby_id` identifies one membership. A second join request for the same pair should resolve to that membership.
+
+### Team
+
+`lobby_teams` stores `id`, `lobby_id`, `number`, `name`, and optional
+`photo_base64` (sanitized JPEG). Each team belongs to one lobby; current
+members alone may edit its name and picture. Scores/ownership are replayed
+from entries, never stored as editable team totals. R-TEAM01–R-TEAM05 apply.
 
 ### Season
 
@@ -100,6 +111,8 @@ A fresh phone reading taken at submission is the player's location (R-L01). GPS 
 | --- | --- | --- |
 | `id` | ID | Identifier used by the submission detail and photo history. |
 | `membership_id` | LobbyMembership ID | The member who submitted the entry. |
+| `team_id` | Team ID, optional | Immutable team snapshot; null in individual mode. |
+| `owner_team_id` | Team ID, optional | Prior owner receiving team income; individual entries retain `owner_membership_id`. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
 | `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos under R6. Photo removal preserves the scored entry. |

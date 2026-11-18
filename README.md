@@ -363,3 +363,13 @@ Validation: `python -m pytest -q`; optional disposable SQL checks:
 packages documented in `docs/LOBBY_MIGRATION_REVIEW.md`.
 Shared database installation and deployed/restart checks remain the Data
 owner's integration step after review; no migration runs on app startup.
+
+## Individual and team lobbies
+
+Create lobby offers Individual (default) or Team, with team count, maximum
+members per team and random/manual joining. Team members can rename their
+team and take/upload a team picture. Combined team points decide both the
+leaderboard and territory ownership. Existing lobbies remain individual.
+Before using team mode, the Data owner must review/apply
+[`migrations/010_team_lobbies.sql`](migrations/010_team_lobbies.sql) after 005
+and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).

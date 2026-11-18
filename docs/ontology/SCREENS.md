@@ -256,7 +256,7 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
   background. Cancel, ×, outside click and Escape dismiss without saving.
   Existing duration/timezone/test-season and invite-code controls remain.
   Invalid submissions stay in the modal with errors. Success closes it,
-  opens the lobby member popup and displays a success message.
+  opens the lobby member or team popup and displays a success message.
 - Duration is fixed; no renewal or season selection is offered. Incomplete
   setup has a retry form in the member popup. A failed initial season start opens
   that popup with a notice, so retrying cannot create another lobby by mistake.
@@ -264,3 +264,22 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - R-R03 governs one competition per lobby. Existing multiple-season history
   is retained; only its latest competition is summarized. Picture privacy
   remains A11; lobby membership alone does not grant picture access.
+
+## Team lobby extension (18 November 2026)
+
+Create lobby now opens a dialog with Individual/Team selection. Team settings
+react immediately and expose count, capacity and Random/Players choose.
+Open lobby on a team card opens a dialog showing the numbered teams, member
+identities, occupancy and combined points. Available teams have Join buttons
+in manual mode. Clicking one's own team name opens its name/picture editor;
+other teams have no editing controls. A View leaderboard action opens the
+combined team standings. Map, leaderboard and My stats show team totals and
+ownership; Check-in blocks unassigned members and previews team ownership.
+The lobby card's Leader/Winner also names the leading team. Individual lobby
+navigation remains as described above. R-TEAM01–R-TEAM05 govern these flows.
+
+Lobby action placement updated 18 November 2026: both entry points are
+full-width buttons in two columns directly below the page title. Forms are
+shown only in their respective popups. Successful joining closes the popup
+and refreshes the lobby cards; an invalid code keeps the popup open with its
+error. Creation settings and team rules remain unchanged.

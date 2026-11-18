@@ -25,6 +25,14 @@ def open_created_lobby(lobby_id, message):
 @st.dialog('Create a lobby', dismissible=True, on_dismiss=dismiss_dialog)
 def create_dialog(player_id):
     zones = sorted(available_timezones())
+    mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True)
+    count = capacity = assignment = None
+    if mode == "team":
+        count = st.number_input("Number of teams", min_value=2, max_value=16, value=2)
+        capacity = st.number_input("Players per team", min_value=1, max_value=20, value=2)
+        assignment = st.radio("Team assignment", ["manual", "random"],
+                              format_func=lambda value: "Players choose" if value == "manual" else "Random", horizontal=True)
+        st.caption("Teams start as Team 1, Team 2, etc. Members can edit their team's name and picture. Team totals decide the leaderboard and territory ownership.")
     with st.form("create_lobby_form"):
         lobby_name = st.text_input("Lobby name").strip()
         length_choice = st.radio("Lobby duration", options=["1_week", "1_month", "3_months"],
@@ -43,14 +51,15 @@ def create_dialog(player_id):
         if not lobby_name:
             st.error("Lobby name is required.")
         else:
-            lobby = create_lobby(lobby_name)
             try:
+                lobby = create_lobby(lobby_name, mode, team_count=count, team_capacity=capacity, team_assignment=assignment)
                 db.insert_lobby(lobby)
                 membership = join_lobby(player_id, lobby.invite_code, [lobby], [])
                 db.insert_membership(membership)
-            except (APIError, RequestError, RuntimeError):
+            except (APIError, RequestError, RuntimeError, ValueError):
                 st.error("Could not create the lobby. Refresh your lobbies before trying again.")
                 return
+            st.session_state["current_lobby_mode"] = lobby.game_mode
             st.session_state["current_membership_id"] = membership.id
             st.session_state["current_lobby_id"] = lobby.id
             st.session_state["current_lobby_name"] = lobby.name
@@ -60,6 +69,7 @@ def create_dialog(player_id):
             except (APIError, RequestError, RuntimeError, CheckinRejected):
                 open_created_lobby(lobby.id, "Lobby created. Its scoring season could not start; use Retry lobby setup below.")
 
+            st.session_state["current_lobby_mode"] = lobby.game_mode
             st.session_state["current_membership_id"] = membership.id
             st.session_state["current_lobby_id"] = lobby.id
             st.session_state["current_lobby_name"] = lobby.name
@@ -96,6 +106,7 @@ def join_dialog(player_id):
                 st.error("Could not finish joining the lobby. Refresh your lobbies before trying again.")
                 return
 
+            st.session_state["current_lobby_mode"] = lobby.game_mode
             st.session_state["current_membership_id"] = membership.id
             st.session_state["current_lobby_id"] = lobby.id
             st.session_state["current_lobby_name"] = lobby.name

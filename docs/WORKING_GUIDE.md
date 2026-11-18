@@ -302,12 +302,12 @@ The card shows View lobby →. CSS stretches both Streamlit's element wrapper
 and the button over the card; stretching only the button leaves its click
 area below the card. For browser QA, click the card's title, centre and
 bottom action area and verify each opens the popup, then check keyboard focus.
-The popup contains the name, invite code, scrollable member list and a
+In individual mode the popup contains the name, invite code, scrollable member list and a
 View leaderboard button below it, with no top-three preview. All native
 close paths clear the opened-lobby session state so refresh cannot reopen it.
 `lobby_forms_ui.py` holds Create/Join dialogs. Opening one closes the member
 popup; only one dialog is called in a run. Creation/join success opens the
-member popup with a notice. An initial season-start failure keeps Retry
+member or team popup with a notice. An initial season-start failure keeps Retry
 lobby setup available in that popup. Member controls reuse
 `friends_ui.friendship_action` and the existing `core/friends.py` and database
 transition logic, so Profile and Lobby read/write the same relationships.
@@ -323,3 +323,21 @@ With a configured database, use two accounts in one lobby: send a request,
 refresh as the recipient, decline then verify the cooldown; later send again
 and accept. Restart Streamlit and confirm the request/friendship remains in
 both Lobby and Profile. These live database/restart checks remain manual.
+
+## Team lobbies (Identity, Scoring and Standings)
+
+See [TEAM_MODE.md](TEAM_MODE.md) for the cross-block handoff, migration 010,
+source mapping and verification commands. This contributor-authorized shared
+model change adds teams without changing individual lobbies. Replay uses
+saved entry team identities for totals, territory ownership and income.
+Every teammate should explain why team joins/scoring use one database lock,
+why a teammate does not pay owner income, and why a scored member cannot
+switch teams. Rule source: R-TEAM01–R-TEAM05 in the ontology.
+
+Team mode is integrated into these same entry points. `lobby_forms_ui.py`
+contains the mode/count/capacity/assignment controls; the card router opens
+`team_ui.py` for teams and the member/friend dialog for individual lobbies.
+Both use `_opened_lobby_id` and clear it on dismissal; `_lobby_dialog` is
+reserved for Create/Join. Opening Create/Join closes either detail popup,
+and successful creation/join selects the saved lobby and opens its matching
+popup. This preserves the member UI from main and the team competition rules.

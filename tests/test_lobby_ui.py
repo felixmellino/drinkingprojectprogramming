@@ -75,7 +75,7 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert at.session_state['current_membership_id'] == 'm-new'
     assert at.session_state['current_season_id'] == ui['seasons']['new'][0].id
     assert not any(s.label in ('Your lobbies', 'View season') for s in at.selectbox)
-    assert any(b.label == 'Create lobby' for b in at.button)
+    assert any(b.label == 'Create a lobby' for b in at.button)
     assert any(b.label == 'Join with a code' for b in at.button)
     assert not any(b.label == 'Start next scoring season' for b in at.button)
     assert len([b for b in at.button if b.label == 'View lobby →']) == 3
@@ -163,7 +163,7 @@ def test_opening_a_card_shows_members_then_navigates_to_standings(ui, monkeypatc
     assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
     assert len([b for b in at.button if b.label == 'Add friend']) == 1
     assert len(cards(at)) == 3
-    assert any(b.label == 'Create lobby' for b in at.button)
+    assert any(b.label == 'Create a lobby' for b in at.button)
     assert any(c.value == 'OLDER' for c in at.code)
     assert not any(h.value == 'Top 3 players' for h in at.subheader)
     click(at, 'View leaderboard')
@@ -326,7 +326,7 @@ def test_overview_forms_are_hidden_until_opened_and_cancel_saves_nothing(ui, mon
     monkeypatch.setattr(db, 'insert_membership', save_member)
     at = page()
     assert not at.text_input and not at.radio and not at.tabs
-    click(at, 'Create lobby')
+    click(at, 'Create a lobby')
     assert not at.exception
     assert any(v.label == 'Lobby name' for v in at.text_input)
     assert not any(v.label == 'Invite code' for v in at.text_input)
@@ -344,7 +344,7 @@ def test_create_empty_name_keeps_dialog_open_and_writes_nothing(ui, monkeypatch)
     save = Mock()
     monkeypatch.setattr(db, 'insert_lobby', save)
     at = page()
-    click(at, 'Create lobby')
+    click(at, 'Create a lobby')
     [b for b in at.button if b.label == 'Create lobby'][-1].click().run()
     assert not at.exception and any('name is required' in e.value for e in at.error)
     assert any(v.label == 'Lobby name' for v in at.text_input)
@@ -364,9 +364,9 @@ def test_create_success_opens_details_and_keeps_duration_timezone_and_test_mode(
     start_mock = Mock(side_effect=start)
     monkeypatch.setattr(db, 'start_scoring_season', start_mock)
     at = page()
-    click(at, 'Create lobby')
+    click(at, 'Create a lobby')
     next(v for v in at.text_input if v.label == 'Lobby name').input('My new lobby')
-    at.radio[0].set_value('3_months')
+    next(r for r in at.radio if r.label == 'Lobby duration').set_value('3_months')
     at.selectbox[0].set_value('America/New_York')
     at.checkbox[0].check()
     [b for b in at.button if b.label == 'Create lobby'][-1].click().run()
@@ -424,8 +424,56 @@ def test_close_member_popup_stays_closed_on_refresh(ui):
 
 def test_switching_from_members_to_create_opens_only_one_dialog(ui):
     at = open_members(page())
-    click(at, 'Create lobby')
+    click(at, 'Create a lobby')
     assert not at.exception
     assert '_opened_lobby_id' not in at.session_state
     assert any(v.label == 'Lobby name' for v in at.text_input)
     assert not any(b.label == 'Close' for b in at.button)
+
+
+def test_top_actions_open_separate_dialogs_and_hide_forms_until_clicked(ui):
+    at = page()
+    assert not at.exception and not at.tabs and not at.text_input
+    assert [button.key for button in at.button[:2]] == ['open_create_lobby', 'open_join_lobby']
+    at.button(key='open_create_lobby').click().run()
+    assert not at.exception
+    assert any(field.label == 'Lobby name' for field in at.text_input)
+    assert not any(field.label == 'Invite code' for field in at.text_input)
+    click(at, 'Cancel')
+    at.button(key='open_join_lobby').click().run()
+    assert not at.exception
+    assert any(field.label == 'Invite code' for field in at.text_input)
+    assert not any(field.label == 'Lobby name' for field in at.text_input)
+
+
+def test_shared_create_dialog_opens_saved_team_lobby(ui, monkeypatch):
+    from core.models import Team
+    teams = {}
+    def insert_lobby(lobby):
+        ui['lobbies'].append(lobby)
+        teams[lobby.id] = [Team(f'{lobby.id}-{i}', lobby.id, i, f'Team {i}') for i in range(1, lobby.team_count + 1)]
+    monkeypatch.setattr(db, 'insert_lobby', insert_lobby)
+    def save_member(member):
+        ui['members'].append(member)
+        ui['lobby_members'][member.lobby_id] = [member]
+    monkeypatch.setattr(db, 'insert_membership', save_member)
+    def start(pid, lid, length, zone, **options):
+        game = create_season(lid, length, datetime.now(timezone.utc), zone, **options)
+        ui['seasons'][lid] = [game]
+        return game
+    monkeypatch.setattr(db, 'start_scoring_season', start)
+    monkeypatch.setattr(db, 'list_lobby_teams', lambda actor, lid: teams[lid])
+    at = page()
+    at.button(key='open_create_lobby').click().run()
+    next(r for r in at.radio if r.label == 'Competition mode').set_value('team').run()
+    next(t for t in at.text_input if t.label == 'Lobby name').input('Shared team dialog')
+    next(b for b in at.button if b.label == 'Create lobby').click().run()
+    assert not at.exception
+    created = ui['lobbies'][-1]
+    assert created.game_mode == 'team' and created.team_count == 2
+    assert at.session_state['_opened_lobby_id'] == created.id
+    assert at.session_state['current_lobby_mode'] == 'team'
+    assert any('Lobby created!' in s.value for s in at.success)
+    assert any('Join a team below' in i.value for i in at.info)
+    assert len([b for b in at.button if (b.key or '').startswith('join_team_')]) == 2
+    assert not any(h.value == 'Lobby members' for h in at.subheader)
