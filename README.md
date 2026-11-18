@@ -5,10 +5,43 @@ and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
 
-**Deployed URL:** TODO — not deployed yet.
+**Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:** TODO — add all four members' names and student numbers here
 before submission.
+
+## Hosting (deployed app)
+
+The public app runs on **Streamlit Community Cloud** at
+https://wegopubnow.streamlit.app/ and uses the team's shared Supabase project
+(region West EU) as its database and photo storage.
+
+- **Source:** repository `felixmellino/drinkingprojectprogramming`, branch
+  `main`, main file `app.py`. Every merge into `main` redeploys the app
+  automatically within a few minutes.
+- **Python:** 3.14 (chosen when the app was created; it can only be changed by
+  deleting and re-creating the app). Dependencies come from the pinned
+  `requirements.txt`.
+- **Secrets:** set in the app's Settings → Secrets, never in the repository:
+  ```
+  SUPABASE_URL = "https://<project>.supabase.co"
+  SUPABASE_KEY = "<legacy service_role key, starts with eyJ>"
+  ```
+  Use the legacy `service_role` key (Supabase → Project Settings → API Keys →
+  Legacy API keys). The newer `sb_secret_…` key is rejected with
+  "Invalid API key".
+- **Territories:** on its first start after a deploy, the app copies
+  `data/territories.geojson` into the database (`shared.get_territories()`),
+  so editing the file and merging is all that's needed.
+- **Location on phones:** browsers only share GPS over HTTPS and after the
+  player allows it. The app asks once right after login. On iPhone, if it
+  says location is blocked: Settings → Privacy & Security → Location Services
+  → Safari Websites → While Using the App; then in Safari tap "aA" →
+  Website Settings → Location → Allow.
+- **Before a demo:** the free plan puts the app to sleep after a few days
+  without visitors. Open the URL once beforehand and click "Wake up" if shown.
+- **Check-ins** are only scored Thursday 18:00 – Sunday 18:00 (lobby time);
+  the map and location work at any time.
 
 ## Local setup
 
