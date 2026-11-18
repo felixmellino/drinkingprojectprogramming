@@ -196,8 +196,18 @@ four opens a separate view with **Back to Profile**. Logout is immediate.
   required/100-character limits as registration. Usernames remain unique,
   ignoring case and surrounding whitespace. Player ID, email, credentials,
   friendships, memberships and scores are retained. Profile pictures are described below.
-- Friends contains the existing search, incoming/outgoing requests,
-  accept/decline, cancellation, removal and refresh controls.
+- Friends shows four fully clickable cards in two rows: **Find players** next
+  to **Current Friends**, then **Incoming requests** next to **Outgoing requests**.
+  On phones they stack in that order. The three lists show counts; failed
+  loading shows Unavailable rather than a misleading zero. Each opens a native,
+  dismissible popup. Find players focuses the username search on opening.
+  Current Friends lists accepted relationships from either direction, sorted
+  by username. Remove friend requires confirmation inside the same popup;
+  Keep friend cancels it. Incoming requests offers Accept/Decline and Outgoing
+  requests offers Cancel for pending sent requests only. Successful actions
+  keep the popup open, reload its list and update the card counts, and show a
+  success message. Refresh friends reloads other players' changes. Closing or
+  dismissing a popup clears its open state. Existing F1–F5 rules still apply.
 - My stats shows only the selected lobby's currently active season: points,
   rank and number of territories owned. It reuses the Leaderboard calculations,
   including owner income and ties. No score means zero points and Unranked;

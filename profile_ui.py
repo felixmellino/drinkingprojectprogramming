@@ -9,7 +9,7 @@ import data.db as db
 from core.profile_stats import all_time_stats, lobby_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
-from friends_ui import show_friends
+from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
@@ -35,6 +35,7 @@ def show_profile(player):
             log_out()
         return
     if st.button("Back to Profile", icon=":material/arrow_back:"):
+        dismiss_friends()
         st.session_state["profile_view"] = "menu"
         st.rerun()
     try:
