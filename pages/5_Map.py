@@ -18,7 +18,7 @@ show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
 st.title("Map")
-st.caption("Who owns which territory in your lobby this season. Tap an area for details.")
+map_ui.load_styles()
 
 track_location()
 try:
@@ -48,14 +48,15 @@ elif problem == "denied":
 else:
     st.caption("Finding your location…")
 
-map_ui.render_summary(rows)
-
 # Quick zoom: jump between the parts of the city that have territories.
+# The map comes right after it so it's the first big thing on the page.
 usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
-options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS)
-focus = st.segmented_control("Show", options, default=options[0], key="map_focus") or options[0]
+options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
+focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
+                             label_visibility="collapsed") or options[0]
 if focus not in options:  # e.g. "Me" was picked but the location is gone now
     focus = options[0]
 
 map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus)
+map_ui.render_summary(rows)
 map_ui.territory_list(rows)

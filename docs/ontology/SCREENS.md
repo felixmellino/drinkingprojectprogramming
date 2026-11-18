@@ -148,11 +148,13 @@ current lobby's season only. Bars are not part of the game, so none are shown.
 - A blue dot shows where you are (automatic location, R-L01/R-L04), with a
   line saying which territory you're in; nothing is shown if location is
   blocked, stale or worse than 50 m.
-- Hovering or tapping an area highlights it in amber.
-- Three cards above the map: territories you own (e.g. "1 of 13"),
+- Hovering or tapping an area tints it in the app's dark green.
+- The base map shows streets, parks and water in colour (Carto Voyager).
+- Three cards below the map: territories you own (e.g. "1 of 13"),
   unclaimed territories, and the easiest one to take (fewest points needed).
-- Quick-zoom buttons jump to "Bairro Alto", "Santos" or "Nova SBE" (and
-  "📍 Me" when your location is usable), so the map isn't mostly empty city.
+- Small quick-zoom buttons right above the map jump to "Bairro Alto",
+  "Santos", "Nova SBE" or "All" (and "📍 Me" when your location is usable),
+  so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
 ## Memories

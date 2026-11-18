@@ -17,12 +17,12 @@ from core.territories import capture_status, territory_owner, territory_standing
 
 # Colour = what the territory means for you (RGBA).
 COLOURS = {
-    "yours": [29, 158, 117, 150],   # green
-    "theirs": [226, 75, 74, 140],   # red
-    "free": [180, 178, 169, 110],   # grey
+    "yours": [29, 158, 117, 175],   # green
+    "theirs": [226, 75, 74, 165],   # red
+    "free": [136, 135, 128, 120],   # grey
 }
 LEGEND = {"yours": "🟢 Yours", "theirs": "🔴 Someone else's", "free": "⚪ Unclaimed"}
-HOVER_COLOUR = [255, 196, 0, 170]  # amber, on the area under the pointer
+HOVER_COLOUR = [25, 57, 47, 90]  # the app's dark green, lightly over the area under the pointer
 
 # Quick-zoom buttons: which territory ids belong to which part of the city.
 # Ids that aren't in the territory file are simply skipped.
@@ -33,6 +33,19 @@ AREAS = {
     "Nova SBE": ["nova-sbe"],
 }
 ME = "📍 Me"
+ALL = "All"
+
+
+def load_styles() -> None:
+    """Compact quick-zoom buttons so the map is the first big thing on the page."""
+    st.markdown(
+        "<style>"
+        ".st-key-map_focus button{min-height:30px;padding:2px 12px;font-size:0.82rem}"
+        ".st-key-map_focus button p{font-size:0.82rem}"
+        "[data-testid='stMainBlockContainer']{padding-top:2.5rem}"
+        "</style>",
+        unsafe_allow_html=True,
+    )
 
 
 def markdown_safe(text: str) -> str:
@@ -101,16 +114,17 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
         return pdk.ViewState(latitude=location[0], longitude=location[1], zoom=15.5)
     ids = set(AREAS.get(focus, []))
     points = [p for row in rows if row["id"] in ids for p in row["boundary"]["coordinates"][0]]
-    if not points:  # unknown area: show everything
+    if not points:  # "All" (or an unknown area): fit every territory
         points = [p for row in rows for p in row["boundary"]["coordinates"][0]]
     lngs, lats = [p[0] for p in points], [p[1] for p in points]
-    # Zoom so the area's width and height fit a phone-sized map (~340 x 400 px).
+    # Zoom so the area's width and height fit the map (~420 x 480 px; a bit
+    # of it may run off a narrow phone screen, which is fine).
     # The map library draws the whole world 512 px wide at zoom 0.
     span_lng = max(max(lngs) - min(lngs), 1e-4)
     span_lat = max(max(lats) - min(lats), 1e-4) / math.cos(math.radians(sum(lats) / len(lats)))
-    zoom = min(math.log2(340 * 360 / (512 * span_lng)), math.log2(400 * 360 / (512 * span_lat))) - 0.2
+    zoom = min(math.log2(420 * 360 / (512 * span_lng)), math.log2(480 * 360 / (512 * span_lat))) - 0.2
     return pdk.ViewState(latitude=(min(lats) + max(lats)) / 2, longitude=(min(lngs) + max(lngs)) / 2,
-                         zoom=max(11.0, min(zoom, 17.0)))
+                         zoom=max(9.0, min(zoom, 17.0)))
 
 
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
@@ -141,7 +155,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             filled=True,
             get_fill_color="properties.fill",
             get_line_color="properties.line",
-            line_width_min_pixels=1.5,
+            line_width_min_pixels=2,
         )
     ]
     if location is not None:
@@ -158,10 +172,10 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
             map_provider="carto",
-            map_style="light",
+            map_style="road",  # Carto "Voyager": parks, water and streets in colour
             tooltip={"html": "<b>{name}</b><br/>{detail}<br/>{points}"},
         ),
-        height=460,
+        height=520,
     )
     st.caption(" · ".join(LEGEND.values()) + (" · 🔵 You" if location is not None else ""))
 
