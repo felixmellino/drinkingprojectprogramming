@@ -37,3 +37,28 @@ def test_blocked_location_is_reported(monkeypatch):
 def test_nothing_yet_while_the_browser_is_asking(monkeypatch):
     page = run(monkeypatch, lambda kwargs: None)
     assert "'waiting'" in page.markdown[0].value
+
+
+def test_asks_only_once_per_session(monkeypatch):
+    calls = []
+
+    def reply(kwargs):
+        calls.append(kwargs)
+        return {"lat": 38.6782, "lng": -9.3259, "accuracy_m": 15, "taken_at_ms": time.time() * 1000}
+
+    page = run(monkeypatch, reply)
+    page.run()
+    page.run()
+    assert len(calls) == 1
+
+
+def test_keeps_asking_until_the_browser_has_answered(monkeypatch):
+    calls = []
+
+    def reply(kwargs):
+        calls.append(kwargs)
+        return None  # the prompt is still open
+
+    page = run(monkeypatch, reply)
+    page.run()
+    assert len(calls) == 2

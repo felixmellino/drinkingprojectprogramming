@@ -69,8 +69,10 @@ Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
 ## Location
 
 ### R-L01 Location source
-Right after login, on every page, the app asks the phone for its location
-once, so the browser shows its "Allow location?" prompt straight away. The
+Right after login the app asks the phone for its location once per login
+session, so the browser shows its "Allow location?" prompt straight away.
+Whether the browser asks again on later visits is the browser's setting
+(e.g. Safari: website settings → Location → Allow). The
 Check-in and Map pages then keep following the GPS automatically; there is
 no button. A
 check-in uses the newest reading at the moment the player submits. GPS data
