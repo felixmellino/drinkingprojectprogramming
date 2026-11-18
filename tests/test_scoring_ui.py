@@ -54,7 +54,7 @@ def ui(monkeypatch):
         assert player == "player" and lobby == "lobby"
         with Image.open(BytesIO(photo)) as saved:
             assert not saved.getexif()
-        model = replace(model, event_order=1, owner_bonus_quarters=model.points_awarded,
+        model = replace(model, event_order=max((item.event_order or 0 for item in state["entries"]), default=0) + 1, owner_bonus_quarters=model.points_awarded,
                         owner_membership_id="other-member")
         state["entries"].append(model)
         if state["lose_reply"]:
@@ -154,6 +154,55 @@ def test_lost_save_reply_recovers_without_a_second_award(ui):
     page.run()
     assert not page.exception and any("Logged! +1" in item.value for item in page.success)
     assert state["calls"] == 1 and len(state["entries"]) == 1
+
+
+@pytest.mark.parametrize('previous_member,previous_size,captured', [
+    (None, None, True), ('rival', 'medium', True),
+    ('rival', 'large', False), ('member', 'medium', False),
+])
+def test_saved_checkin_shows_only_actual_capture(ui, monkeypatch, previous_member, previous_size, captured):
+    state, _ = ui
+    monkeypatch.setattr(db, 'membership_display_name', lambda *args: 'Leo')
+    if previous_member:
+        state['entries'] = [entry('prior', previous_member, 'beer', previous_size, -4, order=1)]
+    page = open_checkin()
+    set_location(page, state)
+    radio(page, 'Size').set_value('large').run()
+    assert not any('captured!' in item.value for item in page.success)
+    button(page, 'Submit').click().run()
+    assert not page.exception and state['calls'] == 1
+    assert any('Logged! +3' in item.value for item in page.success)
+    assert any(f'You captured {TERRITORY.name}!' == item.value for item in page.text) is captured
+    page.run()
+    assert not any('You captured' in item.value for item in page.text)
+
+
+def test_capture_message_recovers_after_lost_save_reply(ui):
+    state, _ = ui
+    state['lose_reply'] = True
+    page = open_checkin()
+    set_location(page, state)
+    button(page, 'Submit').click().run()
+    assert page.error and state['calls'] == 1
+    page.run()
+    assert not page.exception and state['calls'] == 1
+    assert any(f'You captured {TERRITORY.name}!' == item.value for item in page.text)
+
+
+def test_capture_lookup_failure_preserves_saved_confirmation(ui, monkeypatch):
+    state, _ = ui
+    def history(_):
+        if state['calls']:
+            raise ReadTimeout('History unavailable after save')
+        return []
+    monkeypatch.setattr(db, 'list_drink_entries', history)
+    page = open_checkin()
+    set_location(page, state)
+    button(page, 'Submit').click().run()
+    assert not page.exception and state['calls'] == 1
+    assert any('Logged! +1' in item.value for item in page.success)
+    assert any('ownership update is unavailable' in item.value for item in page.caption)
+    assert not any('You captured' in item.value for item in page.text)
 
 
 def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch):
