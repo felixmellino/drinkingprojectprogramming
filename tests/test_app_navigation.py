@@ -23,3 +23,6 @@ def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, ta
     assert not at.exception
     assert Path(switch.call_args.args[0]) == Path(__file__).resolve().parents[1] / "pages" / target
     assert at.session_state["player_id"] == "signed-in-player"
+    assert ('checkin_open_camera' in at.session_state) is (label == 'Check in')
+    if label == 'Check in':
+        assert at.session_state['checkin_open_camera'] is True
