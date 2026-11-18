@@ -23,10 +23,12 @@ These presentation choices introduce no new scoring or database rules.
   Drink/size choices have large selectable areas and an immediate points
   preview. Closed-window/cooldown messages appear before the form, and Submit
   spans the available width. Camera permission remains controlled by the browser.
-- Manual coordinate inputs are explicitly labelled as demo inputs until the
-  Location block supplies actual device GPS. Temporary coordinate fields live
-  in a collapsed Demo location expander. A preview is not evidence of
-  automatic verification. Missing/uncertain location still rejects submission.
+- The Location card uses the Location block's Use my location browser button
+  after the photo and drink selection. Manual coordinate inputs are removed.
+  The phone supplies coordinates and accuracy; missing permission/signal and
+  readings worse than 50 m keep the form open without saving (R-L01–R-L03).
+  Photo GPS is not used. Exactly 50 m is accepted. Final checks still run on
+  submission; the territory preview does not reserve eligibility or ownership.
 - Photo history opens a newest-first gallery of the lobby's retained entries,
   four per page, with username, territory, image, drink/size, base season and
   territory awards, applicable owner income and photo-receipt/submission time.
@@ -62,6 +64,13 @@ broader screen proposal below remains a future design outline.
 - `standings_ui.py` escapes public usernames and territory names. It reuses
   the page header and adds `assets/standings.css`; core rules, database APIs,
   membership checks and season scope are unchanged.
+
+Integration note, 18 November 2026: the UI/GPS overlap from the Scoring PR is
+resolved by combining the camera-first cards with `phone_location.py`. Both
+sets of UI tests remain, including permission retry without losing the photo
+or drink selection, the 50 m boundary, missing/inaccurate readings, gallery
+access and saved-result recovery. Live camera/location permission testing on
+a phone still needs the configured app; mocked tests do not grant permissions.
 
 ## Bottom navigation (requested 17 November 2026)
 

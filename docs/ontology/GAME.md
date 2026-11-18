@@ -29,7 +29,8 @@ embedded Large bonuses are defined in [SCORING_V1.md](SCORING_V1.md).
 
 A fresh photo and accepted location evidence are required. A matched entry
 credits the drinker fully in season and territory. A verified outside entry
-credits the season only. Exact device/photo GPS is discarded after checking;
+credits the season only. Only the phone's GPS counts, accurate to 50 m; the
+measured point decides at borders (R-L01–R-L03). Exact GPS is discarded after checking;
 the photo is stripped of embedded metadata and shared only within its lobby.
 
 ## Weekly eligibility and limits
@@ -64,7 +65,8 @@ settings/timezone/dates are frozen; changes start in a later season.
 
 The inherited season choices remain 7, 30 and 91 elapsed days. Calendar-month
 semantics, host roles and leaving/absence workflows remain team review items.
-Device GPS capture and age/accuracy/border rules remain Location integration.
+Phone GPS capture, accuracy and borders are decided (R-L01–R-L03); the maximum
+age of a reading remains open (D-10).
 Friend confirmation remains a separate proposal, not an active v1 fallback.
 
 ## Minigames

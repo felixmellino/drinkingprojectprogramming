@@ -43,7 +43,7 @@ connection.
 | `auth.py` | Turns a PIN into a scrambled code so the real PIN is never stored, and checks a typed PIN against it at login. |
 | `lobbies.py` | Creating a player, creating a lobby (with an invite code), joining a lobby, and setting up that lobby's season. |
 | `game_window.py` | One job: "is this moment inside Thursday-noon-to-Sunday-evening?" Drinks only count inside that window. |
-| `location.py` | Checks whether a drink's GPS location falls inside a territory's drawn area, and whether the phone's GPS agrees with the photo's own location tag. |
+| `location.py` | Checks whether the phone's GPS reading is accurate enough (50 m) and which territory's drawn area it falls inside. |
 | `scoring.py` | Preserves the historical beer/wine-unit and flat Shot/long-drink calculator for legacy seasons. |
 | `scoring_v1.py` | The new fixed size table, frozen season rules, lobby-time window, cooldown/correction checks and exact quarter-point ownership replay. |
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
@@ -67,7 +67,7 @@ contains no rules of its own — if you want to know whether something is
 | `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
-| `pages/3_Check_in.py` | Log a drink: pick the type and amount, take a photo, enter your location, and submit. |
+| `pages/3_Check_in.py` | Take a photo, pick the drink/size, use the phone-location button and submit. |
 | `pages/4_Standings.py` | Shows the season leaderboard and, for each territory, who currently owns it. |
 
 Every page follows the same shape: ask `data/db.py` for the data it needs,
@@ -239,9 +239,11 @@ right. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
-Check-in requires a camera photo before rendering drink/size choices. Automatic
-GPS integration remains with the Location owner; temporary manual inputs are
-in Demo location. Photo history lists up to four authorized images per page,
+Check-in requires a camera photo before rendering drink/size choices. Its
+Location card now calls `phone_location.py`: the browser asks for permission,
+then `core.location.parse_phone_reading` validates the returned coordinates and
+accuracy. R-L01–R-L03 accept at most 50 m uncertainty and ignore photo GPS.
+No manual coordinate inputs remain. Photo history lists up to four authorized images per page,
 with cards rendered by `photo_history_ui.py`; View details retains correction
 and deletion controls. Keep inline image bytes so private images never get a
 public Streamlit media URL. Test the routes, photo gate, gallery paging,

@@ -157,8 +157,11 @@ the Data teammate applies migration 005 and confirms photo storage setup:
 5. Verify public clients cannot call scoring functions or read revisions.
 6. Delete/expire a photo, preserving scores, and verify scheduled cleanup.
 
-Real browser GPS capture and its age/accuracy/border rules remain the Location
-block's integration work. The current explicit coordinate inputs are demo
-inputs, not proof that a phone physically reported that location. Friend
+The Location block's browser button is now connected to the camera-first UI.
+It supplies the phone position and accuracy; manual inputs are removed.
+R-L01–R-L03 select phone-only GPS, a 50 m accuracy limit and point-based
+territory matching. Photo GPS is ignored. Phone permission, real camera capture
+and live Supabase integration still need device testing; automated checks use
+isolated browser-component responses and never request a real location. Friend
 confirmation, minigame multipliers, membership leaving/absence rules and
 post-deadline moderation have not been added by this scoring change.
