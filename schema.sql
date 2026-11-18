@@ -1,7 +1,10 @@
 -- WeGoPub database schema (Supabase / Postgres).
 -- Run once against your Supabase project's SQL editor.
--- Then apply setup_checkin_photo_storage.sql and 005_scoring_v1.sql as
--- described in README.md. The scoring migration is additive and versioned.
+-- This file already includes migrations 001-004 and 006. A new project
+-- still needs, in order: setup_checkin_photo_storage.sql, then
+-- 005_scoring_v1.sql, 007_lobby_battles.sql, 008_profile_pictures.sql,
+-- 009_single_competition_lobbies.sql and 010_team_lobbies.sql -- see
+-- README.md for the exact sequence. Each migration is additive and versioned.
 
 create extension if not exists pgcrypto;
 
