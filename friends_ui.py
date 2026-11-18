@@ -5,6 +5,7 @@ from postgrest.exceptions import APIError
 
 import data.db as db
 from core.friends import search_usernames
+from profile_picture_ui import picture_identity, show_picture_identity
 
 
 def show_friends(player_id: str):
@@ -20,6 +21,12 @@ def show_friends(player_id: str):
         return
     names = {p["id"]: p["display_name"] for p in users}
     by_other = {r["recipient_id"] if r["sender_id"] == player_id else r["sender_id"]: r for r in relationships}
+
+    def identity(other):
+        if by_other.get(other, {}).get("status") in ("accepted", "pending"):
+            show_picture_identity(player_id, other, names.get(other, "Unknown player"), size=40)
+        else:
+            picture_identity(names.get(other, "Unknown player"), size=40)
 
     def action(label, other, operation):
         if st.button(label, key=f"friend_{operation}_{other}"):
@@ -42,7 +49,7 @@ def show_friends(player_id: str):
     if not incoming:
         st.caption("No incoming requests.")
     for other, _ in incoming:
-        st.text(names.get(other, "Unknown player"))
+        identity(other)
         action("Accept", other, "accept")
         action("Decline", other, "decline")
 
@@ -51,7 +58,7 @@ def show_friends(player_id: str):
     if not accepted:
         st.caption("No friends yet. Search for a username below.")
     for other in accepted:
-        st.text(names.get(other, "Unknown player"))
+        identity(other)
         action("Remove friend", other, "remove")
 
     st.subheader("Outgoing requests")
@@ -59,7 +66,7 @@ def show_friends(player_id: str):
     if not outgoing:
         st.caption("No outgoing requests.")
     for other in outgoing:
-        st.text(names.get(other, "Unknown player"))
+        identity(other)
         action("Cancel request", other, "cancel")
 
     st.subheader("Find players")
@@ -69,7 +76,7 @@ def show_friends(player_id: str):
         st.info("No matching usernames found.")
     for user in results:
         other = user["id"]
-        st.text(user["display_name"])
+        identity(other)
         status = by_other.get(other, {}).get("status")
         if status == "accepted":
             st.caption("Already friends")

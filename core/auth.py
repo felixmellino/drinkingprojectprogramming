@@ -57,13 +57,19 @@ def validate_password(password: str, confirmation: str) -> None:
         raise ValueError("Passwords do not match.")
 
 
-def validate_account(first_name, last_name, username, email, password, confirmation, players, player_id=None):
-    """Return trimmed account fields; reject empty/duplicate input before writing."""
+def validate_profile_names(first_name, last_name, username):
+    """Shared name rules for registration and subsequent profile edits."""
     first_name, last_name, username = (s.strip() for s in (first_name, last_name, username))
     if not first_name or not last_name or not username:
         raise ValueError("First name, surname and username are required.")
     if max(len(first_name), len(last_name), len(username)) > 100:
         raise ValueError("Names and username must contain at most 100 characters each.")
+    return first_name, last_name, username
+
+
+def validate_account(first_name, last_name, username, email, password, confirmation, players, player_id=None):
+    """Return trimmed account fields; reject empty/duplicate input before writing."""
+    first_name, last_name, username = validate_profile_names(first_name, last_name, username)
     email = normalize_email(email)
     validate_password(password, confirmation)
     for player in players:

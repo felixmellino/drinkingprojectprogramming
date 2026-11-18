@@ -180,3 +180,35 @@ Implementation: `core/friends.py` holds validation and search rules;
 `friends_ui.py` renders controls using the authenticated session's player ID;
 `data/db.py` stores state through a version-checked database function. The
 server service key is the only database role with friendship access.
+
+### Profile edits (agreed 18 November 2026)
+
+- A8: A signed-in player can change their own username, first name and surname.
+  Registration name limits and case-insensitive username uniqueness still
+  apply. Email is read-only. Player ID and all linked game progress/friends
+  remain unchanged. An expired credential version cannot save an edit.
+- A9: Password changes require the correct current password and a matching
+  new password following A2. The new password must differ from the current
+  one. Current-password attempts share the login throttle. Successful changes
+  invalidate active and remembered sessions; the player logs in again.
+
+### Profile pictures (agreed 18 November 2026)
+
+- A10: A signed-in player may take a camera photo or upload a JPEG, PNG or
+  WebP from their library in Edit profile. Show a circular centre-cropped
+  preview; save only after Save picture. Saved pictures persist across visits
+  and devices. The player can replace or remove their own picture. Without a
+  saved picture, use username initials. Neither pictures nor changes affect
+  points, memberships or account identity.
+- A11: Show the picture left of the username in Profile, and beside that
+  player in friend lists and incoming/outgoing requests. Only the owner,
+  accepted friends and both participants of a pending request can retrieve
+  it. Declining, cancelling or removing the relationship ends further access.
+  Search results for unrelated players show initials. No lobby-wide avatar
+  visibility is introduced. Previously downloaded copies cannot be recalled.
+- A12: Profile pictures use private server-only storage. Accept at most
+  10 MiB and 20 million pixels; reject unreadable/animated images. Preserve
+  orientation, centre-crop to a 512-pixel square, flatten transparency to white
+  and re-encode JPEG without embedded metadata. Current images remain until
+  replaced or removed. Failed writes can leave inaccessible uploads; remove
+  unlinked uploads after a 24-hour grace period through server maintenance.

@@ -166,3 +166,43 @@ current lobby's season only. Bars are not part of the game, so none are shown.
 ## Scoring proposal: screen changes awaiting approval
 
 See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [SCORING_V1.md](SCORING_V1.md) for the implemented contract. Check-in uses four category choices, Small/Medium/Large where applicable, and an automatic points preview. It shows a two-minute wait when necessary and the next opening outside the weekly window. History shows precise lobby-time timestamps, base awards, owner income and correction history. Earlier territory-reduction labels in the future Map outline above are historical; scoring v1 uses additional owner income instead.
+
+## Profile menu (implemented 18 November 2026)
+
+The authenticated Profile is a vertical list: **Edit profile**, **Friends**,
+**My stats**, **Account & security**, then **Log out**. Each of the first
+four opens a separate view with **Back to Profile**. Logout is immediate.
+
+- Edit profile updates username, first name and surname. Names use the same
+  required/100-character limits as registration. Usernames remain unique,
+  ignoring case and surrounding whitespace. Player ID, email, credentials,
+  friendships, memberships and scores are retained. Profile pictures are described below.
+- Friends contains the existing search, incoming/outgoing requests,
+  accept/decline, cancellation, removal and refresh controls.
+- My stats shows only the selected lobby's currently active season: points,
+  rank and number of territories owned. It reuses the Leaderboard calculations,
+  including owner income and ties. No score means zero points and Unranked;
+  missing lobby/current season has an explicit instruction. Unavailable
+  territory data is marked unavailable rather than shown as zero.
+- Account & security shows private name and read-only email, then a password
+  change form requiring current password, new password and confirmation.
+  Existing password length rules and login throttling apply. A successful
+  change signs out this device; all other active/remembered sign-ins become
+  invalid on their next check. No password recovery is introduced.
+
+Authorized by the contributor's Profile choices on 18 November 2026. Account
+updates use existing columns and unique indexes, so no new migration is needed.
+
+### Profile picture interface (implemented 18 November 2026)
+
+Profile has a circular picture left of the username, with initials as the
+fallback. Edit profile keeps its name form and adds a separate Profile picture
+section: Upload photo / Take photo, circular preview, then Save picture.
+Camera permission is requested by the browser. JPEG/PNG/WebP library selection
+and camera captures share validation and centre cropping. A saved picture
+can be removed, restoring initials, or replaced. Picture actions do not submit
+unsaved name fields. Friends displays pictures beside accepted friends and
+incoming/outgoing requests; unrelated search results use initials.
+Storage failures retain the name editor and a clear picture status. Account
+pictures need `008_profile_pictures.sql`; friend data needs the existing
+`006_friendships.sql`. Neither script is applied automatically on app startup.

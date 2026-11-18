@@ -31,9 +31,11 @@ def test_profile_friend_workflow_and_new_sessions():
         at.session_state["credential_version"] = "hash"
         at.run()
         assert not at.exception
+        button(at, "Friends").click().run()
         return at
 
     with ExitStack() as stack:
+        stack.enter_context(patch("data.db.download_profile_picture", return_value=None))
         stack.enter_context(patch("device_login.sync_storage", return_value=None))
         stack.enter_context(patch("data.db.get_player", side_effect=lambda pid: next(p for p in players if p.id == pid)))
         stack.enter_context(patch("data.db.list_public_usernames", return_value=[{"id": p.id, "display_name": p.display_name} for p in players]))
@@ -73,11 +75,13 @@ def test_profile_friend_workflow_and_new_sessions():
 
 def test_friend_service_failure_preserves_profile():
     player = Player("alice", "Alice", "Private", "Name", "hash", "private@test.com")
-    with patch("device_login.sync_storage", return_value=None), patch("data.db.get_player", return_value=player), patch("data.db.list_public_usernames", side_effect=RuntimeError("missing migration")):
+    with patch("data.db.download_profile_picture", return_value=None), patch("device_login.sync_storage", return_value=None), patch("data.db.get_player", return_value=player), patch("data.db.list_public_usernames", side_effect=RuntimeError("missing migration")):
         at = AppTest.from_file(str(ROOT / "pages/1_Profile.py"))
         at.session_state["player_id"] = player.id
         at.session_state["credential_version"] = player.pin_hash
         at.run()
         assert not at.exception
+        button(at, "Friends").click().run()
         assert at.error
+        button(at, "Back to Profile").click().run()
         assert any(b.label == "Log out" for b in at.button)

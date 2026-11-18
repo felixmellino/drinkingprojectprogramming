@@ -550,6 +550,46 @@ def allow_login_attempt(player_id: str) -> bool:
     return bool(get_client().rpc("allow_login_attempt", {"target_player": player_id}).execute().data)
 
 
+def _profile_actor(player_id: str, credential_version: str) -> Player:
+    player = get_player(player_id)
+    if not player or player.pin_hash != credential_version:
+        raise ValueError("Your sign-in changed. Please log in again.")
+    return player
+
+
+def _save_account_fields(player: Player, credential_version: str, fields: dict) -> Player:
+    # A concurrent password change must also block a stale session's write.
+    rows = (get_client().table("players").update(fields).eq("id", player.id)
+            .eq("pin_hash", credential_version).execute().data)
+    if not rows:
+        raise ValueError("Your sign-in changed. Please log in again.")
+    return Player(**rows[0])
+
+
+def update_profile(player_id: str, credential_version: str, first_name: str,
+                   last_name: str, username: str) -> Player:
+    from core.profile import edit_profile
+
+    player = edit_profile(_profile_actor(player_id, credential_version), first_name,
+                          last_name, username, list_public_usernames())
+    # Existing unique indexes also reject concurrent duplicate usernames.
+    return _save_account_fields(player, credential_version, {
+        "first_name": player.first_name, "last_name": player.last_name,
+        "display_name": player.display_name,
+    })
+
+
+def update_password(player_id: str, credential_version: str, current: str,
+                    password: str, confirmation: str) -> Player:
+    from core.profile import change_password
+
+    player = _profile_actor(player_id, credential_version)
+    if not allow_login_attempt(player_id):
+        raise ValueError("Too many login attempts. Wait 15 minutes and try again.")
+    player = change_password(player, current, password, confirmation)
+    return _save_account_fields(player, credential_version, {"pin_hash": player.pin_hash})
+
+
 # The browser stores only the random token; Supabase stores only its hash.
 def create_remembered_session(player: Player) -> str:
     token, stored_hash = new_token()
@@ -625,3 +665,119 @@ def change_friendship(player_id: str, other_id: str, action: str) -> None:
         "next_status": next_row["status"],
         "expected_version": current["version"] if current else None,
     }).execute()
+
+
+# -- profile pictures: owner, accepted friends and pending requests only --
+PROFILE_PICTURE_BUCKET = "profile-pictures"
+
+
+def _profile_picture_bucket():
+    storage = get_client().storage
+    if storage.get_bucket(PROFILE_PICTURE_BUCKET).public is not False:
+        raise RuntimeError("Profile pictures require a private storage bucket.")
+    return storage.from_(PROFILE_PICTURE_BUCKET)
+
+
+def _profile_picture_row(player_id: str):
+    rows = (get_client().table("profile_pictures").select("photo_ref")
+            .eq("player_id", player_id).execute().data)
+    return rows[0]["photo_ref"] if rows else None
+
+
+def _validate_profile_picture_path(player_id: str, path: str) -> None:
+    import uuid
+
+    try:
+        folder, filename = path.split("/")
+        valid = folder == player_id and filename == f"{uuid.UUID(filename.removesuffix('.jpg'))}.jpg"
+    except (ValueError, AttributeError):
+        valid = False
+    if not valid:
+        raise PermissionError("Invalid profile picture reference.")
+
+
+def download_profile_picture(viewer_id: str, credential_version: str, owner_id: str) -> bytes | None:
+    from core.profile_photo import can_view_profile_photo
+
+    _profile_actor(viewer_id, credential_version)
+    relationships = [] if viewer_id == owner_id else list_friendships(viewer_id)
+    if not can_view_profile_photo(viewer_id, owner_id, relationships):
+        return None
+    path = _profile_picture_row(owner_id)
+    if not path:
+        return None
+    _validate_profile_picture_path(owner_id, path)
+    return _profile_picture_bucket().download(path)
+
+
+def save_profile_picture(player_id: str, credential_version: str, raw: bytes) -> None:
+    import uuid
+    from core.profile_photo import prepare_profile_photo
+
+    _profile_actor(player_id, credential_version)
+    photo = prepare_profile_photo(raw)
+    previous = _profile_picture_row(player_id)
+    if previous:
+        _validate_profile_picture_path(player_id, previous)
+    path = f"{player_id}/{uuid.uuid4()}.jpg"
+    bucket = _profile_picture_bucket()
+    bucket.upload(path, photo, {"content-type": "image/jpeg"})
+    # Recheck after upload before publishing the new reference. On an uncertain
+    # write failure, leave the private upload for cleanup rather than risking
+    # deletion of a picture whose reference may have committed.
+    _profile_actor(player_id, credential_version)
+    get_client().table("profile_pictures").upsert({
+        "player_id": player_id, "photo_ref": path,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).execute()
+    if previous:
+        try:
+            bucket.remove([previous])
+        except Exception:
+            # The new picture is saved; cleanup can remove an unlinked object.
+            pass
+
+
+def remove_profile_picture(player_id: str, credential_version: str) -> None:
+    _profile_actor(player_id, credential_version)
+    path = _profile_picture_row(player_id)
+    if not path:
+        return
+    _validate_profile_picture_path(player_id, path)
+    _profile_picture_bucket().remove([path])
+    (get_client().table("profile_pictures").delete().eq("player_id", player_id)
+     .eq("photo_ref", path).execute())
+
+
+def cleanup_profile_pictures(*, apply: bool = False) -> int:
+    """Remove only unlinked uploads older than 24h; keep current pictures."""
+    bucket = _profile_picture_bucket()
+    now = datetime.now(timezone.utc)
+    count = 0
+    for folder in _list_photo_folder(bucket, ""):
+        owner = folder["name"]
+        if folder.get("id") is not None or not owner or "/" in owner or owner in (".", ".."):
+            continue
+        for obj in _list_photo_folder(bucket, owner):
+            if not obj.get("id"):
+                continue
+            path = f"{owner}/{obj['name']}"
+            try:
+                _validate_profile_picture_path(owner, path)
+            except PermissionError:
+                continue
+            modified = obj.get("updated_at") or obj.get("created_at")
+            if not modified:
+                continue
+            timestamp = datetime.fromisoformat(modified.replace("Z", "+00:00"))
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            if now < timestamp + timedelta(hours=UNLINKED_PHOTO_GRACE_HOURS):
+                continue
+            # Recheck the live reference immediately before deletion.
+            if _profile_picture_row(owner) == path:
+                continue
+            if apply:
+                bucket.remove([path])
+            count += 1
+    return count

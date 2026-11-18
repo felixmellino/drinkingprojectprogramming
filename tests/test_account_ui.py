@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def allow_attempts():
     def browser(**command):
         return {"request_id": command["request_id"], "token": command.get("token", ""), "available": True}
-    with patch("data.db.allow_login_attempt", return_value=True), patch("device_login._browser_storage", side_effect=browser), \
+    with patch("data.db.download_profile_picture", return_value=None), patch("data.db.allow_login_attempt", return_value=True), patch("device_login._browser_storage", side_effect=browser), \
          patch("data.db.list_public_usernames", return_value=[]), patch("data.db.list_friendships", return_value=[]):
         yield
 
@@ -156,6 +156,8 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
         fresh = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
         assert not fresh.exception
         assert fresh.session_state["player_id"] == player.id
+        assert not fresh.text_input
+        form(fresh, "Friends").click().run()
         assert [field.label for field in fresh.text_input] == ["Search usernames"]
 
 

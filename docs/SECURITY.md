@@ -167,3 +167,38 @@ secrets, first hosted execution and monitoring still need setup after merge.
 
 The upload controls follow the [OWASP file upload guidance](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html).
 The retention and notice work supports the [European Commission's data protection principles](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/principles-gdpr_en).
+
+## Profile pictures
+
+`migrations/008_profile_pictures.sql` adds a separate server-only reference
+table and private `profile-pictures` bucket. It does not alter Player or game
+records. Apply it to new projects too, after account setup. The migration
+refuses an existing public bucket and blocks anonymous/authenticated direct
+object access. The app checks the viewer's credential version and current
+accepted/pending relationship before retrieving another player's image.
+Profile pictures are served as authorized inline bytes, without public or
+signed object URLs. They are not cached across app requests. A cancelled,
+declined or removed relationship loses access on its next request, although
+already-displayed/downloaded copies remain outside our control.
+
+Images are limited to 10 MiB/20 megapixels, decoded only as JPEG, PNG or WebP,
+rotated using orientation metadata, centre-cropped to 512 by 512 and saved as
+new JPEG pixels without metadata. Still pictures only; transparency is placed
+on white. The owner alone may replace/remove their picture. Profile editing
+and picture editing are separate saves; no new game points are generated.
+
+A successfully replaced image is deleted where possible. Uncertain saves or
+failed old-object deletion can leave private unlinked files. Configure daily
+`python -m data.cleanup_profile_pictures --apply` alongside check-in cleanup;
+without `--apply` it only reports. It keeps every current referenced picture
+and gives abandoned uploads 24 hours before removal. Saved current pictures
+remain until replaced/removed. Provider backups follow the team's separately
+confirmed backup policy. Include this purpose, friend/request audience and
+retention in the privacy notice before collecting real photos.
+
+Live verification still required after the Data owner applies migration 008:
+upload from a library and a phone camera; restart Streamlit and reopen on
+another device; replace/remove; check owner, accepted friend, both directions
+of a pending request and unrelated accounts; cancel/decline/remove and verify
+further access ends. Confirm public-client table/object requests fail. Run
+cleanup in dry-run mode and verify it never selects a current picture.

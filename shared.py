@@ -48,6 +48,9 @@ def require_login() -> str:
             queue_storage("clear")
             st.info("Please log in again.")
     if "player_id" not in st.session_state:
+        notice = st.session_state.pop("_profile_notice", None)
+        if notice:
+            st.success(notice)
         show_accounts()
         st.stop()
     bottom_navigation()
