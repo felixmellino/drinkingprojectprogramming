@@ -26,7 +26,8 @@ def open_created_lobby(lobby_id, message):
 @st.dialog('Create a lobby', dismissible=True, on_dismiss=dismiss_dialog)
 def create_dialog(player_id):
     zones = sorted(available_timezones())
-    mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True)
+    mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True,
+                    key='pill_radio_competition_mode')
     count = capacity = assignment = None
     if mode == "team":
         count = st.number_input("Number of teams", min_value=2, max_value=16, value=2)

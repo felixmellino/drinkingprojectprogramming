@@ -116,6 +116,33 @@
 /* Radios, checkboxes and segmented controls in the sky-blue accent */
 .stApp [data-testid="stSegmentedControl"] button { border-radius: var(--radius-pill); }
 
+/* Reusable pill-segmented look for a plain horizontal radio, first built
+   for the login screen's Create account/Log in toggle. Opt in by giving
+   the radio (or a wrapping st.container) a key starting "pill_radio_".
+   No .stApp prefix here -- st.dialog content renders outside it. */
+[class*="st-key-pill_radio_"] [data-testid="stRadio"] [role="radiogroup"],
+[class*="st-key-chug_drink"] [role="radiogroup"] {
+  display: inline-flex; gap: 4px; background: var(--surface); border-radius: var(--radius-pill);
+  padding: 4px; box-shadow: var(--shadow-card);
+}
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"],
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"] {
+  flex: 0 0 auto; justify-content: center; border-radius: var(--radius-pill);
+  padding: 0.55rem 1.1rem; margin: 0; white-space: nowrap; cursor: pointer; transition: background 150ms ease;
+}
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"] > div > div:first-child,
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"] > div > div:first-child { display: none; }
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"] label p,
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"] label p { color: var(--text-muted); font-weight: 650; }
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"]:has(input:checked),
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"]:has(input:checked) { background: var(--accent); }
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"]:has(input:checked) p,
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"]:has(input:checked) p { color: var(--on-accent); }
+[class*="st-key-pill_radio_"] [data-testid="stRadioOption"]:has(input:focus-visible),
+[class*="st-key-chug_drink"] [data-testid="stRadioOption"]:has(input:focus-visible) {
+  outline: 3px solid var(--accent-ink); outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stApp * { transition: none !important; animation: none !important; }
 }
