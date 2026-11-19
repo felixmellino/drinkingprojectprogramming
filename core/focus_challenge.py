@@ -50,7 +50,7 @@ def component_action(value, attempt):
     action, payload = value.get('action'), value.get('payload', {})
     if not isinstance(payload, dict):
         return None
-    if action in ('ready', 'fail'):
+    if action in ('ready', 'fail', 'false_start'):
         return action, {}
     if action == 'reaction':
         ms = payload.get('elapsed_ms')
