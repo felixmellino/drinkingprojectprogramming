@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 import re
-import unicodedata
 from html import escape
 from pathlib import Path
 
@@ -26,7 +25,14 @@ COLOURS = {
     "theirs": [255, 93, 82],    # #FF5D52 red
     "free": [126, 136, 156],    # #7E889C grey
 }
-FILL_ALPHA = {"yours": 125, "theirs": 120, "free": 55}
+FILL_ALPHA = {"yours": 125, "theirs": 120, "free": 70}
+# Outlines: unclaimed areas get a light, neutral cream edge so every border
+# stays clearly visible on the dark map without looking like a colour status.
+LINE_COLOURS = {
+    "yours": COLOURS["yours"] + [240],
+    "theirs": COLOURS["theirs"] + [240],
+    "free": [240, 225, 206, 215],   # --text cream
+}
 LEGEND = {"yours": "Yours", "theirs": "Someone else's", "free": "Unclaimed"}
 HOVER_COLOUR = [255, 255, 255, 70]  # lightens the area under the pointer
 
@@ -40,7 +46,7 @@ AREAS = {
         "santa-catarina", "tower-bar", "santos-kiosk", "after8", "principe-real",
         "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
         "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
-    "Nova SBE": ["nova-sbe"],
+    "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
 }
 ME = ":material/my_location: Me"
 ALL = "All"
@@ -90,11 +96,6 @@ def legend() -> None:
         f'<span><i style="background:rgb{tuple(COLOURS["free"])}"></i>Unclaimed</span></div>',
         unsafe_allow_html=True,
     )
-
-
-def _label(text: str) -> str:
-    # The map's label font only has plain letters, so drop accents on the map.
-    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
 
 
 def markdown_safe(text: str) -> str:
@@ -215,7 +216,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                 "points": f"Owner: {escape(row['owner'])} · {row['owner_points']} points · "
                           f"{'Your team’s' if team_mode else 'Your'} points here: {row['my_points']}",
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
-                "line": COLOURS[row["status"]] + [235 if row["status"] != "free" else 120],
+                "line": LINE_COLOURS[row["status"]],
             },
         }
         for row in rows
@@ -248,15 +249,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                   get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
                   get_text_anchor="'middle'", get_alignment_baseline="'center'", pickable=False),
     ]
-    # Territory names written on the map, like place names in a game.
-    labels = [{"position": _centre(row["boundary"]), "name": _label(row["name"]),
-               "offset": [0, 34] if row.get("owner_id") else [0, 0]} for row in rows]
-    layers.append(pdk.Layer(
-        "TextLayer", labels, id="territory-labels", get_position="position", get_text="name", get_size=11,
-        get_pixel_offset="offset",
-        get_color=[240, 225, 206, 240], get_text_anchor="'middle'", get_alignment_baseline="'center'",
-        font_weight=700, font_settings={"sdf": True}, outline_width=3, outline_color=[26, 40, 65, 235],
-    ))
+    # No territory names on the map (too crowded with 48 areas): the name shows on hover.
     if location is not None:
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
@@ -283,11 +276,6 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         selected = selected_territories(event.selection, rows, markers)
         if selected:
             territory_popup(selected, team_mode)
-
-
-def _centre(boundary: dict) -> list[float]:
-    ring = boundary["coordinates"][0][:-1]
-    return [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
 
 
 def territory_list(rows: list[dict]) -> None:
