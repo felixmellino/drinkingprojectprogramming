@@ -82,3 +82,24 @@ body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!importa
   border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; }
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetricLabel"] p { font-size:0.8rem; color:var(--text-muted); }
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetricValue"] { font-family:var(--font-body); font-weight:600; font-size:1.05rem; }
+
+/* Game screens (Chug Duel, Reaction Test, Quiz Duel): big title, one line, big buttons, almost no text. */
+.game-title { margin: 6px 0 0; padding: 0; font-family: var(--font-display); font-weight: 400; font-size: 2rem; line-height: 1.1; color: var(--text); }
+.game-line { margin: 2px 0 14px; font-size: 1rem; color: var(--text-muted); }
+.game-note { margin: 4px 0 8px; font-size: 0.85rem; color: var(--text-muted); }
+.duel-vs { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text); }
+.duel-vs span { font-weight: 400; color: var(--text-muted); font-size: 0.9rem; margin: 0 4px; }
+.duel-what { margin: 2px 0 6px; font-size: 0.95rem; color: var(--text-muted); }
+.stApp [class*="st-key-chug_card_"], .stApp [data-testid="stVerticalBlockBorderWrapper"]:has(.duel-vs) {
+  border-radius: var(--radius-lg); background: var(--surface); }
+/* Pickers (who, drink, size, stake): big pills that wrap, one tap each. */
+.stApp [class*="st-key-pill_radio_chug"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_quiz"] [role="radiogroup"],
+.stApp [class*="st-key-chug_drink"] [role="radiogroup"] {
+  display: flex; flex-wrap: wrap; gap: 6px; background: transparent; box-shadow: none; padding: 0; }
+.stApp [class*="st-key-pill_radio_chug"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_quiz"] [data-testid="stRadioOption"],
+.stApp [class*="st-key-chug_drink"] [data-testid="stRadioOption"] {
+  background: var(--surface); box-shadow: var(--shadow-card); padding: 0.6rem 1rem; }
+.stApp .st-key-chug_invite button, .stApp .st-key-quiz_challenge button { min-height: 56px; font-size: 1.05rem; }
+/* A button that cannot be pressed yet stays recognisable (blue, faded) instead of turning into a white box. */
+.stApp .st-key-chug_invite button:disabled, .stApp .st-key-quiz_challenge button:disabled, .stApp .st-key-focus_start button:disabled {
+  background: var(--accent); color: var(--on-accent); opacity: .4; }
