@@ -7,6 +7,7 @@ import streamlit as st
 
 from core.profile_photo import initials
 from core.scoring_v1 import format_points
+from photo_history_ui import identity_colour
 
 
 def load_styles() -> None:
@@ -55,7 +56,10 @@ def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = Fal
             name = names.get(member, "Unknown player")
             you = member == current_member
             row_class = " standings-row-you" if you else ""
-            avatar_fill = "background:var(--accent);color:var(--on-accent);" if you else "background:var(--accent-soft);color:var(--text);"
+            # Same hashed per-player colour as their photo-history frames,
+            # so a face recurring across pages reads as the same identity.
+            identity = {"team_id": member} if team_mode else {"membership_id": member}
+            avatar_fill = f"background:{identity_colour(identity)};color:#fff;"
             tag = f'<span class="standings-you-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if you else ""
             markup += (
                 f'<li class="standings-row{row_class}"><span class="standings-row-rank">{rank}</span>'
@@ -76,7 +80,7 @@ def territory_pills(territories, names: dict, current_member: str) -> None:
         else:
             status, title = "territory-free", "Unclaimed"
         markup += (
-            f'<div class="standings-pill" role="listitem" title="{escape(title)}">'
+            f'<div class="standings-pill {status}" role="listitem" title="{escape(title)}">'
             f'<span class="standings-pill-dot {status}"></span><span>{escape(territory.name)}</span></div>'
         )
     st.markdown(markup + "</div>", unsafe_allow_html=True)

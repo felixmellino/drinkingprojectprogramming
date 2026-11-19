@@ -36,6 +36,12 @@
 .standings-pill-dot.territory-yours { background: var(--territory-yours); }
 .standings-pill-dot.territory-theirs { background: var(--territory-theirs); }
 .standings-pill-dot.territory-free { background: var(--territory-free); }
+/* Each pill's shadow tints toward its own ownership colour, same trick as
+   the podium winner's block, instead of every status sharing one flat
+   navy shadow. */
+.standings-pill.territory-yours { box-shadow: 0 6px 16px -4px rgb(76 195 138 / .45); }
+.standings-pill.territory-theirs { box-shadow: 0 6px 16px -4px rgb(255 93 82 / .35); }
+.standings-pill.territory-free { box-shadow: 0 6px 16px -4px rgb(126 136 156 / .3); }
 
 
 @media (max-width: 480px) {

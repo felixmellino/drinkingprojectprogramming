@@ -117,26 +117,27 @@ if modern:
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
-    points, location, owner_income, *saved_ids = saved_result
-    if points == 0:
-        st.warning("Saved in your history with zero points.")
-    elif location == "outside":
-        st.success(f"Logged! +{format_points(points)} season points. Your location is outside the game territories.")
-    else:
-        st.success(f"Logged! +{format_points(points)} points.")
-    if owner_income:
-        st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
-    if saved_ids:
-        try:
-            territory_id = captured_territory(saved_ids[0], db.list_drink_entries(season_id))
-            if territory_id:
-                territory_name = next((t.name for t in get_territories() if t.id == territory_id), "the territory")
-                # Plain text prevents a territory label from injecting Markdown.
-                st.success("Territory captured!")
-                st.text(f"Your team captured {territory_name}!" if team_mode else f"You captured {territory_name}!")
-                st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
-        except (APIError, RequestError, RuntimeError, ValueError):
-            st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
+    with st.container(key="checkin_result"):
+        points, location, owner_income, *saved_ids = saved_result
+        if points == 0:
+            st.warning("Saved in your history with zero points.")
+        elif location == "outside":
+            st.success(f"Logged! +{format_points(points)} season points. Your location is outside the game territories.")
+        else:
+            st.success(f"Logged! +{format_points(points)} points.")
+        if owner_income:
+            st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
+        if saved_ids:
+            try:
+                territory_id = captured_territory(saved_ids[0], db.list_drink_entries(season_id))
+                if territory_id:
+                    territory_name = next((t.name for t in get_territories() if t.id == territory_id), "the territory")
+                    # Plain text prevents a territory label from injecting Markdown.
+                    st.success("Territory captured!")
+                    st.text(f"Your team captured {territory_name}!" if team_mode else f"You captured {territory_name}!")
+                    st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
+            except (APIError, RequestError, RuntimeError, ValueError):
+                st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
 
 if st.session_state.get('checkin_posted'):
     st.info('Your drink is posted. Find it in Photo history or check the Leaderboard.')
