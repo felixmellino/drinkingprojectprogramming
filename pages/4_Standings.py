@@ -10,7 +10,7 @@ from core.lobby_overview import lobby_status
 from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
 from drink_entry_ui import context_line, page_header, section_heading
-from lobby_selection import leaderboard_fallback
+from leaderboard_context import leaderboard_fallback
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 

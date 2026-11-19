@@ -131,7 +131,11 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     [('past', ('past',), 'past'), ('secret', ('old', 'past'), 'old'),
      (None, (), None), ('past', ('old', 'past'), 'old')],
 )
-def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, joined, expected):
+@pytest.mark.parametrize('predeployment_module', [False, True])
+def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, joined, expected, predeployment_module):
+    if predeployment_module:
+        # Cloud may retain the module imported before the fallback was deployed.
+        monkeypatch.delattr('lobby_selection.leaderboard_fallback', raising=False)
     ui['choices']['me'] = choice
     ui['members'] = [member for member in ui['members'] if member.lobby_id in joined]
     monkeypatch.setattr('shared.require_login', real_require_login)
