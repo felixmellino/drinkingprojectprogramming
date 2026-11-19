@@ -19,7 +19,7 @@
   --accent-ink: #156A96;      /* sky blue fails AA for small text/links -- use this darker shade */
   --accent-soft: #EAF4FB;
   --on-accent: #142B3D;        /* navy, not white -- sky blue fails AA with white text */
-  --border: #D7E6EF;
+  --border: rgb(20 43 61 / .12);  /* ink at low alpha, not a solid hex -- blends on any surface colour */
   --hud-bg: rgba(255, 255, 255, .92);
   --brand: #EB2F33;            /* wordmark only, large text */
   --brand-ink: #C0242A;        /* subtle red: lobby countdowns -- never a fill */

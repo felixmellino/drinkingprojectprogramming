@@ -104,6 +104,13 @@
 /* Buttons come from assets/theme.css (cream primary, navy text). */
 .stApp:has(.drink-page-hero) [data-testid="stCameraInput"] { border-radius: 15px; overflow: hidden; }
 .st-key-drink_ui_panel_camera iframe { border: 0; border-radius: 22px; }
+/* A small "it worked" beat on a successful check-in, same fly-in trick
+   as the login card. */
+[class*="st-key-checkin_result"] { animation: checkin-result-in 420ms cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes checkin-result-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
 .drink-photo {
   display: block;
   width: 100%;
@@ -133,6 +140,10 @@
 [class*="st-key-memory_row_"] [data-testid="stHorizontalBlock"] {
   flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding-bottom: 6px;
   scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  /* Fades the row's edges so a swipeable night signals "more this way"
+     without any extra arrow/chevron UI. */
+  mask: linear-gradient(90deg, transparent, black 2%, black 96%, transparent);
+  -webkit-mask: linear-gradient(90deg, transparent, black 2%, black 96%, transparent);
 }
 [class*="st-key-memory_row_"] [data-testid="stColumn"] {
   flex: 0 0 132px; min-width: 132px; width: 132px; scroll-snap-align: start;

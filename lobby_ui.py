@@ -44,9 +44,15 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
               f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
+    progress = ''
+    if status == 'active':
+        total = (utc(season.ends_at) - utc(season.starts_at)).total_seconds()
+        elapsed = (utc(now) - utc(season.starts_at)).total_seconds()
+        fraction = max(0.0, min(1.0, elapsed / total)) if total > 0 else 1.0
+        progress = f'<div class="lobby-progress"><span style="width:{fraction:.1%}"></span></div>'
     st.markdown(f'<article class="lobby-card lobby-{status}"><p class="lobby-meta">{meta}</p>'
                 f'<h3>{escape(lobby.name)}</h3><div class="lobby-person">{avatar}<span>{result}</span></div>'
-                f'<p class="lobby-countdown">{escape(timing)}</p>'
+                f'<p class="lobby-countdown">{escape(timing)}</p>{progress}'
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
 
 
