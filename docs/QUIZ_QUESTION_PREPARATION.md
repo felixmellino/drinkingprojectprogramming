@@ -1,8 +1,9 @@
 # Quiz Duel: content preparation
 
-19 November 2026. This change prepares question content and generators. It does
-not yet add a playable Quiz Duel, a live database table, invitations or point
-transfers. It does not change Chug Duel, Focus Challenge or scoring.
+19 November 2026. This document describes the original content foundation.
+Playable invitations, reserved stakes and timed rounds are now implemented on
+the feature branch; see [the current handoff](QUIZ_DUEL.md). The sections below
+preserve how the content was prepared before gameplay was added.
 
 ## How the content works
 

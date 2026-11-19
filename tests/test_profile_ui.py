@@ -20,6 +20,7 @@ def click(at, label):
 
 @pytest.fixture
 def repo(monkeypatch):
+    monkeypatch.setattr('data.db.list_season_transfers', lambda _: [])
     # Profile fixtures have no lobby repository; restoration has its own tests.
     monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
     monkeypatch.setattr('data.db.download_profile_picture', lambda *args: None)

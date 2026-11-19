@@ -19,6 +19,16 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .st-key-minigame_card_chug [data-testid="stCaptionContainer"],
 .st-key-minigame_card_focus [data-testid="stCaptionContainer"] { min-height:42px; }
 .st-key-minigame_card_focus { border-style:dashed!important; }
+.st-key-minigame_card_quiz {background:var(--surface);border:var(--border-width) solid var(--border)!important;
+ border-radius:var(--radius-lg);padding:20px!important;}
+.st-key-quiz_stage {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
+ max-width:none!important;height:100dvh!important;margin:0!important;padding:0!important;background:var(--bg);overflow:hidden;}
+.st-key-quiz_stage iframe {display:block;width:100vw!important;height:100dvh!important;border:0;}
+html:has(.st-key-quiz_stage),body:has(.st-key-quiz_stage),
+body:has(.st-key-quiz_stage) [data-testid="stMain"] {overflow:hidden!important;overscroll-behavior:none;}
+body:has(.st-key-quiz_stage) [data-testid="stHeader"],body:has(.st-key-quiz_stage) [data-testid="stSidebar"],
+body:has(.st-key-quiz_stage) .st-key-wego_bottom_nav {display:none!important;}
+.st-key-quiz_stage [data-testid="stAlert"] {position:fixed;bottom:60px;left:16px;right:16px;z-index:100002;}
 @media (max-width:640px) {
   .stApp [data-testid="stHorizontalBlock"]:has(.st-key-minigame_card_chug) { flex-direction:column; }
   .stApp [data-testid="stHorizontalBlock"]:has(.st-key-minigame_card_chug) > [data-testid="stColumn"] { width:100%!important; flex:1 1 auto; }

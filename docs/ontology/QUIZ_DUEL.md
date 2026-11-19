@@ -1,7 +1,7 @@
-# Quiz Duel decisions and preparation
+# Quiz Duel rules
 
-Contributor decisions, 19 November 2026. The question foundation is prepared;
-the game is not yet active in Minigames.
+Contributor decisions, 19 November 2026. Implemented on the quiz feature branch;
+review, publication and shared Supabase migration 016 remain pending.
 
 ## Agreed rules
 
@@ -10,7 +10,11 @@ the game is not yet active in Minigames.
   do not earn a point. Each player receives the same question and four choices.
 - Normal order: general knowledge, multiplication, logic. There are up to three
   normal rounds. A 2:0 ends the game early.
-- If tied after three rounds, play an additional deciding question.
+- If tied after three rounds, play up to three additional general-knowledge
+  deciding questions. The first round winner wins the duel; otherwise draw.
+- Each question lasts 20 seconds. Each player submits one locked answer.
+  Both wrong/missing or exactly equal server receipt times give no round point.
+- After three normal rounds, the higher score wins even if below two points.
 - The challenger proposes an integer stake from 3 to 10 season points, visible
   before acceptance. The winner receives that stake from the loser; quiz points
   only determine the duel winner. Territory points/owner income are unaffected.
@@ -18,9 +22,16 @@ the game is not yet active in Minigames.
   per member/lobby/night, independently of Chug Duel. Reuse the season-zone
   06:00 rollover. Explicit test seasons allow unlimited sequential quizzes.
 
-These are the user's selections in this chat, not active scoring code. The earlier
-items-only minigame proposal is superseded for Quiz Duel by the explicit stake
-decision. The existing Chug Duel exception and Focus Challenge are unaffected.
+Both sides must have the full available stake. Acceptance reserves both stakes.
+Reservations also cover other members spending from the same team purse; the
+same points cannot fund overlapping bets. No negative balances. Drink corrections
+that would remove committed or already-spent points are rejected atomically.
+In team lobbies only opposing teams may play; the transfer changes team scores.
+Individual quiz transfers count in personal lifetime points; team transfers
+do not become personal drink points. Completed-season wins include transfers.
+
+The earlier items-only proposal is superseded for Quiz Duel by this explicit
+stake decision. Chug Duel and Focus keep their existing independent rules.
 
 ## Content foundation
 
@@ -38,14 +49,28 @@ decision. The existing Chug Duel exception and Focus Challenge are unaffected.
 
 See [the preparation handoff](../QUIZ_QUESTION_PREPARATION.md) for code and verification.
 
-## Resolve before activating stakes and live play
+## Lifecycle and operational defaults
 
-- Final round duration; one locked answer per participant is the proposed default.
-- What happens if both miss the decider, timing is exactly equal, or play disconnects.
-- Invitation/setup expiry, cancellations after acceptance/start, and forfeits.
-- Sufficient balance, stake reservation, simultaneous bets and avoiding negative balances.
-- In team lobbies: whose purse funds the stake, eligible opponents and score attribution.
-- The service's authoritative answer-receipt time and the effect of network latency.
+- Each player readies on their own phone; the second ready starts a three-second
+  countdown. One fixed board shows countdown, question, answers and result.
+- A three-second result interval precedes each next countdown.
+- Invitation and accepted setup expire after ten minutes each. Before starting,
+  either participant may cancel an accepted game, releasing stakes and allowances.
+- After the common start, explicit forfeit transfers the stake to the opponent.
+  Refreshing, navigating away and losing connection do not emit a forfeit.
+- Reload restores the saved deck, answer locks and deadlines. Time continues.
+  Unanswered elapsed rounds resolve on recovery. Both absent produces a draw
+  after all six questions, without transferring points.
+- Deadlines are capped at season end, next local 06:00 and the scoring-window end
+  (normal seasons). An incomplete question at that boundary is void: draw/refund.
+  Started games still consume their two respective role allowances.
+- Normal seasons use the scoring window; explicit QA seasons may play any time
+  while active. QA removes nightly role limits, but still requires funded stakes.
+- Only one accepted/running minigame per participant; an open invitation does
+  not block playing. Team changes are blocked while a stake is reserved.
+- Fastest means PostgreSQL receipt time, including network delay. Client timers,
+  reported winners and claimed correctness never decide the result.
 
-These points do not block preparing question content. They must not be silently
-invented by an import script or a browser component when game/scoring is added.
+The contributor confirmed funds, team purse, forfeits, twenty seconds and the
+three-decider cap in this chat. The phase durations/expiry above are documented
+implementation defaults. See [implementation](../QUIZ_DUEL.md) for verification.

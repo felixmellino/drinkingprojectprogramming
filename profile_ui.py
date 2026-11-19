@@ -130,13 +130,15 @@ def show_stats(player_id):
     now = datetime.now(timezone.utc)
     finished_season_ids = set()
     entries = []
+    transfers = []
     for member in memberships:
         seasons = db.list_seasons_for_lobby(member.lobby_id)
         for season in seasons:
             if season_finished(season, now):
                 finished_season_ids.add(season.id)
             entries.extend(db.list_drink_entries(season.id))
-    stats = all_time_stats(memberships, entries, finished_season_ids=finished_season_ids)
+            transfers.extend(db.list_season_transfers(season.id))
+    stats = all_time_stats(memberships, entries, finished_season_ids=finished_season_ids, transfers=transfers)
     css = (Path(__file__).parent / "assets" / "profile_stats.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     cards = [

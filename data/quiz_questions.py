@@ -88,3 +88,17 @@ def prepare_decider(rng=None, *, used_ids=()) -> Question:
     if not available:
         raise ValueError('No unused general-knowledge questions remain.')
     return shuffled(rng.choice(available), rng)
+
+
+def prepare_duel_deck(duel_id: str, rng=None) -> list[dict]:
+    """Private three-round pack plus three distinct general-knowledge deciders."""
+    from core.quiz_duel import CONFIG
+    rng = rng or SystemRandom()
+    pack = prepare_pack(duel_id, rng)
+    questions = list(pack.rounds)
+    used = {questions[0].id}
+    for _ in range(CONFIG['max_deciders']):
+        question = prepare_decider(rng, used_ids=used)
+        questions.append(question)
+        used.add(question.id)
+    return [q.snapshot() for q in questions]
