@@ -32,6 +32,7 @@ lobby=Lobby(info['lid'],'Synthetic Time Duel','LOCAL')
 db.list_memberships_for_lobby=lambda _:members
 db.list_public_usernames=lambda:[dict(id=m.player_id,display_name=labels[m.id]) for m in members]
 db.list_chug_duels=lambda *args:[]
+db.quiz_status=lambda *args:dict(duels=[],incoming=True)
 
 
 render_minigames(info['players'][p],info['mids'][p],lobby,game)
