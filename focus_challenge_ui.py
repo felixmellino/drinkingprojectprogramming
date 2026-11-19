@@ -22,6 +22,9 @@ def render_focus(player, season):
     if test_mode(season) and info.get('unlimited') is not True:
         st.error('Test-mode Focus setup is required: apply migration 015 after 014.')
         return
+    # The RPC reads the current frozen season on every poll. A fragment can
+    # still hold an older page snapshot across a deployment or reconnect.
+    qa = info.get('unlimited') is True
     if attempt and (attempt['status'] == 'running'
                     or st.session_state.get('focus_start_request') == attempt['id']):
         # Recover a committed start whose reply was lost before the UI cleared it.
@@ -54,7 +57,6 @@ def render_focus(player, season):
     st.markdown('- **Reaction:** 5 trials, median ≤350 ms; no early taps.\n'
                 '- **Memory:** repeat a fresh 7-position sequence.\n'
                 '- **Precision:** 12 correct targets in 12 seconds; no wrong taps.')
-    qa = test_mode(season)
     reward = ('Test mode: play without uploads and replay after every attempt. '
               'Wins refresh a ×1.5 boost for 60 minutes. ' if qa else
               'Win once per evening: ×1.5 on your ordinary season and territory check-ins for 60 minutes. ')
@@ -65,6 +67,9 @@ def render_focus(player, season):
     if qa:
         st.caption('TEST SEASON · No check-ins required · Unlimited sequential attempts · Boosts never stack')
     else:
+        if type(threshold) is not int or threshold <= 0:
+            st.error('Focus availability could not be refreshed. Reload the page before starting a game.')
+            return
         st.progress(min(1.0, count / threshold), text=f'{count} accepted check-ins · next unlock at {threshold}')
     if info.get('boost_ends_at'):
         end = datetime.fromisoformat(info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
