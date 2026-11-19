@@ -54,8 +54,9 @@ text, no metrics, no manual refresh (screens update by themselves).
   Precision. No countdown clock and no second start button; each try shows its
   reaction time; an early tap turns the screen red with "FALSE START" (tap to
   continue; that try repeats); the result screen lists all tries and the average.
-- Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
-  only while locked, Start. No slogans or disclaimers on any game screen.
+- Reaction Duel (replaces the Reaction Test, R-M11): pick who and stake (1 to 10) as
+  pills, Challenge; invitations Accept / Decline; full-screen tap board for 3 tries;
+  then "Waiting for …" and a result with one line per round and +/− points. No slogans or disclaimers on any game screen.
   Everything on game screens is centred.
 - Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
   one card with Accept / Decline. Rules are unchanged.

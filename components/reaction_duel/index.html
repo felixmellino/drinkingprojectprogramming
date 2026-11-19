@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style id="tokens"></style><style>
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:16px var(--font-body);height:100%;overflow:hidden}
+[hidden]{display:none!important}main{height:100dvh;overflow:auto;padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px}
+h1{font:32px var(--font-display);margin:0}h2{font-size:24px;margin:8px 0}p{line-height:1.5;margin:8px 0}.muted{color:var(--text-muted)}
+section{width:100%;max-width:440px;margin:auto 0}.panel{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);padding:24px}
+button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);min-height:48px;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}button:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}button:disabled{cursor:wait}
+#react{height:min(48vh,330px);width:100%;font-size:32px;background:var(--surface);border:3px solid var(--border)}#react.go{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+#flash .big{font:700 64px var(--font-body);font-variant-numeric:tabular-nums;color:var(--accent-ink);margin:12px 0}#flash .try{font-size:18px;color:var(--text-muted);margin:0}
+#overview{white-space:pre-line;font-size:18px;line-height:1.7;font-variant-numeric:tabular-nums;margin:12px 0}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
+#falsestart{position:fixed;inset:0;z-index:5;background:#D92D20;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
+#falsestart h1{font:700 44px var(--font-body);letter-spacing:.02em;margin:0}#falsestart p{font-size:20px;margin:0}#falsestart .small{font-size:15px;opacity:.85;margin-top:18px}
+</style></head><body><main>
+<h1 id="title">Reaction Duel</h1>
+<section id="ready" class="panel" hidden><h2>Get ready</h2></section>
+<section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button></section>
+<section id="flash" class="panel" hidden role="status" aria-live="polite"><p id="flashTry" class="try"></p><div id="flashTime" class="big"></div></section>
+<section id="result" class="panel" hidden><h2 id="resultTitle"></h2><div id="overview" aria-label="Reaction times"></div><p id="resultText"></p></section>
+<div id="saving" role="status" aria-live="polite"></div>
+</main>
+<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p class="small">Tap to continue</p></div>
+<script>
+let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,showRed=false;
+const $=id=>document.getElementById(id),views=['ready','reaction','flash','result'];
+const send=(type,extra)=>window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*');
+function now(){return anchorEpoch+performance.now()-anchorMono;}
+function load(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
+function store(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+function emit(action,payload={}){
+ if(!game||game.status!=='running')return;
+ pending={attempt_id:game.id,revision:game.revision,action,payload};
+ store('reaction-event-'+game.id,pending);publish();render();
+}
+function publish(){if(!pending)return;sentKey=JSON.stringify(pending);send('streamlit:setComponentValue',{value:pending,dataType:'json'});}
+function selectView(name){views.forEach(v=>$(v).hidden=v!==name);}
+// Reaction times of this attempt: what the server saved, plus the tap still being saved.
+function times(){
+ const list=[...(game.reaction_ms||[])];
+ if(pending?.action==='reaction'&&game.phase==='reaction'&&list.length===game.step)list.push(pending.payload.elapsed_ms);
+ return list;
+}
+const average=list=>Math.round(list.reduce((a,b)=>a+b,0)/list.length);
+function render(){
+ if(!game)return;
+ const at=now(),c=game.config,ended=game.status!=='running';
+ $('falsestart').hidden=!showRed;
+ $('saving').textContent=pending?'Saving…':'';
+ if(ended){
+  selectView('result');
+  $('resultTitle').textContent='Your tries';
+  const done=times(),label=t=>t>=c.miss_ms?'missed':t+' ms',hit=done.filter(t=>t<c.miss_ms);
+  $('overview').textContent=done.map((t,i)=>'Try '+(i+1)+'   '+label(t)).join('\n')+(hit.length?'\nAverage   '+average(hit)+' ms':'');
+  $('resultText').textContent='Waiting for the result…';
+  return;
+ }
+ if(at>=Date.parse(game.expires_at)||(at>Date.parse(game.deadline)&&!pending)){
+  if(!pending)emit('fail');return;   // no tap in time: the try counts as missed
+ }
+ if(game.phase==='reaction_ready'){
+  selectView('ready');                       // no second button: the first try starts at once
+  if(!pending)emit('ready');return;
+ }
+ if(game.phase==='reaction'){
+  if(flash&&performance.now()<flash.until){
+   selectView('flash');
+   $('flashTry').textContent='Try '+flash.no+' of '+c.reaction_trials;$('flashTime').textContent=flash.ms+' ms';return;
+  }
+  selectView('reaction');$('trial').textContent='Try '+(game.step+1)+' of '+c.reaction_trials;
+  const go=at>=Date.parse(game.signal_at);$('react').classList.toggle('go',go);
+  $('react').textContent=pending?'…':go?'TAP NOW':'WAIT…';$('react').disabled=!!pending;return;
+ }
+}
+function reactionPress(){
+ if(pending||!game||game.status!=='running'||game.phase!=='reaction')return;
+ const elapsed=Math.floor(now()-Date.parse(game.signal_at));
+ // Before the signal, or faster than a human can react (a guess): red screen, the try repeats.
+ if(elapsed<game.config.reaction_min_ms){showRed=true;emit('false_start');return;}
+ if(elapsed>game.config.reaction_response_ms){emit('fail');return;}
+ flash={ms:elapsed,no:game.step+1,until:performance.now()+1400};
+ emit('reaction',{elapsed_ms:elapsed});
+}
+$('react').addEventListener('pointerdown',event=>{event.preventDefault();reactionPress();});
+const dismiss=()=>{showRed=false;render();};
+$('falsestart').addEventListener('pointerdown',event=>{event.preventDefault();dismiss();});
+$('falsestart').addEventListener('keydown',event=>{if(['Enter',' ','Escape'].includes(event.key)){event.preventDefault();dismiss();}});
+$('react').addEventListener('keydown',event=>{if(!event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();reactionPress();}});
+window.addEventListener('message',event=>{
+ if(event.source!==window.parent||event.data?.type!=='streamlit:render')return;
+ const args=event.data.args,a=args?.attempt;if(!a?.id||!Number.isInteger(a.revision))return;
+ $('tokens').textContent=args.tokens||'';
+ const next=a.id+':'+a.revision;
+ if(next!==signature){signature=next;anchorEpoch=Date.parse(a.server_now);anchorMono=performance.now();pending=null;sentKey='';}
+ game=a;
+ const saved=load('reaction-event-'+a.id,null);
+ if(saved&&saved.revision===a.revision&&a.status==='running'){pending=saved;if(JSON.stringify(saved)!==sentKey)publish();}
+ else{store('reaction-event-'+a.id,null);}
+ if(a.status!=='running'){pending=null;store('reaction-event-'+a.id,null);}
+ render();send('streamlit:setFrameHeight',{height:window.innerHeight});
+});
+setInterval(render,16);
+window.addEventListener('resize',()=>send('streamlit:setFrameHeight',{height:window.innerHeight}));
+send('streamlit:componentReady',{apiVersion:1});
+</script></body></html>

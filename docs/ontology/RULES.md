@@ -2,7 +2,37 @@
 
 ## Minigames
 
+### R-M11 Reaction Duel (replaces the solo Reaction Test, 19 November 2026)
+
+Decided by Felix (Location & Territories) on 19 November 2026; the Games tile that
+showed the solo Reaction Test (R-M06–R-M09) now opens the Reaction Duel.
+- A player challenges another lobby member (in team lobbies: a player of another
+  team) for a stake of **1–10 season points**. Both must have the full stake free;
+  acceptance reserves it on both accounts (same reservation as Quiz Duel).
+- After acceptance both play **three reaction tries** on their own phone within
+  15 minutes. Each try waits a random 3.5–6.5 s, then TAP NOW; the time counts if it is
+  100–2000 ms. A tap before the signal, or under 100 ms (a guess), is a false start:
+  red screen, the try repeats. No tap within 2 s = missed.
+- **Best of three:** try n is compared with the opponent's try n; the faster time wins
+  the round. More rounds wins. Equal rounds -> lower total time wins. Equal total -> draw.
+- The winner receives the stake from the loser (shared `quiz_transfers` ledger, so it
+  counts in standings and profile stats). A draw returns both stakes.
+- Time runs out: unplayed tries count as missed (a player who played beats one who did
+  not; nobody played -> draw). Invitations expire after 10 minutes.
+- Normal seasons: one accepted outgoing and one accepted incoming duel per 06:00-based
+  night. Test seasons: no nightly limit. Opens with the scoring window (test seasons:
+  any time while the season is active). One running Reaction Duel per player.
+- The opponent's times stay hidden until the duel ends; only their progress is shown.
+- Limit: like the old Reaction Test, the phone measures the time; the server checks
+  that it is 100–2000 ms and that the tap arrives after the signal.
+- Code: `migrations/025_reaction_duel.sql` (decides results), `core/reaction_duel.py`,
+  `reaction_duel_ui.py`, `components/reaction_duel/`. Old Focus attempts and boosts
+  stay in the database and in scoring history.
+
 ### R-M06 Focus Challenge unlocks and attempts
+
+**Replaced on the Games tab by R-M11 (19 November 2026).** Kept for history: old
+attempts and boosts still count in scoring.
 
 Players see this game as **Reaction Test** (renamed on screen 19 November
 2026); the rules, code and saved data keep the name Focus Challenge.
