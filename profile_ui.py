@@ -6,7 +6,7 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
-from core.profile_stats import all_time_stats, lobby_finished
+from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
 from friends_ui import dismiss_friends, show_friends
@@ -101,33 +101,33 @@ def show_security(player):
 
 def show_stats(player_id):
     st.header("My stats")
-    st.caption("All-time personal stats · Finished lobbies only")
+    st.caption("All-time personal stats · Active and finished lobbies")
     memberships = db.list_memberships_for_player(player_id)
     now = datetime.now(timezone.utc)
-    finished_memberships = []
+    finished_season_ids = set()
     entries = []
     for member in memberships:
         seasons = db.list_seasons_for_lobby(member.lobby_id)
-        if not lobby_finished(seasons, now):
-            continue
-        finished_memberships.append(member)
         for season in seasons:
+            if season_finished(season, now):
+                finished_season_ids.add(season.id)
             entries.extend(db.list_drink_entries(season.id))
-    stats = all_time_stats(finished_memberships, entries)
+    stats = all_time_stats(memberships, entries, finished_season_ids=finished_season_ids)
     css = (Path(__file__).parent / "assets" / "profile_stats.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     cards = [
-        ("Total points", format_points(stats.points), "Your points from finished lobbies"),
+        ("Total points", format_points(stats.points), "Your points across all lobbies"),
         ("Drinks", str(stats.drinks), "Accepted check-ins"),
-        ("Lobbies played", str(stats.lobbies), "Finished lobbies you scored in"),
-        ("Total Wins", str(stats.wins), "Individual and team victories"),
+        ("Lobbies played", str(stats.lobbies), "Lobbies you scored in"),
+        ("Total Wins", str(stats.wins), "Completed season victories"),
     ]
-    markup = '<section class="profile-stats" aria-label="All-time statistics from finished lobbies">'
+    markup = '<section class="profile-stats" aria-label="All-time statistics from active and finished lobbies">'
     for label, value, detail in cards:
         markup += (f'<article class="profile-stat"><span>{escape(label)}</span>'
                    f'<strong>{escape(value)}</strong><small>{escape(detail)}</small></article>')
     st.markdown(markup + "</section>", unsafe_allow_html=True)
     st.caption("Your drink points plus personal territory-owner bonuses from individual lobbies. "
-               "Team scores and team owner bonuses are excluded. Active lobbies count after they finish.")
+               "Team scores and team owner bonuses are excluded. Accepted check-ins count immediately; "
+               "wins count only after a season ends.")
     if not stats.lobbies:
-        st.info("No scored drinks in finished lobbies yet. Your totals will appear here after a lobby finishes.")
+        st.info("No scored drinks yet. Your totals will appear here after your first accepted scoring check-in.")
