@@ -1,6 +1,6 @@
 """Fresh Streamlit sessions share account preferences, never session context."""
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 from streamlit.testing.v1 import AppTest
 import pytest
@@ -111,7 +111,9 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     monkeypatch.setattr('shared.ask_for_location', lambda: None)
     navigation = Mock()
     monkeypatch.setattr('shared.bottom_navigation', navigation)
-    monkeypatch.setattr(db, 'get_player', lambda pid: SimpleNamespace(email='me@example.com', pin_hash='credential'))
+    monkeypatch.setattr(db, 'get_player', lambda pid: SimpleNamespace(id=pid, email='me@example.com', pin_hash='credential'))
+    invite_count = Mock(return_value=0)
+    monkeypatch.setattr(db, 'pending_minigame_invite_count', invite_count)
     monkeypatch.setattr(db, 'list_players', lambda: [])
     monkeypatch.setattr('shared.get_territories', lambda: [])
     for _ in range(2):  # Discard the entire session, as on another device/restart.
@@ -124,6 +126,7 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert not any('Choose a lobby' in i.value for i in at.info)
         assert any('<h1 class="sr-only">Leaderboard</h1>' in m.value for m in at.markdown)
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
+    assert invite_count.call_args_list == [call('me', ui['seasons']['old'][0].id)] * 2
 
 
 @pytest.mark.parametrize(

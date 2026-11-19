@@ -18,7 +18,11 @@ Open Chug Duel replaces the list with the existing invitation, acceptance,
 shared capture, allowance and history controls, like a page on a phone.
 ‹ All games returns to the list without cancelling invitations or changing
 any allowance. The hub polls invitations and shows a white status pill on the
-Chug Duel tile when a response is waiting.
+Chug Duel tile when a response is waiting. A small count in the upper-right
+corner of the Games tab icon shows pending incoming Chug, Quiz and Time Duel
+invitations in the selected season. The count refreshes while the app is open,
+including on other tabs. Opening Games keeps the badge visible while invites
+are pending. The badge disappears when the count reaches zero.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
 checked before the list is shown. The catalogue does not mount a continuous

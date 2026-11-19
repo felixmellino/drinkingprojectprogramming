@@ -1,9 +1,11 @@
 """Navigation uses native page switches without dropping the signed-in identity."""
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 import streamlit as st
+from httpx import RequestError
 from streamlit.testing.v1 import AppTest
 
 
@@ -31,6 +33,35 @@ def test_check_in_plus_sits_in_the_middle_of_five_tabs():
     from app_navigation import DESTINATIONS
     assert len(DESTINATIONS) == 5
     assert DESTINATIONS[2][0] == "checkin"
+
+
+def test_games_invite_badge_follows_the_selected_season_and_hides_at_zero(monkeypatch):
+    count = Mock(side_effect=[2, RequestError("service unavailable"), 1, 0])
+    monkeypatch.setattr("app_navigation.db.pending_minigame_invite_count", count)
+    app = AppTest.from_string(
+        "from app_navigation import bottom_navigation, minigame_invite_badge\n"
+        "bottom_navigation('map')\nminigame_invite_badge()"
+    )
+    app.session_state["player_id"] = "player"
+    app.session_state["current_season_id"] = "first"
+    app.run()
+    count.assert_not_called()  # The player must have passed the account check.
+    app.session_state["_validated_player"] = SimpleNamespace(id="player")
+
+    app.run()
+    assert 'content: "2" / "2 pending minigame invites"' in app.get("html")[0].value
+    assert any(button.label == "Games" for button in app.button)
+    count.assert_called_with("player", "first")
+
+    app.session_state["current_season_id"] = "second"
+    app.run()
+    assert not app.exception and not app.get("html")
+    count.assert_called_with("player", "second")
+
+    app.run()
+    assert 'content: "1" / "1 pending minigame invite"' in app.get("html")[0].value
+    app.run()
+    assert not app.get("html")
 
 
 def test_every_tab_icon_exists_in_outline_and_filled_form():

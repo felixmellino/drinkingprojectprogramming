@@ -503,6 +503,12 @@ confirmed one reaction, a 220 ms limit and three-stage flow; status RPC checks
 confirmed zero-upload, unlimited play in all nine populated test seasons.
 Real-phone difficulty calibration and complete deployed gameplay still need verification.
 
+### Minigame invite badge
+
+Apply [migration 023](migrations/023_minigame_invite_badge.sql) after the Chug,
+Quiz and Time Duel migrations. The Games tab checks every 10 seconds for pending
+incoming invitations in the selected season while the app is open.
+
 ### Leaving and rejoining lobbies
 
 Open a lobby and choose **Leave lobby → Confirm leave**. Scores remain in lobby

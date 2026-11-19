@@ -11,7 +11,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import streamlit as st
+from httpx import RequestError
+from postgrest.exceptions import APIError
 
+import data.db as db
 from theme import button_icons, icon_css, icon_url  # noqa: F401  (icon_url is used by the tests)
 
 ASSETS = Path(__file__).parent / "assets"
@@ -80,6 +83,29 @@ def _styles(active: str | None) -> str:
     if active in {item[0] for item in DESTINATIONS} and active != "checkin":
         css += f".st-key-wego_nav_{active} button{{color:var(--accent-ink);}}"
     return css
+
+
+@st.fragment(run_every="10s")
+def minigame_invite_badge() -> None:
+    """Refresh the Games badge without rerunning the rest of the page."""
+    player = st.session_state.get("_validated_player")
+    season_id = st.session_state.get("current_season_id")
+    if not player or player.id != st.session_state.get("player_id") or not season_id:
+        return
+    try:
+        count = db.pending_minigame_invite_count(player.id, season_id)
+    except (APIError, RuntimeError, OSError, RequestError):
+        return  # Retry on the next refresh without interrupting navigation.
+    if count:
+        number = str(count) if count <= 99 else "99+"
+        label = "invite" if count == 1 else "invites"
+        # Keep this element inside the fragment so Streamlit removes it at zero.
+        st.html(
+            '<span hidden class="wego-invite-badge-style"></span>'
+            "<style>.st-key-wego_nav_minigames button::after {"
+            f'content: "{number}"; content: "{number}" / "{count} pending minigame {label}";'
+            "}</style>"
+        )
 
 
 def bottom_navigation(active: str | None = None, *, navigate=None) -> None:

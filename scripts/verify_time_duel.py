@@ -14,12 +14,50 @@ from tests.time_postgres import LocalPostgres
 from core.time_duel import CONFIG
 from core.scoring_v1 import replay_season
 from data.db import _row_to_drink_entry
+from data.quiz_questions import prepare_duel_deck
 
 
 def rejected(call,reason):
     try:call()
     except psycopg.Error as e:assert reason in str(e),str(e)
     else:raise AssertionError('Expected '+reason)
+
+
+def verify_invite_badge(f):
+    migration = Path(__file__).resolve().parents[1] / 'migrations/023_minigame_invite_badge.sql'
+    f.conn.execute(migration.read_text().replace('statement_timestamp()', 'public.test_now()'))
+    lobby, other = f.lobby(), f.lobby()
+    season, recipient = lobby['sid'], lobby['mids'][1]
+
+    def count(player, selected_season=season):
+        return f.rpc('select pending_minigame_invite_count(%s,%s) as n',
+                     (f.players[player], selected_season))['n']
+
+    time_duel = f.invite(lobby)
+    quiz = uuid4()
+    f.checkin(lobby, 2, size='large')
+    f.checkin(lobby, 1, size='large')
+    f.rpc('select invite_quiz_duel(%s,%s,%s,%s,%s,%s)',
+          (f.players[2], season, quiz, recipient, 3, Jsonb(prepare_duel_deck(str(quiz)))))
+    chug = uuid4()
+    f.rpc('select * from invite_chug_duel(%s,%s,%s,%s,%s,%s)',
+          (f.players[3], season, chug, recipient, 'beer', 'small'))
+    assert count(1) == 3
+    assert count(0) == count(2) == count(3) == count(6) == count(1, other['sid']) == 0
+    f.conn.execute('set role anon')
+    try:
+        rejected(lambda: f.conn.execute('select pending_minigame_invite_count(%s,%s)',
+                                        (f.players[1], season)), 'permission denied')
+    finally:
+        f.conn.execute('reset role')
+    f.act(time_duel, 1, 'decline')
+    assert count(1) == 2
+    f.rpc('select quiz_action(%s,%s,%s,%s,%s)', (f.players[1], quiz, 'accept', None, None))
+    assert count(1) == 1
+    f.advance(600)
+    assert count(1) == 0
+    assert f.conn.execute('select status from chug_duels where id=%s', (chug,)).fetchone()['status'] == 'invited'
+    print('PASS: Games badge counts all three invite types, scopes access, and excludes handled and expired invites')
 
 
 def verify_invitations(f):
@@ -226,4 +264,8 @@ def verify(f):
 if __name__=='__main__':
     os.environ['LC_ALL']='C'
     with TemporaryDirectory(prefix='wego-time-',dir='/private/tmp') as directory:
-        with LocalPostgres(directory) as server:verify(Fixture(server))
+        with LocalPostgres(directory) as server:
+            fixture = Fixture(server)
+            verify(fixture)
+            fixture.clock('2026-11-19T20:00:00Z')
+            verify_invite_badge(fixture)
