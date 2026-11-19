@@ -18,6 +18,7 @@ from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
 from drink_entry_ui import page_header
 from theme import button_icons, page_subtitle
+from parallel import run_parallel
 from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
@@ -196,11 +197,11 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('quiz_invitation_id', None)
     st.session_state['minigames_context'] = context
     try:
-        members = db.list_memberships_for_lobby(lobby.id)
+        members, usernames = run_parallel(lambda: db.list_memberships_for_lobby(lobby.id), db.list_public_usernames)
         own = next((m for m in members if m.id == member and m.player_id == player), None)
         if own is None:
             raise PermissionError("Your membership is no longer available.")
-        names = {p["id"]: p["display_name"] for p in db.list_public_usernames()}
+        names = {p["id"]: p["display_name"] for p in usernames}
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
         _error(error)
         return

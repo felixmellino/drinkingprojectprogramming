@@ -99,3 +99,56 @@ def test_membership_query_scopes_actor_member_lobby_and_embedded_season(monkeypa
     assert db.membership_context('player', 'member', 'lobby', 'foreign-season')[1] is None
     query.execute.return_value = SimpleNamespace(data=[])
     assert db.membership_context('stranger', 'member', 'lobby', 'season') == (None, None)
+
+
+MEMBERSHIP_SCRIPT = '''from shared import require_login, require_active_membership
+require_login()
+st.success("%s" % (require_active_membership(),))
+'''
+
+
+def test_membership_check_is_read_together_with_the_account_check(auth, monkeypatch):
+    import app_navigation
+    player, reader = auth
+    monkeypatch.setattr(app_navigation, 'current_page', lambda: 'map')
+    member = LobbyMembership('member', 'player', 'lobby', datetime.now(timezone.utc))
+    context = Mock(return_value=(member, season()))
+    monkeypatch.setattr(db, 'membership_context', context)
+    page = open_page(MEMBERSHIP_SCRIPT, player)
+    assert not page.exception and reader.call_count == 1
+    context.assert_called_once_with('player', 'member', 'lobby', 'season')   # once, not twice
+    assert '_membership_prefetch' not in page.session_state                    # used up
+
+
+def test_prefetch_only_runs_on_pages_that_need_a_lobby(auth, monkeypatch):
+    import app_navigation
+    player, _ = auth
+    monkeypatch.setattr(app_navigation, 'current_page', lambda: 'profile')
+    context = Mock(side_effect=AssertionError('Profile never needs the lobby check'))
+    monkeypatch.setattr(db, 'membership_context', context)
+    page = open_page('from shared import require_login\nrequire_login()\nst.success("ok")', player)
+    assert not page.exception and page.success[0].value == 'ok'
+
+
+def test_failed_prefetch_falls_back_to_the_normal_check(auth, monkeypatch):
+    import app_navigation
+    from httpx import RequestError
+    player, _ = auth
+    monkeypatch.setattr(app_navigation, 'current_page', lambda: 'map')
+    member = LobbyMembership('member', 'player', 'lobby', datetime.now(timezone.utc))
+    context = Mock(side_effect=[RequestError('offline'), (member, season())])
+    monkeypatch.setattr(db, 'membership_context', context)
+    page = open_page(MEMBERSHIP_SCRIPT, player)
+    assert not page.exception and context.call_count == 2 and page.success
+
+
+def test_revoked_account_discards_the_prefetched_membership(auth, monkeypatch):
+    import app_navigation
+    player, reader = auth
+    reader.return_value = Player('player', 'Mia', 'Mia', 'S', 'changed-password', player.email)
+    monkeypatch.setattr(app_navigation, 'current_page', lambda: 'map')
+    member = LobbyMembership('member', 'player', 'lobby', datetime.now(timezone.utc))
+    monkeypatch.setattr(db, 'membership_context', Mock(return_value=(member, season())))
+    page = open_page(MEMBERSHIP_SCRIPT, player)
+    assert not page.exception and not page.success and any('Signed out' in x.value for x in page.info)
+    assert '_membership_prefetch' not in page.session_state
