@@ -339,7 +339,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
     members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
-    monkeypatch.setattr(db,"list_memberships_for_player",lambda _:list(members))
+    monkeypatch.setattr(db,"list_memberships_for_player",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"insert_lobby",lobbies.append)
     monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))
     monkeypatch.setattr(db,"list_drink_entries",lambda _:[])
@@ -351,7 +351,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
         games.append(game)
         return game
     monkeypatch.setattr(db,"start_scoring_season",start)
-    monkeypatch.setattr(db,"list_memberships_for_lobby",lambda _:list(members))
+    monkeypatch.setattr(db,"list_memberships_for_lobby",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"list_public_usernames",lambda: [{"id": "player", "display_name": "Player"}])
     monkeypatch.setattr(db,"list_friendships",lambda _:[])
     page=AppTest.from_file(ROOT/"pages/2_Lobby.py", default_timeout=10).run()

@@ -87,7 +87,7 @@ with st.container(key="game_hud"):
 
 with st.container(key="game_map"):
     map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
-                      pictures=pictures, team_mode=team_mode,
+                      pictures=pictures,
                       context=f"{lobby_id}:{season_id}:{membership_id}")
 
 # Slim sheet over the bottom of the map: where you are, and the full

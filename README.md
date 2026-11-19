@@ -498,6 +498,11 @@ the same membership, history, team and game limits. Team slots stay reserved;
 accepted/running duels and running Focus attempts block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
+Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
+[`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
+It is **not applied** to Supabase yet. It passed a local in-memory Postgres
+check (creator/other/retry, history kept); apply it before deploying this code.
+
 Before using this feature, the Data owner applies
 [`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**
 and `012_player_lobby_choices.sql`. Apply the migration before deploying this

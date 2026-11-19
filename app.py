@@ -1,4 +1,4 @@
-"""WeGoPub entry point -- nav shell only, no rules, no DB calls.
+"""WeGoPub entry point: log in, then open on the Map -- no rules, no DB calls.
 
 Actual login/account creation lives in account_ui.py, to keep this
 file small and avoid everyone colliding on it as the team adds pages.
@@ -7,16 +7,10 @@ file small and avoid everyone colliding on it as the team adds pages.
 import streamlit as st
 
 from shared import require_login
-from theme import apply_theme, wordmark
+from theme import apply_theme
 
 st.set_page_config(page_title="WeGoPub", page_icon=":material/sports_bar:")
 apply_theme()
 
-require_login()  # shows its own wordmark on the login screen when logged out
-wordmark()
-st.success(f"Logged in as **{st.session_state['player_display_name']}**")
-if "current_lobby_name" in st.session_state:
-    st.caption(f"Current lobby: **{st.session_state['current_lobby_name']}**")
-else:
-    st.info("Head to the Lobby page to create or join a lobby.")
-st.caption("Use the + below to add a check-in, or open Leaderboard and Photo history.")
+require_login()  # shows the login screen (with the wordmark) until someone is logged in
+st.switch_page("pages/5_Map.py")  # the start screen is the Map

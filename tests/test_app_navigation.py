@@ -50,3 +50,72 @@ def test_lobby_and_photo_history_open_from_the_profile_menu(monkeypatch):
         "    if st.button(label, key=key):\n"
         "        st.switch_page(page)").run()
     assert [b.label for b in at.button] == ["Lobbies", "Photo history"]
+
+
+class Where:
+    page = None
+
+
+@pytest.fixture
+def where(monkeypatch):
+    import app_navigation
+    Where.page = None
+    monkeypatch.setattr(app_navigation, "current_page", lambda: Where.page)
+    return Where
+
+
+SCRIPT = "from app_navigation import bottom_navigation\nbottom_navigation('map')"
+
+
+def back_buttons(at):
+    return [b for b in at.button if b.label == "Back"]
+
+
+def test_back_returns_to_the_previous_page_then_to_the_map(monkeypatch, where):
+    switch = Mock()
+    monkeypatch.setattr(st, "switch_page", switch)
+    where.page = "map"
+    at = AppTest.from_string(SCRIPT).run()
+    assert not back_buttons(at)                      # nothing to go back to on the start screen
+    where.page = "standings"
+    at.run()
+    assert at.session_state["_nav_history"] == ["map"] and len(back_buttons(at)) == 1
+    back_buttons(at)[0].click().run()
+    assert Path(switch.call_args.args[0]) == Path(__file__).resolve().parents[1] / "pages" / "5_Map.py"
+    assert at.session_state["_nav_history"] == [] and at.session_state["_nav_going_back"] is True
+    where.page = "map"                               # the Map has loaded again
+    at.run()
+    assert at.session_state["_nav_history"] == [] and not back_buttons(at)
+
+
+def test_back_is_on_every_page_and_falls_back_to_the_map(monkeypatch, where):
+    switch = Mock()
+    monkeypatch.setattr(st, "switch_page", switch)
+    for page in ["profile", "lobby", "check_in", "standings", "check_in_photos", "minigames"]:
+        where.page = page
+        at = AppTest.from_string(SCRIPT).run()       # fresh session: no history yet
+        assert len(back_buttons(at)) == 1, page
+        back_buttons(at)[0].click().run()
+        assert Path(switch.call_args.args[0]).name == "5_Map.py", page
+
+
+def test_history_follows_navigation_and_is_capped(monkeypatch, where):
+    monkeypatch.setattr(st, "switch_page", Mock())
+    at = AppTest.from_string(SCRIPT)
+    for page in ["map", "standings", "profile", "lobby", "profile"]:
+        where.page = page
+        at.run()
+    assert at.session_state["_nav_history"] == ["map", "standings", "profile", "lobby"]
+    for i in range(30):
+        where.page = "map" if i % 2 else "profile"
+        at.run()
+    assert len(at.session_state["_nav_history"]) == 20
+
+
+def test_app_opens_on_the_map_once_logged_in(monkeypatch):
+    switch = Mock()
+    monkeypatch.setattr(st, "switch_page", switch)
+    monkeypatch.setattr("shared.require_login", lambda: "player")
+    at = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py").run()
+    assert not at.exception
+    switch.assert_called_once_with("pages/5_Map.py")
