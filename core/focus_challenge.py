@@ -1,6 +1,5 @@
 """Focus Challenge's frozen configuration and safe component messages."""
 from copy import deepcopy
-from math import isfinite
 
 FOCUS_RULES = {
     'version': 1, 'first_unlock': 5, 'retry_step': 2,
@@ -57,12 +56,4 @@ def component_action(value, attempt):
         ms = payload.get('elapsed_ms')
         if type(ms) is int and 0 <= ms <= 2000:
             return action, {'elapsed_ms': ms}
-    if action == 'memory' and type(payload.get('cell')) is int and 0 <= payload['cell'] <= 8:
-        return action, {'cell': payload['cell']}
-    if action == 'precision':
-        taps = payload.get('taps')
-        if (isinstance(taps, list) and 1 <= len(taps) <= 12
-                and all(type(t) is int and isfinite(t) and 0 <= t <= 12000 for t in taps)
-                and all(a < b for a, b in zip(taps, taps[1:]))):
-            return action, {'taps': taps}
     return None

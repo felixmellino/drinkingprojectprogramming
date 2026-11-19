@@ -69,10 +69,16 @@ def test_untrusted_component_messages_cannot_supply_a_win_or_invalid_evidence(va
 
 
 @pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('reaction',{'elapsed_ms':350}),
- ('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
+ ])
 def test_current_attempt_accepts_only_bounded_stage_evidence(action,payload):
     value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
     assert component_action(value, {'id':'a','revision':2}) == (action,payload)
+
+
+@pytest.mark.parametrize('action,payload', [('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
+def test_removed_memory_and_precision_stages_are_no_longer_accepted(action,payload):
+    value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
+    assert component_action(value, {'id':'a','revision':2}) is None
 
 
 def test_saved_focus_award_replays_exact_income_ownership_and_corrections():

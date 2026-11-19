@@ -46,10 +46,10 @@ text, no metrics, no manual refresh (screens update by themselves).
   drinks and taps Start duel (location must be ready). Used allowances show as
   one grey line ("You already challenged tonight."). The form is hidden while a
   duel is open.
-- Reaction Test play (19 November 2026): no countdown clock; each try shows its
+- Reaction Test play (19 November 2026): only reaction tries, no Memory or
+  Precision. No countdown clock and no second start button; each try shows its
   reaction time; an early tap turns the screen red with "FALSE START"; the
-  Memory/Precision screens keep a one-line summary of the reaction times and
-  their average, and the result screen lists all tries and the average.
+  result screen lists all tries and the average.
 - Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
   only while locked, Start. No slogans or disclaimers on any game screen.
   Everything on game screens is centred.

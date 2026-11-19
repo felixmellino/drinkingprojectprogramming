@@ -1,7 +1,10 @@
--- Apply after 017. The reaction median was hard-wired to the 3rd value (right for
--- five tries). Seasons created from now on play three reaction tries, so take the
--- middle value of however many tries the season froze: (n+1)/2. Five tries still
--- give the 3rd value, so running seasons keep exactly their old rule.
+-- Apply after 017. The Reaction Test is now only the reaction tries.
+-- 1) Passing the median check wins at once (boost, same rule as before); Memory and
+--    Precision are no longer played. Attempts already waiting in those stages simply
+--    expire or end; their saved history is untouched.
+-- 2) The median was hard-wired to the 3rd value (right for five tries). New seasons
+--    play three tries, so take the middle value of however many tries the season
+--    froze: (n+1)/2. Five tries still give the 3rd value.
 begin;
 create or replace function public.focus_attempt_action(actor_player uuid,target_attempt uuid,expected_revision integer,
  selected_action text,evidence jsonb) returns jsonb language plpgsql set search_path=public as $$
@@ -43,9 +46,8 @@ begin
     update public.focus_attempts set status='failed',reason='reaction_slow',completed_at=at_time,
       reaction_ms=responses,revision=revision+1 where id=a.id;
    else
-    update public.focus_attempts set phase='memory',step=0,reaction_ms=responses,
-      signal_at=at_time+make_interval(secs=>((cfg->>'memory_flash_ms')::numeric+(cfg->>'memory_gap_ms')::numeric)*(cfg->>'memory_length')::numeric/1000),
-      deadline=at_time+make_interval(secs=>(((cfg->>'memory_flash_ms')::numeric+(cfg->>'memory_gap_ms')::numeric)*(cfg->>'memory_length')::numeric+(cfg->>'memory_input_ms')::numeric)/1000),
+    update public.focus_attempts set status='passed',reaction_ms=responses,completed_at=at_time,
+      boost_ends_at=least(at_time+make_interval(secs=>(cfg->>'boost_seconds')::integer),public._focus_window_end(s,at_time)),
       revision=revision+1 where id=a.id;
    end if;
   else

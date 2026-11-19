@@ -30,21 +30,18 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-Pass reaction, memory and precision consecutively. Reaction has three tries
-(five in seasons created before 19 November 2026, which keep their frozen rules),
-with the middle time at most 350 ms and no early taps. Every try shows its
-reaction time; an early tap is a false start (red screen, attempt over); the
-result screen lists all times and their average. There is no countdown clock. Memory requires reproducing seven
-positions exactly. Precision requires twelve correct taps within twelve seconds;
-a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
+The game is only the reaction tries (changed 19 November 2026, contributor
+request; Memory and Precision were removed). Passing wins the boost at once.
+There are three tries (five in seasons created earlier, which keep their frozen
+count) and the middle time must be at most 350 ms. Every try shows its reaction
+time. A tap before the signal is a false start: red screen, attempt over. The
+result screen lists all times and their average. There is no countdown clock and
+no second start button. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
-Each new attempt receives private server-generated random material: independent
-1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
-and new valid precision positions. Refreshing cannot reroll it. Memory flashes
-650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
-Precision targets are 52 px with consistent normalized margins and minimum
-movement; no colour-only matching is required.
+Each new attempt receives private server-generated random waits of 1500–4500 ms
+between tries. Refreshing cannot reroll them. Attempts that were waiting in the
+removed stages when this changed simply expire; saved history is untouched.
 
 ### R-M08 Focus Challenge interruptions and deadlines
 
