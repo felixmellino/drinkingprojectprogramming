@@ -9,6 +9,9 @@ Quiz Duel (100 English questions, generated multiplication/logic, reserved
 3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
 Apply migration 016 after 014 to activate its database service; no question import is needed.
 
+Time Duel (three hidden-timer rounds on two phones, one-hour ×1.25 season bonus):
+[implementation, local verification and migration 017](docs/TIME_DUEL.md).
+
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**
@@ -307,7 +310,7 @@ four building blocks, and the team's workflow rules.
   the QA replay UI update requires deployment with the new Python code.
   Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
   [CHUG_DUEL.md](docs/CHUG_DUEL.md).
-  Focus Challenge is implemented; migrations 014 and 015 activate existing explicit test seasons and new normal seasons. Other minigames remain future work. See the build order in
+  Focus Challenge is implemented; migrations 014 and 015 activate existing explicit test seasons and new normal seasons. Quiz Duel and Time Duel are implemented with activation notes linked above. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season

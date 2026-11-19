@@ -44,6 +44,7 @@ def ui(monkeypatch):
     monkeypatch.setattr(rules, "current_time", lambda: state["now"])
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
     monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': None})
+    monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': None})
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
@@ -112,6 +113,19 @@ def test_active_focus_boost_is_in_checkin_preview(ui, monkeypatch):
     assert any('Focus boost ×1.5 active' in item.value for item in page.success)
     assert any('+4.5 season' in item.value for item in page.info)
 
+
+
+@pytest.mark.parametrize('focus,season_points,territory_points', [(False,'3.75','3'),(True,'4.5','4.5')])
+def test_time_duel_preview_keeps_territory_award_and_uses_higher_boost(ui,monkeypatch,focus,season_points,territory_points):
+    active={'boost_ends_at':(START+timedelta(hours=1)).isoformat()}
+    monkeypatch.setattr(db,'time_status',lambda *args:active)
+    if focus:
+        monkeypatch.setattr(db,'focus_status',lambda *args:active)
+    page=open_checkin()
+    radio(page,'Size').set_value('large').run()
+    assert not page.exception
+    assert any('Time Duel ×1.25 season boost active' in item.value for item in page.success)
+    assert any(f'+{season_points} season' in item.value and f'+{territory_points} territory' in item.value for item in page.info)
 
 def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     state, _ = ui

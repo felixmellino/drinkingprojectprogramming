@@ -93,6 +93,8 @@ class DrinkEntry:
     duel_transfer_to: str | None = None  # saved winner's competitor (team or member)
     duel_transfer_order: int | None = None  # result event, after both base entries
     focus_attempt_id: str | None = None  # immutable multiplier provenance, ordinary entries only
+    time_duel_id: str | None = None  # immutable source of the season-only Time Duel boost
+    time_bonus: int | float = 0  # excludes territory, owner income and lifetime points
     absent_member_ids: tuple[str, ...] = ()  # membership state at acceptance; retained for replay
 
 

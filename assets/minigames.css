@@ -82,3 +82,15 @@ body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!importa
   border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; }
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetricLabel"] p { font-size:0.8rem; color:var(--text-muted); }
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetricValue"] { font-family:var(--font-body); font-weight:600; font-size:1.05rem; }
+
+/* Time Duel phone stage. */
+.st-key-time_stage {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
+ max-width:none!important;height:100dvh!important;margin:0!important;padding:0!important;background:var(--bg);overflow:hidden;}
+.st-key-time_stage iframe {display:block;width:100vw!important;height:100dvh!important;border:0;}
+html:has(.st-key-time_stage),body:has(.st-key-time_stage),
+body:has(.st-key-time_stage) [data-testid="stMain"] {overflow:hidden!important;overscroll-behavior:none;}
+body:has(.st-key-time_stage) [data-testid="stHeader"],body:has(.st-key-time_stage) [data-testid="stSidebar"],
+body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
+.st-key-time_stage [data-testid="stAlert"] {position:fixed;bottom:60px;left:16px;right:16px;z-index:100002;}
+
+.game-tile-time {background:linear-gradient(150deg,#637CDC,#3A4592);}

@@ -170,6 +170,7 @@ def corrected_entry(entry: DrinkEntry, season: Season, drink_type: str, size: st
         raise CheckinRejected("invalid_selection") from None
     return replace(entry, drink_type=drink_type, size=size, amount=volume_for(drink_type, size, rules_for(season)),
                    points_awarded=points * (1.5 if entry.focus_attempt_id else 1),
+                   time_bonus=points * 0.25 if entry.time_duel_id and not entry.focus_attempt_id else 0,
                    corrected_at=utc(now), revision=entry.revision + 1)
 
 
@@ -243,7 +244,7 @@ def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
         if recipient:
             state.season_quarters[recipient] = state.season_quarters.get(recipient, 0) + bonus
             state.reached[recipient] = (index, 0)
-        state.season_quarters[member] = state.season_quarters.get(member, 0) + points * 4
+        state.season_quarters[member] = state.season_quarters.get(member, 0) + (points + entry.time_bonus) * 4
         state.reached[member] = (index, 1)
         if territory:
             totals = state.territory_totals.setdefault(territory, {})

@@ -22,6 +22,7 @@ from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
 from quiz_duel_ui import render_quiz
+from time_duel_ui import render_time
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
@@ -69,7 +70,7 @@ def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
 
 
 # Placeholder tiles after the playable games; each becomes a real game later.
-COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
+COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2)]
 
 
 def _game_cards(member, duels, *, service_available=True, focus_available=False, focus_qa=False):
@@ -99,6 +100,9 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False,
             st.rerun()
         if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points'):
             st.session_state['minigame_selected'] = 'quiz'
+            st.rerun()
+        if _game_tile('time', 'time-duel', 'Time Duel', '1 vs 1 · Win ×1.25 for an hour'):
+            st.session_state['minigame_selected'] = 'time'
             st.rerun()
         for key, art, title in COMING_SOON:
             _game_tile(key, art, title, 'Coming soon', playable=False, real=False)
@@ -194,6 +198,8 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('focus_start_request', None)
         st.session_state.pop('quiz_focused_id', None)
         st.session_state.pop('quiz_invitation_id', None)
+        st.session_state.pop('time_focused_id', None)
+        st.session_state.pop('time_invitation_id', None)
     st.session_state['minigames_context'] = context
     try:
         members = db.list_memberships_for_lobby(lobby.id)
@@ -206,9 +212,12 @@ def render_minigames(player, member, lobby, season):
         return
     labels = {m.id: names.get(m.player_id, "Lobby member") for m in members}
 
-    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') == 'quiz' else "3s")
+    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') in {'quiz', 'time'} else "3s")
     def live_duels():
         now = current_time()
+        if st.session_state.get('minigame_selected') == 'time':
+            render_time(player, member, lobby, season, members, labels)
+            return
         if st.session_state.get('minigame_selected') == 'quiz':
             render_quiz(player, member, lobby, season, members, labels)
             return
