@@ -119,6 +119,16 @@ def test_active_focus_boost_is_in_checkin_preview(ui, monkeypatch):
     assert any('+4.5 season' in item.value for item in page.info)
 
 
+def test_partial_focus_boost_is_shown_in_season_and_territory_preview(ui,monkeypatch):
+    monkeypatch.setattr(db,'focus_status',lambda *args:{
+        'boost_ends_at':(START+timedelta(hours=1)).isoformat(),'boost_multiplier':1.25})
+    page=open_checkin()
+    radio(page,'Size').set_value('large').run()
+    assert not page.exception
+    assert any('Focus boost ×1.25 active' in item.value for item in page.success)
+    assert any('+3.75 season' in item.value and '+3.75 territory' in item.value for item in page.info)
+
+
 
 @pytest.mark.parametrize('focus,season_points,territory_points', [(False,'3.75','3'),(True,'4.5','4.5')])
 def test_time_duel_preview_keeps_territory_award_and_uses_higher_boost(ui,monkeypatch,focus,season_points,territory_points):

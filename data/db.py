@@ -347,13 +347,14 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
         duel_transfer_order=r.get("duel_transfer_order"),
         focus_attempt_id=r.get('focus_attempt_id'),
+        focus_multiplier=_score_number(r['focus_multiplier']) if r.get('focus_multiplier') is not None else None,
         time_duel_id=r.get('time_duel_id'), time_bonus=_score_number(r.get('time_bonus', 0)),
         absent_member_ids=tuple(r.get('absent_member_ids') or ()),
     )
 
 
 def _score_number(value) -> int | float:
-    """DB numeric half-units are binary-exact; retain old integer presentation."""
+    """Saved scoring fractions are binary-exact; retain integer presentation."""
     number = float(value)
     return int(number) if number.is_integer() else number
 

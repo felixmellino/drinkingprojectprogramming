@@ -54,7 +54,9 @@ weighted as shown below.
    in `docs/ontology/RULES.md`. Reuse shared rules for additional minigames.
    Focus Challenge is also team-approved (19 November 2026): see R-M06–R-M09.
    It has separate personal attempts, three randomized skill tests and one
-   automatic 60-minute x1.5 ordinary-check-in boost per lobby evening.
+   automatic 60-minute ordinary-check-in boost per lobby evening: x1.5 for
+   three task passes, x1.25 for two, and no boost for zero or one. All three
+   tasks remain playable after a miss (contributor revision, 19 November 2026).
    Explicit test seasons also allow Focus without uploads and unlimited
    sequential replays, including pre-Focus QA snapshots (migration 015).
    QA games can run throughout an active season; drink scoring keeps its window.

@@ -481,14 +481,19 @@ require database credentials.
 ### Focus Challenge (19 November 2026)
 
 The second playable minigame adds randomized reaction, seven-step memory and
-precision tests. The selected flow uses one reaction within 220 ms, Start memory,
+precision tests. New attempts play every task, even after a miss: three passes
+earn x1.5, two earn x1.25, and zero or one leave points unchanged. Both tiers last
+one hour. Apply [`migrations/022_focus_complete_all_games.sql`](migrations/022_focus_complete_all_games.sql)
+after 021 for this revision; deploy the matching app code. Migration 022 is
+prepared and locally verified, with shared activation pending.
+The flow uses one reaction within 220 ms, Start memory,
 then Start precision. Apply [`migrations/021_focus_three_stage_flow.sql`](migrations/021_focus_three_stage_flow.sql)
 last, after 015 and any already-installed 018/019/020 changes; it includes the optional
 017 Focus setup and preserves running games. Migration 021 was installed on the
 shared project on 19 November 2026. Start a new attempt after refreshing the app;
 already-running reaction-only attempts keep their previous rules.
 Accepted entries unlock attempts at five, then seven/nine/etc.
-after failures. One win per evening grants a personal 60-minute x1.5 ordinary
+after failures. One rewarded attempt per evening grants a personal 60-minute ordinary
 season/territory effect, including 25% owner income on boosted awards.
 Chug Duel scoring is unchanged. Before activation, the Data owner applies
 `migrations/014_focus_challenge.sql` after 011, `012_qa_minigames.sql` and

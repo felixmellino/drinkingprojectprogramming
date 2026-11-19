@@ -28,7 +28,8 @@ def test_selected_single_reaction_keeps_mains_longer_random_wait():
     rules=new_focus_rules()
     assert rules['reaction_trials']==1 and rules['reaction_median_ms']==220
     assert rules['reaction_wait_min_ms']==3500 and rules['reaction_wait_max_ms']==6500
-    assert rules['flow_version']==2
+    assert rules['flow_version']==3
+    assert rules['reward_multipliers']==[1,1,1.25,1.5]
 
 
 @pytest.mark.parametrize('flag,expected', [(True,True),(False,False),('true',False),(1,False),(None,False)])
@@ -52,9 +53,21 @@ def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
     assert historical['reaction_trials']==5 and historical['reaction_median_ms']==350
     current=new_focus_rules()
     assert current['reaction_trials']==1 and current['reaction_median_ms']==220
-    assert current['reaction_response_ms']==500 and current['flow_version']==2
+    assert current['reaction_response_ms']==500 and current['flow_version']==3
     assert {k:v for k,v in historical.items() if not k.startswith('reaction_')} == {
-        k:v for k,v in current.items() if not k.startswith('reaction_') and k!='flow_version'}
+        k:v for k,v in current.items() if not k.startswith('reaction_') and k not in ('flow_version','reward_multipliers')}
+
+
+def test_partial_reward_preserves_exact_owner_income_and_correction_multiplier():
+    owner=entry('owner','B','mixed','large',0,order=1)
+    boosted=replace(entry('boost','A','beer','small',1,order=2),points_awarded=1.25,
+                    focus_attempt_id='partial',focus_multiplier=1.25)
+    replay=replay_season([owner,boosted])
+    assert dict(replay.season_rows())=={'B':5.3125,'A':1.25}
+    assert format_points(dict(replay.season_rows())['B'])=='5.3125'
+    assert replay.territory_totals['territory-a']['A']==1.25
+    corrected=corrected_entry(boosted,season(),'beer','large',boosted.submitted_at+timedelta(seconds=30))
+    assert corrected.points_awarded==3.75 and corrected.focus_multiplier==1.25
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},

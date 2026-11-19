@@ -6,15 +6,15 @@
 button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);min-height:48px;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}button:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}button:disabled{cursor:wait}button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);padding:16px 28px;width:100%;margin-top:16px}#react{height:min(48vh,330px);width:100%;font-size:32px;background:var(--surface);border:3px solid var(--border)}#react.go{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 #grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}#grid button{aspect-ratio:1/1;font-size:24px}#grid button.flash{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 #arena{position:relative;width:100%;aspect-ratio:1/1;border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);touch-action:manipulation;overflow:hidden}#target{position:absolute;transform:translate(-50%,-50%);width:52px;height:52px;min-height:52px;border-radius:50%;border:2px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);font-size:22px}
-.progress{display:flex;gap:6px;width:100%;max-width:440px}.progress span{height:5px;flex:1;background:var(--border);border-radius:9px}.progress span.done{background:var(--accent)}#hint{font-size:13px;color:var(--text-muted);max-width:420px;margin-top:auto}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
+.progress{display:flex;gap:6px;width:100%;max-width:440px}.progress span{height:5px;flex:1;background:var(--border);border-radius:9px}.progress span.done{background:var(--accent)}.progress span.missed{background:var(--error)}#hint{font-size:13px;color:var(--text-muted);max-width:420px;margin-top:auto}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}#stageSummary{font-size:14px;color:var(--text-muted);min-height:22px}
 #falsestart{position:fixed;inset:0;z-index:5;background:var(--error);color:var(--text);display:grid;place-content:center;text-align:center;padding:24px}
 </style></head><body><main>
 <div class="progress" aria-label="Three tests"><span></span><span></span><span></span></div>
-<h1 id="title">Reaction Test</h1><div id="timer" hidden></div>
+<h1 id="title">Reaction Test</h1><p id="stageSummary" role="status" aria-live="polite"></p><div id="timer" hidden></div>
 <section id="ready" class="panel" hidden><h2 id="readyTitle"></h2><p id="instructions"></p><button id="start" class="primary">I’m ready</button></section>
-<section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button><p class="muted">Wait for TAP NOW. An early tap ends this attempt.</p></section>
+<section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button><p class="muted" id="reactionNote"></p></section>
 <section id="memory" hidden><p id="memoryHint"></p><div id="grid" aria-label="Memory grid"></div></section>
-<section id="precision" hidden><p id="precisionHint"></p><div id="arena" aria-label="Precision play area"><button id="target" aria-label="Precision target">1</button></div><p class="muted">Tap each numbered target. Tapping elsewhere ends the attempt.</p></section>
+<section id="precision" hidden><p id="precisionHint"></p><div id="arena" aria-label="Precision play area"><button id="target" aria-label="Precision target">1</button></div><p class="muted">Tap each numbered target. Tapping elsewhere fails Precision.</p></section>
 <section id="result" class="panel" hidden><h2 id="resultTitle"></h2><p id="resultText"></p></section>
 <div id="saving" role="status" aria-live="polite"></div><p id="hint" hidden></p>
 </main><script src="logic.js"></script><div id="falsestart" hidden role="alert" tabindex="0"><h1>FALSE START</h1><p>This try does not count. Tap to continue.</p></div>
@@ -36,11 +36,15 @@ function selectView(name){views.forEach(v=>$(v).hidden=v!==name);}
 let showRed=false;
 function render(){
  if(!game)return;
- const at=now(),c=game.config,ended=game.status!=='running';
+ const at=now(),c=game.config,ended=game.status!=='running',allGames=c.flow_version>=3;
+ const results=game.stage_results||{},stages=['reaction','memory','precision'];
+ const wins=stages.filter(s=>results[s]===true).length;
+ $('stageSummary').textContent=allGames?stages.map(s=>s[0].toUpperCase()+s.slice(1)+': '+(results[s]===true?'passed':results[s]===false?'missed':'to play')).join(' · '):'';
+ $('reactionNote').textContent=allGames?'Wait for TAP NOW. An early or slow tap misses Reaction; you still play Memory and Precision.':'Wait for TAP NOW. An early tap ends this attempt.';
  $('falsestart').hidden=!showRed;
- $('hint').textContent=ended?'Your result is saved. Use × to return to games.':'The clock keeps running if you leave. Pass all three tests consecutively.';
+ $('hint').textContent=ended?'Your result is saved. Use × to return to games.':allGames?'Play all three. 2 passes: ×1.25. 3 passes: ×1.5. The clock keeps running if you leave.':'The clock keeps running if you leave. Pass all three tests consecutively.';
  const index=game.phase.startsWith('reaction')?0:game.phase.startsWith('memory')?1:2;
- document.querySelectorAll('.progress span').forEach((el,i)=>el.classList.toggle('done',i<index||game.status==='passed'));
+ document.querySelectorAll('.progress span').forEach((el,i)=>{el.classList.toggle('done',allGames?results[stages[i]]===true:i<index||game.status==='passed');el.classList.toggle('missed',allGames&&results[stages[i]]===false);});
  $('saving').textContent=pending?'Saving progress…':'';
  $('timer').textContent=ended?'':Math.max(0,(Math.min(Date.parse(game.deadline),Date.parse(game.expires_at))-at)/1000).toFixed(1)+' s';
  if(ended){
@@ -48,7 +52,8 @@ function render(){
   $('resultTitle').textContent=game.status==='passed'?'Focus boost earned!':'Attempt finished';
   const messages={timeout:'Time ran out. Your next attempt unlocks after two more accepted check-ins.',memory_wrong:'That was not the sequence. Your next attempt unlocks after two more accepted check-ins.',reaction_slow:'Reaction was too slow. Required: '+c.reaction_median_ms+' ms or faster. Your next attempt unlocks after two more accepted check-ins.',miss:'A target was missed or a reaction tap was early. Your next attempt unlocks after two more accepted check-ins.'};
   $('resultText').textContent=game.status==='passed'
-   ?'×1.5 on your ordinary season and territory check-ins for the next hour, while scoring is open.'+(game.test_mode?' Test mode: you can play again; wins refresh the boost without stacking.':'')
+   ?(allGames?wins+' / 3 passed. ':'')+'×'+(game.boost_multiplier||1.5)+' on your ordinary season and territory check-ins for the next hour, while scoring is open.'+(game.test_mode?' Test mode: you can play again; boosts never stack.':'')
+   :allGames?(wins+' / 3 passed. No boost; your points stay unchanged. '+(game.test_mode?'Test mode: retry immediately, without uploads.':'Your next attempt unlocks after two more accepted check-ins.'))
    :game.test_mode?'Test mode: return to games and retry immediately. No uploads are required.'
    :messages[game.reason]||'Your next attempt unlocks after two more accepted check-ins.';
   return;
@@ -59,8 +64,8 @@ function render(){
  if(game.phase.endsWith('_ready')){
   selectView('ready');const reaction=game.phase==='reaction_ready',memory=game.phase==='memory_ready';
   $('title').textContent=reaction?'01 · Reaction':memory?'02 · Memory':'03 · Precision';
-  $('readyTitle').textContent=reaction?'One signal. React fast.':memory?'Reaction passed. Next: memory.':'Memory passed. Next: precision.';
-  $('instructions').textContent=reaction?(c.reaction_trials===1?'One unpredictable signal. Tap within '+c.reaction_median_ms+' ms. No early taps.':c.reaction_trials+' signals. Median must be '+c.reaction_median_ms+' ms or faster.'):memory?'Watch seven highlighted positions, then repeat their order. Press Start memory when you are ready.':'Tap twelve numbered targets in order. Their positions change. One wrong tap ends the attempt.';
+  $('readyTitle').textContent=reaction?'One signal. React fast.':memory?'Next: memory.':'Next: precision.';
+  $('instructions').textContent=reaction?(c.reaction_trials===1?'One unpredictable signal. Tap within '+c.reaction_median_ms+' ms. No early taps.':c.reaction_trials+' signals. Median must be '+c.reaction_median_ms+' ms or faster.'):memory?'Watch seven highlighted positions, then repeat their order. A wrong answer misses this task. Press Start memory when you are ready.':'Tap twelve numbered targets in twelve seconds. Their positions change. One wrong tap fails Precision.';
   $('start').textContent=reaction?'Start reaction':memory?'Start memory':'Start precision';
   $('start').disabled=!!pending;return;
  }
