@@ -40,8 +40,9 @@ season plays three tries, including seasons that had frozen five. The result scr
 no second start button. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
-Each new attempt receives private server-generated random waits of 1500–4500 ms
-between tries. Refreshing cannot reroll them. Attempts that were waiting in the
+Each new attempt receives private server-generated random waits of 3500–6500 ms
+before each signal, so after a try's result is shown there are always at least two
+seconds before the next TAP NOW. Refreshing cannot reroll them. Attempts that were waiting in the
 removed stages when this changed simply expire; saved history is untouched.
 
 ### R-M08 Focus Challenge interruptions and deadlines
