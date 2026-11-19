@@ -42,6 +42,7 @@ def ui(monkeypatch):
     monkeypatch.setattr("shared.get_territories", lambda: [TERRITORY])
     monkeypatch.setattr(rules, "current_time", lambda: state["now"])
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
+    monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': None})
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
@@ -100,6 +101,15 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     assert any("+4 season" in item.value for item in page.info)
     radio(page, "Drink").set_value("mixed").run()
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
+
+
+def test_active_focus_boost_is_in_checkin_preview(ui, monkeypatch):
+    monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': (START + timedelta(hours=1)).isoformat()})
+    page = open_checkin()
+    radio(page, 'Size').set_value('large').run()
+    assert not page.exception
+    assert any('Focus boost ×1.5 active' in item.value for item in page.success)
+    assert any('+4.5 season' in item.value for item in page.info)
 
 
 def test_camera_photo_is_required_before_selecting_drink_or_size(ui):

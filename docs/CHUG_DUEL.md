@@ -11,8 +11,8 @@ pending. The earlier minigame proposal is historical.
 Minigames sits immediately right of the plus in the seven-button bottom bar.
 Its catalogue lists games together; choose Open Chug Duel to reveal the
 existing duel controls. All games returns to the catalogue without cancelling
-an invitation or spending an allowance. Focus Challenge is an In design card,
-with no playable game or score effect yet. The host's running full-screen
+an invitation or spending an allowance. Focus Challenge now opens separately in new seasons enabled by its frozen
+rules; its boost never applies to Chug Duel entries or transfers. The host's running full-screen
 board still resumes automatically before catalogue navigation.
 Select any eligible other member of the current lobby, choose the common
 drink/size, and send an invitation. The other player accepts on their own
@@ -87,7 +87,7 @@ Thus a loser can still have owner income in addition to the zero base award.
 
 The old `core/minigames.py` weekly placeholder and its tests remain for legacy
 code; Chug Duel does not call it. This is the explicit exception to the earlier
-one-game/items-only design. Other proposed minigames are not implemented.
+one-game/items-only design. Focus Challenge is implemented separately under R-M06–R-M09; see FOCUS_CHALLENGE.md.
 
 ## Boundary defaults
 
@@ -217,6 +217,6 @@ database connections to race acceptance/start/result against the same lobby.
 passed 587 tests. Focused Chug Duel UI/core and legacy minigame checks passed
 32 tests. Synthetic browser verification covered desktop/390px phone cards,
 opening the existing Chug Duel form and returning to the catalogue. No live
-records were changed; this layout requires no migration. The upcoming game's
-design selections live in `docs/ontology/FOCUS_CHALLENGE_PROPOSAL.md` and are
-not active scoring rules.
+records were changed; that catalogue-only layout required no migration.
+Focus Challenge was subsequently implemented under R-M06–R-M09; its separate
+migration 013 and activation steps are in `docs/FOCUS_CHALLENGE.md`.

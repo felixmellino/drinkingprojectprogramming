@@ -93,7 +93,7 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     page = open_page(selected=None)
     assert not page.exception
     assert {'Chug Duel', 'Focus Challenge'} <= {h.value for h in page.subheader}
-    assert button(page, 'Coming soon').disabled
+    assert not button(page, 'Open Focus Challenge').disabled
     assert not any(b.label == 'Send challenge' for b in page.button)
     assert not page.metric and service['duels'] == []
     tracking.assert_not_called()

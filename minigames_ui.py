@@ -17,6 +17,8 @@ from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
 from drink_entry_ui import page_header, context_line
 from phone_location import current_location, track_location
+from core.focus_challenge import enabled as focus_enabled
+from focus_challenge_ui import render_focus
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
@@ -38,8 +40,8 @@ def _act(player, duel, action, winner=None):
         _error(error)
 
 
-def _game_cards(member, duels, *, service_available=True):
-    """Show every game together; proposed games cannot start or award rewards."""
+def _game_cards(member, duels, *, service_available=True, focus_available=False):
+    """Show all games together; frozen season rules determine Focus availability."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
     columns = st.columns(2, gap='medium')
@@ -60,11 +62,14 @@ def _game_cards(member, duels, *, service_available=True):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
     with columns[1], st.container(key='minigame_card_focus', border=True):
-        st.markdown(':material/psychology: **SOLO · IN DESIGN**')
+        st.markdown(':material/psychology: **SOLO · FOCUS CHALLENGE**')
         st.subheader('Focus Challenge')
-        st.write('A proposed three-part challenge for reaction, memory and precision.')
-        st.caption('Rules and reward under discussion · No points effect yet')
-        st.button('Coming soon', key='open_game_focus', width='stretch', disabled=True)
+        st.write('Reaction, memory and precision. Pass all three to earn an hour of ×1.5.')
+        st.caption('Unlocks after 5 accepted check-ins · One win per evening' if focus_available
+                   else 'Available in new seasons with Focus rules · Existing seasons keep their rules')
+        if st.button('Open Focus Challenge', key='open_game_focus', width='stretch', disabled=not focus_available):
+            st.session_state['minigame_selected'] = 'focus'
+            st.rerun()
 
 
 def _focused_duel(player, duel, labels):
@@ -154,6 +159,8 @@ def render_minigames(player, member, lobby, season):
     if st.session_state.get('minigames_context', context) != context:
         st.session_state.pop('minigame_selected', None)
         st.session_state.pop('chug_focused_duel', None)
+        st.session_state.pop('focus_focused_id', None)
+        st.session_state.pop('focus_start_request', None)
     st.session_state['minigames_context'] = context
     try:
         members = db.list_memberships_for_lobby(lobby.id)
@@ -169,10 +176,13 @@ def render_minigames(player, member, lobby, season):
     @st.fragment(run_every="3s")
     def live_duels():
         now = current_time()
+        if st.session_state.get('minigame_selected') == 'focus' and focus_enabled(season):
+            render_focus(player, season)
+            return
         try:
             duels = db.list_chug_duels(player, season.id)
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-            _game_cards(member, [], service_available=False)
+            _game_cards(member, [], service_available=False, focus_available=focus_enabled(season))
             _error(error)
             return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
@@ -185,7 +195,7 @@ def render_minigames(player, member, lobby, season):
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
-        _game_cards(member, duels)
+        _game_cards(member, duels, focus_available=focus_enabled(season))
         if st.session_state.get('minigame_selected') != 'chug_duel':
             st.caption('Choose a game above. Invitations update automatically.')
             return

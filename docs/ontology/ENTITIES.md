@@ -269,3 +269,19 @@ One row per unordered player pair stores `sender_id`, `recipient_id`,
 No fields on Player change. Declined rows retain their timestamp so the
 10-minute wait survives restarts. Only each participant's own Profile
 reads their relationships; public search selects just player ID and username.
+
+## FocusAttempt and boosted entries (19 November 2026)
+
+`focus_attempts` is separate from the legacy `MinigameAttempt` and Chug Duel.
+It links membership, season and 06:00-based night; stores attempt number,
+private random challenge, status/phase/step/revision, reaction results,
+precision checkpoints and authoritative start/signal/deadline/expiry times.
+A passed row stores completion and boost expiry. Partial unique indexes allow
+one running attempt per member/season and one win per night. Public clients
+cannot read the table or call its RPCs. No health label, photo or GPS is stored.
+
+`DrinkEntry.focus_attempt_id` is immutable reward provenance on ordinary entries.
+`points_awarded` is the actual accepted award including that effect. SQL numeric
+half-points and half-quarter owner-income units preserve exact eighth-points;
+whole values remain integers in Python presentation. Timely corrections retain
+the source multiplier; historical replay does not need today's boost status.

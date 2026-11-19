@@ -19,6 +19,7 @@ from storage3.utils import StorageException
 
 import data.db as db
 from camera_capture import CameraCancelled, camera_photo
+from core.focus_challenge import enabled as focus_enabled
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
@@ -120,9 +121,9 @@ if saved_result is not None:
     if points == 0:
         st.warning("Saved in your history with zero points.")
     elif location == "outside":
-        st.success(f"Logged! +{points} season points. Your location is outside the game territories.")
+        st.success(f"Logged! +{format_points(points)} season points. Your location is outside the game territories.")
     else:
-        st.success(f"Logged! +{points} points.")
+        st.success(f"Logged! +{format_points(points)} points.")
     if owner_income:
         st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
     if saved_ids:
@@ -174,6 +175,16 @@ with st.container(key='drink_ui_panel_camera'):
 
 size = None
 amount = None
+focus_multiplier = 1
+if focus_enabled(season):
+    try:
+        focus_info = db.focus_status(player_id, season_id)
+        if focus_info.get('boost_ends_at'):
+            focus_multiplier = 1.5
+            boost_end = datetime.fromisoformat(focus_info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
+            st.success(f'Focus boost ×1.5 active until {boost_end:%H:%M:%S %Z}.')
+    except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
+        st.caption('Focus preview unavailable. Any earned multiplier is checked by the server on submission.')
 with st.container(key="drink_ui_panel_selection"):
     section_heading("02", "Choose your drink", "One drink, one size. Your points update as you choose.")
     if modern:
@@ -187,10 +198,10 @@ with st.container(key="drink_ui_panel_selection"):
                                 horizontal=True, width="stretch")
         else:
             st.caption("One shot serving. No size selection needed.")
-        preview = base_points(drink_type, size, rules)
+        preview = base_points(drink_type, size, rules) * focus_multiplier
         point_word = "point" if preview == 1 else "points"
         with st.container(key="drink_ui_points"):
-            st.info(f"**+{preview} season {point_word}**  \n+{preview} territory {point_word} if your location matches a territory.")
+            st.info(f"**+{format_points(preview)} season {point_word}**  \n+{format_points(preview)} territory {point_word} if your location matches a territory.")
         st.caption("Another territory owner's 25% season income is additional; your points stay the same.")
     else:
         st.caption("This existing season keeps its original scoring rules. New seasons use the new scoring system.")

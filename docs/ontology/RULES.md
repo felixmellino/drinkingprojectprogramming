@@ -2,6 +2,79 @@
 
 ## Minigames
 
+### R-M06 Focus Challenge unlocks and attempts
+
+Team approval reported by the contributor on 19 November 2026. New v1 seasons
+whose frozen snapshot contains `focus_challenge.version = 1` enable this game.
+Existing snapshots are not edited. Normal and QA seasons use these rules;
+Chug Duel's unlimited QA exception does not bypass Focus unlocks or rewards.
+
+Count the member's accepted v1 drink entries in this lobby/season and the same
+06:00-based evening, irrespective of type/size. Their shared Chug Duel entry
+counts once. Retakes, rejected submissions and duplicate retries do not count;
+deleting an image preserves its accepted entry and this count under R7.
+The first attempt unlocks at five entries, then at seven, nine, eleven, etc.
+after failures. Starting atomically consumes that attempt; simultaneous starts
+recover the same saved attempt. Focus and Chug Duel allowances are separate.
+Only one game may be actively running for a member at a time.
+
+### R-M07 Focus Challenge tasks and variation
+
+Pass reaction, memory and precision consecutively. Reaction has five trials,
+with median at most 350 ms and no early taps. Memory requires reproducing seven
+positions exactly. Precision requires twelve correct taps within twelve seconds;
+a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
+calibration, not a health benchmark. Passing is not a sobriety assessment.
+
+Each new attempt receives private server-generated random material: independent
+1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
+and new valid precision positions. Refreshing cannot reroll it. Memory flashes
+650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
+Precision targets are 52 px with consistent normalized margins and minimum
+movement; no colour-only matching is required.
+
+### R-M08 Focus Challenge interruptions and deadlines
+
+Resume the same persisted attempt and progress; its clock keeps running.
+Ready screens have thirty seconds. Reaction signals allow two seconds for a
+response; slower median results still fail R-M07. The whole attempt has a
+three-minute maximum and ends sooner at 06:00, scoring closure or season end.
+A miss or timeout requires the next unlock count. Leaving the screen itself
+does not create or refund an attempt.
+
+The server allows two seconds for delivery of stage evidence, while browser
+timers enforce the actual task budget. This does not extend the overall,
+06:00, scoring or season cutoff. Timers use a monotonic browser clock anchored
+to server timestamps. Replayed/stale messages recover the recorded result.
+Precision checkpoints save full tap prefixes without blocking the next local tap.
+
+### R-M09 Focus boost and scoring
+
+One successful attempt per member/lobby evening automatically grants x1.5 on
+future ordinary drink season and matched-territory points for sixty minutes,
+ending earlier at scoring closure or season end. It can continue past 06:00.
+Boosts never exceed x1.5; an unexpired prior-evening boost blocks a new Focus
+attempt until it ends. Chug Duel entries/transfers keep their normal scoring.
+The owner earns 25% of the boosted award as additional season income, using
+the owner immediately before the entry as usual. No self/team-self income.
+
+In team mode only the successful member's ordinary entries are boosted; their
+awards add to the team totals. Teammates' other entries are unchanged. Eligibility
+uses authoritative receipt time: boost start <= check-in receipt < expiry.
+The entry stores its source Focus attempt. Corrections retain that original
+multiplier and replay ownership/income without compounding or depending on
+whether the boost is still active. Photo deletion does not remove awards.
+
+Store awards as exact PostgreSQL numeric half-points. Existing
+`owner_bonus_quarters` remains compatible but can contain half a quarter,
+representing exact eighth-points: boosted 1 -> 1.5; owner income -> 0.375.
+Display up to three decimals without rounding this income away. The server
+determines rewards and awards; browser timing/tap evidence is trust-based and
+does not establish automated anti-cheat or sobriety verification.
+
+See [implementation and activation](../FOCUS_CHALLENGE.md).
+
+
 ### R-M01 Chug Duel invitation and opponents
 
 In a v1 season with scoring open, challenge another member of the same lobby.
@@ -272,7 +345,7 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Only the phone's GPS reading counts (R-L01, R-L02). Discard raw coordinates after verification. |
 | R3 | New v1 seasons use the frozen category/size table in [SCORING_V1.md](SCORING_V1.md). | Four categories; sizes for beer/wine/mixed; one shot serving. Reject unsupported combinations. Large bonuses are already included. Legacy seasons keep their prior awards. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
-| R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
+| R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters, or eighth-points for Focus under R-M09; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
 | R6 | All current members of a lobby can view the photos saved with that lobby's drink entries. | Before serving a photo, verify that the viewer is signed in and is a current member of the lobby that owns the entry. |
 | R7 | The owner can delete their photo while keeping the drink entry and its awarded points. Photos expire 30 days after their season ends. | Only the entry's author may request deletion. Remove the stored image and mark its reference as deleted, preserving the score and standings. Deny photo access at the expiry boundary and remove expired files through scheduled cleanup. |
 

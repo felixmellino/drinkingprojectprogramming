@@ -386,3 +386,15 @@ page's fresh validated account/season context instead of loading it twice.
 Map and Leaderboard share one score replay within their page render. Keep
 authorization fresh on every full page run; do not add a global account cache.
 Shared fonts, spacing, borders and shadows live in `assets/theme.css`.
+
+## Focus Challenge handoff — 19 November 2026
+
+The second Minigames card opens the saved three-stage Focus game in new seasons
+whose frozen rules enable it. `core/focus_challenge.py` owns configuration and
+message validation; `focus_challenge_ui.py` plus the component handle presentation.
+Migration 013 owns accepted-entry gates, persisted challenge/progress, deadlines
+and exactly-once rewards. `DrinkEntry.focus_attempt_id` preserves each boosted
+award through corrections and replay, and owner income now supports exact eighths.
+See [FOCUS_CHALLENGE.md](FOCUS_CHALLENGE.md) for commands, Data activation and
+security limits. Both building-block owners should review the shared data/scoring
+change before merge. The contributor reported teammate agreement on the design.

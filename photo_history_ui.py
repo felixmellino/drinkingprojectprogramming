@@ -48,6 +48,8 @@ def photo_metadata(entry: dict) -> None:
                 unsafe_allow_html=True)
     if entry.get("duel_id"):
         st.caption("Chug Duel · Shared capture · Drink selection agreed by both players.")
+    if model and model.focus_attempt_id:
+        st.caption('Focus boost ×1.5 · Included in the displayed season and territory awards.')
     bonus = model.owner_bonus_quarters if model else entry.get("owner_bonus_quarters", 0)
     if bonus:
         income = format_points(Decimal(bonus) / 4)

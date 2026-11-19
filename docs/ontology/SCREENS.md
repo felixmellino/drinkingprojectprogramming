@@ -3,9 +3,12 @@
 ## Minigames catalogue (19 November 2026)
 
 The Minigames page lists game cards together in two columns on larger
-screens and a single column on phones. Chug Duel is playable; Focus Challenge
-is explicitly In design with a disabled Coming soon action. Proposed unlocks
-and multipliers are not shown as active rewards or enforced rules.
+screens and a single column on phones. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+rules enable it; older seasons show a disabled action and retain their rules.
+Focus shows check-in progress, its next unlock, the tasks and reward. A saved
+running attempt resumes full screen. Its timer continues on navigation; Close
+returns to the catalogue without resetting it. A terminal board shows the saved
+result. Check-in previews and photo history identify the earned multiplier.
 
 Open Chug Duel shows the existing invitation, acceptance, shared capture,
 allowance and history controls below the cards. All games closes these

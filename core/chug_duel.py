@@ -74,6 +74,7 @@ def component_action(value, duel: dict) -> tuple[str, str | None] | None:
 
 
 ERRORS = {
+    'focus_busy': 'Finish the running Focus Challenge before starting a duel.',
     "permission_denied": "You cannot perform this duel action.",
     "duel_limit": "An evening allowance is already used or reserved. Refresh the list.",
     "duel_pending": "You already have an open invitation. Cancel it before sending another.",

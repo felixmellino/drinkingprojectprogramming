@@ -1,10 +1,11 @@
-# Focus Challenge — discussion draft, 19 November 2026
+# Focus Challenge — approved design, 19 November 2026
 
-Status: design discussion, not an implemented game or scoring rule. The
-Minigames catalogue shows a disabled In design card. Chug Duel remains
-governed by RULES.md R-M01–R-M05. This change implements no database, scoring
-or shared model changes. This supersedes the older delayed-reaction
-recommendations in MINIGAMES_PROPOSAL.md for the current discussion only.
+The contributor confirmed teammate approval and requested full implementation
+on 19 November 2026. Implemented rules are R-M06–R-M09 in RULES.md; setup and
+verification live in [FOCUS_CHALLENGE.md](../FOCUS_CHALLENGE.md). Migration 013
+is prepared and isolated tests pass; shared-project application and real-phone
+calibration remain pending. The discussion record below preserves the choices
+and earlier open points; implemented defaults supersede its open-point list.
 
 ## Contributor's requested idea
 
@@ -49,8 +50,7 @@ After each failure, another attempt unlocks with two additional check-ins:
 5, 7, 9, 11, and so on. The contributor selected one successful reward per
 evening. On success, the 1.5 multiplier activates automatically for 60 minutes
 on future eligible drink season/territory awards; the owner's 25% income is
-based on the boosted drink award as well. No attempts or reward have been
-implemented yet. Focus attempts have their own allowance, separate from
+based on the boosted drink award as well. Attempts and reward are implemented on the feature branch. Focus attempts have their own allowance, separate from
 Chug Duel's challenge and acceptance limits. Chug Duel entries count toward
 Focus unlocks, but do not receive the Focus multiplier.
 
@@ -109,7 +109,7 @@ rejection of another attempt's results. Avoid flaky tests that depend on two
 random samples happening to differ. Repeated phone play should check that
 there is no visible recurring route or timing pattern before release.
 
-## Decisions required before implementation
+## Earlier implementation questions (resolved by R-M06–R-M09 unless noted)
 
 - Confirm whether deleting a photo leaves its original accepted-entry count
   intact (recommended, consistent with score preservation under R7).

@@ -1,7 +1,8 @@
 """Frozen scoring rules and deterministic replay. No database or UI imports.
 
-An owner-income quarter is exactly 0.25 season points. Replay uses integer
-quarters throughout; only presentation converts them to decimal points.
+An owner-income quarter is exactly 0.25 season points. Focus awards can be
+half-points, hence half a quarter (0.125 points). These binary-exact values
+are also stored as exact PostgreSQL numeric values, never rounded income.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from core.checkins import CheckinRejected
 from core.location import evaluate_location
 from core.models import DrinkEntry, Season, Territory
 from core.teams import competitor
+from core.focus_challenge import new_focus_rules
 
 VERSION = "v1"
 DRINK_LABELS = {"beer": "Beer", "wine": "Wine", "shot": "Shot", "mixed": "Mixed drink"}
@@ -44,6 +46,7 @@ def current_time() -> datetime:
 def new_rules(*, test_mode: bool = False) -> dict:
     """A new season gets its own snapshot, never the mutable module object."""
     rules = deepcopy(_RULES)
+    rules['focus_challenge'] = new_focus_rules()
     if test_mode:
         rules.update(test_mode=True, start_weekday=2, start_hour=8)
     return rules
@@ -166,7 +169,8 @@ def corrected_entry(entry: DrinkEntry, season: Season, drink_type: str, size: st
     except ValueError:
         raise CheckinRejected("invalid_selection") from None
     return replace(entry, drink_type=drink_type, size=size, amount=volume_for(drink_type, size, rules_for(season)),
-                   points_awarded=points, corrected_at=utc(now), revision=entry.revision + 1)
+                   points_awarded=points * (1.5 if entry.focus_attempt_id else 1),
+                   corrected_at=utc(now), revision=entry.revision + 1)
 
 
 def entry_order(entry: DrinkEntry):
@@ -177,10 +181,10 @@ def entry_order(entry: DrinkEntry):
 
 @dataclass
 class Replay:
-    season_quarters: dict[str, int] = field(default_factory=dict)
-    territory_totals: dict[str, dict[str, int]] = field(default_factory=dict)
+    season_quarters: dict[str, int | float] = field(default_factory=dict)
+    territory_totals: dict[str, dict[str, int | float]] = field(default_factory=dict)
     owners: dict[str, str] = field(default_factory=dict)
-    awards: dict[str, tuple[str | None, int]] = field(default_factory=dict)
+    awards: dict[str, tuple[str | None, int | float]] = field(default_factory=dict)
     reached: dict[str, tuple[int, int]] = field(default_factory=dict)
     territory_reached: dict[str, dict[str, int]] = field(default_factory=dict)
 
@@ -188,7 +192,7 @@ class Replay:
         order = sorted(self.season_quarters, key=lambda m: (-self.season_quarters[m], self.reached[m], m))
         return [(m, Decimal(self.season_quarters[m]) / 4) for m in order]
 
-    def territory_rows(self, territory_id: str) -> list[tuple[str, int]]:
+    def territory_rows(self, territory_id: str) -> list[tuple[str, int | float]]:
         totals = self.territory_totals.get(territory_id, {})
         reached = self.territory_reached.get(territory_id, {})
         return [(m, totals[m]) for m in sorted(totals, key=lambda m: (-totals[m], reached[m], m))]
@@ -241,4 +245,4 @@ def replay_season(entries: list[DrinkEntry]) -> Replay:
 
 
 def format_points(points) -> str:
-    return format(Decimal(str(points)), ".2f").rstrip("0").rstrip(".")
+    return format(Decimal(str(points)), ".3f").rstrip("0").rstrip(".")
