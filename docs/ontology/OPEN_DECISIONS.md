@@ -2,7 +2,9 @@
 
 Quiz Duel decisions (19 November 2026) are recorded in [QUIZ_DUEL.md](QUIZ_DUEL.md).
 The feature branch implements invitations, reserved stakes, timed rounds and team
-purses. Teammate review, publication and shared-project migration 016 remain pending.
+purses. PR #60 is merged and shared-project migration 016 was applied on
+19 November 2026. Installation/status checks passed; full deployed two-player
+gameplay remains to verify. See the [handoff](../QUIZ_DUEL.md).
 
 This file tracks team review and unresolved decisions. [SCORING_V1.md](SCORING_V1.md) records the working implementation authorised by the contributor; teammate review, merge, migration and live verification remain pending. The [planning record](SCORING_PROPOSAL.md) preserves earlier choices.
 

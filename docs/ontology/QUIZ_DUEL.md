@@ -1,7 +1,10 @@
 # Quiz Duel rules
 
-Contributor decisions, 19 November 2026. Implemented on the quiz feature branch;
-review, publication and shared Supabase migration 016 remain pending.
+Contributor decisions, 19 November 2026. Implemented and merged through PR #60;
+shared Supabase migration 016 was installed on 19 November 2026. All four
+installation checks and app-server Quiz status in 13 v1 seasons passed.
+Full deployed two-player gameplay remains to verify; the rule decisions below
+were not changed by database activation. See the [handoff](../QUIZ_DUEL.md).
 
 ## Agreed rules
 
