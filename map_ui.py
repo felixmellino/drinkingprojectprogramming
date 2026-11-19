@@ -43,6 +43,7 @@ AREAS = {
         "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
         "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
+    "Jamor Golf": ["jamor-golf"],
 }
 ME = ":material/my_location: Me"
 ALL = "All"
@@ -54,20 +55,16 @@ def load_styles() -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-def hud(lobby_name: str, rows: list[dict], team_mode: bool = False) -> None:
-    """Top bar floating over the map: lobby, how many territories you hold,
-    and the colour legend."""
+def hud(lobby_name: str, rows: list[dict]) -> None:
+    """Slim bar floating over the map: the lobby, and how many territories
+    are yours, a rival's and free. The coloured numbers double as the legend."""
     numbers = summary(rows)
-    label = "Team lobby" if team_mode else "Lobby"
-    mine = "Your team's" if team_mode else "Yours"
-    dots = "".join(f'<span><i style="background:rgb{tuple(COLOURS[status])}"></i>{text}</span>'
-                   for status, text in (("yours", mine), ("theirs", "Rivals"), ("free", "Free")))
+    rivals = numbers["total"] - numbers["yours"] - numbers["free"]
     st.markdown(
-        f'<div class="game-hud"><div class="game-hud-row"><div><small>{label}</small>'
-        f'<strong>{escape(lobby_name)}</strong></div>'
-        f'<div class="game-score"><small>Yours</small><strong>{numbers["yours"]}</strong>'
-        f' / {numbers["total"]} · {numbers["free"]} free</div></div>'
-        f'<div class="game-legend">{dots}</div></div>',
+        f'<div class="game-hud"><strong class="game-hud-lobby">{escape(lobby_name)}</strong>'
+        f'<span class="game-hud-counts"><b class="game-yours">{numbers["yours"]}</b> yours'
+        f'<b class="game-theirs">{rivals}</b> rivals'
+        f'<b class="game-free">{numbers["free"]}</b> free</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -108,6 +105,9 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
         needed = number if status == "theirs" else None
         my_points = dict(standings).get(me, 0)
         owner_name = names.get(owner, "Unknown player") if owner else "Nobody"
+        # The standings are already in ranking order (ties: who reached the score first).
+        ranking = [{"id": who, "name": names.get(who, "Unknown player"), "points": points, "you": who == me}
+                   for who, points in standings]
         if status == "free":
             detail = "Unclaimed: your next drink here claims it."
         elif status == "yours":
@@ -123,6 +123,7 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
             "owner_points": dict(standings).get(owner, 0),
             "my_points": my_points,
             "needed": needed,
+            "ranking": ranking,
             "detail": detail,
             "boundary": territory.boundary,
         })
@@ -182,18 +183,29 @@ def _clear_map_selection():
     st.session_state["_map_selection_version"] = st.session_state.get("_map_selection_version", 0) + 1
 
 
-@st.dialog("Territory points", on_dismiss=_clear_map_selection)
+def ranking_html(row: dict, team_mode: bool = False) -> str:
+    """A small ranking of one territory: who has how many points here, who owns it."""
+    you = "your team" if team_mode else "you"
+    if row["ranking"]:
+        items = ""
+        for place, entry in enumerate(row["ranking"], start=1):
+            tags = ('<span class="rank-tag rank-owner">owner</span>' if entry["id"] == row["owner_id"] else "")
+            tags += f'<span class="rank-tag rank-you">{you}</span>' if entry["you"] else ""
+            items += (f'<li class="rank-row{" rank-row-you" if entry["you"] else ""}">'
+                      f'<span class="rank-pos">{place}</span><span class="rank-name">{escape(entry["name"])}{tags}</span>'
+                      f'<span class="rank-pts">{escape(format_points(entry["points"]))}</span></li>')
+        body = f'<ol class="rank-list">{items}</ol>'
+    else:
+        body = '<p class="rank-empty">Nobody has drunk here yet.</p>'
+    return (f'<section class="rank-card"><h4>{escape(row["name"])}</h4>{body}'
+            f'<p class="rank-detail">{escape(row["detail"])}</p></section>')
+
+
+@st.dialog("Ranking", width="small", on_dismiss=_clear_map_selection)
 def territory_popup(rows, team_mode=False):
-    st.markdown(f'<p>Current owner: <strong>{escape(rows[0]["owner"])}</strong></p>', unsafe_allow_html=True)
-    body = "".join(f'<tr><th scope="row">{escape(row["name"])}</th>'
-                   f'<td>{row["owner_points"]}</td><td>{row["my_points"]}</td></tr>' for row in rows)
-    st.markdown('<div class="map-points-scroll"><table class="map-points-table">'
-                '<thead><tr><th scope="col">Territory</th><th scope="col">Owner points</th>'
-                f'<th scope="col">{"Your team’s points" if team_mode else "Your points"}</th></tr></thead>'
-                f'<tbody>{body}</tbody></table></div>', unsafe_allow_html=True)
-    if len(rows) == 1:
-        st.caption(rows[0]["detail"])
-    st.caption("Only territory points count here; season owner income is excluded.")
+    st.markdown('<div class="rank-scroll">' + "".join(ranking_html(row, team_mode) for row in rows) + "</div>",
+                unsafe_allow_html=True)
+    st.caption("Territory points only; season owner income is not included.")
 
 
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,

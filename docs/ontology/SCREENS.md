@@ -207,7 +207,7 @@ current lobby's season only. Bars are not part of the game, so none are shown.
 - Three cards below the map: territories you own (e.g. "1 of 48"),
   unclaimed territories, and the easiest one to take (fewest points needed).
 - Small quick-zoom buttons right above the map jump to "Bairro Alto",
-  "Lisbon", "Nova SBE" or "All" (and "📍 Me" when your location is usable),
+  "Lisbon", "Nova SBE", "Jamor Golf" or "All" (and "📍 Me" when your location is usable),
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
@@ -224,23 +224,29 @@ Map owner badge update (19 November 2026, contributor request):
 - Badge diameter scales with area and available interior space, capped at
   120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
   Green remains yours/your team's, red others', grey unclaimed.
-- Clicking a badge opens a small territory-points dialog. Shared badges list
-  every territory separately: current owner, owner's territory points, your
-  territory points. A single-territory popup also shows the capture-gap
-  explanation; shared popups use a compact, scrollable score table. In team lobbies
-  "your points" means your team's combined territory points, as requested;
-  personal contributions and season owner income are excluded.
-- Clicking an individual territory also opens its own detail dialog. Existing
-  hover details, GPS tracking/accuracy, quick zoom, check-in action, HUD,
-  bottom location card and territory list remain available. The current base
+- Tapping a territory or a badge opens a small "Ranking" dialog (changed
+  19 November 2026, contributor request): the territory's current ranking
+  (rank, name, territory points; the owner and you are tagged; ties keep the
+  earlier-reached order) and the capture-gap sentence. A badge shared by
+  several territories lists each territory's ranking, scrollable. In team
+  lobbies the rows are teams and "you" reads "your team". Only territory
+  points count; season owner income is excluded. An unplayed territory says
+  nobody has drunk there yet.
+- Existing hover details, GPS tracking/accuracy, quick zoom, HUD, bottom
+  location card and territory list remain available. There is no check-in
+  button on the map; checking in is the + tab. The current base
   map is Carto Dark Matter without place names (they clashed with territory
   names) with a floating HUD and location card. Every territory border is
   white; the fill colour shows the owner. Territory names show on hover only.
-- Phone layout (19 November 2026): the map fills the whole screen. The HUD
-  (lobby, your territories, colour legend, zoom chips) floats at the top; a
-  sheet above the tab bar shows where you are, the Check in here button and
-  the All territories list, which opens upwards inside the sheet. On a laptop
-  the map stays a rounded panel with the same HUD and sheet on top.
+- Phone layout (19 November 2026): the map fills the whole screen. A slim
+  bar floats at the top (lobby on the left; yours · rivals · free counts on
+  the right, coloured like the map, which also serves as the legend). Below
+  it the quick-zoom chips stand alone as separate pills in one row that
+  scrolls sideways: Me, Bairro Alto, Lisbon, Nova SBE, Jamor Golf, All. A
+  slim sheet above the tab bar shows where you are, with the All territories
+  list opening upwards inside it. The map's own +/- buttons are hidden (pinch
+  or scroll to zoom). On a laptop the map stays a rounded panel with the same
+  bar, chips and sheet on top.
 - Closing the dialog clears Streamlit's read-only selection via a fresh chart
   key so the same icon can be clicked again. This returns the viewport to the
   selected quick-zoom focus; a manually panned viewport is not retained.

@@ -87,7 +87,7 @@ def test_your_position_names_the_territory_you_are_in(phone):
     assert not page.exception
     message = card(page)
     assert "Bairro Alto" in message and "you need 2 more points" in message
-    assert any(b.label == "Check in here" for b in page.button)
+    assert not any(b.label == "Check in here" for b in page.button)  # checking in is the + tab
 
 
 def test_outside_every_territory(phone):
@@ -110,9 +110,12 @@ def test_inaccurate_location_is_not_used(phone):
 
 # -- Summary cards and quick zoom ---------------------------------------
 
-def test_hud_counts_yours_and_free(phone):
+def test_hud_counts_yours_rivals_and_free(phone):
     page = open_map()
-    assert "<strong>1</strong> / 3 · 1 free" in hud(page)
+    bar = hud(page)
+    assert '<b class="game-yours">1</b> yours' in bar
+    assert '<b class="game-theirs">1</b> rivals' in bar
+    assert '<b class="game-free">1</b> free' in bar
 
 
 def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
@@ -121,6 +124,14 @@ def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     message = card(open_map())
     assert "&lt;b&gt;x&lt;/b&gt;" in message and "<b>x</b>" not in message
+
+
+def test_quick_zoom_includes_jamor_golf_after_nova():
+    import map_ui
+    assert list(map_ui.AREAS) == ["Bairro Alto", "Lisbon", "Nova SBE", "Jamor Golf"]
+    assert map_ui.AREAS["Jamor Golf"] == ["jamor-golf"]
+    from data.territory_file import load_territories
+    assert "jamor-golf" in {t.id for t in load_territories()}
 
 
 def test_quick_zoom_offers_the_areas_and_me_only_with_a_location(phone):
@@ -201,6 +212,28 @@ def test_selected_badge_opens_popup_with_escaped_name_and_both_scores(phone, mon
     assert not page.exception
     markup = "".join(item.value for item in page.markdown)
     assert "&lt;b&gt;rival&lt;/b&gt;" in markup
-    assert '<th scope="col">Owner points</th>' in markup
-    assert '<th scope="col">Your points</th>' in markup
-    assert '<td>4</td><td>3</td>' in markup
+    assert 'class="rank-list"' in markup
+    # Bairro Alto: rival leads with 4, you have 3.
+    assert '<span class="rank-pos">1</span><span class="rank-name">&lt;b&gt;rival&lt;/b&gt;<span class="rank-tag rank-owner">owner</span></span><span class="rank-pts">4</span>' in markup
+    assert '<span class="rank-name">felix<span class="rank-tag rank-you">you</span></span><span class="rank-pts">3</span>' in markup
+    assert "<td>" not in markup
+
+
+def test_territory_rows_carry_a_ranking_in_standings_order(phone):
+    import map_ui
+    rows = map_ui.territory_rows([TERRITORY, FREE], phone["entries"], "me", {"me": "felix", "rival": "rival"})
+    assert [(r["id"], r["name"], r["points"], r["you"]) for r in rows[0]["ranking"]] == [
+        ("rival", "rival", 4, False), ("me", "felix", 3, True)]
+    assert rows[1]["ranking"] == []
+
+
+def test_ranking_html_marks_owner_and_you_and_escapes_names():
+    import map_ui
+    row = {"name": "Shortys <i>", "owner_id": "a", "detail": "Owned by <b>a</b>.", "ranking": [
+        {"id": "a", "name": "<b>a</b>", "points": 4, "you": False}, {"id": "me", "name": "felix", "points": 3, "you": True}]}
+    html = map_ui.ranking_html(row)
+    assert "<b>a</b>" not in html and "&lt;b&gt;a&lt;/b&gt;" in html and "Shortys &lt;i&gt;" in html
+    assert html.count("rank-owner") == 1 and html.count("rank-you") == 1 and "rank-row-you" in html
+    assert "your team" in map_ui.ranking_html(row, team_mode=True)
+    empty = map_ui.ranking_html({"name": "Quiet", "owner_id": None, "detail": "Unclaimed.", "ranking": []})
+    assert "Nobody has drunk here yet." in empty and "rank-list" not in empty

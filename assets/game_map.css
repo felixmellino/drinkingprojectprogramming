@@ -8,52 +8,55 @@
 /* The map: rounded, tall. */
 .st-key-game_map { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-float); }
 
-/* HUD floats over the top of the map. */
-.st-key-game_hud { position: relative; z-index: 5; margin-bottom: -132px; padding: 12px 12px 0; pointer-events: none; gap: 6px; }
+/* Streamlit pulls markdown blocks up by 1rem; here that made the bar overlap the chips. */
+.st-key-game_hud [data-testid="stMarkdownContainer"], .st-key-game_card [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
+.st-key-game_hud [data-testid="stElementContainer"], .st-key-game_card [data-testid="stElementContainer"] { margin: 0 !important; }
+
+/* HUD floats over the top of the map: a slim bar, then the zoom chips alone below it. */
+.st-key-game_hud { position: relative; z-index: 5; margin-bottom: -100px; padding: 12px 12px 0; pointer-events: none; gap: 10px !important; }
 .st-key-game_hud * { pointer-events: auto; }
-.game-hud { background: var(--hud-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-radius: var(--radius-lg); padding: 9px 14px 8px; color: var(--text); box-shadow: var(--shadow-card); }
-.game-hud-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.game-hud small { display: block; font-size: 0.64rem; letter-spacing: 0.16em; color: var(--text-muted); text-transform: uppercase; }
-.game-hud strong { font-size: 1.02rem; font-weight: 700; }
-.game-hud .game-score { text-align: right; font-size: 0.9rem; }
-.game-hud .game-score strong { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; color: var(--territory-yours); }
+.game-hud { display: flex; justify-content: space-between; align-items: center; gap: 10px; height: 38px; padding: 0 16px;
+  background: var(--hud-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-pill); color: var(--text); box-shadow: var(--shadow-card); }
+.game-hud-lobby { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.game-hud-counts { display: flex; align-items: baseline; gap: 4px; font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; flex: 0 0 auto; }
+.game-hud-counts b { font-size: 0.95rem; font-weight: 700; margin-left: 8px; }
+.game-hud-counts b:first-child { margin-left: 0; }
+.game-hud .game-yours { color: var(--success); }
+.game-hud .game-theirs { color: var(--brand-ink); }
+.game-hud .game-free { color: var(--text); }
 
-/* Colour legend: a quiet line inside the HUD. */
-.game-legend { display: flex; gap: 12px; margin-top: 5px; font-size: 0.72rem; color: var(--text-muted); }
-.game-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
-
-/* Zoom chips under the HUD, one row that scrolls sideways. */
+/* Zoom chips: one row of separate pills that scrolls sideways. */
 .st-key-map_focus [data-baseweb="button-group"], .st-key-map_focus [role="radiogroup"] {
-  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-.st-key-map_focus button { min-height: 30px; padding: 2px 12px; border-radius: var(--radius-pill); white-space: nowrap;
-  background: var(--hud-bg); color: var(--text); border: 0; box-shadow: var(--shadow-card);
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; padding: 2px 2px 6px;
+  /* a soft fade on the right edge says "there are more chips" */
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+.st-key-map_focus button { min-height: 32px; padding: 2px 11px; border-radius: var(--radius-pill); white-space: nowrap; flex: 0 0 auto;
+  background: var(--hud-bg); color: var(--text); border: 0; box-shadow: 0 2px 8px rgba(20, 43, 61, .16);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-.st-key-map_focus button p { font-size: 0.76rem; font-weight: 600; }
+.st-key-map_focus button p { font-size: 0.75rem; font-weight: 600; }
 /* Streamlit styles the selected chip itself; !important makes ours win. */
 .st-key-map_focus button[aria-checked="true"] { background: var(--accent) !important; color: var(--on-accent) !important; }
 .st-key-map_focus button[aria-checked="true"] p { color: var(--on-accent) !important; }
 
-/* Sheet floats over the bottom of the map. */
-.st-key-game_card { position: relative; z-index: 5; margin: -224px 12px 0; width: auto !important;
+/* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
+.st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
+
+/* Slim sheet over the bottom of the map: where you are. */
+.st-key-game_card { position: relative; z-index: 5; margin: -134px 12px 0; width: auto !important; flex: 0 0 auto !important;
   background: var(--hud-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border-radius: 22px; padding: 12px 14px 6px; box-shadow: var(--shadow-float); gap: 8px; }
+  border-radius: 18px; padding: 8px 14px 2px; box-shadow: var(--shadow-float); gap: 0 !important; }
 .game-card { color: var(--text); }
-.game-card small { display: block; font-size: 0.64rem; letter-spacing: 0.16em; color: var(--text-muted); text-transform: uppercase; }
-.game-card h3 { margin: 1px 0 2px; font-family: var(--font-display); font-weight: 400; font-size: 1.45rem;
-  color: var(--text); padding: 0; line-height: 1.1; }
-.game-card p { margin: 0; font-size: 0.86rem; line-height: 1.35; color: var(--text-muted); }
+.game-card small { display: block; font-size: 0.62rem; letter-spacing: 0.14em; color: var(--text-muted); text-transform: uppercase; }
+.game-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.2rem;
+  color: var(--text); padding: 0; line-height: 1.15; }
+.game-card p { margin: 1px 0 0; font-size: 0.8rem; line-height: 1.3; color: var(--text-muted); }
 .game-card .game-yours { color: var(--success); }
 .game-card .game-theirs { color: var(--brand-ink); }
-.stApp .st-key-game_card .st-key-map_checkin button { min-height: 48px; gap: 2px; border-radius: 14px; }
-.stApp .st-key-game_card .st-key-map_checkin button > div { flex: 0 0 auto; width: auto; }
-.st-key-game_card .game-card { padding-bottom: 2px; }
-/* Streamlit pulls markdown blocks up by 1rem; keep the text clear of the button. */
-.st-key-game_card [data-testid="stMarkdownContainer"]:has(.game-card) { margin-bottom: 0 !important; }
 /* The territory list: a quiet row at the bottom of the sheet. */
 .stApp .st-key-game_card [data-testid="stExpander"] details { box-shadow: none; background: transparent; border: 0; }
-.stApp .st-key-game_card [data-testid="stExpander"] summary { padding: 2px 4px; min-height: 0; }
-.stApp .st-key-game_card [data-testid="stExpander"] summary p { font-size: 0.86rem; color: var(--accent-ink); }
+.stApp .st-key-game_card [data-testid="stExpander"] summary { padding: 4px 2px; min-height: 0; }
+.stApp .st-key-game_card [data-testid="stExpander"] summary p { font-size: 0.8rem; color: var(--accent-ink); }
 .stApp .st-key-game_card [data-testid="stExpanderDetails"] { padding: 0 0 6px; }
 
 @media (max-width: 640px) {
@@ -68,13 +71,21 @@
   /* Sheet just above the tab bar; the territory list scrolls inside it. */
   .stApp .st-key-game_card { position: fixed; z-index: 10; left: 10px; right: 10px; width: auto !important; margin: 0;
     bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 250px); overflow-y: auto; }
+    max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 
-/* A shared badge can cover many territories: keep its points popup compact. */
-.map-points-scroll { max-height: 320px; overflow: auto; }
-.map-points-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.map-points-table th, .map-points-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
-.map-points-table th { text-align: left; overflow-wrap: anywhere; }
-.map-points-table thead th { font-size: 0.75rem; color: var(--text-muted); }
-.map-points-table td { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Tap a territory: a small ranking (rendered in a dialog, so no .stApp prefix). */
+.rank-scroll { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.rank-card h4 { margin: 0 0 6px; padding: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; line-height: 1.15; }
+.rank-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.rank-list .rank-row { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; min-height: 40px; }
+.rank-list .rank-row + .rank-row { border-top: 1px solid var(--border); }
+.rank-row-you { background: var(--accent-soft); }
+.rank-pos { width: 16px; text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rank-row:first-child .rank-pos { color: #C9962B; }
+.rank-name { flex: 1; min-width: 0; font-size: 0.95rem; font-weight: 500; overflow-wrap: anywhere; }
+.rank-tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 1px; }
+.rank-owner { background: var(--accent-soft); color: var(--accent-ink); border: 1px solid var(--border); }
+.rank-you { background: var(--accent); color: var(--on-accent); }
+.rank-pts { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rank-detail, .rank-empty { margin: 6px 2px 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.35; }
