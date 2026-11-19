@@ -587,7 +587,7 @@ def _focus_rpc(name: str, parameters: dict) -> dict:
         if reason in ERRORS:
             raise ValueError(ERRORS[reason]) from None
         if error.code in {'42P01', '42703', 'PGRST202', 'PGRST204'}:
-            raise RuntimeError('Focus Challenge setup is required: apply migration 014.') from None
+            raise RuntimeError('Focus Challenge setup is required: apply migrations 014 and 015.') from None
         raise
 
 

@@ -1,5 +1,17 @@
 # Workflows
 
+## Focus Challenge in test seasons
+
+In an explicitly marked v1 test season, open Minigames → Focus Challenge →
+Start. No uploads or new season are required, including for pre-Focus QA
+snapshots once migrations 014 and 015 are installed. The UI labels test mode
+and hides the upload-unlock progress. Finish/resume the saved attempt before
+starting another. After a failure or win, return to games and start again.
+Repeated wins refresh the single x1.5 hour; they never stack multipliers.
+Test games work throughout the active season; expired seasons remain closed.
+Check-in scoring still uses its own weekly window. Normal-season gates,
+deadlines, membership checks and Focus/Chug running-game exclusion still apply.
+
 > Scoring v1 implementation was authorised on 17 November 2026. See
 > [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
 > Earlier scoring drafts below are historical where they differ. Legacy seasons

@@ -284,7 +284,10 @@ It links membership, season and 06:00-based night; stores attempt number,
 private random challenge, status/phase/step/revision, reaction results,
 precision checkpoints and authoritative start/signal/deadline/expiry times.
 A passed row stores completion and boost expiry. Partial unique indexes allow
-one running attempt per member/season and one win per night. Public clients
+one running attempt per member/season and one normal-season win per night.
+Migration 015 adds a server-derived `test_mode` boolean to each attempt; QA wins
+are excluded from the one-win index. Sequential attempt numbers remain unique,
+and callers cannot select QA mode independently of the frozen season flag. Public clients
 cannot read the table or call its RPCs. No health label, photo or GPS is stored.
 
 `DrinkEntry.focus_attempt_id` is immutable reward provenance on ordinary entries.
