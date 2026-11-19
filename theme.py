@@ -35,6 +35,15 @@ def menu_icons(icons: dict[str, str]) -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
+def button_icons(icons: dict[str, str]) -> None:
+    """A Phosphor icon in front of a normal button's label: {button key: icon name}."""
+    base = ('content:"";display:inline-block;flex:0 0 20px;width:20px;height:20px;background-color:currentColor;'
+            '-webkit-mask:none center/contain no-repeat;mask:none center/contain no-repeat;')
+    css = "".join(f".stApp .st-key-{key} button::before{{{base}}}" + icon_css(f".stApp .st-key-{key} button::before", icon)
+                  for key, icon in icons.items())
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+
 def apply_theme() -> None:
     css = _CSS.read_text(encoding="utf-8")
     css += f':root{{--icon-caret-right:url("{icon_url("caret-right")}");}}'

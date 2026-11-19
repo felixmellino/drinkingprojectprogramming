@@ -1,45 +1,73 @@
-/* Game-style Map page: the map is the screen, HUD and card float on top.
-   Colours come from the design tokens in assets/theme.css. */
+/* Game-style Map page: the map is the screen, HUD and sheet float on top.
+   Colours come from the design tokens in assets/theme.css.
+   Laptop: the map is a rounded panel in the page. Phone (max 640px): the map
+   fills the whole screen like Apple Maps, the HUD floats at the top and the
+   sheet (location, check in, territory list) sits above the tab bar. */
 [data-testid="stMainBlockContainer"] { padding-top: 1rem; }
 
-/* The map: rounded, edge to edge, tall. */
-.st-key-game_map { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-float);
-  border: var(--border-width) solid var(--border); }
+/* The map: rounded, tall. */
+.st-key-game_map { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-float); }
 
 /* HUD floats over the top of the map. */
-.st-key-game_hud { position: relative; z-index: 5; margin-bottom: -118px; padding: 12px 12px 0; pointer-events: none; }
+.st-key-game_hud { position: relative; z-index: 5; margin-bottom: -132px; padding: 12px 12px 0; pointer-events: none; gap: 6px; }
 .st-key-game_hud * { pointer-events: auto; }
-.game-hud { display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  background: var(--hud-bg); backdrop-filter: blur(16px); border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-lg); padding: 10px 14px; color: var(--text); }
-.game-hud small { display: block; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; }
-.game-hud strong { font-size: 1.05rem; font-weight: 700; }
-.game-hud .game-score { text-align: right; }
+.game-hud { background: var(--hud-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-lg); padding: 9px 14px 8px; color: var(--text); box-shadow: var(--shadow-card); }
+.game-hud-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.game-hud small { display: block; font-size: 0.64rem; letter-spacing: 0.16em; color: var(--text-muted); text-transform: uppercase; }
+.game-hud strong { font-size: 1.02rem; font-weight: 700; }
+.game-hud .game-score { text-align: right; font-size: 0.9rem; }
 .game-hud .game-score strong { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; color: var(--territory-yours); }
 
-/* Zoom chips under the HUD. */
-.st-key-map_focus { margin-top: 2px; }
-.st-key-map_focus button { min-height: 28px; padding: 2px 10px; border-radius: var(--radius-pill);
-  background: var(--hud-bg); color: var(--text); border: var(--border-width) solid var(--border); backdrop-filter: blur(16px); }
-.st-key-map_focus button p { font-size: 0.74rem; }
-.st-key-map_focus button[kind="segmented_controlActive"],
-.st-key-map_focus button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.st-key-map_focus button[kind="segmented_controlActive"] p { color: var(--on-accent); }
+/* Colour legend: a quiet line inside the HUD. */
+.game-legend { display: flex; gap: 12px; margin-top: 5px; font-size: 0.72rem; color: var(--text-muted); }
+.game-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 
-/* Card floats over the bottom of the map. */
-.st-key-game_card { position: relative; z-index: 5; margin-top: -196px; padding: 0 12px 12px; }
-.game-card { background: var(--hud-bg); backdrop-filter: blur(16px); border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-lg); padding: 14px 16px 10px; color: var(--text); }
-.game-card small { display: block; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; }
-.game-card h3 { margin: 2px 0 4px; font-family: var(--font-display); font-weight: 400; font-size: 1.6rem;
-  color: var(--text); padding: 0; line-height: 1.15; }
-.game-card p { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
-.game-card .game-yours { color: var(--territory-yours); }
-.game-card .game-theirs { color: var(--territory-theirs); }
+/* Zoom chips under the HUD, one row that scrolls sideways. */
+.st-key-map_focus [data-baseweb="button-group"], .st-key-map_focus [role="radiogroup"] {
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.st-key-map_focus button { min-height: 30px; padding: 2px 12px; border-radius: var(--radius-pill); white-space: nowrap;
+  background: var(--hud-bg); color: var(--text); border: 0; box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.st-key-map_focus button p { font-size: 0.76rem; font-weight: 600; }
+/* Streamlit styles the selected chip itself; !important makes ours win. */
+.st-key-map_focus button[aria-checked="true"] { background: var(--accent) !important; color: var(--on-accent) !important; }
+.st-key-map_focus button[aria-checked="true"] p { color: var(--on-accent) !important; }
 
-/* Legend under the map. */
-.game-legend { display: flex; gap: 14px; justify-content: center; margin: 10px 0 4px; font-size: 0.8rem; color: var(--text-muted); }
-.game-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+/* Sheet floats over the bottom of the map. */
+.st-key-game_card { position: relative; z-index: 5; margin: -224px 12px 0; width: auto !important;
+  background: var(--hud-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-radius: 22px; padding: 12px 14px 6px; box-shadow: var(--shadow-float); gap: 8px; }
+.game-card { color: var(--text); }
+.game-card small { display: block; font-size: 0.64rem; letter-spacing: 0.16em; color: var(--text-muted); text-transform: uppercase; }
+.game-card h3 { margin: 1px 0 2px; font-family: var(--font-display); font-weight: 400; font-size: 1.45rem;
+  color: var(--text); padding: 0; line-height: 1.1; }
+.game-card p { margin: 0; font-size: 0.86rem; line-height: 1.35; color: var(--text-muted); }
+.game-card .game-yours { color: var(--success); }
+.game-card .game-theirs { color: var(--brand-ink); }
+.stApp .st-key-game_card .st-key-map_checkin button { min-height: 48px; gap: 8px; border-radius: 14px; }
+.stApp .st-key-game_card .st-key-map_checkin button > div { flex: 0 0 auto; width: auto; }
+.st-key-game_card .game-card { padding-bottom: 6px; }
+/* The territory list: a quiet row at the bottom of the sheet. */
+.stApp .st-key-game_card [data-testid="stExpander"] details { box-shadow: none; background: transparent; border: 0; }
+.stApp .st-key-game_card [data-testid="stExpander"] summary { padding: 2px 4px; min-height: 0; }
+.stApp .st-key-game_card [data-testid="stExpander"] summary p { font-size: 0.86rem; color: var(--accent-ink); }
+.stApp .st-key-game_card [data-testid="stExpanderDetails"] { padding: 0 0 6px; }
+
+@media (max-width: 640px) {
+  /* The map fills the whole phone screen; nothing scrolls under it. */
+  .stApp:has(.st-key-game_map) [data-testid="stMain"] { overflow: hidden; }
+  .stApp .st-key-game_map { position: fixed; inset: 0; z-index: 0; border-radius: 0; box-shadow: none; }
+  .stApp .st-key-game_map [data-testid="stDeckGlJsonChart"],
+  .stApp .st-key-game_map [data-testid="stDeckGlJsonChart"] > div { height: 100dvh !important; }
+  /* HUD at the top, under the status bar. */
+  .stApp .st-key-game_hud { position: fixed; z-index: 10; left: 10px; right: 10px; width: auto !important;
+    top: calc(8px + env(safe-area-inset-top, 0px)); margin: 0; padding: 0; }
+  /* Sheet just above the tab bar; the territory list scrolls inside it. */
+  .stApp .st-key-game_card { position: fixed; z-index: 10; left: 10px; right: 10px; width: auto !important; margin: 0;
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 250px); overflow-y: auto; }
+}
 
 /* A shared badge can cover many territories: keep its points popup compact. */
 .map-points-scroll { max-height: 320px; overflow: auto; }

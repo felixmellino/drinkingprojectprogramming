@@ -231,6 +231,11 @@ Map owner badge update (19 November 2026, contributor request):
   map is Carto Dark Matter without place names (they clashed with territory
   names) with a floating HUD and location card. Every territory border is
   white; the fill colour shows the owner. Territory names show on hover only.
+- Phone layout (19 November 2026): the map fills the whole screen. The HUD
+  (lobby, your territories, colour legend, zoom chips) floats at the top; a
+  sheet above the tab bar shows where you are, the Check in here button and
+  the All territories list, which opens upwards inside the sheet. On a laptop
+  the map stays a rounded panel with the same HUD and sheet on top.
 - Closing the dialog clears Streamlit's read-only selection via a fresh chart
   key so the same icon can be clicked again. This returns the viewport to the
   selected quick-zoom focus; a manually panned viewport is not retained.
