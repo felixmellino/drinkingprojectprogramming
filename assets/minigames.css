@@ -103,3 +103,18 @@ body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!importa
 /* A button that cannot be pressed yet stays recognisable (blue, faded) instead of turning into a white box. */
 .stApp .st-key-chug_invite button:disabled, .stApp .st-key-quiz_challenge button:disabled, .stApp .st-key-focus_start button:disabled {
   background: var(--accent); color: var(--on-accent); opacity: .4; }
+
+/* Game screens: everything centred. */
+.stApp:has(.game-title) [data-testid="stMainBlockContainer"] { text-align: center; }
+.stApp:has(.game-title) [role="radiogroup"] { justify-content: center; }
+.stApp:has(.game-title) [data-testid="stWidgetLabel"], .stApp:has(.game-title) [data-testid="stWidgetLabel"] p { justify-content: center; text-align: center; width: 100%; }
+.stApp:has(.game-title) [class*="st-key-minigames_home"] [data-testid="stButton"], .stApp:has(.game-title) [class*="st-key-focus_home"] [data-testid="stButton"],
+.stApp:has(.game-title) [class*="st-key-quiz_back"] [data-testid="stButton"] { display: flex; justify-content: center; }
+.stApp:has(.game-title) [data-testid="stProgress"] p { text-align: center; width: 100%; }
+.stApp:has(.game-title) [data-testid="stAlertContainer"] { justify-content: center; text-align: center; }
+.stApp .game-title, .stApp .game-line, .stApp .game-note, .stApp .duel-vs, .stApp .duel-what { text-align: center; }
+.stApp:has(.game-title) [data-testid="stMarkdownContainer"], .stApp:has(.game-title) [data-testid="stMarkdownContainer"] p { text-align: center; }
+.stApp:has(.game-title) [data-testid="stElementContainer"]:has(> [data-testid="stButton"]) { display: flex; justify-content: center; }
+.stApp:has(.game-title) [data-testid="stElementContainer"]:has(> [data-testid="stButton"] button[kind="tertiary"]) [data-testid="stButton"] { width: auto; }
+.stApp:has(.game-title) [class*="st-key-minigames_home"], .stApp:has(.game-title) [class*="st-key-focus_home"],
+.stApp:has(.game-title) [class*="st-key-quiz_back"] { align-self: center; margin-inline: auto; }

@@ -46,8 +46,9 @@ text, no metrics, no manual refresh (screens update by themselves).
   drinks and taps Start duel (location must be ready). Used allowances show as
   one grey line ("You already challenged tonight."). The form is hidden while a
   duel is open.
-- Reaction Test: one line of reward, a progress bar only while locked, Start,
-  and "Just for fun. Not a sobriety test."
+- Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
+  only while locked, Start. No slogans or disclaimers on any game screen.
+  Everything on game screens is centred.
 - Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
   one card with Accept / Decline. Rules are unchanged.
 

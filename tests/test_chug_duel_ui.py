@@ -242,7 +242,7 @@ def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(
     service["game"].scoring_rules = new_rules(test_mode=True)
     host = open_page()
     for status in ("completed", "aborted", "completed"):
-        assert not host.exception and "Test season" in notes(host)
+        assert not host.exception and button(host, "Challenge")
         button(host, "Challenge").click().run()
         guest = open_page("pb", "b")
         assert not button(guest, "Accept").disabled
@@ -256,7 +256,7 @@ def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(
     assert len(service["duels"]) == 3
     reopened = open_page()
     assert not reopened.exception and button(reopened, "Challenge")
-    assert "Test season" in notes(reopened)
+    assert "already challenged" not in notes(reopened)
 
 
 def test_normal_season_still_blocks_used_challenge_even_with_test_in_lobby_name(service):
@@ -306,7 +306,7 @@ def test_quiz_screen_is_short(service, monkeypatch):
     page, _ = open_quiz(service, monkeypatch)
     import re
     visible = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown if "<style>" not in m.value).split()
-    assert len(visible) < 45, visible and not page.metric and not page.caption and not page.info
+    assert len(visible) < 25, visible and not page.metric and not page.caption and not page.info
 
 
 def test_quiz_used_tonight_hides_the_form(service, monkeypatch):

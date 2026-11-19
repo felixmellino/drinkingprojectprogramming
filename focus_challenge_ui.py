@@ -49,11 +49,9 @@ def render_focus(player, season):
                     _error(error)
         return
     from minigames_ui import game_header, game_note
-    game_header('Reaction Test', 'Pass 3 quick tests. Get ×1.5 points for 1 hour.', 'focus_home')
+    game_header('Reaction Test', '×1.5 points for 1 hour', 'focus_home')
     count, threshold = info['count'], info['threshold']
-    if qa:
-        game_note('Test season: unlimited tries.')
-    else:
+    if not qa:
         if type(threshold) is not int or threshold <= 0:
             st.error('Could not load. Reload the page.')
             return
@@ -81,4 +79,3 @@ def render_focus(player, season):
             st.rerun()
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
             _error(error)
-    game_note('Just for fun. Not a sobriety test.')

@@ -131,8 +131,8 @@ def game_header(title, line, back_key):
     if st.button('All games', key=back_key, type='tertiary'):
         st.session_state.pop('minigame_selected', None)
         st.rerun()
-    st.markdown(f'<h2 class="game-title">{escape(title)}</h2><p class="game-line">{escape(line)}</p>',
-                unsafe_allow_html=True)
+    line = f'<p class="game-line">{escape(line)}</p>' if line else ''
+    st.markdown(f'<h2 class="game-title">{escape(title)}</h2>{line}', unsafe_allow_html=True)
 
 
 def game_note(text):
@@ -253,11 +253,9 @@ def render_minigames(player, member, lobby, season):
             _game_cards(member, duels, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
             st.caption('Invitations update automatically.')
             return
-        game_header('Chug Duel', 'Same drink. One winner.', 'minigames_home')
+        game_header('Chug Duel', '', 'minigames_home')
         track_location()
         outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
-        if unlimited:
-            game_note('Test season: play as often as you like.')
 
         def who(member_id):
             return labels.get(member_id, 'Lobby member')
@@ -317,7 +315,7 @@ def render_minigames(player, member, lobby, season):
                 drink = st.radio("Drink", list(DRINK_LABELS), format_func=DRINK_LABELS.get, horizontal=True, key="chug_drink")
                 size = None if drink == "shot" else st.radio("Size", list(SIZE_LABELS),
                     format_func=lambda s: size_label(drink, s, rules), horizontal=True, key=f"chug_drink_size_{drink}")
-                game_note(f"Winner +{base_points(drink, size, rules) * 2}. Loser +0.")
+                game_note(f"Winner +{base_points(drink, size, rules) * 2}")
                 request = (player, season.id, opponent, drink, size)
                 if st.session_state.get("chug_request") != request:
                     st.session_state["chug_request"] = request

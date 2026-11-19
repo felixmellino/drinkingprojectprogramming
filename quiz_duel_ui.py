@@ -63,12 +63,9 @@ def render_quiz(player, member, lobby, season, members, labels):
         _stage(player, member, focused, labels)
         return
     from minigames_ui import game_header, game_note
-    game_header("Quiz Duel", "Same questions. Fastest correct answer wins.", "quiz_back")
+    game_header("Quiz Duel", "", "quiz_back")
     points = format_points(state["available_points"])
-    if state["test_mode"]:
-        game_note(f"Test season: unlimited. You have {points} points.")
-    else:
-        game_note(f"You have {points} points. One duel per night.")
+    game_note(f"{points} points")
     pending = [d for d in duels if d["status"] == "invited"]
     for duel in pending:
         with st.container(border=True):
@@ -105,7 +102,6 @@ def render_quiz(player, member, lobby, season, members, labels):
                                 format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
                                 key="pill_radio_quiz_opponent")
             stake = st.radio("Stake", list(range(3, 11)), horizontal=True, key="pill_radio_quiz_stake")
-            game_note("Winner takes the loser's stake.")
             if st.button("Challenge", type="primary", key="quiz_challenge", width="stretch",
                          disabled=opponent is None or state["available_points"] < stake):
                 request = st.session_state.setdefault("quiz_invitation_id", str(uuid4()))
