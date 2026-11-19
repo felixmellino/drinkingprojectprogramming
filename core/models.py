@@ -76,14 +76,14 @@ class DrinkEntry:
     photo_gps: tuple[float, float] | None  # (lat, lng) from photo EXIF, may be missing
     territory_id: str | None
     location_check_result: str  # "matched" | "uncertain" | "outside" | "unavailable"
-    points_awarded: int  # drinker's base award; additional owner income is separate
+    points_awarded: int | float  # accepted award, including any saved Focus multiplier
     submitted_at: datetime
     photo_captured_at: datetime | None = None
     size: str | None = None
     rule_version: str = "legacy"
     event_order: int | None = None
     owner_membership_id: str | None = None
-    owner_bonus_quarters: int = 0
+    owner_bonus_quarters: int | float = 0  # half-quarters represent exact eighth-points
     corrected_at: datetime | None = None
     revision: int = 0
     team_id: str | None = None
@@ -91,6 +91,7 @@ class DrinkEntry:
     duel_id: str | None = None
     duel_transfer_to: str | None = None  # saved winner's competitor (team or member)
     duel_transfer_order: int | None = None  # result event, after both base entries
+    focus_attempt_id: str | None = None  # immutable multiplier provenance, ordinary entries only
 
 
 @dataclass

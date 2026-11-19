@@ -303,7 +303,7 @@ four building blocks, and the team's workflow rules.
   the QA replay UI update requires deployment with the new Python code.
   Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
   [CHUG_DUEL.md](docs/CHUG_DUEL.md).
-  Other minigames remain future work. See the build order in
+  Focus Challenge is implemented on its feature branch; migration 014 and a new season activate it. Other minigames remain future work. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season
@@ -465,3 +465,16 @@ then repeat the browser check at the public URL. Finished-lobby fallback and
 revoked membership are covered by automated tests; deployed browser checks
 remain. The automated suite uses mocks and does not apply migrations or
 require database credentials.
+
+### Focus Challenge (19 November 2026)
+
+The second playable minigame adds randomized reaction, seven-step memory and
+precision tests. Accepted entries unlock attempts at five, then seven/nine/etc.
+after failures. One win per evening grants a personal 60-minute x1.5 ordinary
+season/territory effect, including 25% owner income on boosted awards.
+Chug Duel scoring is unchanged. Before activation, the Data owner applies
+`migrations/014_focus_challenge.sql` after 011, `012_qa_minigames.sql` and
+`013_checkin_photo_privacy.sql`.
+Create a new QA/normal lobby to snapshot its rules; existing seasons stay frozen.
+See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
+Shared-project migration and real-phone difficulty calibration are pending.

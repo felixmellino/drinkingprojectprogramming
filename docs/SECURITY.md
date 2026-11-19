@@ -233,3 +233,19 @@ another device; replace/remove; check owner, accepted friend, both directions
 of a pending request and unrelated accounts; cancel/decline/remove and verify
 further access ends. Confirm public-client table/object requests fail. Run
 cleanup in dry-run mode and verify it never selects a current picture.
+
+## Focus Challenge — 19 November 2026
+
+Migration 014 keeps attempts/private random challenges server-only. Its game
+RPCs use the trusted server role and also validate current player membership,
+phase/revision, evidence shape, server deadlines, one-win limits and atomic
+reward issuance under the existing lobby transaction lock. New-season snapshots
+enable the feature; existing snapshots are unchanged. Source grants on entries
+are immutable, so correction/replay cannot reapply an expired reward or compound
+it. Exact eighth-point income is retained. No new package, credential, public
+RPC access, photo, exact GPS or health classification is introduced.
+
+Browser timing/tap evidence remains trust-based and can be manipulated by a
+modified client. This is not a verified human/anti-cheat or sobriety assessment.
+See [the implementation record](FOCUS_CHALLENGE.md) for tested access controls,
+private challenge generation, restart recovery and outstanding activation checks.
