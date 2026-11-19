@@ -182,9 +182,9 @@ if focus_enabled(season):
     try:
         focus_info = db.focus_status(player_id, season_id)
         if focus_info.get('boost_ends_at'):
-            focus_multiplier = 1.5
+            focus_multiplier = focus_info.get('boost_multiplier', 1.5)
             boost_end = datetime.fromisoformat(focus_info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
-            st.success(f'Focus boost ×1.5 active until {boost_end:%H:%M:%S %Z}.')
+            st.success(f'Focus boost ×{focus_multiplier:g} active until {boost_end:%H:%M:%S %Z}.')
     except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
         st.caption('Focus preview unavailable. Any earned multiplier is checked by the server on submission.')
 time_multiplier = 1

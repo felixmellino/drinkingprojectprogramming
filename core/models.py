@@ -84,7 +84,7 @@ class DrinkEntry:
     rule_version: str = "legacy"
     event_order: int | None = None
     owner_membership_id: str | None = None
-    owner_bonus_quarters: int | float = 0  # half-quarters represent exact eighth-points
+    owner_bonus_quarters: int | float = 0  # fractional quarters preserve exact owner income
     corrected_at: datetime | None = None
     revision: int = 0
     team_id: str | None = None
@@ -96,6 +96,7 @@ class DrinkEntry:
     time_duel_id: str | None = None  # immutable source of the season-only Time Duel boost
     time_bonus: int | float = 0  # excludes territory, owner income and lifetime points
     absent_member_ids: tuple[str, ...] = ()  # membership state at acceptance; retained for replay
+    focus_multiplier: float | None = None  # saved 1/1.25/1.5; None supports historical records
 
 
 @dataclass

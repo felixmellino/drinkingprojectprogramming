@@ -169,7 +169,7 @@ def corrected_entry(entry: DrinkEntry, season: Season, drink_type: str, size: st
     except ValueError:
         raise CheckinRejected("invalid_selection") from None
     return replace(entry, drink_type=drink_type, size=size, amount=volume_for(drink_type, size, rules_for(season)),
-                   points_awarded=points * (1.5 if entry.focus_attempt_id else 1),
+                   points_awarded=points * ((entry.focus_multiplier or 1.5) if entry.focus_attempt_id else 1),
                    time_bonus=points * 0.25 if entry.time_duel_id and not entry.focus_attempt_id else 0,
                    corrected_at=utc(now), revision=entry.revision + 1)
 
@@ -256,4 +256,4 @@ def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
 
 
 def format_points(points) -> str:
-    return format(Decimal(str(points)), ".3f").rstrip("0").rstrip(".")
+    return format(Decimal(str(points)), ".4f").rstrip("0").rstrip(".")

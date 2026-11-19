@@ -95,7 +95,7 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False,
             st.rerun()
         if _game_tile('focus', 'reaction-test', 'Reaction Test',
                       'Test mode · Unlimited plays' if focus_qa
-                      else 'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
+                      else 'Solo · 3 games · Earn ×1.25 or ×1.5' if focus_available else 'Not in this season',
                       playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()

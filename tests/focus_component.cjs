@@ -75,8 +75,19 @@ const qaFail=setup();qaFail.render(attempt('reaction',{status:'failed',reason:'t
 assert(qaFail.elements.resultText.textContent.includes('retry immediately'));
 assert(!qaFail.elements.resultText.textContent.includes('two more'));
 const qaWin=setup();qaWin.render(attempt('precision',{status:'passed',test_mode:true}));
-assert(qaWin.elements.resultText.textContent.includes('without stacking'));
+assert(qaWin.elements.resultText.textContent.includes('never stack'));
 const normalFail=setup();normalFail.render(attempt('reaction',{status:'failed',reason:'timeout',test_mode:false}));
 assert(normalFail.elements.resultText.textContent.includes('two more accepted check-ins'));
 assert.deepEqual(logic.mergeTaps([100,200],[100,201,300],cfg),[100,200]);
+const missedReaction=setup();missedReaction.render(attempt('memory_ready',{
+ stage_results:{reaction:false},signal_at:null,reason:'reaction_slow'}));
+assert.equal(missedReaction.elements.start.textContent,'Start memory');
+assert(missedReaction.elements.stageSummary.textContent.includes('Reaction: missed'));
+assert(!missedReaction.elements.readyTitle.textContent.includes('passed'));
+const partial=setup();partial.render(attempt('precision',{status:'passed',boost_multiplier:1.25,
+ stage_results:{reaction:false,memory:true,precision:true}}));
+assert(partial.elements.resultText.textContent.includes('2 / 3 passed. ×1.25'));
+const one=setup();one.render(attempt('precision',{status:'failed',boost_multiplier:1,
+ stage_results:{reaction:false,memory:true,precision:false}}));
+assert(one.elements.resultText.textContent.includes('1 / 3 passed. No boost'));
 console.log('Focus component checks passed: reaction timing/early tap, stable rerender/reload, memory presentation, precision prefixes/misses/timeout, and saved results.');

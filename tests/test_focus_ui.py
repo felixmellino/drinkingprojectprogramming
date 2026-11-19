@@ -12,7 +12,7 @@ def focus(service, monkeypatch):
     attempt = dict(id='attempt',status='running',phase='reaction_ready',revision=0,step=0,
       config=new_focus_rules(),server_now=START.isoformat(),deadline=(START+timedelta(seconds=30)).isoformat(),
       expires_at=(START+timedelta(minutes=3)).isoformat(),signal_at=None,reaction_ms=[],precision_taps=[])
-    state = {'count':4,'threshold':5,'won':False,'boost_ends_at':None,'attempt':None,'board':None}
+    state = {'flow_version':3,'count':4,'threshold':5,'won':False,'boost_ends_at':None,'attempt':None,'board':None}
     monkeypatch.setattr(focus_ui,'current_time',lambda:START)
     monkeypatch.setattr(focus_ui,'focus_board',lambda a: state['board'])
     monkeypatch.setattr(focus_ui.db,'focus_status',lambda *args:deepcopy({k:v for k,v in state.items() if k!='board'}))
@@ -166,3 +166,22 @@ def test_invalid_normal_unlock_threshold_shows_reload_message_without_crashing_o
     assert any('Reload' in e.value for e in page.error)
     assert not any(b.label=='Start' for b in page.button)
     assert not start.called and not action.called
+
+
+def test_partial_reward_uses_the_saved_tier_instead_of_displaying_full_boost(focus):
+    state,start,action,_=focus
+    state.update(won=True,boost_multiplier=1.25,boost_ends_at=(START+timedelta(minutes=30)).isoformat())
+    page=open_page(selected='focus')
+    assert not page.exception and any('×1.25 active' in e.value for e in page.success)
+    assert button(page,'Start').disabled
+    assert not start.called
+
+
+def test_missing_completion_migration_explains_setup_and_prevents_an_old_rules_start(focus):
+    state,start,action,_=focus
+    state.pop('flow_version')
+    state['count']=5
+    page=open_page(selected='focus')
+    assert not page.exception and any('022_focus_complete_all_games.sql' in e.value for e in page.error)
+    assert not any(b.label=='Start' for b in page.button)
+    assert not start.called

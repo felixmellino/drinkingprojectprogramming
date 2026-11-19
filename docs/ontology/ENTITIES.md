@@ -283,16 +283,20 @@ reads their relationships; public search selects just player ID and username.
 It links membership, season and 06:00-based night; stores attempt number,
 private random challenge, status/phase/step/revision, reaction results,
 precision checkpoints and authoritative start/signal/deadline/expiry times.
-A passed row stores completion and boost expiry. Partial unique indexes allow
+A passed row stores completion and boost expiry. Migration 022 adds
+`stage_results` (server-recorded reaction/memory/precision booleans) and
+`boost_multiplier` (1, 1.25 or 1.5). A partial reward counts as a win.
+Partial unique indexes allow
 one running attempt per member/season and one normal-season win per night.
 Migration 015 adds a server-derived `test_mode` boolean to each attempt; QA wins
 are excluded from the one-win index. Sequential attempt numbers remain unique,
 and callers cannot select QA mode independently of the frozen season flag. Public clients
 cannot read the table or call its RPCs. No health label, photo or GPS is stored.
 
-`DrinkEntry.focus_attempt_id` is immutable reward provenance on ordinary entries.
+`DrinkEntry.focus_attempt_id` and `focus_multiplier` are immutable reward
+provenance on ordinary entries. The server chooses the active tier at receipt.
 `points_awarded` is the actual accepted award including that effect. SQL numeric
-half-points and half-quarter owner-income units preserve exact eighth-points;
+quarter-points and fractional owner-income units preserve exact sixteenth-points;
 whole values remain integers in Python presentation. Timely corrections retain
 the source multiplier; historical replay does not need today's boost status.
 

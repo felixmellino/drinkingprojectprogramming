@@ -2,6 +2,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {execFileSync}=require('node:child_process');
 const {PGlite}=require(path.resolve(process.argv[2]||'.venv/photo-sql-check/package/dist/index.cjs'));
 const rules=JSON.parse(execFileSync(process.env.SCORING_PYTHON||'.venv/Scripts/python.exe',['-c','import json; from core.scoring_v1 import new_rules; print(json.dumps(new_rules()))'],{encoding:'utf8'}));
+// Preserve the pre-022 fixture: it verifies previously saved v2 behavior.
+rules.focus_challenge.flow_version=2;delete rules.focus_challenge.reward_multipliers;
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const disk=path.resolve('.venv',`focus-db-test-${Date.now()}`);
 let pg,now='2026-11-19T20:00:00Z';

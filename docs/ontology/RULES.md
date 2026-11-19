@@ -30,26 +30,30 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-Pass reaction, memory and precision consecutively. Contributor revision,
+Play reaction, memory and precision in order, even after a failed task.
+Contributor revision, 19 November 2026: failures mark only their current task;
+all three tasks contribute to the final reward under R-M09. Migration 022 applies
+this to new attempts while preserving previously started games. Contributor revision,
 19 November 2026: new attempts use one signal and a tap within 220 ms; no early
 taps. Migration 021 supersedes reaction-only migrations 018/019/020 and applies this
 to new attempts in existing eligible seasons
 without editing season snapshots. Attempt-level configuration preserves rules
 for games already started before this revision. Memory requires reproducing seven
 positions exactly. Precision requires twelve correct taps within twelve seconds;
-a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
+a wrong tap fails Precision. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
 Each new attempt receives private server-generated random material: independent
 3500–6500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
 and new valid precision positions. Refreshing cannot reroll it. Memory flashes
 650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
-New attempts again require all three stages (contributor choice resolving PR #64).
+New attempts include all three stages (contributor choice resolving PR #64).
 Already-running reaction-only attempts retain their previous rules and
 repeatable false starts.
-For new three-stage attempts, an early reaction tap ends the attempt.
-After passing reaction, press Start memory to begin its one-second lead-in
-and preview. Passing memory opens Start precision. These ready screens keep
+For new flow-version-3 attempts, an early or slow reaction tap marks Reaction
+as missed and opens Start memory with its one-second lead-in and preview.
+Finishing or failing Memory opens Start precision. Each completed task's
+pass/fail result is saved and shown, including after a refresh. These ready screens keep
 the next stage from starting unexpectedly during a page update.
 Precision targets are 52 px with consistent normalized margins and minimum
 movement; no colour-only matching is required.
@@ -60,8 +64,10 @@ Resume the same persisted attempt and progress; its clock keeps running.
 Ready screens have thirty seconds. New reaction signals allow 500 ms for a
 response, but anything above 220 ms still fails R-M07. The whole attempt has a
 three-minute maximum and ends sooner at 06:00, scoring closure (normal seasons)
-or season end. A miss or timeout requires the next unlock count in normal
-seasons; QA may retry immediately. Leaving the screen itself
+or season end. A task timeout marks that task as missed and offers the next
+task; expiration of the whole attempt ends it without an incomplete reward.
+An attempt finishing with zero or one pass requires the next unlock count in
+normal seasons; QA may retry immediately. Leaving the screen itself
 does not create or refund an attempt.
 
 The server allows two seconds for delivery of stage evidence, while browser
@@ -72,12 +78,16 @@ Precision checkpoints save full tap prefixes without blocking the next local tap
 
 ### R-M09 Focus boost and scoring
 
-In normal seasons one successful attempt per member/lobby evening grants x1.5 on
-future ordinary drink season and matched-territory points for sixty minutes,
+Contributor revision, 19 November 2026: after all three tasks are resolved,
+three passes grant x1.5, two grant x1.25, and zero or one leave points unchanged.
+Both reward tiers count as the one successful attempt per normal lobby evening.
+Either reward applies to future ordinary drink season and matched-territory points for sixty minutes,
 ending earlier at scoring closure or season end. It can continue past 06:00.
 Boosts never exceed x1.5; an unexpired prior-evening boost blocks a new Focus
 attempt until it ends. QA may replay while a boost is active; a further win
-refreshes the hour rather than multiplying or adding the durations. QA boosts
+refreshes that tier's hour rather than multiplying or adding durations. When QA
+effects overlap, use the highest currently active multiplier; a later x1.25
+win cannot downgrade a still-active x1.5 reward. QA boosts
 end at the earlier of sixty minutes or season end, and never change when drink
 submissions are accepted. Chug Duel entries/transfers keep their normal scoring.
 The owner earns 25% of the boosted award as additional season income, using
@@ -86,7 +96,9 @@ the owner immediately before the entry as usual. No self/team-self income.
 In team mode only the successful member's ordinary entries are boosted; their
 awards add to the team totals. Teammates' other entries are unchanged. Eligibility
 uses authoritative receipt time: boost start <= check-in receipt < expiry.
-The entry stores its source Focus attempt. Corrections retain that original
+The entry stores its source Focus attempt and exact multiplier. Owner income
+on a one-point drink boosted to 1.25 is exactly 0.3125, without rounding.
+Corrections retain that original
 multiplier and replay ownership/income without compounding or depending on
 whether the boost is still active. Photo deletion does not remove awards.
 

@@ -4,13 +4,14 @@ from math import isfinite
 
 FOCUS_RULES = {
     'version': 1, 'first_unlock': 5, 'retry_step': 2,
-    'reaction_trials': 1, 'reaction_median_ms': 220, 'flow_version': 2,
+    'reaction_trials': 1, 'reaction_median_ms': 220, 'flow_version': 3,
     'reaction_wait_min_ms': 3500, 'reaction_wait_max_ms': 6500,
     'reaction_response_ms': 500, 'memory_length': 7, 'memory_cells': 9,
     'memory_flash_ms': 650, 'memory_gap_ms': 200, 'memory_input_ms': 15000,
     'precision_targets': 12, 'precision_ms': 12000,
     'ready_seconds': 30, 'attempt_seconds': 180, 'delivery_grace_ms': 2000,
     'boost_seconds': 3600, 'multiplier': 1.5,
+    'reward_multipliers': [1, 1, 1.25, 1.5],
 }
 
 ERRORS = {
