@@ -219,8 +219,19 @@ loss can resume the saved started game until expiry. A lost successful reply
 recovers its existing start/result instead of creating another one.
 
 Minigames is the Games tab, immediately right of the check-in plus in the bottom navigation.
-Receiving accounts see incoming invitations and outcomes on that page through
-automatic refresh. New games are blocked outside normal scoring availability.
+The catalogue shows pending counts for incoming **Minigame invites** and
+outgoing **Minigame requests** for Chug Duel, Quiz Duel and Time Duel in the
+selected lobby. Open either list to see the game, the other player and any
+drink or stake terms. Recipients can accept or decline in the pop-up, and
+senders can cancel pending requests there. Accepting opens that game's setup
+on the recipient's device. The catalogue refreshes automatically and offers
+a **Join** button for accepted or running duels. Game screens retain their
+own setup, start and outcome flows. Migration 021 for Time Duel and migration
+022 for Quiz Duel keep every pending invitation visible when a player has
+more than 20. Both migrations were verified on the shared WeGoPub database
+on 19 November 2026.
+
+New games are blocked outside normal scoring availability.
 
 Source: contributor's explicit interruption and navigation answers,
 18 November 2026; accepted/start phase deadlines are operational defaults.
