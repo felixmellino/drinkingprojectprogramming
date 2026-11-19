@@ -11,13 +11,19 @@ from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
+from theme import menu_icons
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
+# Pages that have no tab in the bottom bar open from the top of this menu.
+PAGES = [
+    ("lobby", "Lobbies", "pages/2_Lobby.py", "users-three"),
+    ("photos", "Photo history", "pages/6_Check_in_photos.py", "images"),
+]
 OPTIONS = [
-    ("edit", "Edit profile", ":material/edit:"),
-    ("friends", "Friends", ":material/group:"),
-    ("stats", "My stats", ":material/leaderboard:"),
-    ("security", "Account & security", ":material/lock:"),
+    ("edit", "Edit profile", "pencil-simple"),
+    ("friends", "Friends", "users"),
+    ("stats", "My stats", "chart-bar"),
+    ("security", "Account & security", "lock-simple"),
 ]
 
 
@@ -26,13 +32,22 @@ def show_profile(player):
     show_picture_identity(player.id, player.id, st.session_state.get("player_display_name", player.display_name))
     view = st.session_state.get("profile_view", "menu")
     if view == "menu":
-        st.caption("Your account, friends and lifetime progress.")
-        for key, label, icon in OPTIONS:
-            if st.button(label, icon=icon, width="stretch", key=f"profile_{key}"):
-                st.session_state["profile_view"] = key
-                st.rerun()
-        if st.button("Log out", icon=":material/logout:", width="stretch"):
-            log_out()
+        # iPhone-style grouped lists: icon, label, chevron (styles in assets/theme.css).
+        menu_icons({**{f"profile_page_{key}": icon for key, _label, _page, icon in PAGES},
+                    **{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+                    "profile_logout": "sign-out"})
+        with st.container(key="menu_list_play"):
+            for key, label, page, _icon in PAGES:
+                if st.button(label, width="stretch", key=f"profile_page_{key}"):
+                    st.switch_page(page)
+        with st.container(key="menu_list_account"):
+            for key, label, _icon in OPTIONS:
+                if st.button(label, width="stretch", key=f"profile_{key}"):
+                    st.session_state["profile_view"] = key
+                    st.rerun()
+        with st.container(key="menu_list_logout"):
+            if st.button("Log out", width="stretch", key="profile_logout"):
+                log_out()
         return
     if st.button("Back to Profile", icon=":material/arrow_back:"):
         dismiss_friends()

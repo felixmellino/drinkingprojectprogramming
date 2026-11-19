@@ -3,6 +3,7 @@ from base64 import b64encode
 from pathlib import Path
 from uuid import uuid4
 
+from html import escape
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
@@ -15,7 +16,8 @@ from core.chug_duel import allowances, component_action, night_id, next_reset, u
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
-from drink_entry_ui import page_header, context_line
+from drink_entry_ui import page_header
+from theme import button_icons, page_subtitle
 from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
@@ -41,45 +43,65 @@ def _act(player, duel, action, winner=None):
         _error(error)
 
 
+GAME_ART = Path(__file__).parent / "assets" / "games"
+
+
+def _art(name):
+    """An animated game illustration (assets/games/*.svg) as an image data URL."""
+    return "data:image/svg+xml;base64," + b64encode((GAME_ART / f"{name}.svg").read_bytes()).decode()
+
+
+def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
+    """One colourful square tile: animated picture, name, one status line.
+    A playable tile has its "Open …" button laid invisibly over it (CSS), so
+    the whole tile is the tap target and keeps the button's accessible name.
+    A real game that is closed right now keeps a disabled button; a
+    coming-soon tile (real=False) has none."""
+    tone = " game-tile-alert" if alert else ""
+    off = "" if playable else " game-tile-off"
+    with st.container(key=f"game_tile_{key}"):
+        st.markdown(
+            f'<div class="game-tile game-tile-{key}{off}"><img class="game-tile-art" src="{_art(art)}" alt="">'
+            f'<div class="game-tile-text"><strong>{escape(title)}</strong>'
+            f'<small class="{tone.strip()}">{escape(line)}</small></div></div>',
+            unsafe_allow_html=True)
+        return real and st.button(f"Open {title}", key=f"open_game_{key}", width="stretch", disabled=not playable)
+
+
+# Placeholder tiles after the playable games; each becomes a real game later.
+COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
+
+
 def _game_cards(member, duels, *, service_available=True, focus_available=False, focus_qa=False):
-    """Show all games together; frozen season rules determine Focus availability."""
+    """Six colourful tiles (3 rows of 2): the playable games first, then what is coming.
+    Frozen season rules decide whether the Reaction Test (Focus Challenge) is open;
+    test seasons allow unlimited Reaction Test plays (focus_qa)."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
-    columns = st.columns(2, gap='medium')
-    with columns[0], st.container(key='minigame_card_chug', border=True):
-        st.markdown(':material/sports_bar: **HEAD TO HEAD · 2 PLAYERS**')
-        st.subheader('Chug Duel')
-        st.write('Challenge a lobby member. Share a photo, then play together on one phone.')
-        if not service_available:
-            st.caption('Temporarily unavailable · Refresh to retry')
-        elif invitations:
-            st.caption(f'{invitations} incoming invitation' + ('s' if invitations != 1 else '') + ' · Open to respond')
-        elif active:
-            st.caption('Invitation or duel open · Open to continue')
-        else:
-            st.caption('View invitations and availability · Existing nightly rules apply')
-        if st.button('Open Chug Duel', key='open_game_chug', type='primary',
-                     width='stretch', disabled=not service_available):
+    if not service_available:
+        chug_line = 'Unavailable'
+    elif invitations:
+        chug_line = f'{invitations} incoming invitation' + ('s' if invitations != 1 else '')
+    elif active:
+        chug_line = 'Duel open'
+    else:
+        chug_line = '1 vs 1 · Race on one phone'
+    with st.container(key='games_grid'):
+        if _game_tile('chug', 'chug-duel', 'Chug Duel', chug_line,
+                      alert=bool(invitations or active), playable=service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
-    with columns[1], st.container(key='minigame_card_focus', border=True):
-        st.markdown(':material/psychology: **SOLO · FOCUS CHALLENGE**')
-        st.subheader('Focus Challenge')
-        st.write('Reaction, memory and precision. Pass all three to earn an hour of ×1.5.')
-        st.caption('Test mode · No uploads required · Unlimited sequential plays' if focus_qa
-                   else 'Unlocks after 5 accepted check-ins · One win per evening' if focus_available
-                   else 'Available in new normal seasons or explicitly marked test seasons')
-        if st.button('Open Focus Challenge', key='open_game_focus', width='stretch', disabled=not focus_available):
+        if _game_tile('focus', 'reaction-test', 'Reaction Test',
+                      'Test mode · Unlimited plays' if focus_qa
+                      else 'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
+                      playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
-    with st.container(key='minigame_card_quiz', border=True):
-        st.markdown(':material/quiz: **HEAD TO HEAD · 2 PLAYERS**')
-        st.subheader('Quiz Duel')
-        st.write('General knowledge, multiplication and logic. Same questions. Fastest correct answer wins.')
-        st.caption('Stake 3–10 season points · Play on your own phones')
-        if st.button('Open Quiz Duel', key='open_game_quiz', width='stretch'):
+        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points'):
             st.session_state['minigame_selected'] = 'quiz'
             st.rerun()
+        for key, art, title in COMING_SOON:
+            _game_tile(key, art, title, 'Coming soon', playable=False, real=False)
 
 
 def _focused_duel(player, duel, labels):
@@ -162,9 +184,8 @@ def render_minigames(player, member, lobby, season):
     unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    page_header("Minigames", "Pick a game. Play with your lobby.", compact=True)
-    context_line(lobby.name, "Test season · Unlimited minigame plays" if unlimited
-                 else f"Evening resets at 06:00 · {season.timezone_name}")
+    page_header("Minigames", compact=True)
+    page_subtitle(lobby.name, "Test season · Unlimited plays" if unlimited else "Evening resets at 06:00")
     context = (member, lobby.id, season.id)
     if st.session_state.get('minigames_context', context) != context:
         st.session_state.pop('minigame_selected', None)
@@ -210,24 +231,27 @@ def render_minigames(player, member, lobby, season):
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
-        _game_cards(member, duels, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
         if st.session_state.get('minigame_selected') != 'chug_duel':
-            st.caption('Choose a game above. Invitations update automatically.')
+            # The game list; an opened game replaces it, like a page on a phone.
+            _game_cards(member, duels, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
+            st.caption('Invitations update automatically.')
             return
-        if st.button('All games', icon=':material/arrow_back:', key='minigames_home'):
+        button_icons({'minigames_home': 'caret-left'})
+        if st.button('All games', key='minigames_home', type='tertiary'):
             st.session_state.pop('minigame_selected', None)
             st.rerun()
         st.subheader('Chug Duel', anchor=False)
         track_location()
         outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
-        columns = st.columns(2)
+        columns = st.columns(2, wrap=False)
         columns[0].metric("Challenge", "Unlimited" if unlimited else "Available" if outgoing else "Used / reserved")
         columns[1].metric("Accept", "Unlimited" if unlimited else "Available" if incoming else "Used / reserved")
         if unlimited:
             st.caption("TEST SEASON · Play minigames as often as you like. Finish or end the current duel first. The normal check-in cooldown still applies.")
         else:
             st.caption(f"One challenge + one acceptance per lobby and evening. Next reset: {next_reset(now, season.timezone_name):%a %H:%M %Z}.")
-        if st.button("Refresh duels", key="chug_refresh"):
+        button_icons({"chug_refresh": "arrow-clockwise"})
+        if st.button("Refresh duels", key="chug_refresh", type="tertiary"):
             st.rerun()
 
         active = [d for d in duels if d["status"] in {"invited", "accepted", "started"}]

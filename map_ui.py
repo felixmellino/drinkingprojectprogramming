@@ -54,13 +54,20 @@ def load_styles() -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-def hud(lobby_name: str, rows: list[dict]) -> None:
-    """Top bar floating over the map: lobby and how many territories you hold."""
+def hud(lobby_name: str, rows: list[dict], team_mode: bool = False) -> None:
+    """Top bar floating over the map: lobby, how many territories you hold,
+    and the colour legend."""
     numbers = summary(rows)
+    label = "Team lobby" if team_mode else "Lobby"
+    mine = "Your team's" if team_mode else "Yours"
+    dots = "".join(f'<span><i style="background:rgb{tuple(COLOURS[status])}"></i>{text}</span>'
+                   for status, text in (("yours", mine), ("theirs", "Rivals"), ("free", "Free")))
     st.markdown(
-        f'<div class="game-hud"><div><small>Lobby</small><strong>{escape(lobby_name)}</strong></div>'
+        f'<div class="game-hud"><div class="game-hud-row"><div><small>{label}</small>'
+        f'<strong>{escape(lobby_name)}</strong></div>'
         f'<div class="game-score"><small>Yours</small><strong>{numbers["yours"]}</strong>'
-        f' / {numbers["total"]} · {numbers["free"]} free</div></div>',
+        f' / {numbers["total"]} · {numbers["free"]} free</div></div>'
+        f'<div class="game-legend">{dots}</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -82,16 +89,6 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
     else:
         body = "<small>Location</small><h3>Finding you…</h3><p>Allow location access if your browser asks.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
-
-
-def legend() -> None:
-    st.markdown(
-        '<div class="game-legend">'
-        f'<span><i style="background:rgb{tuple(COLOURS["yours"])}"></i>Yours</span>'
-        f'<span><i style="background:rgb{tuple(COLOURS["theirs"])}"></i>Someone else\'s</span>'
-        f'<span><i style="background:rgb{tuple(COLOURS["free"])}"></i>Unclaimed</span></div>',
-        unsafe_allow_html=True,
-    )
 
 
 def markdown_safe(text: str) -> str:

@@ -57,11 +57,31 @@
 /* Base */
 .stApp { background: var(--bg); color: var(--text); }
 [data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
+/* Invisible helpers (style blocks, the fixed tab bar, background location and
+   sign-in components) take no room, so pages don't start with an empty gap.
+   They stay in the page and keep working. */
+.stApp [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style):not(:has([data-testid="stMarkdownContainer"] > :not(style))),
+.stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_bottom_nav),
+.stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission {
+  position: absolute !important; width: 0; height: 0; overflow: hidden; margin: 0; padding: 0;
+}
+/* No empty Streamlit header bar: it only held the app menu and took the
+   top of every phone screen. */
+.stApp [data-testid="stHeader"] { display: none; }
+@media (max-width: 640px) {
+  /* Phones: content starts right under the status bar, small side margins. */
+  .stApp [data-testid="stMainBlockContainer"] {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    padding-left: 0.9rem; padding-right: 0.9rem;
+  }
+  .stApp h1 { font-size: 2rem; padding: 0.25rem 0 0.5rem; }
+  .stApp h2 { font-size: 1.35rem; }
+  .stApp [data-testid="stVerticalBlock"] { gap: 0.75rem; }
+}
 .stApp, .stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp button,
 .stApp h2, .stApp h3, .stApp h4, .stApp td, .stApp th, .stApp small {
   font-family: var(--font-body);
 }
-.stApp [data-testid="stHeader"] { background: transparent; }
 .stApp h1 {
   font-family: var(--font-display); font-weight: 400;
   color: var(--text); line-height: 1.05;
@@ -142,6 +162,41 @@
 [class*="st-key-chug_drink"] [data-testid="stRadioOption"]:has(input:focus-visible) {
   outline: 3px solid var(--accent-ink); outline-offset: 2px;
 }
+
+/* A quiet line under a page title (theme.page_subtitle). */
+.stApp .page-subtitle { margin: -0.4rem 0 0.6rem; font-size: 0.9rem; color: var(--text-muted); }
+
+/* Menu lists, iPhone "grouped list" style: one white card per group, rows
+   with an icon on the left, a chevron on the right and hairlines between.
+   Opt in with st.container(key="menu_list_<name>") around st.buttons and
+   theme.menu_icons({button key: icon}) for the row icons. */
+[class*="st-key-menu_list_"] {
+  gap: 0 !important; background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card); overflow: hidden; margin-bottom: 0.4rem;
+}
+.stApp [class*="st-key-menu_list_"] button {
+  display: flex; align-items: center; justify-content: flex-start; gap: 14px;
+  width: 100%; min-height: 52px; padding: 0 16px; margin: 0;
+  background: transparent; border: 0; border-radius: 0; box-shadow: none; color: var(--text);
+}
+.stApp [class*="st-key-menu_list_"] [data-testid="stElementContainer"] + [data-testid="stElementContainer"] button {
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.stApp [class*="st-key-menu_list_"] button:hover:not(:disabled) { background: var(--accent-soft); color: var(--text); border: 0; }
+.stApp [class*="st-key-menu_list_"] button::before {
+  content: ""; flex: 0 0 22px; height: 22px; background-color: var(--accent-ink);
+  -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat;
+}
+.stApp [class*="st-key-menu_list_"] button::after {
+  content: ""; flex: 0 0 14px; height: 14px; margin-left: auto; background-color: var(--text-muted);
+  -webkit-mask: var(--icon-caret-right) center / contain no-repeat; mask: var(--icon-caret-right) center / contain no-repeat;
+}
+.stApp [class*="st-key-menu_list_"] button > div,
+.stApp [class*="st-key-menu_list_"] button [data-testid="stMarkdownContainer"] { flex: 1 1 auto; justify-content: flex-start; text-align: left; }
+.stApp [class*="st-key-menu_list_"] button p { text-align: left; font-size: 1rem; font-weight: 600; color: inherit; }
+.stApp .st-key-menu_list_logout button { color: var(--brand-ink); }
+.stApp .st-key-menu_list_logout button::before { background-color: var(--brand-ink); }
+.stApp .st-key-menu_list_logout button::after { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .stApp * { transition: none !important; animation: none !important; }

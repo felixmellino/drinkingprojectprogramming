@@ -2,21 +2,26 @@
 
 ## Minigames catalogue (19 November 2026)
 
-The Minigames page lists game cards together in two columns on larger
-screens and a single column on phones. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+The Minigames page is a colourful grid of square tiles, three rows of two on
+every screen, phones first (redesign 19 November 2026). Each tile has an
+animated picture (`assets/games/*.svg`, drawn for this app), the name and one
+short status line; tapping a playable tile opens the game. Order: Chug Duel
+(orange), Reaction Test = Focus Challenge (violet), Quiz Duel (green) and
+three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
 returns to the catalogue without resetting it. A terminal board shows the saved
 result. Check-in previews and photo history identify the earned multiplier.
 
-Open Chug Duel shows the existing invitation, acceptance, shared capture,
-allowance and history controls below the cards. All games closes these
-controls without cancelling invitations or changing any allowance. The hub
-polls invitations and labels the Chug Duel card when a response is waiting.
+Open Chug Duel replaces the list with the existing invitation, acceptance,
+shared capture, allowance and history controls, like a page on a phone.
+‹ All games returns to the list without cancelling invitations or changing
+any allowance. The hub polls invitations and shows a white status pill on the
+Chug Duel tile when a response is waiting.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
-checked before cards are shown. The catalogue does not mount a continuous
+checked before the list is shown. The catalogue does not mount a continuous
 GPS watcher; the existing duel workflow does. Shared login's initial
 location-permission request remains unchanged.
 
@@ -113,15 +118,21 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 
 ## Bottom navigation (requested 17 November 2026)
 
-- Authenticated pages use **Profile | Lobby | + Check in | Leaderboard | Photo history**.
-- The large central plus opens the camera-first Check-in. Leaderboard and
-  Photo history sit to its right. These are the English player-facing names.
+- Authenticated pages use five tabs, like an iPhone app (redesigned
+  19 November 2026): **Map | Ranks | + Check in | Games | Profile**.
+- The round plus in the middle opens the camera-first Check-in. Ranks opens
+  the Leaderboard, Games the Minigames. Lobbies and Photo history open from
+  the top of the Profile menu; hints that send a player to the Lobby page
+  carry an "Open Lobbies" button. A page without its own tab highlights the
+  tab it is reached from (Lobby and Photo history → Profile).
+- Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
+  filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
   server-side access checks. The bar remains visible when a lobby still needs
   to be selected; it is absent before login. The former sidebar navigation is
   hidden on signed-in pages, and content leaves space above the fixed bar.
 - `app_navigation.py` renders the shared bar after `require_login` verifies
-  identity. `assets/navigation.css` controls its five-slot layout and safe-area
+  identity. `assets/navigation.css` controls its five-tab layout and safe-area
   spacing. It makes no changes to account fields, lobby rules or scoring.
 
 ## Broader structure proposal
@@ -225,6 +236,11 @@ Map owner badge update (19 November 2026, contributor request):
   map is Carto Dark Matter without place names (they clashed with territory
   names) with a floating HUD and location card. Every territory border is
   white; the fill colour shows the owner. Territory names show on hover only.
+- Phone layout (19 November 2026): the map fills the whole screen. The HUD
+  (lobby, your territories, colour legend, zoom chips) floats at the top; a
+  sheet above the tab bar shows where you are, the Check in here button and
+  the All territories list, which opens upwards inside the sheet. On a laptop
+  the map stays a rounded panel with the same HUD and sheet on top.
 - Closing the dialog clears Streamlit's read-only selection via a fresh chart
   key so the same icon can be clicked again. This returns the viewport to the
   selected quick-zoom focus; a manually panned viewport is not retained.

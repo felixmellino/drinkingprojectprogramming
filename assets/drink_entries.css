@@ -198,8 +198,13 @@
   .memory-photo { border-radius: 8px; }
 }
 @media (max-width: 640px) {
-  .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] { padding: 1rem 1rem 3rem; }
-  .drink-page-hero { padding-top: 0.5rem; }
+  /* Same tight phone margins as every other page (assets/theme.css). */
+  .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)); padding-left: 0.9rem; padding-right: 0.9rem;
+  }
+  .drink-page-hero { padding: 0 0 0.4rem; }
+  .drink-page-hero h1 { font-size: 2rem; margin: 0.25rem 0 0.3rem; }
+  .drink-intro { line-height: 1.4; }
   .drink-intro { font-size: 0.9rem; }
   .stApp:has(.drink-page-hero) [class*="st-key-drink_ui_panel"] { padding: 1rem; border-radius: 18px; }
   .st-key-drink_ui_drinks label p,

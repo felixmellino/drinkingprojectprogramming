@@ -79,15 +79,23 @@ def require_login() -> str:
     return st.session_state["player_id"]
 
 
+def lobby_button(key: str = "open_lobbies") -> None:
+    """Lobbies has no tab in the bottom bar: hints that send players there get a button."""
+    if st.button("Open Lobbies", icon=":material/groups:", key=key):
+        st.switch_page("pages/2_Lobby.py")
+
+
 def require_active_membership() -> tuple[str, str, str]:
     """Stop the page with a message if no lobby is selected yet. Returns
     (membership_id, lobby_id, season_id) otherwise."""
     if "current_membership_id" not in st.session_state:
         st.info("Choose a lobby on the Lobby page to continue.")
+        lobby_button()
         st.stop()
     st.session_state.pop("_validated_season", None)
     if not st.session_state.get("current_season_id"):
         st.info("Start or select a season on the Lobby page first.")
+        lobby_button()
         st.stop()
     try:
         selected, season = db.membership_context(st.session_state["player_id"],
