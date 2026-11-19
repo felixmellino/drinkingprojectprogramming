@@ -6,8 +6,8 @@ The Minigames page is a colourful grid of square tiles, three rows of two on
 every screen, phones first (redesign 19 November 2026). Each tile has an
 animated picture (`assets/games/*.svg`, drawn for this app), the name and one
 short status line; tapping a playable tile opens the game. Order: Chug Duel
-(orange), Reaction Test = Focus Challenge (violet), Knowledge Quiz (general
-knowledge, green, coming soon, not playable yet) and three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+(orange), Reaction Test = Focus Challenge (violet), Quiz Duel (green) and
+three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
