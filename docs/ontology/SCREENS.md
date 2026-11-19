@@ -88,18 +88,19 @@ broader screen proposal below remains a future design outline.
 
 ## Standings interface (implemented 17 November 2026, phone redesign 19 November 2026)
 
-- Header: Leaderboard, one short line, then the lobby with member and ranked
-  counts.
-- Season leaderboard: a podium for the top three (2nd, 1st, 3rd; points with
-  "pts"), then ranks 4+ as one grouped list with hairlines, initials, a YOU
-  marker and the current player's row highlighted. Exact quarter-points stay
-  visible. Rows keep the order from `core.leaderboard.season_leaderboard`;
-  the UI never re-sorts or changes the tie rule.
-- How points work (folded): the tie rule and what season and territory points
-  include.
-- Territories: counts (yours · rivals · free), the claimed territories as
-  chips (yours first, then rivals'), and the unclaimed ones folded away under
-  "Free territories (n)".
+- Header: Leaderboard and one quiet line with the lobby and its size. A
+  finished or upcoming season adds "Final standings" / "Upcoming season".
+- Season ranking: every rank in one clean list (iPhone grouped-list style:
+  white card, hairlines, normal font weights, no podium blocks). The top three
+  are marked only by the colour of their rank number (gold, silver, bronze).
+  Initials, a "you" marker and a highlighted row for the current player.
+  Exact quarter-points stay visible. Rows keep the order from
+  `core.leaderboard.season_leaderboard`; the UI never re-sorts or changes the
+  tie rule.
+- How points work (folded text link): the tie rule and what season and
+  territory points include.
+- Territories: one row with the counts (yours · rivals · free) that opens the
+  full list, yours first, then rivals' (with owner), then the free ones.
 - Refresh standings (quiet button at the end) reloads the current season.
   Service failures show a retry message, without writing entries or replacing
   unavailable scores with zero.

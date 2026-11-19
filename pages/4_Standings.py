@@ -9,7 +9,7 @@ from core.leaderboard import season_leaderboard
 from core.lobby_overview import lobby_status
 from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
-from drink_entry_ui import context_line, page_header
+from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
 import standings_ui
 from theme import button_icons
@@ -18,7 +18,7 @@ from shared import get_territories, require_active_membership, require_login, sh
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Leaderboard", "Who leads the season, and who holds which territory.")
+page_header("Leaderboard")
 standings_ui.load_styles()
 
 try:
@@ -63,11 +63,8 @@ if team_mode:
 snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 status = lobby_status(season, current_time()) if season else "active"
-if status == "past":
-    st.caption("Finished season · Final standings")
-elif status == "upcoming":
-    st.caption("Upcoming season")
-context_line(lobby_name, f"{len(memberships)} members · {len(leaderboard)} ranked this season")
+phase = {"past": "Final standings", "upcoming": "Upcoming season"}.get(status)
+standings_ui.subtitle(lobby_name, len(memberships), len(leaderboard), phase, team_mode=team_mode)
 
 # Reuse the same territory accounts for the pills. A territory service
 # failure must not hide a successfully loaded season ranking.
@@ -87,7 +84,7 @@ if not leaderboard:
 else:
     standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
 # The rules behind the numbers, folded away so the ranking stays the focus.
-with st.expander("How points work"):
+with st.container(key="standings_rules"), st.expander("How points work"):
     st.caption("Equal points? The team who reached the score first ranks higher." if team_mode else "Equal points? The player who reached the score first ranks higher.")
     if any(entry.rule_version == "v1" for entry in entries):
         st.caption("Team season points combine all members’ drinks and 25% income from rival teams. Territory points combine members’ base drink points." if team_mode else "Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")

@@ -72,14 +72,10 @@ def all_markup(at):
 
 
 def rank_of(markup, name):
-    """The rank a player/team is actually labelled with, regardless of the
-    podium's visual DOM order (2nd, 1st, 3rd left-to-right)."""
-    for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
+    """The rank number a player/team is actually labelled with in the list."""
+    for m in re.finditer(r'<li class="standings-row[^"]*"><span class="standings-row-rank[^"]*">(\d+)</span>(.*?)</li>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
-    for offset, m in enumerate(re.finditer(r'<li class="standings-row[^"]*">(.*?)</li>', markup, re.S)):
-        if name in text(m.group(1)):
-            return offset + 4
     return None
 
 
@@ -91,7 +87,7 @@ def test_display_keeps_exact_owner_income_and_base_territory_accounts(ui):
     assert rank_of(markup, "Leo") == 2
     visible = text(markup)
     assert "9.5" in visible and "6.75" in visible
-    assert "YOU" in visible
+    assert "you" in visible
     assert 'title="Yours"' in markup
     assert "private@example.test" not in markup
 
@@ -114,7 +110,7 @@ def test_empty_season_has_no_invented_rank_or_territory_owner(ui):
     assert any("No points logged yet" in item.value for item in at.info)
     markup = all_markup(at)
     assert 'title="Unclaimed"' in markup
-    assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
+    assert '<li class="standings-row' not in markup
 
 
 @pytest.mark.parametrize("service", ["season", "territories"])
@@ -130,11 +126,11 @@ def test_service_failure_does_not_fabricate_zero_scores(ui, monkeypatch, service
     markup = all_markup(at)
     if service == "season":
         assert at.error
-        assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
+        assert '<li class="standings-row' not in markup
     else:
         assert at.warning
         assert rank_of(markup, "Mia") == 1
-        assert '<div class="standings-pills"' not in markup
+        assert '<ul class="standings-territories"' not in markup
 
 
 def test_public_names_and_territory_names_are_rendered_as_text(ui):
@@ -159,17 +155,20 @@ def test_whole_season_is_replayed_once_for_all_territory_pills(ui, monkeypatch):
     replay.assert_called_once()
 
 
-def test_territories_show_counts_claimed_chips_and_fold_away_free_ones(ui):
-    ui["territories"] = [TERRITORY, replace(TERRITORY, id="quiet-area", name="Quiet Area")]
+def test_territories_row_counts_and_opens_the_full_list_yours_first(ui):
+    ui["territories"] = [replace(TERRITORY, id="quiet-area", name="Quiet Area"), TERRITORY]
     at = page()
     assert not at.exception
-    markup = all_markup(at)
-    summary = text(next(m for m in re.findall(r'<div class="standings-section">.*?</div>', markup, re.S)))
-    assert "1 yours" in summary and "0 rivals" in summary and "1 free" in summary
-    free = next(e for e in at.expander if e.label == "Free territories (1)")
-    assert "Quiet Area" in "\n".join(m.value for m in free.markdown)
-    claimed = markup.split('<div class="standings-section">')[1]
-    assert 'title="Yours"' in claimed
+    row = next(e for e in at.expander if e.label == "1 yours · 0 rivals · 1 free")
+    listed = "\n".join(m.value for m in row.markdown)
+    assert listed.index('title="Yours"') < listed.index("Quiet Area")
+    assert 'title="Unclaimed"' in listed
+
+
+def test_top_three_are_marked_by_medal_colour_only(ui):
+    markup = all_markup(page())
+    assert 'standings-row-rank standings-medal-1">1<' in markup
+    assert "standings-podium" not in markup
 
 
 def test_refresh_and_rules_stay_available_but_quiet(ui):

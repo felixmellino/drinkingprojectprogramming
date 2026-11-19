@@ -6,13 +6,14 @@ from pathlib import Path
 import streamlit as st
 
 
-def page_header(title: str, description: str, *, compact: bool = False) -> None:
-    """Load page-scoped styles and an accessible heading."""
+def page_header(title: str, description: str = "", *, compact: bool = False) -> None:
+    """Load page-scoped styles and an accessible heading (description optional)."""
     css = (Path(__file__).parent / "assets" / "drink_entries.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    intro = f'<p class="drink-intro">{escape(description)}</p>' if description else ""
     st.markdown(
         f'<header class="drink-page-hero{" drink-camera-hero" if compact else ""}">'
-        f'<h1>{escape(title)}</h1><p class="drink-intro">{escape(description)}</p></header>',
+        f'<h1>{escape(title)}</h1>{intro}</header>',
         unsafe_allow_html=True,
     )
 
