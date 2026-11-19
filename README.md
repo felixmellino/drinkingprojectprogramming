@@ -484,8 +484,10 @@ The second playable minigame adds randomized reaction, seven-step memory and
 precision tests. The selected flow uses one reaction within 220 ms, Start memory,
 then Start precision. Apply [`migrations/021_focus_three_stage_flow.sql`](migrations/021_focus_three_stage_flow.sql)
 last, after 015 and any already-installed 018/019/020 changes; it includes the optional
-017 Focus setup and preserves running games. This migration is prepared, not yet
-installed on the shared project. Accepted entries unlock attempts at five, then seven/nine/etc.
+017 Focus setup and preserves running games. Migration 021 was installed on the
+shared project on 19 November 2026. Start a new attempt after refreshing the app;
+already-running reaction-only attempts keep their previous rules.
+Accepted entries unlock attempts at five, then seven/nine/etc.
 after failures. One win per evening grants a personal 60-minute x1.5 ordinary
 season/territory effect, including 25% owner income on boosted awards.
 Chug Duel scoring is unchanged. Before activation, the Data owner applies
@@ -496,8 +498,10 @@ including unlimited sequential retries/wins throughout the active season.
 Repeated wins refresh the single x1.5 hour. Normal seasons retain 5/7/9 unlocks,
 one win per evening and their scoring window; older normal snapshots stay frozen.
 See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
-Shared Focus migrations 014/015 are installed. Real-phone difficulty calibration
-and complete deployed gameplay still need verification.
+Shared Focus migrations 014/015/021 are installed. The database verification
+confirmed one reaction, a 220 ms limit and three-stage flow; status RPC checks
+confirmed zero-upload, unlimited play in all nine populated test seasons.
+Real-phone difficulty calibration and complete deployed gameplay still need verification.
 
 ### Leaving and rejoining lobbies
 
