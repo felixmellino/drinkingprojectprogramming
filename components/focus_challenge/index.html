@@ -43,7 +43,10 @@ function render(){
   selectView('result');$('title').textContent='Challenge complete';
   $('resultTitle').textContent=game.status==='passed'?'Focus boost earned!':'Attempt finished';
   const messages={timeout:'Time ran out. Your next attempt unlocks after two more accepted check-ins.',memory_wrong:'That was not the sequence. Your next attempt unlocks after two more accepted check-ins.',reaction_slow:'Your median reaction time was above 350 ms. Your next attempt unlocks after two more accepted check-ins.',miss:'A target was missed or a reaction tap was early. Your next attempt unlocks after two more accepted check-ins.'};
-  $('resultText').textContent=game.status==='passed'?'×1.5 on your ordinary season and territory check-ins for the next hour, while scoring is open.':messages[game.reason]||'Your next attempt unlocks after two more accepted check-ins.';
+  $('resultText').textContent=game.status==='passed'
+   ?'×1.5 on your ordinary season and territory check-ins for the next hour, while scoring is open.'+(game.test_mode?' Test mode: you can play again; wins refresh the boost without stacking.':'')
+   :game.test_mode?'Test mode: return to games and retry immediately. No uploads are required.'
+   :messages[game.reason]||'Your next attempt unlocks after two more accepted check-ins.';
   return;
  }
  if(at>=Date.parse(game.expires_at)||(at>Date.parse(game.deadline)&&!pending)){
