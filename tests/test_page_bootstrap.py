@@ -23,6 +23,7 @@ def auth(monkeypatch):
     monkeypatch.setattr('shared.sync_storage', lambda: '')
     monkeypatch.setattr('shared.ask_for_location', lambda: None)
     monkeypatch.setattr('shared.bottom_navigation', lambda: None)
+    monkeypatch.setattr(db, 'pending_minigame_invite_count', lambda player_id, season_id: 0)
     monkeypatch.setattr('shared.show_accounts', lambda: st.info('Signed out'))
     return player, reader
 

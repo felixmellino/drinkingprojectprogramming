@@ -32,6 +32,17 @@
 .st-key-wego_bottom_nav button:hover { background: transparent; color: var(--text); }
 .st-key-wego_bottom_nav button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
 
+/* Align with the top-right of the centered game-controller icon. */
+[data-testid="stElementContainer"]:has(.wego-invite-badge-style) { display: none; }
+.st-key-wego_nav_minigames button { position: relative; }
+.st-key-wego_nav_minigames button::after {
+  position: absolute; top: 2px; left: calc(50% + 7px);
+  box-sizing: border-box; min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: 999px; background: #b32639; color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+  box-shadow: 0 0 0 1px var(--bg); pointer-events: none;
+}
+
 /* The check-in plus: a round accent button that sits slightly above the bar. */
 .st-key-wego_nav_checkin [data-testid="stButton"] { display: flex; justify-content: center; }
 .stApp .st-key-wego_bottom_nav .st-key-wego_nav_checkin button {

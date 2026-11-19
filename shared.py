@@ -15,7 +15,7 @@ from account_ui import show_accounts
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
-from app_navigation import bottom_navigation
+from app_navigation import bottom_navigation, minigame_invite_badge
 from theme import apply_theme
 from lobby_selection import restore_selection
 from parallel import run_parallel
@@ -77,6 +77,7 @@ def require_login() -> str:
     # Restored sessions did not have navigation at entry; render it once now.
     if not navigation_rendered:
         bottom_navigation()
+    minigame_invite_badge()
     ask_for_location()  # browser asks "Allow location?" right after login (R-L01)
     return st.session_state["player_id"]
 
