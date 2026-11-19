@@ -154,6 +154,21 @@ access, upload limits, secrets, and the privacy decisions to complete before
 collecting real player photos.
 
 Owners can delete their photo in **Lobby photos** while keeping the score.
+Before deploying photo privacy, apply
+[`migrations/013_checkin_photo_privacy.sql`](migrations/013_checkin_photo_privacy.sql)
+to both new and existing databases. Applied to the shared project on
+19 November 2026; eight database checks and a fresh app-server read passed.
+It adds a server-only account preference;
+missing preferences mean OFF for everyone. Under **Profile → Account &
+security → Photo privacy**, players can share past and future check-in
+photos across all lobbies. Own photos remain visible; current teammates
+retain internal team access. Opponents need consent from the uploader and
+every current member of the photo's saved team. A new teammate with sharing
+OFF hides existing team photos from opponents. Chug Duel copies follow
+each owner's preference independently. Turning sharing OFF cannot recall
+already viewed or saved images. Photo frames identify the player, or the
+team and player in team mode. This changes gallery/image access, not scores.
+
 Photo access ends 30 days after its season ends. The Data owner must schedule
 `python -m data.cleanup_checkin_photos --apply` on the server at least daily
 and monitor failures. Without `--apply`, the command only reports counts.

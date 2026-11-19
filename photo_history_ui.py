@@ -5,6 +5,7 @@ from base64 import b64encode
 from datetime import datetime
 from decimal import Decimal
 from html import escape
+from hashlib import sha256
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -16,12 +17,33 @@ from drink_entry_ui import context_line
 def photo_card(entry: dict, photo: bytes | None) -> None:
     location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
     context_line(entry["username"], location or "No territory assigned")
+    framed_photo(entry, photo)
+    photo_metadata(entry)
+
+
+def identity_colour(entry: dict) -> str:
+    """A stable identity colour across pagination, renames and app restarts."""
+    identity = (f"team:{entry['team_id']}" if entry.get("team_id") else
+                f"player:{entry.get('player_id') or entry.get('membership_id') or entry['username']}")
+    hue = int.from_bytes(sha256(identity.encode()).digest()[:4], "big") / 2**32 * 360
+    return f"hsl({hue:.3f} 60% 42%)"
+
+
+def framed_photo(entry: dict, photo: bytes | None, *, detail: bool = False) -> None:
+    name = entry["username"]
+    if entry.get("team_id"):
+        name = f"{entry.get('team_name') or 'Team'} · {name}"
+    # Identity-derived colour only; all names are escaped and images stay inline.
+    colour = identity_colour(entry)
+    label = f'<figcaption class="history-photo-identity">{escape(name)}</figcaption>'
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
-        st.html(f'<img class="history-photo" src="data:image/jpeg;base64,{encoded}" alt="Drink check-in photo">')
+        image = (f'<img class="{"drink-photo" if detail else "history-photo"}" '
+                 f'src="data:image/jpeg;base64,{encoded}" alt="Check-in photo by {escape(name, quote=True)}">')
+        st.html(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}{image}</figure>')
     else:
-        st.markdown('<div class="history-photo-missing">Photo unavailable</div>', unsafe_allow_html=True)
-    photo_metadata(entry)
+        st.markdown(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}'
+                    '<div class="history-photo-missing">Photo unavailable</div></figure>', unsafe_allow_html=True)
 
 
 def photo_metadata(entry: dict) -> None:

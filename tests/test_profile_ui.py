@@ -24,6 +24,11 @@ def repo(monkeypatch):
     monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
     monkeypatch.setattr('data.db.download_profile_picture', lambda *args: None)
     state = {'player': Player('self', 'Mia', 'Mia', 'Silva', hash_password('password8'), 'mia@example.test')}
+    state['sharing'] = False
+    monkeypatch.setattr('data.db.get_photo_sharing', lambda *args: state['sharing'])
+    def save_sharing(pid, version, enabled):
+        state['sharing'] = enabled
+    monkeypatch.setattr('data.db.save_photo_sharing', save_sharing)
     monkeypatch.setattr('device_login._browser_storage', lambda **c: {'request_id': c['request_id'], 'token': '', 'available': True})
     monkeypatch.setattr('data.db.get_player', lambda _: state['player'])
     def save(pid, version, first, last, username):
@@ -189,3 +194,31 @@ def test_save_failure_keeps_form_and_identity(repo, monkeypatch):
     assert at.text_input[0].value == 'NewMia'
     assert repo['player'].display_name == 'Mia'
     assert at.session_state['player_id'] == 'self'
+
+
+def test_photo_sharing_toggle_saves_across_fresh_app_sessions(repo):
+    at = page(repo)
+    click(at, 'Account & security')
+    assert not at.toggle[0].value
+    at.toggle[0].set_value(True)
+    click(at, 'Save photo privacy')
+    assert repo['sharing'] and at.success
+    fresh = page(repo)
+    click(fresh, 'Account & security')
+    assert fresh.toggle[0].value
+    fresh.toggle[0].set_value(False)
+    click(fresh, 'Save photo privacy')
+    assert not repo['sharing']
+
+
+def test_privacy_save_failure_shows_no_success_and_preserves_saved_value(repo, monkeypatch):
+    def fail(*args):
+        raise RuntimeError('offline')
+    monkeypatch.setattr('data.db.save_photo_sharing', fail)
+    at = page(repo)
+    click(at, 'Account & security')
+    at.toggle[0].set_value(True)
+    click(at, 'Save photo privacy')
+    assert not at.exception and at.error and not at.success
+    assert not repo['sharing']
+    assert any(b.label == 'Change password' for b in at.button)

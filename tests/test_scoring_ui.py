@@ -413,7 +413,7 @@ def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
         raise PermissionError("Membership revoked")
     monkeypatch.setattr(db, "download_checkin_photo", denied)
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
-    assert not page.exception and page.error
+    assert not page.exception and page.warning
     assert not page.get("html")
 
 

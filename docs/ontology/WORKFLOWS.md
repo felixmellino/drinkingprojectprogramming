@@ -53,9 +53,21 @@ Photo/location failures must never be represented as a successful check-in.
 The photo storage integration should save the file in a private Supabase
 bucket and record its storage path on the drink entry. When someone opens
 the photo, the server checks that their signed-in account currently belongs
-to the lobby where the entry was logged before serving the image. For older
+to the lobby where the entry was logged and satisfies R6/R-PH01 consent
+before serving the image. The gallery applies the same rule. For older
 entries with placeholder references, the app shows that the photo is
 unavailable.
+
+In Profile → Account & security → Photo privacy, the player saves one
+account-wide sharing toggle, initially OFF even for existing accounts.
+It affects existing and future photos. Own photos remain available under
+R7; other players' cards appear only when sharing permits it. In team mode,
+current teammates can view their saved team's photos internally even with
+sharing OFF. Opponents need consent from the uploader and all current
+members of that saved team. A new member with OFF withdraws opponent
+access to historical photos too. Chug Duel copies follow their respective
+owners independently. Each card and detail image has an identity-coloured
+frame and username, plus the saved team's name in team mode.
 
 Check-in records when the app receives the camera photo separately from
 when the player submits the entry. The photo view shows this capture time,

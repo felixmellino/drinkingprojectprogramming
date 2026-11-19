@@ -81,6 +81,7 @@ def show_security(player):
     st.caption("These details are private. Email cannot be changed here.")
     st.text(f"Name: {player.first_name} {player.last_name}")
     st.text(f"Email: {player.email}")
+    show_photo_privacy(player.id)
     st.subheader("Change password")
     st.caption("Changing your password signs you out on every device. Log in again with your new password.")
     with st.form("change_password", clear_on_submit=True):
@@ -97,6 +98,29 @@ def show_security(player):
         queue_storage("clear")
         st.session_state["_profile_notice"] = "Password changed. Log in with your new password."
         st.rerun()
+
+
+def show_photo_privacy(player_id):
+    st.subheader("Photo privacy")
+    st.caption("Your saved check-in photos stay visible to you until deleted or expired. "
+               "Teammates can see their team's photos. Other lobby members see yours only when sharing is on; "
+               "in team lobbies, every current teammate must also switch sharing on.")
+    try:
+        enabled = db.get_photo_sharing(player_id, st.session_state["credential_version"])
+        if st.session_state.pop("_photo_privacy_saved", False):
+            st.success("Photo privacy saved.")
+        with st.form("photo_privacy"):
+            chosen = st.toggle("Share my check-in photos with other lobby players", value=enabled)
+            st.caption("One setting for all lobbies, including past and future photos. "
+                       "Turning it off blocks future access; photos already viewed or saved cannot be recalled. "
+                       "Chug Duel copies follow each owner's setting independently.")
+            submitted = st.form_submit_button("Save photo privacy", width="stretch")
+        if submitted:
+            db.save_photo_sharing(player_id, st.session_state["credential_version"], chosen)
+            st.session_state["_photo_privacy_saved"] = True
+            st.rerun()
+    except SERVICE_ERRORS:
+        st.error("We couldn't load or save photo privacy. Refresh to check your saved setting and try again.")
 
 
 def show_stats(player_id):

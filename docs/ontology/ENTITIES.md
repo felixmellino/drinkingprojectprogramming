@@ -40,6 +40,13 @@ One record per person who plays WeGoPub. The same player can participate in many
 | `email` | Text | Unique private login email, normalized to lowercase. Null only for legacy records awaiting administrator migration. |
 | `pin_hash` | Text | Salted password hash. The old column name is retained to preserve existing data; legacy records are retained but have no self-service upgrade screen. |
 
+Photo sharing is an account preference stored separately from `Player` in
+`player_photo_preferences`: one `player_id` primary key and a non-null
+`share_checkin_photos` boolean, default false. A missing row also means
+false. The server validates the current sign-in before reading or saving
+one's preference; only the server role can access the table. R6/R-PH01
+defines audiences independently of the photo's score or retention.
+
 ### Lobby
 
 A group of players who compete together. The draft assumes a private lobby with invitation-based joining.
@@ -115,7 +122,7 @@ A fresh phone reading taken at submission is the player's location (R-L01). GPS 
 | `owner_team_id` | Team ID, optional | Prior owner receiving team income; individual entries retain `owner_membership_id`. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos under R6. Photo removal preserves the scored entry. |
+| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos only when R6/R-PH01 sharing permits. Photo removal preserves the scored entry. |
 | `photo_captured_at` | Timestamp, optional | When Check-in received the camera photo. Older entries may only have a submission time. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |
