@@ -8,7 +8,7 @@ pending. The earlier minigame proposal is historical.
 
 ## Player workflow
 
-Minigames sits immediately right of the plus in the seven-button bottom bar.
+Minigames is the Games tab, immediately right of the plus in the five-tab bottom bar.
 Its catalogue lists games together; choose Open Chug Duel to reveal the
 existing duel controls. All games returns to the catalogue without cancelling
 an invitation or spending an allowance. Focus Challenge now opens separately in new seasons enabled by its frozen

@@ -29,7 +29,7 @@ from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from drink_entry_ui import context_line, page_header, section_heading
 from phone_location import current_location, track_location
-from shared import get_territories, require_active_membership, require_login, selected_season, show_logged_in_as
+from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
@@ -38,6 +38,7 @@ membership_id, lobby_id, season_id = require_active_membership()
 season = selected_season(lobby_id, season_id)
 if season is None:
     st.info("Choose a season on the Lobby page first.")
+    lobby_button()
     st.stop()
 modern = season.scoring_version == "v1"
 rules = rules_for(season) if modern else None
@@ -45,6 +46,7 @@ team_mode = st.session_state.get("current_lobby_mode") == "team"
 competitor_id = st.session_state.get("current_team_id") if team_mode else membership_id
 if team_mode and not competitor_id:
     st.info("Open this lobby on the Lobby page and join a team before checking in.")
+    lobby_button()
     st.stop()
 if team_mode:
     st.caption("Team mode · Your check-ins add to your team’s season and territory totals.")

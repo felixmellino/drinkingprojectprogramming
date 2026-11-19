@@ -170,7 +170,7 @@ transfer happens and the used role allowances remain consumed. A connection
 loss can resume the saved started game until expiry. A lost successful reply
 recovers its existing start/result instead of creating another one.
 
-Minigames is immediately right of the check-in plus in the bottom navigation.
+Minigames is the Games tab, immediately right of the check-in plus in the bottom navigation.
 Receiving accounts see incoming invitations and outcomes on that page through
 automatic refresh. New games are blocked outside normal scoring availability.
 

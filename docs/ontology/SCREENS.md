@@ -113,15 +113,21 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 
 ## Bottom navigation (requested 17 November 2026)
 
-- Authenticated pages use **Profile | Lobby | + Check in | Leaderboard | Photo history**.
-- The large central plus opens the camera-first Check-in. Leaderboard and
-  Photo history sit to its right. These are the English player-facing names.
+- Authenticated pages use five tabs, like an iPhone app (redesigned
+  19 November 2026): **Map | Ranks | + Check in | Games | Profile**.
+- The round plus in the middle opens the camera-first Check-in. Ranks opens
+  the Leaderboard, Games the Minigames. Lobbies and Photo history open from
+  the top of the Profile menu; hints that send a player to the Lobby page
+  carry an "Open Lobbies" button. A page without its own tab highlights the
+  tab it is reached from (Lobby and Photo history → Profile).
+- Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
+  filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
   server-side access checks. The bar remains visible when a lobby still needs
   to be selected; it is absent before login. The former sidebar navigation is
   hidden on signed-in pages, and content leaves space above the fixed bar.
 - `app_navigation.py` renders the shared bar after `require_login` verifies
-  identity. `assets/navigation.css` controls its five-slot layout and safe-area
+  identity. `assets/navigation.css` controls its five-tab layout and safe-area
   spacing. It makes no changes to account fields, lobby rules or scoring.
 
 ## Broader structure proposal

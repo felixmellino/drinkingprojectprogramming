@@ -97,7 +97,10 @@ base styles for Streamlit's own widgets) and the `[theme]` block in
 variables; never add hard-coded colours there. Rules: green/red/grey are
 reserved for territory status, the cream accent is the action colour, and
 the vintage red (`--brand`) appears only in the wordmark and the 1st-place
-medal. Icons are Material Symbols (`:material/name:`), no emojis.
+medal. Icons: the tab bar and menu lists use Phosphor SVGs from `assets/icons`
+(MIT licence, `theme.icon_css` / `theme.menu_icons`); other buttons still use
+Material Symbols (`:material/name:`). No emojis. Menus look like iPhone grouped
+lists: wrap the buttons in `st.container(key="menu_list_<name>")`.
 
 ## How `docs/ontology/` connects to the code
 
@@ -245,11 +248,11 @@ Data-block changes in the existing core/repository helpers; use the UI module
 for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
 unranked/empty states, service failures and escaped public display text.
 
-Authenticated pages now get the shared seven-button bottom bar from
+Authenticated pages now get the shared five-tab bottom bar from
 `app_navigation.py`. For an existing session, `shared.require_login` handles
 this generic bar before network reads; every destination verifies the account
-before showing private data. The plus opens Check-in; Leaderboard and Photo history are to its
-right. Minigames sits immediately right of the plus, before Map. Use native `st.switch_page` to keep login/session state; do not replace
+before showing private data. Tabs: Map, Ranks (Leaderboard), the Check-in plus in the middle, Games
+(Minigames), Profile. Lobbies and Photo history open from the Profile menu. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
