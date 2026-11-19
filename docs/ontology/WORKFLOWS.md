@@ -11,6 +11,9 @@ Repeated wins refresh the single x1.5 hour; they never stack multipliers.
 Test games work throughout the active season; expired seasons remain closed.
 Check-in scoring still uses its own weekly window. Normal-season gates,
 deadlines, membership checks and Focus/Chug running-game exclusion still apply.
+The current server response determines test-mode availability, including when
+a page holds an older season snapshot. QA has no upload-progress division;
+an invalid normal unlock threshold shows a reload message and prevents start.
 
 > Scoring v1 implementation was authorised on 17 November 2026. See
 > [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
