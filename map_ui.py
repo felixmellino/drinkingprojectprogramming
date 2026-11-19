@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import math
 import re
-import unicodedata
 from html import escape
 from pathlib import Path
 
@@ -95,11 +94,6 @@ def legend() -> None:
         f'<span><i style="background:rgb{tuple(COLOURS["free"])}"></i>Unclaimed</span></div>',
         unsafe_allow_html=True,
     )
-
-
-def _label(text: str) -> str:
-    # The map's label font only has plain letters, so drop accents on the map.
-    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
 
 
 def markdown_safe(text: str) -> str:
@@ -199,13 +193,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             line_width_min_pixels=2.5,
         )
     ]
-    # Territory names written on the map, like place names in a game.
-    labels = [{"position": _centre(row["boundary"]), "name": _label(row["name"])} for row in rows]
-    layers.append(pdk.Layer(
-        "TextLayer", labels, get_position="position", get_text="name", get_size=11,
-        get_color=[240, 225, 206, 240], get_text_anchor="'middle'", get_alignment_baseline="'center'",
-        font_weight=700, font_settings={"sdf": True}, outline_width=3, outline_color=[26, 40, 65, 235],
-    ))
+    # No names on the map (too crowded with 48 areas): the name shows on hover.
     if location is not None:
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
@@ -225,11 +213,6 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         ),
         height=600,
     )
-
-
-def _centre(boundary: dict) -> list[float]:
-    ring = boundary["coordinates"][0][:-1]
-    return [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
 
 
 def territory_list(rows: list[dict]) -> None:
