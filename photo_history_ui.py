@@ -35,6 +35,25 @@ def game_night_bounds(entry: dict) -> tuple[datetime, datetime]:
     return start, end
 
 
+def history_pages(entries, *, max_photos=12, max_nights=2):
+    """Keep newest-first night groups, bounded even during a very busy night."""
+    pages, page, count = [], [], 0
+    for entry in entries:
+        start, end = game_night_bounds(entry)
+        new_night = not page or page[-1][0] != start
+        if page and (count >= max_photos or (new_night and len(page) >= max_nights)):
+            pages.append(page)
+            page, count = [], 0
+            new_night = True
+        if new_night:
+            page.append((start, end, []))
+        page[-1][2].append(entry)
+        count += 1
+    if page:
+        pages.append(page)
+    return pages
+
+
 def game_night_label(start: datetime, end: datetime) -> str:
     last_day = end - timedelta(days=1)  # end is exclusive Sunday 18:00
     if start.month == last_day.month:
@@ -42,7 +61,7 @@ def game_night_label(start: datetime, end: datetime) -> str:
     return f"Game night · {start:%d %b}–{last_day:%d %b}"
 
 
-def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
+def memory_tile(entry: dict, photo: bytes | None, *, key: str, on_open=None) -> bool:
     """One tap-to-open grid tile: photo, points badge and a territory dot,
     overlaid with a transparent full-tile button. Returns True once clicked."""
     name = entry["username"]
@@ -67,7 +86,8 @@ def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
         f'<div class="memory-tile-visual" style="--photo-identity:{colour}">{photo_html}{badge}{dot}</div>'
         f'<div class="memory-meta"><strong>{escape(name)}</strong><span>{escape(label)}</span></div>'
     )
-    return st.button(f"View {name}'s check-in", key=f"{key}_open")
+    return st.button(f"View {name}'s check-in", key=f"{key}_open",
+                     on_click=on_open, args=(entry['id'],) if on_open else ())
 
 
 def identity_colour(entry: dict) -> str:

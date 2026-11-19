@@ -4,13 +4,12 @@ Only the current lobby's season counts."""
 
 import streamlit as st
 import base64
-from functools import partial
 from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
 import map_ui
-from profile_picture_ui import load_picture, PICTURE_ERRORS
+from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from parallel import run_parallel
@@ -29,8 +28,8 @@ try:
     entries, memberships, players = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_players)
-    players_by_id = {p.id: p.display_name for p in players}
+        db.list_public_usernames)
+    players_by_id = {p['id']: p['display_name'] for p in players}
 except (APIError, RequestError, RuntimeError):
     st.error("We couldn't load the map. Reload the page to try again.")
     st.stop()
@@ -60,14 +59,13 @@ if team_mode:
             except ValueError:
                 pass  # A missing/unreadable photo still has an initials badge.
 else:
-    def fetch_picture(member):
-        try:
-            return member.id, load_picture(player_id, member.player_id)
-        except (*PICTURE_ERRORS, PermissionError):
-            return None  # A missing/unreadable photo still has an initials badge.
     if st.session_state.get("credential_version"):
-        fetched = run_parallel(*[partial(fetch_picture, m) for m in memberships if m.id in owner_ids])
-        pictures = dict(result for result in fetched if result)
+        owners = [m for m in memberships if m.id in owner_ids]
+        try:
+            fetched = load_pictures(player_id, [m.player_id for m in owners])
+            pictures = {m.id: fetched[m.player_id] for m in owners if m.player_id in fetched}
+        except (*PICTURE_ERRORS, PermissionError, ValueError):
+            pass  # An unavailable picture still has the existing initials badge.
 
 # Where am I? Decides the bottom card and whether "Me" is offered.
 location, accuracy_m, problem = current_location()

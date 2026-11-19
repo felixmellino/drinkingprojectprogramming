@@ -10,19 +10,20 @@ from concurrent.futures import ThreadPoolExecutor
 
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 
+MAX_READ_WORKERS = 8
 
 def run_parallel(*calls):
     """Run zero-argument functions at once. Returns their results in the same order.
     If one fails, the others still finish and the first error (in call order) is raised."""
     if len(calls) <= 1:
         return [call() for call in calls]
-    context = get_script_run_ctx()  # lets the workers use st.session_state like the page does
+    context = get_script_run_ctx(suppress_warning=True)  # workers use this page's session only
 
     def run(call):
         if context is not None:
             add_script_run_ctx(threading.current_thread(), context)
         return call()
 
-    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+    with ThreadPoolExecutor(max_workers=min(MAX_READ_WORKERS, len(calls))) as pool:
         futures = [pool.submit(run, call) for call in calls]
         return [future.result() for future in futures]

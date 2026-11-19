@@ -14,7 +14,8 @@ from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import context_line, page_header, section_heading
-from photo_history_ui import game_night_bounds, game_night_label, memory_tile, photo_metadata, framed_photo
+from photo_history_ui import history_pages, game_night_label, memory_tile, photo_metadata, framed_photo
+from parallel import run_parallel
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -27,6 +28,18 @@ def entry_label(entry: dict) -> str:
 def show_time(timestamp: str, zone_name: str) -> str:
     time = utc(datetime.fromisoformat(timestamp)).astimezone(ZoneInfo(zone_name))
     return f"{time:%d %b %Y at %H:%M:%S %Z (%z)} · {zone_name}"
+
+
+def select_history_page(number):
+    st.session_state['history_page'] = number
+
+
+def open_photo(entry_id):
+    st.session_state['history_detail_id'] = entry_id
+
+
+def close_photo():
+    st.session_state.pop('history_detail_id', None)
 
 
 player_id = require_login()
@@ -60,21 +73,26 @@ if detail_id not in entries_by_id:
     st.session_state.pop("history_detail_id", None)
     detail_id = None
 
-NIGHTS_PER_PAGE = 2
-
 if len(entries) > 1 and detail_id is None:
-    nights = []  # [[start, end, [entries...]], ...], newest night first
-    for item in entries:  # already newest-first
-        start, end = game_night_bounds(item)
-        if nights and nights[-1][0] == start:
-            nights[-1][2].append(item)
-        else:
-            nights.append([start, end, [item]])
-
-    last_page = (len(nights) - 1) // NIGHTS_PER_PAGE
+    pages = history_pages(entries)
+    last_page = len(pages) - 1
     page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
-    first = page_number * NIGHTS_PER_PAGE
-    visible_nights = nights[first:first + NIGHTS_PER_PAGE]
+    visible_nights = pages[page_number]
+
+    def fetch_photo(item):
+        try:
+            return db.download_checkin_photo(player_id, lobby_id, item['id']), False
+        except (APIError, RequestError, RuntimeError, StorageException):
+            return None, True
+
+    visible = [item for _, _, items in visible_nights for item in items]
+    try:
+        # Fresh access checks for every image; only independent reads overlap.
+        photos = dict(zip((item['id'] for item in visible),
+            run_parallel(*[lambda item=item: fetch_photo(item) for item in visible])))
+    except PermissionError:
+        st.warning("Photo access changed. Refresh to load the current photo history.")
+        st.stop()
 
     for start, end, night_entries in visible_nights:
         count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
@@ -83,33 +101,23 @@ if len(entries) > 1 and detail_id is None:
         with st.container(key=f"memory_row_{start.date().isoformat()}"):
             for column, item in zip(st.columns(len(night_entries)), night_entries):
                 with column, st.container(key=f"memory_tile_{item['id']}"):
-                    try:
-                        photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
-                    except PermissionError:
-                        st.warning("Photo access changed. Refresh to load the current photo history.")
-                        st.stop()
-                    except (APIError, RequestError, RuntimeError, StorageException):
+                    photo, failed = photos[item['id']]
+                    if failed:
                         st.warning("This photo could not be loaded. Its details are still available.")
-                        photo = None
-                    if memory_tile(item, photo, key=f"memory_tile_{item['id']}"):
-                        st.session_state["history_detail_id"] = item["id"]
-                        st.rerun()
+                    memory_tile(item, photo, key=f"memory_tile_{item['id']}", on_open=open_photo)
 
     if last_page > 0:
         newer, _, older = st.columns(3)
         with newer:
-            if st.button("Newer nights", disabled=page_number == 0):
-                st.session_state["history_page"] = page_number - 1
-                st.rerun()
+            st.button("Newer photos", disabled=page_number == 0,
+                      on_click=select_history_page, args=(page_number - 1,))
         with older:
-            if st.button("Older nights", disabled=page_number == last_page):
-                st.session_state["history_page"] = page_number + 1
-                st.rerun()
+            st.button("Older photos", disabled=page_number == last_page,
+                      on_click=select_history_page, args=(page_number + 1,))
     st.stop()
 
-if len(entries) > 1 and st.button("Back to photos"):
-    st.session_state.pop("history_detail_id", None)
-    st.rerun()
+if len(entries) > 1:
+    st.button("Back to photos", on_click=close_photo)
 entry = entries_by_id[detail_id] if detail_id in entries_by_id else entries_by_id[next(iter(entries_by_id))]
 
 try:

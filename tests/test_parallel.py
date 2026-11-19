@@ -33,3 +33,21 @@ def test_first_error_in_call_order_is_raised_after_all_calls_finished():
     with pytest.raises(ValueError, match='boom'):
         run_parallel(good, bad)
     assert done == ['good']
+
+
+def test_large_gallery_uses_a_bounded_worker_pool_and_keeps_display_order():
+    import threading
+    from parallel import MAX_READ_WORKERS
+    lock=threading.Lock()
+    active=peak=0
+    def read(index):
+        nonlocal active,peak
+        with lock:
+            active+=1
+            peak=max(peak,active)
+        time.sleep(0.01)
+        with lock:
+            active-=1
+        return index
+    assert run_parallel(*[lambda i=i:read(i) for i in range(25)])==list(range(25))
+    assert 1<peak<=MAX_READ_WORKERS

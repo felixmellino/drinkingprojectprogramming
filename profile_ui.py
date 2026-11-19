@@ -12,6 +12,7 @@ from device_login import log_out, queue_storage, set_identity
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from theme import menu_icons
+from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 # Pages that have no tab in the bottom bar open from the top of this menu.
@@ -29,7 +30,7 @@ OPTIONS = [
 
 def show_profile(player):
     st.title("Profile")
-    show_picture_identity(player.id, player.id, st.session_state.get("player_display_name", player.display_name))
+    identity = st.container()
     view = st.session_state.get("profile_view", "menu")
     if view == "menu":
         # iPhone-style grouped lists: icon, label, chevron (styles in assets/theme.css).
@@ -48,15 +49,20 @@ def show_profile(player):
         with st.container(key="menu_list_logout"):
             if st.button("Log out", width="stretch", key="profile_logout"):
                 log_out()
+        # Handle links before downloading the avatar for a page being left.
+        with identity:
+            show_picture_identity(player.id, player.id, st.session_state.get('player_display_name', player.display_name))
         return
     if st.button("Back to Profile", icon=":material/arrow_back:"):
         dismiss_friends()
         dismiss_security()
         st.session_state["profile_view"] = "menu"
         st.rerun()
+    with identity:
+        picture = show_picture_identity(player.id, player.id, st.session_state.get('player_display_name', player.display_name))
     try:
         if view == "edit":
-            show_edit(player)
+            show_edit(player, picture=picture)
         elif view == "friends":
             show_friends(player.id)
         elif view == "stats":
@@ -72,7 +78,7 @@ def show_profile(player):
         st.error("We couldn't save or load your details. Please try again.")
 
 
-def show_edit(player):
+def show_edit(player, *, picture=None):
     st.header("Edit profile")
     st.caption("Only your username is public. Changing it keeps your friends and scores.")
     if st.session_state.pop("_profile_saved", False):
@@ -89,7 +95,7 @@ def show_edit(player):
         st.rerun()
 
     st.divider()
-    show_picture_editor(player)
+    show_picture_editor(player, saved_photo=picture)
 
 
 def show_security(player):
@@ -195,13 +201,15 @@ def show_stats(player_id):
     finished_season_ids = set()
     entries = []
     transfers = []
-    for member in memberships:
-        seasons = db.list_seasons_for_lobby(member.lobby_id)
-        for season in seasons:
-            if season_finished(season, now):
-                finished_season_ids.add(season.id)
-            entries.extend(db.list_drink_entries(season.id))
-            transfers.extend(db.list_season_transfers(season.id))
+    season_groups = run_parallel(*[lambda m=m: db.list_seasons_for_lobby(m.lobby_id) for m in memberships])
+    seasons = [season for group in season_groups for season in group]
+    finished_season_ids = {s.id for s in seasons if season_finished(s, now)}
+    def season_records(season):
+        return run_parallel(lambda: db.list_drink_entries(season.id),
+                            lambda: db.list_season_transfers(season.id))
+    for drinks, moves in run_parallel(*[lambda s=s: season_records(s) for s in seasons]):
+        entries.extend(drinks)
+        transfers.extend(moves)
     stats = all_time_stats(memberships, entries, finished_season_ids=finished_season_ids, transfers=transfers)
     css = (Path(__file__).parent / "assets" / "profile_stats.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)

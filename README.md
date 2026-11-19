@@ -478,6 +478,12 @@ revoked membership are covered by automated tests; deployed browser checks
 remain. The automated suite uses mocks and does not apply migrations or
 require database credentials.
 
+### Faster navigation and loading (19 November 2026)
+
+Navigation/loading improvements and reproducible benchmarks are documented in
+[Performance](docs/PERFORMANCE.md). They require the app update, with no new
+database migration for the performance change.
+
 ### Focus Challenge (19 November 2026)
 
 The second playable minigame adds randomized reaction, seven-step memory and

@@ -128,7 +128,8 @@ def show_overview_actions(player_id):
         join_dialog(player_id)
 
 
-def show_summary(player_id, lobby, season, status, now):
+def load_summary(player_id, lobby, season, status):
+    """Fetch a card's independent data without rendering from a worker thread."""
     leader_name, photo, available = None, None, True
     entries = []
     if season:
@@ -154,6 +155,11 @@ def show_summary(player_id, lobby, season, status, now):
                             pass
         except LOAD_ERRORS:
             available = False
+    return entries, available, leader_name, photo
+
+
+def show_summary(player_id, lobby, season, status, now, *, loaded=None):
+    entries, available, leader_name, photo = loaded if loaded is not None else load_summary(player_id, lobby, season, status)
     card(lobby, season, status, now, leader_name, photo, available)
     return entries, available
 
@@ -390,6 +396,10 @@ def show_lobbies(player_id):
         st.caption(f'Automatically selected: {groups["active"][0][0].name}')
     else:
         clear_selection()
+    cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
+    summaries = run_parallel(*[partial(load_summary, player_id, lobby, season, status)
+                               for status, lobby, season in cards_to_load])
+    summaries_by_lobby = {lobby.id: summary for (_, lobby, _), summary in zip(cards_to_load, summaries)}
     for status, heading in (('active', 'Active Lobbies'), ('past', 'Past Lobbies'),
                             ('upcoming', 'Upcoming Lobbies'), ('setup', 'Incomplete setup')):
         rows = groups[status]
@@ -400,7 +410,7 @@ def show_lobbies(player_id):
             st.caption('No active lobbies.' if status == 'active' else 'No past lobbies yet.')
         for lobby, membership, season in rows:
             with st.container(key=f'lobby_card_{lobby.id}', gap=None):
-                show_summary(player_id, lobby, season, status, now)
+                show_summary(player_id, lobby, season, status, now, loaded=summaries_by_lobby[lobby.id])
                 if st.button('View lobby →', key=f'open_lobby_{lobby.id}',
                              help=f'Open {lobby.name}', width='stretch'):
                     dismiss_dialog()

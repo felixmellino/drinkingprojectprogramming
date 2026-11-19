@@ -150,3 +150,16 @@ def test_app_opens_on_the_map_once_logged_in(monkeypatch):
     at = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py").run()
     assert not at.exception
     switch.assert_called_once_with("pages/5_Map.py")
+
+
+def test_existing_session_entry_redirects_before_duplicate_bootstrap(monkeypatch):
+    login=Mock(side_effect=AssertionError('The destination validates the session afresh'))
+    switch=Mock()
+    monkeypatch.setattr('shared.require_login',login)
+    monkeypatch.setattr(st,'switch_page',switch)
+    app=AppTest.from_file(Path(__file__).resolve().parents[1]/'app.py')
+    app.session_state['player_id']='existing-session'
+    app.run()
+    assert not app.exception
+    login.assert_not_called()
+    switch.assert_called_once_with('pages/5_Map.py')

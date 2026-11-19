@@ -36,8 +36,8 @@ def phone(monkeypatch):
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
         SimpleNamespace(id="me", player_id="p-me"), SimpleNamespace(id="rival", player_id="p-rival")])
-    monkeypatch.setattr(db, "list_players", lambda: [
-        SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="**rival**")])
+    monkeypatch.setattr(db, "list_public_usernames", lambda: [
+        dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="**rival**")])
     monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: state["location"])
     return state
 
@@ -119,8 +119,8 @@ def test_hud_counts_yours_rivals_and_free(phone):
 
 
 def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
-    monkeypatch.setattr(db, "list_players", lambda: [
-        SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="<b>x</b>")])
+    monkeypatch.setattr(db, "list_public_usernames", lambda: [
+        dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="<b>x</b>")])
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     message = card(open_map())
     assert "&lt;b&gt;x&lt;/b&gt;" in message and "<b>x</b>" not in message
@@ -186,16 +186,17 @@ def test_team_popup_uses_combined_territory_points(phone):
     assert rows[0]["owner_points"] == rows[0]["my_points"] == 6
 
 
-def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypatch):
+@pytest.mark.parametrize('failure',[RuntimeError('offline'),ValueError('sign-in changed')])
+def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypatch, failure):
     from unittest.mock import Mock
     from httpx import RequestError
-    loader = Mock(side_effect=RequestError("offline"))
-    monkeypatch.setattr("profile_picture_ui.load_picture", loader)
+    loader = Mock(side_effect=failure)
+    monkeypatch.setattr("profile_picture_ui.load_pictures", loader)
     page = AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10)
     page.session_state["credential_version"] = "test-credential"
     page.run()
     assert not page.exception
-    assert sorted(call.args for call in loader.call_args_list) == [("player", "p-me"), ("player", "p-rival")]
+    loader.assert_called_once_with('player', ['p-me','p-rival'])
 
 
 def chart_json(page):
@@ -204,8 +205,8 @@ def chart_json(page):
 
 
 def test_tooltip_is_client_side_plain_text_and_lists_names_and_points(phone, monkeypatch):
-    monkeypatch.setattr(db, "list_players", lambda: [
-        SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="<b>rival</b>")])
+    monkeypatch.setattr(db, "list_public_usernames", lambda: [
+        dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="<b>rival</b>")])
     page = open_map()
     assert not page.exception
     assert not getattr(page.get("deck_gl_json_chart")[0].proto, "selection_mode", None)  # no round trip on tap
