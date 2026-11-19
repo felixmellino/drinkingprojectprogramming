@@ -7,8 +7,15 @@ leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
-**Team:** TODO — add all four members' names and student numbers here
-before submission.
+**Team:**
+- Niklas Peter — 78399
+- Felix Mellino — TODO (student number)
+- Ben Schittkowski — TODO (student number)
+- Nils Cuypers — TODO (student number)
+
+Names above are inferred from git history and may be wrong — each member
+should confirm their own name and fill in their student number before
+submission.
 
 ## Hosting (deployed app)
 
