@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from core.auth import new_token, token_hash
 from core.checkin_photo import photo_expires_at
+from core.photo_privacy import can_view_photo
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
 
 from supabase import Client, create_client
@@ -409,8 +410,21 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
     )
 
 
+def _photo_audience(player_id: str, lobby_id: str, rows: list[dict]):
+    """Uncached current roster/consent, shared by listing and direct download."""
+    members = list_memberships_for_lobby(lobby_id)
+    owners = {row["lobby_memberships"]["player_id"] for row in rows}
+    ids = owners | {m.player_id for m in members}
+    preferences = (_all_rows(get_client().table("player_photo_preferences")
+                   .select("player_id,share_checkin_photos").in_("player_id", sorted(ids))) if ids else [])
+    sharing = {r["player_id"]: r["share_checkin_photos"] for r in preferences}
+    return lambda row: can_view_photo(player_id, row["lobby_memberships"]["player_id"],
+                                      row.get("team_id"), members, sharing)
+
+
 def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
     rows = _all_rows(_lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
+    allowed = _photo_audience(player_id, lobby_id, rows) if rows else lambda row: False
     transfers = {row["duel_id"]: row for row in rows if row.get("duel_id") and row.get("duel_transfer_to")}
     names = {row.get("membership_id"): row["lobby_memberships"]["players"]["display_name"] for row in rows}
     team_names = ({team.id: team.name for team in list_lobby_teams(player_id, lobby_id)}
@@ -419,6 +433,9 @@ def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
         {
             "id": row["id"],
             "username": row["lobby_memberships"]["players"]["display_name"],
+            "player_id": row["lobby_memberships"]["player_id"],
+            "team_id": row.get("team_id"),
+            "team_name": team_names.get(row.get("team_id")),
             "territory": row["territories"]["name"] if row["territories"] else None,
             "location": row["location_check_result"],
             "captured_at": row.get("photo_captured_at"),
@@ -442,7 +459,7 @@ def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
                    if row.get("duel_id") in transfers else 0)),
         }
         for row in rows
-        if datetime.now(timezone.utc) < photo_expires_at(datetime.fromisoformat(row["seasons"]["ends_at"]))
+        if allowed(row) and datetime.now(timezone.utc) < photo_expires_at(datetime.fromisoformat(row["seasons"]["ends_at"]))
     ]
 
 
@@ -471,6 +488,8 @@ def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> byte
         return None
     if datetime.now(timezone.utc) >= photo_expires_at(datetime.fromisoformat(rows[0]["seasons"]["ends_at"])):
         return None
+    if not _photo_audience(player_id, lobby_id, rows)(rows[0]):
+        raise PermissionError("This photo is private.")
     return _private_photo_bucket().download(photo_path)
 
 
@@ -761,6 +780,22 @@ def update_password(player_id: str, credential_version: str, current: str,
         raise ValueError("Too many login attempts. Wait 15 minutes and try again.")
     player = change_password(player, current, password, confirmation)
     return _save_account_fields(player, credential_version, {"pin_hash": player.pin_hash})
+
+
+def get_photo_sharing(player_id: str, credential_version: str) -> bool:
+    _profile_actor(player_id, credential_version)
+    rows = (get_client().table("player_photo_preferences").select("share_checkin_photos")
+            .eq("player_id", player_id).execute().data)
+    return bool(rows and rows[0]["share_checkin_photos"] is True)
+
+
+def save_photo_sharing(player_id: str, credential_version: str, enabled: bool) -> None:
+    _profile_actor(player_id, credential_version)
+    if type(enabled) is not bool:
+        raise ValueError("Choose on or off for photo sharing.")
+    get_client().table("player_photo_preferences").upsert(
+        {"player_id": player_id, "share_checkin_photos": enabled}, on_conflict="player_id"
+    ).execute()
 
 
 # The browser stores only the random token; Supabase stores only its hash.
