@@ -7,7 +7,11 @@ Start. No uploads or new season are required, including for pre-Focus QA
 snapshots once migrations 014 and 015 are installed. The UI labels test mode
 and hides the upload-unlock progress. Finish/resume the saved attempt before
 starting another. After a failure or win, return to games and start again.
-Repeated wins refresh the single x1.5 hour; they never stack multipliers.
+Every new attempt plays Reaction → Memory → Precision, even after a missed task.
+The final screen shows each result: three passes earn x1.5, two x1.25, zero or
+one no boost. Repeated QA wins refresh their reward tier's hour; overlapping
+effects use the highest active multiplier and never stack. Migration 022 is
+required for this revision, after 021.
 Test games work throughout the active season; expired seasons remain closed.
 Check-in scoring still uses its own weekly window. Normal-season gates,
 deadlines, membership checks and Focus/Chug running-game exclusion still apply.

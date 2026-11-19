@@ -19,7 +19,7 @@ def test_pagination_loads_more_than_postgrest_default_row_limit():
         bounds.append((start,end))
         return SimpleNamespace(execute=lambda: SimpleNamespace(data=records[start:end+1]))
     query.range.side_effect = page
-    assert db._all_rows(query) == records
+    assert db._all_rows(lambda: query) == records
     assert bounds == [(0,499),(500,999),(1000,1499)]
 
 

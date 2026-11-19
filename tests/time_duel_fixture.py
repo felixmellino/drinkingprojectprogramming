@@ -26,7 +26,6 @@ class Fixture:
         c.execute('grant select on test_clock to service_role')
         c.execute('create function test_now() returns timestamptz language sql as $$ select at_time from test_clock $$')
         for name in MIGRATIONS:c.execute((ROOT/'migrations'/name).read_text().replace('statement_timestamp()','public.test_now()'))
-        c.execute((ROOT/'migrations/021_time_duel_invitations.sql').read_text().replace('statement_timestamp()','public.test_now()'))
         self.players=[uuid4() for _ in range(7)]
         for n,p in enumerate(self.players):c.execute("insert into players(id,display_name,first_name,last_name,pin_hash) values(%s,%s,'Test','Only','fake')",(p,'Player '+str(n+1)))
         c.execute("insert into territories values('time-test','Time test','{}')")

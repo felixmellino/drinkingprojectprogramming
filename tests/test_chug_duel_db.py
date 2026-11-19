@@ -38,6 +38,20 @@ def start(raw):
     return db.start_chug_duel("pa", "lobby", "season", "d", raw, START, (38.7, -9.1), 10)
 
 
+def test_chug_duel_lists_each_page_with_a_fresh_query(monkeypatch):
+    client = Mock()
+    first, second = Mock(), Mock()
+    client.rpc.side_effect = [first, second]
+    for query, rows in [(first, [{"id": i} for i in range(500)]), (second, [{"id": 500}])]:
+        query.order.return_value = query
+        query.range.return_value.execute.return_value.data = rows
+    monkeypatch.setattr(db, "get_client", lambda: client)
+
+    assert [duel["id"] for duel in db.list_chug_duels("player", "season")] == list(range(501))
+    first.range.assert_called_once_with(0, 499)
+    second.range.assert_called_once_with(500, 999)
+
+
 def test_shared_capture_sanitized_for_two_authorized_paths_no_gps_sent(service):
     _, bucket, rpc, image = service
     assert start(image)["status"] == "started"

@@ -15,6 +15,16 @@ No shared game attempts or scores were created by that verification.
 
 ## Activation
 
+Current revision: merge the reviewed app change and apply
+`migrations/022_focus_complete_all_games.sql` after 021. Migration 021 is
+already installed on the shared project; 022 is prepared, not yet applied.
+The UI checks the server's flow version before starting a new attempt and
+shows the exact missing migration instead of silently starting old rules.
+Existing running games keep their original snapshot. Start a new attempt
+after activation to use the continue-after-a-miss rules.
+The numbered baseline steps below are for fresh installations; do not reapply
+older Focus scripts after 022, because they would restore superseded rules.
+
 1. Review this branch and migrations 014/015 with a teammate.
 2. The Data owner applies 014 after 010, 011, `012_qa_minigames.sql` and
    `013_checkin_photo_privacy.sql`. Migration 014 is repeatable. Do not rerun
@@ -50,30 +60,36 @@ Start opens a full-screen board. Start reaction begins one unpredictable signal
 after a 3.5–6.5 second wait; pass within 220 ms. Start memory begins a one-second
 lead-in and seven highlighted positions on a 3x3 grid, followed by fifteen seconds
 for input. Start precision opens twelve targets to tap within twelve seconds.
-New attempts must pass all three stages before earning the boost. An early tap,
-wrong memory answer or wrong precision target ends the attempt. Running games
+New attempts play all three tasks. An early or slow reaction, wrong memory
+answer or wrong precision target marks only that task as missed. The next
+task remains playable. The final screen shows every pass/miss. Running games
 from the older reaction-only release retain their previous rules.
 
-Ready screens time out after thirty seconds; reaction responses after two.
+Ready screens time out after thirty seconds; reaction responses after 500 ms,
+with a 220 ms pass threshold. A stage timeout moves to the next task as a miss.
 The entire attempt lasts at most three minutes, and ends sooner at 06:00,
 scoring closure (normal seasons) or season end. Closing/reloading does not reset it or generate
 new content. Memory/reaction steps and precision checkpoints are persisted.
 The browser caches pending evidence to recover a lost reply. Two seconds of
 server delivery grace accommodates transport; task timers do not gain time.
 
-On a saved win, an automatic x1.5 effect lasts up to sixty minutes, bounded by
+Three passes earn x1.5, two earn x1.25, and zero or one grant no boost. The
+effect lasts up to sixty minutes, bounded by
 scoring/season closure. It can cross 06:00 and never stacks. An old evening's
 unexpired boost prevents starting another Focus attempt until expiry. There
 is one successful reward per member/lobby evening, independently of Chug roles.
 Active Focus and started Chug games cannot overlap for the same member.
 The QA exception removes count/win/active-boost gates. Further QA wins refresh
-expiry to sixty minutes from that win, capped at season end, never stack factors
-or accumulate hours. QA still requires an active season, keeps the 06:00 attempt
+that tier's expiry to sixty minutes from that win, capped at season end. The
+highest active tier wins when QA effects overlap; a partial win never downgrades
+an unexpired full boost. Effects never stack factors or accumulate hours.
+QA still requires an active season, keeps the 06:00 attempt
 cutoff and all task deadlines. Ordinary drink scoring keeps its weekly window.
 
 Only ordinary Check-in awards are boosted, including matched territory points.
 The previous owner's 25% uses that boosted award. A 1-point drink becomes 1.5;
-its owner income is exactly 0.375. A corrected 3-point drink becomes 4.5 with
+its owner income is exactly 0.375. With the partial tier it becomes 1.25 with
+exactly 0.3125 owner income. A corrected 3-point drink becomes 4.5 with
 1.125 owner income. Self/team-self income remains zero. In teams, only the
 successful player's entries receive the boost. Chug Duel sources/transfers do
 not receive it, even when its winner currently has a Focus effect.
@@ -88,7 +104,7 @@ not receive it, even when its winner currently has a Focus effect.
   checkpoints. `logic.js` has pure helpers exercised by the Node test.
 - `focus_challenge_component.py`, `focus_challenge_ui.py`, `minigames_ui.py`:
   authenticated page integration, progress, start/recovery, board and results.
-  Three-second polling preserves a keyed component; it does not restart clocks.
+  One-second polling preserves a keyed component; it does not restart clocks.
 - `data/db.py`: thin RPC wrappers and numeric row conversion. Clients send
   action evidence and expected revision, never a trusted win or points factor.
 - `014_focus_challenge.sql`: private attempts, server random material,
@@ -98,13 +114,17 @@ not receive it, even when its winner currently has a Focus effect.
   for existing QA snapshots, server-derived attempt flag and a normal-only
   one-win index. RPCs retain membership checks and a single running game. New
   QA wins refresh one boost; the immutable source still records the actual win.
-- `DrinkEntry.focus_attempt_id`: the source grant at check-in receipt time.
+- `022_focus_complete_all_games.sql`: per-task results, continue-after-miss
+  transitions, staged timeouts, partial/full reward calculation, server-reported
+  active tier and immutable entry multiplier. Its replay update preserves the
+  installed Time Duel and departed-member logic. Old attempts/results survive.
+- `DrinkEntry.focus_attempt_id` and `focus_multiplier`: source and tier at receipt.
   Corrections keep it; replay recomputes the corrected award with that original
   multiplier after expiry. Neither correction nor replay compounds multipliers.
 - `points_awarded` and `owner_bonus_quarters` become exact SQL numeric values.
-  Existing quarter-unit readers remain compatible; a half-quarter means 0.125
-  points. Python uses only binary-exact integer/half-unit values here. The
-  common formatter retains three decimals. No historical award is rescaled.
+  Existing quarter-unit readers remain compatible; a quarter of a quarter is
+  exactly 0.0625 points. Python preserves these binary-exact fractions and the
+  common formatter retains four decimals. No historical award is rescaled.
 - Check-in previews, saved receipts, photo history, leaderboard and territory
   replay use those awards. Capture-gap hints accommodate half-point awards once
   Focus entries are present. Photo deletion/retention and Chug transfers remain
@@ -130,6 +150,18 @@ Attempt records are part of competition history; the project's broader account
 history/retention policy remains applicable.
 
 ## Verification
+
+- Current revision after integrating the latest main: all 952 Python tests passed, including the migration
+  availability guard. Node
+  component checks cover missed-task handoffs, per-task summary and x1.25 text.
+  `SCORING_PYTHON=.venv/Scripts/python.exe node tests/focus_complete_postgres.cjs`
+  covers all eight outcome combinations, unchanged points for 0/1, both reward
+  tiers, stale actions, stage and whole-attempt expiry, restart, repeated migration,
+  normal unlocks/partial-win limit, departed-member denial, exact x1.25 scoring,
+  0.3125 owner income, corrections and retained Time Duel replay integration.
+  A real isolated browser played through Reaction, Memory and Precision after
+  misses and showed the saved three-task result. These are local checks;
+  shared migration 022 and deployed phone verification remain pending.
 
 - Python: `python -m pytest -q`. Development runs additionally block live
   Supabase client creation. The latest full regression suite passed 652 tests. Focus tests cover configuration freezing, safe

@@ -146,7 +146,30 @@ def verify_invitations(f):
     print('PASS: Time Duel invitation delivery, duplicates, expiry, atomic cleanup, busy guards and restart')
 
 
+def verify_quiz_invite_list(f):
+    lobby = f.lobby(qa=True)
+    recipient = lobby['mids'][0]
+    now = f.now()
+    for index in range(21):
+        player, member = uuid4(), uuid4()
+        f.conn.execute("insert into players(id,display_name,first_name,last_name,pin_hash) "
+                       "values(%s,%s,'Test','Only','fake')", (player, f'Invite tester {index}'))
+        f.conn.execute("insert into lobby_memberships(id,player_id,lobby_id) values(%s,%s,%s)",
+                       (member, player, lobby['lid']))
+        values = (uuid4(), lobby['sid'], member, recipient, now.date(), now, now + timedelta(minutes=10))
+        f.conn.execute("insert into quiz_duels(id,season_id,challenger_id,opponent_id,game_night,"
+                       "created_at,expires_at,stake,questions) values(%s,%s,%s,%s,%s,%s,%s,5,'[]')", values)
+    def load(actor):
+        return f.rpc('select quiz_status(%s,%s) data', (f.players[actor], lobby['sid']))['data']
+
+    invites = load(0)['duels']
+    assert len(invites) == 21 and all(duel['status'] == 'invited' for duel in invites)
+    assert load(1)['duels'] == []
+    print('PASS: Quiz Duel returns all pending invitations for the recipient')
+
+
 def verify(f):
+    verify_quiz_invite_list(f)
     verify_invitations(f)
     c=f.conn;l=f.lobby();qa=f.lobby(qa=True)
     assert c.execute('select _time_rules() data').fetchone()['data']==CONFIG

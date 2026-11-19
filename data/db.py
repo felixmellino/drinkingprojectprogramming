@@ -297,22 +297,25 @@ def list_arenas() -> list[Arena]:
 
 # -- drink entries -------------------------------------------------------
 
-def _all_rows(query) -> list[dict]:
+def _all_rows(build_query) -> list[dict]:
     rows = []
     while True:
-        batch = query.range(len(rows), len(rows) + 499).execute().data
+        # Each builder accumulates range parameters, so start fresh for each page.
+        batch = build_query().range(len(rows), len(rows) + 499).execute().data
         rows.extend(batch)
         if len(batch) < 500:
             return rows
 
 
 def list_drink_entries(season_id: str) -> list[DrinkEntry]:
-    rows = _all_rows(get_client().table("drink_entries").select("*").eq("season_id", season_id).order("submitted_at").order("id"))
+    rows = _all_rows(lambda: get_client().table("drink_entries").select("*")
+                     .eq("season_id", season_id).order("submitted_at").order("id"))
     return [_row_to_drink_entry(r) for r in rows]
 
 
 def list_drink_entries_for_membership(membership_id: str) -> list[DrinkEntry]:
-    rows = _all_rows(get_client().table("drink_entries").select("*").eq("membership_id", membership_id).order("submitted_at").order("id"))
+    rows = _all_rows(lambda: get_client().table("drink_entries").select("*")
+                     .eq("membership_id", membership_id).order("submitted_at").order("id"))
     return [_row_to_drink_entry(r) for r in rows]
 
 
@@ -344,13 +347,14 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
         duel_transfer_order=r.get("duel_transfer_order"),
         focus_attempt_id=r.get('focus_attempt_id'),
+        focus_multiplier=_score_number(r['focus_multiplier']) if r.get('focus_multiplier') is not None else None,
         time_duel_id=r.get('time_duel_id'), time_bonus=_score_number(r.get('time_bonus', 0)),
         absent_member_ids=tuple(r.get('absent_member_ids') or ()),
     )
 
 
 def _score_number(value) -> int | float:
-    """DB numeric half-units are binary-exact; retain old integer presentation."""
+    """Saved scoring fractions are binary-exact; retain integer presentation."""
     number = float(value)
     return int(number) if number.is_integer() else number
 
@@ -464,7 +468,7 @@ def _photo_audience(player_id: str, lobby_id: str, rows: list[dict]):
     members = list_memberships_for_lobby(lobby_id)
     owners = {row["lobby_memberships"]["player_id"] for row in rows}
     ids = owners | {m.player_id for m in members}
-    preferences = (_all_rows(get_client().table("player_photo_preferences")
+    preferences = (_all_rows(lambda: get_client().table("player_photo_preferences")
                    .select("player_id,share_checkin_photos").in_("player_id", sorted(ids))) if ids else [])
     sharing = {r["player_id"]: r["share_checkin_photos"] for r in preferences}
     return lambda row: can_view_photo(player_id, row["lobby_memberships"]["player_id"],
@@ -472,7 +476,7 @@ def _photo_audience(player_id: str, lobby_id: str, rows: list[dict]):
 
 
 def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
-    rows = _all_rows(_lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
+    rows = _all_rows(lambda: _lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
     allowed = _photo_audience(player_id, lobby_id, rows) if rows else lambda row: False
     transfers = {row["duel_id"]: row for row in rows if row.get("duel_id") and row.get("duel_transfer_to")}
     names = {row.get("membership_id"): row["lobby_memberships"]["players"]["display_name"] for row in rows}
@@ -650,11 +654,14 @@ def focus_attempt_action(player_id: str, attempt_id: str, revision: int, action:
     return _focus_rpc('focus_attempt_action', {'actor_player': player_id, 'target_attempt': attempt_id,
         'expected_revision': revision, 'selected_action': action, 'evidence': evidence})
 
-def _duel_rpc(name: str, parameters: dict) -> list[dict]:
+def _duel_rpc(name: str, parameters: dict, *, paginated: bool = False) -> list[dict]:
     from core.chug_duel import ERRORS
     from core.quiz_duel import ERRORS as QUIZ_ERRORS
     try:
-        return get_client().rpc(name, parameters).execute().data
+        client = get_client()
+        if paginated:
+            return _all_rows(lambda: client.rpc(name, parameters).order("created_at", desc=True).order("id"))
+        return client.rpc(name, parameters).execute().data
     except APIError as error:
         reason = error.message.strip()
         if reason == 'time_busy':
@@ -672,7 +679,7 @@ def _duel_rpc(name: str, parameters: dict) -> list[dict]:
 
 
 def list_chug_duels(player_id: str, season_id: str) -> list[dict]:
-    return _duel_rpc("list_chug_duels", {"actor_player": player_id, "target_season": season_id})
+    return _duel_rpc("list_chug_duels", {"actor_player": player_id, "target_season": season_id}, paginated=True)
 
 
 def pending_minigame_invite_count(player_id: str, season_id: str) -> int:

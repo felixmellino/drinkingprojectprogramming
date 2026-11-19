@@ -48,8 +48,12 @@ def render_focus(player, season):
                 except (ValueError, PermissionError) + SERVICE_ERRORS as error:
                     _error(error)
         return
+    if info.get('flow_version') != 3:
+        st.error('Focus setup required: apply migrations/022_focus_complete_all_games.sql after migration 021. '
+                 'This enables all three games and the ×1.25 / ×1.5 rewards.')
+        return
     from minigames_ui import game_header, game_note
-    game_header('Reaction Test', '×1.5 points for 1 hour', 'focus_home')
+    game_header('Reaction Test', 'Play all 3 · 2 passes ×1.25 · 3 passes ×1.5', 'focus_home')
     count, threshold = info['count'], info['threshold']
     if not qa:
         if type(threshold) is not int or threshold <= 0:
@@ -59,7 +63,8 @@ def render_focus(player, season):
             st.progress(min(1.0, count / threshold), text=f'{count} / {threshold} check-ins to unlock')
     if info.get('boost_ends_at'):
         end = datetime.fromisoformat(info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
-        st.success(f'×1.5 active until {end:%H:%M}')
+        multiplier = info.get('boost_multiplier', 1.5)
+        st.success(f'×{multiplier:g} active until {end:%H:%M}')
     elif info['won'] and not qa:
         game_note('Done for tonight. Resets at 06:00.')
     elif attempt and attempt['status'] == 'failed' and not qa:

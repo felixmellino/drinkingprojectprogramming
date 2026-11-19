@@ -105,7 +105,7 @@ def _game_cards(player, season, member, duels, *, service_available=True):
             st.rerun()
         if _game_tile('focus', 'reaction-test', 'Reaction Test',
                       'Test mode · Unlimited plays' if focus_qa
-                      else 'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
+                      else 'Solo · 3 games · Earn ×1.25 or ×1.5' if focus_available else 'Not in this season',
                       playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
@@ -216,9 +216,6 @@ def render_minigames(player, member, lobby, season):
     unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    if not st.session_state.get('minigame_selected'):   # a game screen has its own header
-        page_header("Minigames", compact=True)
-        page_subtitle(lobby.name, "Test season · Unlimited plays" if unlimited else "Evening resets at 06:00")
     context = (member, lobby.id, season.id)
     if st.session_state.get('minigames_context', context) != context:
         st.session_state.pop('minigame_selected', None)
@@ -232,6 +229,9 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('time_invitation_target', None)
         st.session_state.pop('time_accept_confirmation', None)
     st.session_state['minigames_context'] = context
+    if not st.session_state.get('minigame_selected'):   # a game screen has its own header
+        page_header("Minigames", compact=True)
+        page_subtitle(lobby.name, "Test season · Unlimited plays" if unlimited else "Evening resets at 06:00")
     try:
         members, usernames = run_parallel(lambda: db.list_memberships_for_lobby(lobby.id), db.list_public_usernames)
         own = next((m for m in members if m.id == member and m.player_id == player), None)
@@ -258,8 +258,11 @@ def render_minigames(player, member, lobby, season):
         try:
             duels = db.list_chug_duels(player, season.id)
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-            _game_cards(player, season, member, [], service_available=False)
-            _error(error)
+            if st.session_state.get('minigame_selected') == 'chug_duel':
+                game_header('Chug Duel', '', 'minigames_home')
+                _error(error)
+            else:
+                _game_cards(player, season, member, [], service_available=False)
             return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
         if running:
@@ -311,7 +314,7 @@ def render_minigames(player, member, lobby, season):
                     if host:
                         _capture_and_start(player, lobby, season, duel)
                     else:
-                        game_note(f"Go to {who(cid)}'s phone.")
+                        game_note(f"Go to {who(cid)}'s phone. They’ll take the shared photo and start the duel.")
                     if st.button("Cancel", key=f"abort_{duel['id']}", width="stretch"):
                         _act(player, duel, "cancel" if host else "abort")
                 else:
