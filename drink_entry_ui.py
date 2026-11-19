@@ -1,5 +1,7 @@
 """Presentation helpers for the Drink Entries block; no game or data rules."""
 
+from __future__ import annotations
+
 from html import escape
 from pathlib import Path
 
@@ -31,3 +33,40 @@ def context_line(label: str, detail: str) -> None:
         f'<div class="drink-context"><span>{escape(label)}</span><span>{escape(detail)}</span></div>',
         unsafe_allow_html=True,
     )
+
+
+def reward_card_html(points: str, location: str, *, territory: str | None = None, captured: bool = False,
+                     team_mode: bool = False, owner_income: str | None = None,
+                     ownership_unavailable: bool = False) -> str:
+    """One result card after an accepted check-in (layout "A: centred scoreboard").
+
+    Every value is escaped here, so a territory or format string can never
+    inject HTML. Formatting of the numbers happens in the caller.
+    """
+    zero = points in ("0", "+0")
+    if zero:
+        where = "Saved in your history with zero points."
+    elif location == "outside":
+        where = "Outside the game territories: season points only."
+    elif territory:
+        where = f"in {territory}"
+    else:
+        where = "Added to your season total."
+    lines = [
+        '<section class="reward-card" aria-label="Check-in result">',
+        '<p class="reward-eyebrow">Drink posted</p>',
+        f'<p class="reward-points{" reward-zero" if zero else ""}">+{escape(points)}</p>',
+        '<p class="reward-unit">season points</p>',
+        f'<p class="reward-where">{escape(where)}</p>',
+    ]
+    if captured and territory:
+        who = "Your team captured" if team_mode else "You captured"
+        lines.append(f'<p class="reward-chip">{escape(who)} {escape(territory)}!</p>')
+    if owner_income:
+        lines.append(f'<p class="reward-note">The previous owner also earned +{escape(owner_income)} season points. '
+                     'You kept all your points.</p>')
+    if ownership_unavailable:
+        lines.append('<p class="reward-note">Your check-in was saved. The ownership update is unavailable; '
+                     'check the Map or Leaderboard.</p>')
+    lines.append("</section>")
+    return "".join(lines)
