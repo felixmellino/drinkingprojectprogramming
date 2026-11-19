@@ -18,6 +18,7 @@ from httpx import RequestError
 from app_navigation import bottom_navigation
 from theme import apply_theme
 from lobby_selection import restore_selection
+from parallel import run_parallel
 from phone_location import ask_for_location
 
 
@@ -49,9 +50,10 @@ def require_login() -> str:
                 queue_storage("clear")
                 st.rerun()
         st.session_state["_remember_attempted"] = True
+    st.session_state.pop("_membership_prefetch", None)
     if "player_id" in st.session_state:
         try:
-            player = db.get_player(st.session_state["player_id"])
+            player = _get_player_and_prefetch_membership(st.session_state["player_id"])
         except (APIError, RuntimeError, OSError, RequestError):
             st.error("Account service is unavailable. Please try again later.")
             st.stop()
@@ -79,6 +81,40 @@ def require_login() -> str:
     return st.session_state["player_id"]
 
 
+MEMBERSHIP_PAGES = {"map", "standings", "minigames", "check_in", "check_in_photos"}
+
+
+def _membership_key():
+    keys = ("player_id", "current_membership_id", "current_lobby_id", "current_season_id")
+    values = tuple(st.session_state.get(key) for key in keys)
+    return values if all(values) else None
+
+
+def _get_player_and_prefetch_membership(player_id):
+    """The account check and, on pages that need it, the lobby/season check, at the same time.
+
+    The membership read only uses the ids already in this session and is used by
+    require_active_membership only after the account check above has passed, so
+    nothing is shown or trusted earlier than before. Any failure here is ignored:
+    require_active_membership then simply asks again.
+    """
+    from app_navigation import current_page
+    key = _membership_key()
+    if key is None or current_page() not in MEMBERSHIP_PAGES:
+        return db.get_player(player_id)
+
+    def prefetch():
+        try:
+            return db.membership_context(*key)
+        except (APIError, RequestError, RuntimeError, OSError):
+            return None
+
+    player, context = run_parallel(lambda: db.get_player(player_id), prefetch)
+    if context is not None:
+        st.session_state["_membership_prefetch"] = (key, context)
+    return player
+
+
 def lobby_button(key: str = "open_lobbies") -> None:
     """Lobbies has no tab in the bottom bar: hints that send players there get a button."""
     if st.button("Open Lobbies", icon=":material/groups:", key=key):
@@ -97,10 +133,14 @@ def require_active_membership() -> tuple[str, str, str]:
         st.info("Start or select a season on the Lobby page first.")
         lobby_button()
         st.stop()
+    prefetched = st.session_state.pop("_membership_prefetch", None)
     try:
-        selected, season = db.membership_context(st.session_state["player_id"],
-            st.session_state["current_membership_id"], st.session_state.get("current_lobby_id"),
-            st.session_state["current_season_id"])
+        if prefetched and prefetched[0] == _membership_key():
+            selected, season = prefetched[1]  # read a moment ago, together with the account check
+        else:
+            selected, season = db.membership_context(st.session_state["player_id"],
+                st.session_state["current_membership_id"], st.session_state.get("current_lobby_id"),
+                st.session_state["current_season_id"])
     except (APIError, RequestError, RuntimeError):
         st.error("Lobby and season access could not be checked. Try again.")
         st.stop()

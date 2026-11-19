@@ -1,6 +1,7 @@
 """Joined lobby cards. Existing ranking and picture access remain authoritative."""
 import base64
 from datetime import datetime, timezone
+from functools import partial
 from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -17,6 +18,7 @@ from core.profile_photo import initials
 from core.scoring_v1 import utc
 from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
+from parallel import run_parallel
 from core.lobbies import lobby_creator
 from theme import button_icons
 from lobby_selection import clear_selection, select_lobby, remember_choice
@@ -131,8 +133,9 @@ def show_summary(player_id, lobby, season, status, now):
     entries = []
     if season:
         try:
-            entries = db.list_drink_entries(season.id)
-            leader = season_leader(entries, db.list_season_transfers(season.id))
+            entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
+                                              lambda: db.list_season_transfers(season.id))
+            leader = season_leader(entries, transfers)
             if leader:
                 if lobby.game_mode == 'team':
                     teams = db.list_lobby_teams(player_id, lobby.id)
@@ -353,13 +356,15 @@ def show_lobbies(player_id):
         return
     now = datetime.now(timezone.utc)
     groups = {key: [] for key in ('active', 'past', 'upcoming', 'setup')}
-    for membership in memberships:
-        lobby = lobbies.get(membership.lobby_id)
-        if lobby is None:
-            continue
+    def fetch_season(lobby_id):
         try:
-            season = latest_season(db.list_seasons_for_lobby(lobby.id))
-        except LOAD_ERRORS:
+            return latest_season(db.list_seasons_for_lobby(lobby_id))
+        except LOAD_ERRORS as error:
+            return error
+    shown = [(membership, lobbies[membership.lobby_id]) for membership in memberships if membership.lobby_id in lobbies]
+    # One request per lobby, all at the same time.
+    for (membership, lobby), season in zip(shown, run_parallel(*[partial(fetch_season, lobby.id) for _, lobby in shown])):
+        if isinstance(season, LOAD_ERRORS):
             st.warning(f'Dates for {lobby.name} are unavailable. Use Refresh lobbies to try again.')
             continue
         groups[lobby_status(season, now)].append((lobby, membership, season))
