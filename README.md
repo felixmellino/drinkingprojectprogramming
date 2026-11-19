@@ -498,6 +498,11 @@ the same membership, history, team and game limits. Team slots stay reserved;
 accepted/running duels and running Focus attempts block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
+Reaction Test now plays three reaction tries in new seasons. This needs
+[`migrations/018_focus_median_any_trials.sql`](migrations/018_focus_median_any_trials.sql)
+**after 017** (the middle time decides; five tries behave exactly as before).
+Without it a three-try season would judge the slowest time instead. Not applied yet.
+
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
 [`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
 It is **not applied** to Supabase yet. It passed a local in-memory Postgres

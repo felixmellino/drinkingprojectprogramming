@@ -36,12 +36,17 @@ def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot
     assert not enabled(replace(game,scoring_version='legacy'))
 
 
+def test_new_seasons_play_three_reaction_tries():
+    assert new_focus_rules()['reaction_trials'] == 3
+
+
 def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
     import json
     from pathlib import Path
     sql=Path('migrations/015_focus_test_replays.sql').read_text(encoding='utf-8')
     fallback=sql.split("when public._focus_is_test(s) then '",1)[1].split("'::jsonb",1)[0]
-    assert json.loads(fallback)==new_focus_rules()
+    # Old QA snapshots without frozen Focus rules keep the original five reaction tries.
+    assert json.loads(fallback)=={**new_focus_rules(),'reaction_trials':5}
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},

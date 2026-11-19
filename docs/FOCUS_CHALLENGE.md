@@ -47,7 +47,7 @@ or a nightly win block. Finish the result screen with Back to games, then reopen
 Focus to replay. A missing migration 015 shows an explicit setup message.
 
 Start opens a full-screen board. Each trial has a new private server-generated
-challenge. Reaction uses five independent waits of 1.5–4.5 seconds and a median
+challenge. Reaction uses three independent waits of 1.5–4.5 seconds (five in older seasons) and a median
 of at most 350 ms, without early taps. Memory shows seven positions on a 3x3
 grid, flashing 650 ms with 200 ms gaps, then allows fifteen seconds for input.
 Precision requires twelve correct targets in twelve seconds. Targets move with

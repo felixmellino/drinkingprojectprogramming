@@ -30,8 +30,11 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-Pass reaction, memory and precision consecutively. Reaction has five trials,
-with median at most 350 ms and no early taps. Memory requires reproducing seven
+Pass reaction, memory and precision consecutively. Reaction has three tries
+(five in seasons created before 19 November 2026, which keep their frozen rules),
+with the middle time at most 350 ms and no early taps. Every try shows its
+reaction time; an early tap is a false start (red screen, attempt over); the
+result screen lists all times and their average. There is no countdown clock. Memory requires reproducing seven
 positions exactly. Precision requires twelve correct taps within twelve seconds;
 a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
