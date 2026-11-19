@@ -11,18 +11,31 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .st-key-focus_exit button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
 .st-key-focus_exit button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 .st-key-focus_stage [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
-.st-key-minigame_card_chug, .st-key-minigame_card_focus {
-  background:var(--surface); border:var(--border-width) solid var(--border)!important;
-  border-radius:var(--radius-lg); padding:20px!important; height:100%;
-}
-.st-key-minigame_card_chug h3, .st-key-minigame_card_focus h3 { margin:0; }
-.st-key-minigame_card_chug [data-testid="stCaptionContainer"],
-.st-key-minigame_card_focus [data-testid="stCaptionContainer"] { min-height:42px; }
-.st-key-minigame_card_focus { border-style:dashed!important; }
-@media (max-width:640px) {
-  .stApp [data-testid="stHorizontalBlock"]:has(.st-key-minigame_card_chug) { flex-direction:column; }
-  .stApp [data-testid="stHorizontalBlock"]:has(.st-key-minigame_card_chug) > [data-testid="stColumn"] { width:100%!important; flex:1 1 auto; }
-}
+/* Game catalogue: one grouped list (iPhone style). Each row is a markdown
+   block with the "Open …" button laid invisibly over it, so the whole row is
+   the tap target and keeps the button's accessible name. */
+.st-key-games_list { gap:0!important; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); overflow:hidden; }
+[class*="st-key-game_row_"] { position:relative; gap:0!important; }
+.st-key-games_list > * + * { border-top:1px solid var(--border); }
+.game-row { display:flex; align-items:center; gap:14px; padding:14px 16px 16px; }
+[class*="st-key-game_row_"] [data-testid="stMarkdown"], [class*="st-key-game_row_"] [data-testid="stElementContainer"] { margin:0!important; }
+.game-icon { flex:0 0 42px; height:42px; border-radius:12px; background:var(--accent-soft); display:grid; place-items:center; }
+.game-icon i { width:24px; height:24px; background-color:var(--accent-ink);
+  -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
+.game-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.game-text strong { font-size:1.02rem; font-weight:600; color:var(--text); }
+.game-text span { font-size:0.88rem; color:var(--text-muted); line-height:1.35; }
+.game-text small { font-size:0.8rem; color:var(--text-muted); }
+.game-text small.game-row-alert { color:var(--accent-ink); font-weight:600; }
+.game-chevron { flex:0 0 14px; height:14px; background-color:var(--text-muted);
+  -webkit-mask:var(--icon-caret-right) center/contain no-repeat; mask:var(--icon-caret-right) center/contain no-repeat; }
+.game-row-disabled { opacity:.5; }
+.stApp [class*="st-key-game_row_"] [data-testid="stButton"] { position:absolute; inset:0; z-index:2; }
+.stApp [class*="st-key-game_row_"] [data-testid="stElementContainer"]:has([data-testid="stButton"]) { position:absolute; inset:0; margin:0; }
+.stApp [class*="st-key-game_row_"] button { width:100%; height:100%; min-height:0; opacity:0; border:0; }
+.stApp [class*="st-key-game_row_"] button:focus-visible { opacity:1; background:transparent; outline:3px solid var(--accent-ink); outline-offset:-3px; }
+.stApp [class*="st-key-game_row_"]:has(button:hover:not(:disabled)) .game-row { background:var(--accent-soft); }
 .st-key-chug_camera_stage { position:fixed!important; inset:0; z-index:100000;
   width:100vw!important; max-width:none!important; background:var(--bg); overflow:hidden; }
 .st-key-chug_camera_stage iframe { width:100vw!important; height:100dvh!important; border:0; }
@@ -45,8 +58,9 @@ body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!importa
 .st-key-chug_duel_controls button:has([data-testid="stIconMaterial"]) [data-testid="stMarkdownContainer"] {
   position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 .st-key-chug_duel_stage [data-testid="stAlert"] { position:fixed; bottom:64px; left:16px; right:16px; z-index:100002; }
-.stApp:has(.st-key-chug_refresh) [data-testid="stMetric"] { background:var(--surface);
-  border:var(--border-width) solid var(--border); border-radius:var(--radius-lg); padding:12px; }
-@media(max-width:480px) {
-  .stApp:has(.st-key-chug_refresh) [data-testid="stMetricValue"] { font-size:1.15rem; }
-}
+.stApp .st-key-chug_refresh button, .stApp .st-key-minigames_home button { color: var(--text-muted); min-height: 36px; }
+/* Today's allowance: two quiet tiles side by side, not heavy cards. */
+.stApp:has(.st-key-chug_refresh) [data-testid="stMetric"] { background:var(--surface); box-shadow:none;
+  border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; }
+.stApp:has(.st-key-chug_refresh) [data-testid="stMetricLabel"] p { font-size:0.8rem; color:var(--text-muted); }
+.stApp:has(.st-key-chug_refresh) [data-testid="stMetricValue"] { font-family:var(--font-body); font-weight:600; font-size:1.05rem; }

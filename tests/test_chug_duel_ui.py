@@ -92,7 +92,8 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     monkeypatch.setattr(ui, 'track_location', tracking)
     page = open_page(selected=None)
     assert not page.exception
-    assert {'Chug Duel', 'Focus Challenge'} <= {h.value for h in page.subheader}
+    rows = '\n'.join(m.value for m in page.markdown if 'class="game-row' in m.value)
+    assert '<strong>Chug Duel</strong>' in rows and '<strong>Focus Challenge</strong>' in rows
     assert not button(page, 'Open Focus Challenge').disabled
     assert not any(b.label == 'Send challenge' for b in page.button)
     assert not page.metric and service['duels'] == []
@@ -108,7 +109,7 @@ def test_catalogue_surfaces_invitations_and_opening_recovers_them(service):
     host = open_page()
     button(host, 'Send challenge').click().run()
     guest = open_page('pb', 'b', selected=None)
-    assert any('1 incoming invitation' in c.value for c in guest.caption)
+    assert any('1 incoming invitation' in m.value for m in guest.markdown if 'class="game-row' in m.value)
     assert not any(b.label == 'Accept duel' for b in guest.button)
     button(guest, 'Open Chug Duel').click().run()
     assert not guest.exception and button(guest, 'Accept duel')

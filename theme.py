@@ -35,9 +35,14 @@ def menu_icons(icons: dict[str, str]) -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
+def page_subtitle(*parts: str) -> None:
+    """One quiet line under a page title, e.g. lobby · status."""
+    st.markdown(f'<p class="page-subtitle">{escape(" · ".join(p for p in parts if p))}</p>', unsafe_allow_html=True)
+
+
 def button_icons(icons: dict[str, str]) -> None:
     """A Phosphor icon in front of a normal button's label: {button key: icon name}."""
-    base = ('content:"";display:inline-block;flex:0 0 20px;width:20px;height:20px;background-color:currentColor;'
+    base = ('content:"";display:inline-block;flex:0 0 20px;width:20px;height:20px;margin-right:6px;background-color:currentColor;'
             '-webkit-mask:none center/contain no-repeat;mask:none center/contain no-repeat;')
     css = "".join(f".stApp .st-key-{key} button::before{{{base}}}" + icon_css(f".stApp .st-key-{key} button::before", icon)
                   for key, icon in icons.items())

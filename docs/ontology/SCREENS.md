@@ -2,21 +2,23 @@
 
 ## Minigames catalogue (19 November 2026)
 
-The Minigames page lists game cards together in two columns on larger
-screens and a single column on phones. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+The Minigames page lists the games in one grouped list (phone redesign,
+19 November 2026): each row has an icon, the name, what kind of game it is,
+its current status and a chevron; tapping the row opens the game. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
 returns to the catalogue without resetting it. A terminal board shows the saved
 result. Check-in previews and photo history identify the earned multiplier.
 
-Open Chug Duel shows the existing invitation, acceptance, shared capture,
-allowance and history controls below the cards. All games closes these
-controls without cancelling invitations or changing any allowance. The hub
-polls invitations and labels the Chug Duel card when a response is waiting.
+Open Chug Duel replaces the list with the existing invitation, acceptance,
+shared capture, allowance and history controls, like a page on a phone.
+‹ All games returns to the list without cancelling invitations or changing
+any allowance. The hub polls invitations and highlights the Chug Duel row's
+status when a response is waiting.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
-checked before cards are shown. The catalogue does not mount a continuous
+checked before the list is shown. The catalogue does not mount a continuous
 GPS watcher; the existing duel workflow does. Shared login's initial
 location-permission request remains unchanged.
 

@@ -1,7 +1,6 @@
 /* Leaderboard: one clean list, iPhone style. No blocks, no heavy shadows,
    normal font weights. All names and scores are escaped by the renderer. */
 
-.standings-subtitle { margin: -0.4rem 0 0.6rem; font-size: 0.9rem; color: var(--text-muted); }
 .standings-label { margin: 1.2rem 0 0.35rem 4px; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 
 /* The ranking: one white card, hairlines between rows. */
@@ -44,4 +43,4 @@
 .stApp .st-key-standings_rules [data-testid="stExpander"] summary { padding: 6px 4px; }
 .stApp .st-key-standings_rules [data-testid="stExpander"] summary p { font-size: 0.85rem; color: var(--accent-ink); }
 .stApp .st-key-standings_rules [data-testid="stExpanderDetails"] { border: 0; padding: 0 4px; }
-.stApp .st-key-standings_refresh button { color: var(--text-muted); gap: 6px; min-height: 36px; }
+.stApp .st-key-standings_refresh button { color: var(--text-muted); min-height: 36px; }

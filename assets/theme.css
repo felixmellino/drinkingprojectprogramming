@@ -163,6 +163,9 @@
   outline: 3px solid var(--accent-ink); outline-offset: 2px;
 }
 
+/* A quiet line under a page title (theme.page_subtitle). */
+.stApp .page-subtitle { margin: -0.4rem 0 0.6rem; font-size: 0.9rem; color: var(--text-muted); }
+
 /* Menu lists, iPhone "grouped list" style: one white card per group, rows
    with an icon on the left, a chevron on the right and hairlines between.
    Opt in with st.container(key="menu_list_<name>") around st.buttons and

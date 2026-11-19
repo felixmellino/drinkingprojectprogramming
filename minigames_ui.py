@@ -3,6 +3,7 @@ from base64 import b64encode
 from pathlib import Path
 from uuid import uuid4
 
+from html import escape
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
@@ -15,7 +16,8 @@ from core.chug_duel import allowances, component_action, night_id, next_reset, u
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
-from drink_entry_ui import page_header, context_line
+from drink_entry_ui import page_header
+from theme import button_icons, icon_url, page_subtitle
 from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled
 from focus_challenge_ui import render_focus
@@ -40,34 +42,48 @@ def _act(player, duel, action, winner=None):
         _error(error)
 
 
+def icon_mask(name):
+    url = icon_url(name)
+    return f'-webkit-mask-image:url({url});mask-image:url({url});'
+
+
+def _game_row(key, icon, title, kind, description, status, *, alert=False, disabled=False):
+    """One game as a list row (icon, name, what it is, current status, chevron).
+    The whole row is the "Open …" button; it is laid over the row in CSS."""
+    state = " game-row-disabled" if disabled else ""
+    tone = " game-row-alert" if alert else ""
+    with st.container(key=f"game_row_{key}"):
+        st.markdown(
+            f'<div class="game-row{state}"><span class="game-icon"><i style="{icon_mask(icon)}"></i></span>'
+            f'<div class="game-text"><strong>{escape(title)}</strong><span>{escape(kind)} · {escape(description)}</span>'
+            f'<small class="{tone.strip()}">{escape(status)}</small></div><span class="game-chevron"></span></div>',
+            unsafe_allow_html=True)
+        return st.button(f"Open {title}", key=f"open_game_{key}", disabled=disabled, width="stretch")
+
+
 def _game_cards(member, duels, *, service_available=True, focus_available=False):
-    """Show all games together; frozen season rules determine Focus availability."""
+    """All games in one list; frozen season rules determine Focus availability."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
-    columns = st.columns(2, gap='medium')
-    with columns[0], st.container(key='minigame_card_chug', border=True):
-        st.markdown(':material/sports_bar: **HEAD TO HEAD · 2 PLAYERS**')
-        st.subheader('Chug Duel')
-        st.write('Challenge a lobby member. Share a photo, then play together on one phone.')
-        if not service_available:
-            st.caption('Temporarily unavailable · Refresh to retry')
-        elif invitations:
-            st.caption(f'{invitations} incoming invitation' + ('s' if invitations != 1 else '') + ' · Open to respond')
-        elif active:
-            st.caption('Invitation or duel open · Open to continue')
-        else:
-            st.caption('View invitations and availability · Existing nightly rules apply')
-        if st.button('Open Chug Duel', key='open_game_chug', type='primary',
-                     width='stretch', disabled=not service_available):
+    if not service_available:
+        chug_status = 'Temporarily unavailable · Refresh to retry'
+    elif invitations:
+        chug_status = f'{invitations} incoming invitation' + ('s' if invitations != 1 else '') + ' · Open to respond'
+    elif active:
+        chug_status = 'Invitation or duel open · Open to continue'
+    else:
+        chug_status = '1 challenge and 1 acceptance per evening'
+    with st.container(key='games_list'):
+        if _game_row('chug', 'beer-stein', 'Chug Duel', '1 vs 1',
+                     'Race on one phone', chug_status,
+                     alert=bool(invitations or active), disabled=not service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
-    with columns[1], st.container(key='minigame_card_focus', border=True):
-        st.markdown(':material/psychology: **SOLO · FOCUS CHALLENGE**')
-        st.subheader('Focus Challenge')
-        st.write('Reaction, memory and precision. Pass all three to earn an hour of ×1.5.')
-        st.caption('Unlocks after 5 accepted check-ins · One win per evening' if focus_available
-                   else 'Available in new seasons with Focus rules · Existing seasons keep their rules')
-        if st.button('Open Focus Challenge', key='open_game_focus', width='stretch', disabled=not focus_available):
+        if _game_row('focus', 'brain', 'Focus Challenge', 'Solo',
+                     'Win an hour of ×1.5 points',
+                     'Unlocks after 5 accepted check-ins · 1 win per evening' if focus_available
+                     else 'Available in new seasons with Focus rules',
+                     disabled=not focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
 
@@ -152,9 +168,8 @@ def render_minigames(player, member, lobby, season):
     unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    page_header("Minigames", "Pick a game. Play with your lobby.", compact=True)
-    context_line(lobby.name, "Test season · Unlimited minigame plays" if unlimited
-                 else f"Evening resets at 06:00 · {season.timezone_name}")
+    page_header("Minigames", compact=True)
+    page_subtitle(lobby.name, "Test season · Unlimited plays" if unlimited else "Evening resets at 06:00")
     context = (member, lobby.id, season.id)
     if st.session_state.get('minigames_context', context) != context:
         st.session_state.pop('minigame_selected', None)
@@ -195,24 +210,27 @@ def render_minigames(player, member, lobby, season):
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
-        _game_cards(member, duels, focus_available=focus_enabled(season))
         if st.session_state.get('minigame_selected') != 'chug_duel':
-            st.caption('Choose a game above. Invitations update automatically.')
+            # The game list; an opened game replaces it, like a page on a phone.
+            _game_cards(member, duels, focus_available=focus_enabled(season))
+            st.caption('Invitations update automatically.')
             return
-        if st.button('All games', icon=':material/arrow_back:', key='minigames_home'):
+        button_icons({'minigames_home': 'caret-left'})
+        if st.button('All games', key='minigames_home', type='tertiary'):
             st.session_state.pop('minigame_selected', None)
             st.rerun()
         st.subheader('Chug Duel', anchor=False)
         track_location()
         outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
-        columns = st.columns(2)
+        columns = st.columns(2, wrap=False)
         columns[0].metric("Challenge", "Unlimited" if unlimited else "Available" if outgoing else "Used / reserved")
         columns[1].metric("Accept", "Unlimited" if unlimited else "Available" if incoming else "Used / reserved")
         if unlimited:
             st.caption("TEST SEASON · Play minigames as often as you like. Finish or end the current duel first. The normal check-in cooldown still applies.")
         else:
             st.caption(f"One challenge + one acceptance per lobby and evening. Next reset: {next_reset(now, season.timezone_name):%a %H:%M %Z}.")
-        if st.button("Refresh duels", key="chug_refresh"):
+        button_icons({"chug_refresh": "arrow-clockwise"})
+        if st.button("Refresh duels", key="chug_refresh", type="tertiary"):
             st.rerun()
 
         active = [d for d in duels if d["status"] in {"invited", "accepted", "started"}]

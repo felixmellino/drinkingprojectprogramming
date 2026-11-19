@@ -6,6 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 from core.profile_photo import initials
+from theme import page_subtitle
 from core.scoring_v1 import format_points
 
 
@@ -22,7 +23,7 @@ def subtitle(lobby_name: str, members: int, ranked: int, phase: str | None = Non
     """One quiet line under the title: lobby and size; the season phase
     (finished or upcoming) as a caption when the season isn't running."""
     parts = [lobby_name, f"{members} members", f"{ranked} teams ranked"] if team_mode else [lobby_name, f"{members} players"]
-    st.markdown(f'<p class="standings-subtitle">{escape(" · ".join(parts))}</p>', unsafe_allow_html=True)
+    page_subtitle(*parts)
     if phase:
         st.caption(phase)
 

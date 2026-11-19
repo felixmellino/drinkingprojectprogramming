@@ -45,7 +45,7 @@
 .game-card p { margin: 0; font-size: 0.86rem; line-height: 1.35; color: var(--text-muted); }
 .game-card .game-yours { color: var(--success); }
 .game-card .game-theirs { color: var(--brand-ink); }
-.stApp .st-key-game_card .st-key-map_checkin button { min-height: 48px; gap: 8px; border-radius: 14px; }
+.stApp .st-key-game_card .st-key-map_checkin button { min-height: 48px; gap: 2px; border-radius: 14px; }
 .stApp .st-key-game_card .st-key-map_checkin button > div { flex: 0 0 auto; width: auto; }
 .st-key-game_card .game-card { padding-bottom: 6px; }
 /* The territory list: a quiet row at the bottom of the sheet. */
