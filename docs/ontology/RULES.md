@@ -91,6 +91,17 @@ does not establish automated anti-cheat or sobriety verification.
 See [implementation and activation](../FOCUS_CHALLENGE.md).
 
 
+### R-M10 Time Duel
+
+Contributor-approved 19 November 2026: [Time Duel](TIME_DUEL.md) defines three
+hidden-timer rounds on two phones, identical random 5–12 second targets,
+independent outgoing/incoming nightly roles, abandonment and exact-tie rules,
+and an automatic one-hour x1.25 **season-only** ordinary-check-in reward.
+Focus retains its existing effects; only the higher active multiplier applies.
+Shared migration 017 was applied on 19 November 2026. Teammate review and
+deployment remain pending.
+
+
 ### R-M01 Chug Duel invitation and opponents
 
 In a v1 season with scoring open, challenge another member of the same lobby.

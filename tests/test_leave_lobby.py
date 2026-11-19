@@ -53,7 +53,7 @@ def test_current_roster_excludes_departed_but_history_includes_them(monkeypatch,
     assert [m.id for m in read(scope, include_left=True)] == ['current', 'departed']
 
 
-@pytest.mark.parametrize('reason,expected', [('permission_denied', PermissionError), ('minigame_active', ValueError)])
+@pytest.mark.parametrize('reason,expected', [('permission_denied', PermissionError), ('minigame_active', ValueError), ('time_busy', ValueError)])
 def test_departure_errors_are_actionable(monkeypatch, reason, expected):
     client = Mock()
     client.rpc.return_value.execute.side_effect = APIError(dict(message=reason, code='P0001', details=None, hint=None))
