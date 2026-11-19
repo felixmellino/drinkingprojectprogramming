@@ -198,25 +198,33 @@ def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypa
     assert sorted(call.args for call in loader.call_args_list) == [("player", "p-me"), ("player", "p-rival")]
 
 
-def test_selected_badge_opens_popup_with_escaped_name_and_both_scores(phone, monkeypatch):
-    import streamlit as st
-    original = st.pydeck_chart
-    def selected(*args, **kwargs):
-        original(*args, **kwargs)
-        st.session_state["_map_open_popup"] = True
-        return SimpleNamespace(selection={"indices": {"territories": [0]}})
-    monkeypatch.setattr(st, "pydeck_chart", selected)
+def chart_json(page):
+    import json
+    return json.loads(page.get("deck_gl_json_chart")[0].proto.json)
+
+
+def test_tooltip_is_client_side_plain_text_and_lists_names_and_points(phone, monkeypatch):
     monkeypatch.setattr(db, "list_players", lambda: [
         SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="<b>rival</b>")])
     page = open_map()
     assert not page.exception
-    markup = "".join(item.value for item in page.markdown)
-    assert "&lt;b&gt;rival&lt;/b&gt;" in markup
-    assert 'class="rank-list"' in markup
-    # Bairro Alto: rival leads with 4, you have 3.
-    assert '<span class="rank-pos">1</span><span class="rank-name">&lt;b&gt;rival&lt;/b&gt;<span class="rank-tag rank-owner">owner</span></span><span class="rank-pts">4</span>' in markup
-    assert '<span class="rank-name">felix<span class="rank-tag rank-you">you</span></span><span class="rank-pts">3</span>' in markup
-    assert "<td>" not in markup
+    assert not getattr(page.get("deck_gl_json_chart")[0].proto, "selection_mode", None)  # no round trip on tap
+    layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
+    assert layers["owner-badges"]["pickable"] is False             # taps reach the territory under a badge
+    props = layers["territories"]["data"]["features"][0]["properties"]
+    assert (props["n1"], props["p1"]) == ("<b>rival</b>", "4")      # plain text, best first; the map escapes it
+    assert (props["n2"], props["p2"]) == ("felix (you)", "3")      # marks you
+    assert props["n3"] == props["p3"] == "" and props["none"] == "" and props["more"] == ""
+    assert "{n5}" in page.get("deck_gl_json_chart")[0].proto.tooltip
+
+
+def test_tooltip_rows_are_tiny_and_handle_empty_and_long_lists():
+    import map_ui
+    ranking = [{"id": str(i), "name": f"p{i}", "points": 10 - i, "you": False} for i in range(8)]
+    props = map_ui.tooltip_rows({"ranking": ranking})
+    assert props["n5"] == "p4" and "n6" not in props and props["more"] == "…"
+    empty = map_ui.tooltip_rows({"ranking": []})
+    assert empty["none"] == "no points yet" and empty["n1"] == ""
 
 
 def test_territory_rows_carry_a_ranking_in_standings_order(phone):
@@ -225,15 +233,3 @@ def test_territory_rows_carry_a_ranking_in_standings_order(phone):
     assert [(r["id"], r["name"], r["points"], r["you"]) for r in rows[0]["ranking"]] == [
         ("rival", "rival", 4, False), ("me", "felix", 3, True)]
     assert rows[1]["ranking"] == []
-
-
-def test_ranking_html_marks_owner_and_you_and_escapes_names():
-    import map_ui
-    row = {"name": "Shortys <i>", "owner_id": "a", "detail": "Owned by <b>a</b>.", "ranking": [
-        {"id": "a", "name": "<b>a</b>", "points": 4, "you": False}, {"id": "me", "name": "felix", "points": 3, "you": True}]}
-    html = map_ui.ranking_html(row)
-    assert "<b>a</b>" not in html and "&lt;b&gt;a&lt;/b&gt;" in html and "Shortys &lt;i&gt;" in html
-    assert html.count("rank-owner") == 1 and html.count("rank-you") == 1 and "rank-row-you" in html
-    assert "your team" in map_ui.ranking_html(row, team_mode=True)
-    empty = map_ui.ranking_html({"name": "Quiet", "owner_id": None, "detail": "Unclaimed.", "ranking": []})
-    assert "Nobody has drunk here yet." in empty and "rank-list" not in empty

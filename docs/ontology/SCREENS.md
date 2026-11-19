@@ -238,14 +238,14 @@ Map owner badge update (19 November 2026, contributor request):
 - Badge diameter scales with area and available interior space, capped at
   120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
   Green remains yours/your team's, red others', grey unclaimed.
-- Tapping a territory or a badge opens a small "Ranking" dialog (changed
-  19 November 2026, contributor request): the territory's current ranking
-  (rank, name, territory points; the owner and you are tagged; ties keep the
-  earlier-reached order) and the capture-gap sentence. A badge shared by
-  several territories lists each territory's ranking, scrollable. In team
-  lobbies the rows are teams and "you" reads "your team". Only territory
-  points count; season owner income is excluded. An unplayed territory says
-  nobody has drunk there yet.
+- Tapping (phone) or hovering (laptop) a territory shows a tiny tooltip next
+  to it with the territory name and a list of name and territory points
+  (best five, ranking order; you are marked "(you)"; "no points yet" if
+  nobody has drunk there). It is drawn by the map in the browser itself, so
+  there is no server round trip, no dialog and no full-screen overlay (changed
+  19 November 2026, contributor request: the earlier dialog was too slow).
+  Owner badges are not tappable; a tap on a badge reaches the territory under
+  it. In team lobbies the rows are teams. Season owner income is excluded.
 - Existing hover details, GPS tracking/accuracy, quick zoom, HUD, bottom
   location card and territory list remain available. There is no check-in
   button on the map; checking in is the + tab. The current base
@@ -261,9 +261,6 @@ Map owner badge update (19 November 2026, contributor request):
   list opening upwards inside it. The map's own +/- buttons are hidden (pinch
   or scroll to zoom). On a laptop the map stays a rounded panel with the same
   bar, chips and sheet on top.
-- Closing the dialog clears Streamlit's read-only selection via a fresh chart
-  key so the same icon can be clicked again. This returns the viewport to the
-  selected quick-zoom focus; a manually panned viewport is not retained.
 
 ## Memories
 
