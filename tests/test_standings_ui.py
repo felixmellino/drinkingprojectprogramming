@@ -75,8 +75,7 @@ def all_markup(at):
 def rank_of(markup, name):
     """The rank a player/team is actually labelled with, regardless of the
     podium's visual DOM order (2nd, 1st, 3rd left-to-right). The current
-    player's gap line names a rival, so it is ignored here."""
-    markup = re.sub(r'<span class="standings-gap">.*?</span>', "", markup)
+    """
     for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
@@ -186,32 +185,11 @@ def test_departed_player_keeps_rank_and_quiz_transfers(ui, monkeypatch):
     assert '<span class="standings-podium-points">2</span>' in markup
 
 
-# Gap line and tie tag (UI batch 3): rows arrive ranked, ties earliest-first.
+# Tie tag: rows arrive ranked, ties earliest-first.
 import standings_ui  # noqa: E402
-from standings_ui import gap_line, reached_first  # noqa: E402
+from standings_ui import reached_first  # noqa: E402
 
-GAP_NAMES = {"a": "Ana", "b": "Tomás", "c": "Ben"}
-
-
-def test_gap_line_behind_the_row_above():
-    assert gap_line([("a", 12.5), ("b", 10), ("c", 8)], "b", GAP_NAMES) == "2.5 pts behind Ana"
-    assert gap_line([("a", 9), ("b", 8)], "b", GAP_NAMES) == "1 pt behind Ana"
-
-
-def test_gap_line_for_the_leader():
-    assert gap_line([("a", 12.5), ("b", 10)], "a", GAP_NAMES) == "Leading by 2.5"
-
-
-def test_gap_line_on_ties_names_who_reached_first():
-    rows = [("a", 8), ("b", 8)]
-    assert gap_line(rows, "a", GAP_NAMES) == "Tied with Tomás, you reached it first"
-    assert gap_line(rows, "b", GAP_NAMES) == "Tied with Ana, who reached it first"
-
-
-def test_no_gap_line_alone_or_when_not_ranked():
-    assert gap_line([("a", 3)], "a", GAP_NAMES) is None
-    assert gap_line([("a", 3), ("b", 2)], "zzz", GAP_NAMES) is None
-    assert gap_line([], "a", GAP_NAMES) is None
+TIE_NAMES = {"a": "Ana", "b": "Tomás", "c": "Ben", "d": "Dana"}
 
 
 def test_reached_first_only_on_upper_of_equal_neighbours():
@@ -219,11 +197,12 @@ def test_reached_first_only_on_upper_of_equal_neighbours():
     assert [reached_first(rows, i) for i in range(3)] == [False, True, False]
 
 
-def test_leaderboard_renders_gap_line_and_tie_tag(monkeypatch):
+def test_leaderboard_renders_tie_tag_and_medal_podium(monkeypatch):
     shown = []
     monkeypatch.setattr(standings_ui.st, "markdown", lambda markup, **_: shown.append(markup))
-    rows = [("a", 9), ("b", 8), ("c", 8), ("d", 5)]
-    standings_ui.leaderboard(rows, {**GAP_NAMES, "d": "Dana"}, "d")
+    standings_ui.leaderboard([("a", 9), ("b", 8), ("c", 8), ("d", 5)], TIE_NAMES, "d")
     markup = "".join(shown)
-    assert '<span class="standings-gap">3 pts behind Ben</span>' in markup
     assert markup.count("standings-first-tag") == 1
+    assert "pts behind" not in markup and "standings-gap" not in markup
+    for colour in ("var(--accent)", "var(--medal-2)", "var(--medal-3)"):
+        assert f"background:{colour};" in markup
