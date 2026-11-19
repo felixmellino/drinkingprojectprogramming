@@ -392,9 +392,9 @@ Shared fonts, spacing, borders and shadows live in `assets/theme.css`.
 
 ## Focus Challenge handoff — 19 November 2026
 
-The second Minigames card opens the saved three-stage Focus game in new seasons
-whose frozen rules enable it. `core/focus_challenge.py` owns configuration and
-message validation; `focus_challenge_ui.py` plus the component handle presentation.
+Since 19 November 2026 the second Minigames card opens the Reaction Duel (R-M11,
+`reaction_duel_ui.py`); the solo Focus screen was removed. The notes below describe
+the Focus backend that stays for history. `core/focus_challenge.py` owns its configuration.
 Migration 015 also enables existing explicitly marked v1 QA seasons without
 rewriting snapshots: zero uploads, unlimited sequential attempts after failure
 or success, and play throughout the active season. Each win refreshes a single

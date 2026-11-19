@@ -102,12 +102,12 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     page = open_page(selected=None)
     assert not page.exception
     tiles = '\n'.join(m.value for m in page.markdown if 'class="game-tile' in m.value)
-    assert '<strong>Chug Duel</strong>' in tiles and '<strong>Reaction Test</strong>' in tiles
+    assert '<strong>Chug Duel</strong>' in tiles and '<strong>Reaction Duel</strong>' in tiles
     assert '<strong>Quiz Duel</strong>' in tiles and not button(page, 'Open Quiz Duel').disabled
     assert '<strong>Time Duel</strong>' in tiles and not button(page, 'Open Time Duel').disabled
     assert tiles.count('class="game-tile ') == 6 and tiles.count('Coming soon') == 2
     assert not any(b.label == 'Open New game' for b in page.button)
-    assert not button(page, 'Open Reaction Test').disabled
+    assert not button(page, 'Open Reaction Duel').disabled
     assert not any(b.label == 'Challenge' for b in page.button)
     assert not page.metric and service['duels'] == []
     tracking.assert_not_called()
@@ -147,7 +147,7 @@ def test_catalogue_shows_per_game_badges_and_leaves_invites_pending_until_resolv
     guest = open_page('pb', 'b', selected=None)
     assert not guest.exception
     tiles = [m.value for m in guest.markdown if m.value.startswith('<div class="game-tile')]
-    assert [b.label for b in guest.button] == ['Open Chug Duel', 'Open Reaction Test', 'Open Quiz Duel', 'Open Time Duel']
+    assert [b.label for b in guest.button] == ['Open Chug Duel', 'Open Reaction Duel', 'Open Quiz Duel', 'Open Time Duel']
     assert 'aria-label="2 pending Quiz Duel invites">2 invites</span>' in tiles[2]
     assert 'aria-label="1 pending Time Duel invite">1 invite</span>' in tiles[3]
     assert sum('game-tile-invite-badge' in tile for tile in tiles) == 2

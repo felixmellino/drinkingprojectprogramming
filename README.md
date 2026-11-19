@@ -508,6 +508,15 @@ confirmed one reaction, a 220 ms limit and three-stage flow; status RPC checks
 confirmed zero-upload, unlimited play in all nine populated test seasons.
 Real-phone difficulty calibration and complete deployed gameplay still need verification.
 
+### Reaction Duel (19 November 2026)
+
+The Reaction Test tile now opens a **Reaction Duel**: challenge a lobby member for
+1–10 points, both play three reaction tries, best of three wins the stake. Apply
+[`migrations/025_reaction_duel.sql`](migrations/025_reaction_duel.sql) after 016 and 017
+(Quiz and Time Duel). Rules: R-M11 in `docs/ontology/RULES.md`. Tests:
+`tests/test_reaction_duel.py`, `node tests/reaction_component.cjs`,
+`node tests/reaction_postgres.cjs <path to pglite dist/index.cjs>`.
+
 ### Minigame invite badge
 
 Apply [migration 022](migrations/022_quiz_duel_invite_list.sql) so Quiz Duel lists
