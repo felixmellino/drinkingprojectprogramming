@@ -15,16 +15,17 @@ class ProfileStats:
     wins: int
 
 
-def lobby_finished(seasons, now):
-    """An incomplete or still-running competition cannot enter lifetime totals."""
-    return bool(seasons) and all(utc(season.ends_at) <= utc(now) for season in seasons)
+def season_finished(season, now):
+    """Only completed seasons can award a lifetime win."""
+    return utc(season.ends_at) <= utc(now)
 
 
-def all_time_stats(memberships, entries):
+def all_time_stats(memberships, entries, *, finished_season_ids=()):
     """Count personal drinks plus individual owner income, never teammates' scores.
 
     Full season entries are needed: somebody else's drink can pay the player
     owner income. Replay also keeps corrections consistent with standings.
+    Points and drinks count immediately; wins require a completed season.
     """
     member_lobbies = {member.id: member.lobby_id for member in memberships}
     identities = {getattr(member, "team_id", None) or member.id for member in memberships}
@@ -36,8 +37,8 @@ def all_time_stats(memberships, entries):
     drinks = 0
     wins = 0
     played = set()
-    for season_entries in seasons.values():
-        if season_leader(season_entries) in identities:
+    for season_id, season_entries in seasons.items():
+        if season_id in finished_season_ids and season_leader(season_entries) in identities:
             wins += 1
         for entry in season_entries:
             if (entry.membership_id in member_lobbies and entry.points_awarded > 0

@@ -90,7 +90,7 @@ def stats_text(at):
     return ' '.join(unescape(re.sub('<[^>]+>', ' ', ''.join(m.value for m in at.markdown if '<section class="profile-stats"' in m.value))).split())
 
 
-def test_stats_finished_lobbies_without_selection_and_fresh_session(repo, monkeypatch):
+def test_stats_all_lobbies_without_selection_and_fresh_session(repo, monkeypatch):
     from tests.test_scoring_v1 import entry
     now = datetime.now(timezone.utc)
     memberships = [SimpleNamespace(id=f'm{i}', lobby_id=f'l{i}') for i in range(6)]
@@ -100,15 +100,14 @@ def test_stats_finished_lobbies_without_selection_and_fresh_session(repo, monkey
         return [SimpleNamespace(id=lid, ends_at=end)]
     monkeypatch.setattr('data.db.list_seasons_for_lobby', seasons)
     def entries(sid):
-        assert sid != 'l5', 'Active lobby must not count'
         i = int(sid[1:])
         return [replace(entry(sid, f'm{i}', 'beer', 'small', 0), season_id=sid, points_awarded=11)]
     monkeypatch.setattr('data.db.list_drink_entries', entries)
     at = page(repo)
     click(at, 'My stats')
     text = stats_text(at)
-    assert 'Total points 55' in text and 'Drinks 5' in text
-    assert 'Lobbies played 5' in text and 'Total Wins 5' in text
+    assert 'Total points 66' in text and 'Drinks 6' in text
+    assert 'Lobbies played 6' in text and 'Total Wins 5' in text
     at.session_state['current_lobby_id'] = 'l5'
     at.run()
     assert stats_text(at) == text
@@ -123,7 +122,7 @@ def test_stats_empty_and_load_failure(repo, monkeypatch):
     click(at, 'My stats')
     assert 'Total points 0' in stats_text(at) and 'Total Wins 0' in stats_text(at)
     assert at.info
-    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [SimpleNamespace(lobby_id='lobby')])
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [SimpleNamespace(id='me', lobby_id='lobby')])
     monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [])
     at.run()
     assert 'Total points 0' in stats_text(at)
@@ -132,6 +131,50 @@ def test_stats_empty_and_load_failure(repo, monkeypatch):
     monkeypatch.setattr('data.db.list_seasons_for_lobby', unavailable)
     at.run()
     assert not at.exception and at.error and not stats_text(at)
+
+
+def test_stats_reads_new_accepted_checkins_and_rejects_invalid_attempts(repo, monkeypatch):
+    from core.checkins import CheckinRejected
+    from core.scoring_v1 import create_scored_entry
+    from tests.test_checkins import INSIDE, OUTSIDE, TERRITORY
+    from tests.test_scoring_v1 import START, season
+
+    game = replace(season(), ends_at=datetime.now(timezone.utc) + timedelta(days=1))
+    saved = []
+    monkeypatch.setattr('data.db.list_memberships_for_player',
+                        lambda _: [SimpleNamespace(id='me', lobby_id=game.lobby_id)])
+    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [game])
+    monkeypatch.setattr('data.db.list_drink_entries', lambda _: list(saved))
+    at = page(repo)
+    click(at, 'My stats')
+    assert 'Total points 0' in stats_text(at) and 'Drinks 0' in stats_text(at)
+
+    accepted = create_scored_entry('me', game, 'beer', 'large', 'photo', INSIDE, 10,
+                                  START, [TERRITORY], [], entry_id='first')
+    saved.append(accepted)
+    at.run()
+    assert 'Total points 3' in stats_text(at) and 'Drinks 1' in stats_text(at)
+    assert 'Total Wins 0' in stats_text(at)
+
+    for gps, when, reason in [(INSIDE, START, 'cooldown'),
+                              (None, START + timedelta(minutes=2), 'location_unavailable')]:
+        with pytest.raises(CheckinRejected, match=reason):
+            create_scored_entry('me', game, 'beer', 'large', 'photo', gps, 10,
+                                when, [TERRITORY], saved, entry_id='rejected')
+    at.run()
+    assert 'Total points 3' in stats_text(at) and 'Drinks 1' in stats_text(at)
+
+    saved.append(create_scored_entry('me', game, 'beer', 'small', 'photo', OUTSIDE, 10,
+                                    START + timedelta(minutes=2), [TERRITORY], saved,
+                                    entry_id='second'))
+    # Expired photos must not erase accepted scoring history.
+    saved[0] = replace(saved[0], photo_ref=None)
+    at.run()
+    text = stats_text(at)
+    assert 'Total points 4' in text and 'Drinks 2' in text and 'Lobbies played 1' in text
+    fresh = page(repo)
+    click(fresh, 'My stats')
+    assert stats_text(fresh) == text
 
 
 def test_save_failure_keeps_form_and_identity(repo, monkeypatch):

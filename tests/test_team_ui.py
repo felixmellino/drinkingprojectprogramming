@@ -123,16 +123,18 @@ def test_team_standings_use_team_identity(ui,monkeypatch):
     assert 'Myself' not in board
 
 
-def test_team_profile_stats_show_personal_points_and_team_win(ui,monkeypatch):
+@pytest.mark.parametrize('finished', [False, True])
+def test_team_profile_stats_show_personal_points_and_completed_team_win(ui,monkeypatch,finished):
     ui['me'].team_id='t1'
-    ui['season'] = replace(ui['season'], ends_at=datetime.now(timezone.utc)-timedelta(seconds=1))
+    end = datetime.now(timezone.utc) + timedelta(days=-1 if finished else 1)
+    ui['season'] = replace(ui['season'], id='season', ends_at=end)
     ui['entries']=[drink('d1','m1','t1',5,1),drink('d2','m2','t1',6,2),drink('d3','m3','t2',10,3)]
     at=AppTest.from_string("from profile_ui import show_stats\nshow_stats('me')").run()
     assert not at.exception
     from tests.test_profile_ui import stats_text
     text=stats_text(at)
     assert 'Total points 5' in text and 'Drinks 1' in text
-    assert 'Total Wins 1' in text
+    assert f'Total Wins {int(finished)}' in text
 
 
 def test_team_map_shows_combined_capture_gap(ui,monkeypatch):

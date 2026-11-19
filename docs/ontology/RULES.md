@@ -450,12 +450,12 @@ Source: contributor's explicit team-mode choices, 18 November 2026.
 
 ## Profile statistics
 
-### R-P01 Lifetime statistics from finished lobbies
+### R-P01 Lifetime statistics across active and finished lobbies
 
 Profile → My stats shows four cards: Total points, Drinks, Lobbies played,
-and Total Wins. Include only retained lobbies whose competitions have all
-ended (`now >= ends_at`); do not depend on the selected lobby. In older
-multi-season lobbies, include every season once the whole lobby has ended.
+and Total Wins. Include all retained active and finished lobbies; do not
+depend on the selected lobby. Include every season in multi-season lobbies.
+Accepted scoring check-ins count immediately, including existing history.
 
 Points sum the player's own accepted drink awards across those seasons, plus
 personal territory-owner income in individual seasons. Replay each season
@@ -463,14 +463,18 @@ separately so corrections and owner income agree with standings. Team scores,
 teammates' drinks and team owner income are excluded from personal points.
 Drinks counts accepted positive-point check-ins, including verified outside
 locations and entries whose photo has since expired or been deleted.
-Lobbies played counts distinct finished lobbies with at least one such drink.
-Total Wins counts seasons won individually or by the player's team, using
-existing leaderboard tie-breaking. Empty seasons have no winner.
+Lobbies played counts distinct lobbies with at least one such drink.
+Total Wins counts completed seasons (`now >= ends_at`) won individually or
+by the player's team, using existing leaderboard tie-breaking. An active
+season's current leader is not a winner. A completed season counts even if
+another season in that lobby is active. Empty seasons have no winner.
 
-Allowed: five finished lobbies with 11 personal points each show 55 points.
-Rejected: counting an active lobby, a teammate's drink as one's own, or
-counting a duplicate entry twice. Boundary: a lobby counts at its end
+Allowed: five finished lobbies plus one active lobby with 11 personal points
+each show 66 points and six lobbies played; leading the active season adds no win.
+Rejected: counting a teammate's drink as one's own, a duplicate entry twice,
+or an active season as a win. Boundary: a win counts at the season's end
 instant; no history shows zero on all four cards. A history-load failure
 shows an error rather than a partial total. No scores or entities are changed.
 
-Source: contributor request and clarified answers, 18 November 2026.
+Source: contributor request and clarified answers, 18 November 2026;
+active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.

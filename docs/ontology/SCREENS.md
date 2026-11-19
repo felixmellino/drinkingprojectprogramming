@@ -217,11 +217,13 @@ four opens a separate view with **Back to Profile**. Logout is immediate.
   keep the popup open, reload its list and update the card counts, and show a
   success message. Refresh friends reloads other players' changes. Closing or
   dismissing a popup clears its open state. Existing F1–F5 rules still apply.
-- My stats shows only the selected lobby's currently active season: points,
-  rank and number of territories owned. It reuses the Leaderboard calculations,
-  including owner income and ties. No score means zero points and Unranked;
-  missing lobby/current season has an explicit instruction. Unavailable
-  territory data is marked unavailable rather than shown as zero.
+- My stats shows Total points, Drinks, Lobbies played and Total Wins across
+  all retained active and finished lobbies, independently of lobby selection.
+  Accepted scoring check-ins count immediately. Personal points include own
+  drink awards and individual owner income, excluding teammates' points and
+  team owner income. Wins count only completed seasons, with leaderboard
+  tie-breaking. No history shows zero totals; failed loading shows an error
+  rather than partial totals. R-P01 defines the calculation.
 - Account & security shows private name and read-only email, then a password
   change form requiring current password, new password and confirmation.
   Existing password length rules and login throttling apply. A successful
@@ -292,8 +294,9 @@ Open lobby on a team card opens a dialog showing the numbered teams, member
 identities, occupancy and combined points. Available teams have Join buttons
 in manual mode. Clicking one's own team name opens its name/picture editor;
 other teams have no editing controls. A View leaderboard action opens the
-combined team standings. Map, leaderboard and My stats show team totals and
-ownership; Check-in blocks unassigned members and previews team ownership.
+combined team standings. Map and leaderboard show team totals and
+ownership; My stats retains personal totals and counts completed team wins
+under R-P01. Check-in blocks unassigned members and previews team ownership.
 The lobby card's Leader/Winner also names the leading team. Individual lobby
 navigation remains as described above. R-TEAM01–R-TEAM05 govern these flows.
 
