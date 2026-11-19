@@ -49,7 +49,7 @@ Focus to replay. A missing migration 015 shows an explicit setup message.
 Start opens a full-screen board and the first try begins at once. Each attempt has
 private server-generated waits of 1.5–4.5 seconds between tries; there are three
 tries (five in older seasons) and the middle time must be at most 350 ms. Each try
-shows its time, an early tap is a red false start, and the result lists all times
+shows its time, an early tap is a red false start (tap to dismiss; the try repeats), and the result lists all times
 with their average. Memory and Precision were removed on 19 November 2026; passing
 the reaction tries wins the boost.
 

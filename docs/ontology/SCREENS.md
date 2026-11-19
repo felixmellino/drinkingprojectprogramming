@@ -48,8 +48,8 @@ text, no metrics, no manual refresh (screens update by themselves).
   duel is open.
 - Reaction Test play (19 November 2026): only reaction tries, no Memory or
   Precision. No countdown clock and no second start button; each try shows its
-  reaction time; an early tap turns the screen red with "FALSE START"; the
-  result screen lists all tries and the average.
+  reaction time; an early tap turns the screen red with "FALSE START" (tap to
+  continue; that try repeats); the result screen lists all tries and the average.
 - Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
   only while locked, Start. No slogans or disclaimers on any game screen.
   Everything on game screens is centred.

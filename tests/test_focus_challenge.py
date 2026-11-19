@@ -68,7 +68,7 @@ def test_untrusted_component_messages_cannot_supply_a_win_or_invalid_evidence(va
     assert component_action(value, {'id':'a','revision':2}) is None
 
 
-@pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('reaction',{'elapsed_ms':350}),
+@pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('false_start',{}),('reaction',{'elapsed_ms':350}),
  ])
 def test_current_attempt_accepts_only_bounded_stage_evidence(action,payload):
     value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}

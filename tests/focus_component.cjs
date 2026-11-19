@@ -28,13 +28,16 @@ assert.equal(cfg.reaction_trials,3,'New seasons play three reaction tries');
 assert(!html.includes('role="timer"')&&!html.includes('id="timer"'),'The countdown clock is gone');
 assert(!/memory|precision/i.test(html.replace(/older version \(memory\/precision\)/,'')),'Memory and Precision are gone from the board');
 
-// A false start (tap before the signal) is a red screen and ends the attempt.
+// A false start (tap before the signal): red screen, the try does not count, tap to dismiss.
 const early=setup();early.render(attempt('reaction'));early.pressReaction();
-assert.equal(early.last().action,'fail');assert.equal(early.elements.falsestart.hidden,false,'Early tap: red false-start screen');
-assert(html.includes('FALSE START')&&html.includes('#D92D20'));
-const reopened=setup(early.cache);reopened.render(attempt('reaction',{status:'failed',reason:'miss'}));
-assert.equal(reopened.elements.falsestart.hidden,false,'Reopening a false-started attempt still shows the red screen');
-assert.equal(reopened.elements.resultText.textContent,'');
+assert.equal(early.last().action,'false_start','An early tap asks the server to repeat the try, not to fail');
+assert.equal(early.elements.falsestart.hidden,false,'Early tap: red false-start screen');
+assert(html.includes('FALSE START')&&html.includes('#D92D20')&&html.includes('does not count'));
+early.elements.falsestart.handlers.pointerdown({preventDefault(){}});
+assert.equal(early.elements.falsestart.hidden,true,'The red screen can be tapped away');
+early.render(attempt('reaction',{revision:2,signal_at:iso(4000),deadline:iso(6000),server_now:iso(0)}));
+assert.equal(early.elements.react.textContent,'WAIT…','After the server reschedules, the same try waits again');
+assert.equal(early.elements.flash.hidden,true);
 
 // A normal tap records the time and shows it for a moment, then the next try waits.
 const reaction=setup();reaction.render(attempt('reaction'));reaction.advance(1500);

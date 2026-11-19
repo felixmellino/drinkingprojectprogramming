@@ -498,6 +498,10 @@ the same membership, history, team and game limits. Team slots stay reserved;
 accepted/running duels and running Focus attempts block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
+Reaction Test false starts repeat the try (tap the red screen away) and every
+season plays three tries: [`migrations/019_focus_false_start_three_tries.sql`](migrations/019_focus_false_start_three_tries.sql)
+**after 018**, not applied yet.
+
 Reaction Test is now only the reaction tries (three in new seasons; Memory and
 Precision are gone). This needs
 [`migrations/018_focus_reaction_only.sql`](migrations/018_focus_reaction_only.sql)

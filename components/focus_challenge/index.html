@@ -9,7 +9,7 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 #flash .big{font:700 64px var(--font-body);font-variant-numeric:tabular-nums;color:var(--accent-ink);margin:12px 0}#flash .try{font-size:18px;color:var(--text-muted);margin:0}
 #overview{white-space:pre-line;font-size:18px;line-height:1.7;font-variant-numeric:tabular-nums;margin:12px 0}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
 #falsestart{position:fixed;inset:0;z-index:5;background:#D92D20;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
-#falsestart h1{font:700 44px var(--font-body);letter-spacing:.02em;margin:0}#falsestart p{font-size:20px;margin:0}
+#falsestart h1{font:700 44px var(--font-body);letter-spacing:.02em;margin:0}#falsestart p{font-size:20px;margin:0}#falsestart .small{font-size:15px;opacity:.85;margin-top:18px}
 </style></head><body><main>
 <h1 id="title">Reaction Test</h1>
 <section id="ready" class="panel" hidden><h2>Get ready</h2></section>
@@ -18,9 +18,9 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 <section id="result" class="panel" hidden><h2 id="resultTitle"></h2><div id="overview" aria-label="Reaction times"></div><p id="resultText"></p></section>
 <div id="saving" role="status" aria-live="polite"></div>
 </main>
-<div id="falsestart" role="alert" hidden><h1>FALSE START</h1><p>You tapped before the signal.</p></div>
+<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p class="small">Tap to continue</p></div>
 <script>
-let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,falseStart=false;
+let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,showRed=false;
 const $=id=>document.getElementById(id),views=['ready','reaction','flash','result'];
 const send=(type,extra)=>window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*');
 function now(){return anchorEpoch+performance.now()-anchorMono;}
@@ -43,7 +43,7 @@ const average=list=>Math.round(list.reduce((a,b)=>a+b,0)/list.length);
 function render(){
  if(!game)return;
  const at=now(),c=game.config,ended=game.status!=='running';
- $('falsestart').hidden=!falseStart;
+ $('falsestart').hidden=!showRed;
  $('saving').textContent=pending?'Saving…':'';
  if(ended){
   selectView('result');
@@ -51,7 +51,7 @@ function render(){
   const done=times();
   $('overview').textContent=done.length?done.map((t,i)=>'Try '+(i+1)+'   '+t+' ms').join('\n')+'\nAverage   '+average(done)+' ms':'';
   const messages={reaction_slow:'Too slow. The middle time must be '+c.reaction_median_ms+' ms or less.',timeout:'Time ran out.'};
-  $('resultText').textContent=game.status==='passed'?(game.test_mode?'Test mode: play again any time.':''):falseStart?'':messages[game.reason]||'';
+  $('resultText').textContent=game.status==='passed'?(game.test_mode?'Test mode: play again any time.':''):messages[game.reason]||'';
   return;
  }
  if(at>=Date.parse(game.expires_at)||(at>Date.parse(game.deadline)&&!pending)){
@@ -78,12 +78,15 @@ function render(){
 function reactionPress(){
  if(pending||!game||game.status!=='running'||game.phase!=='reaction')return;
  const elapsed=Math.floor(now()-Date.parse(game.signal_at));
- if(elapsed<0){falseStart=true;store('focus-false-'+game.id,true);emit('fail');return;}   // red screen at once
+ if(elapsed<0){showRed=true;emit('false_start');return;}   // red screen at once; the try does not count and repeats
  if(elapsed>game.config.reaction_response_ms){emit('fail');return;}
  flash={ms:elapsed,no:game.step+1,until:performance.now()+1400};
  emit('reaction',{elapsed_ms:elapsed});
 }
 $('react').addEventListener('pointerdown',event=>{event.preventDefault();reactionPress();});
+const dismiss=()=>{showRed=false;render();};
+$('falsestart').addEventListener('pointerdown',event=>{event.preventDefault();dismiss();});
+$('falsestart').addEventListener('keydown',event=>{if(['Enter',' ','Escape'].includes(event.key)){event.preventDefault();dismiss();}});
 $('react').addEventListener('keydown',event=>{if(!event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();reactionPress();}});
 window.addEventListener('message',event=>{
  if(event.source!==window.parent||event.data?.type!=='streamlit:render')return;
@@ -91,7 +94,7 @@ window.addEventListener('message',event=>{
  $('tokens').textContent=args.tokens||'';
  const next=a.id+':'+a.revision;
  if(next!==signature){signature=next;anchorEpoch=Date.parse(a.server_now);anchorMono=performance.now();pending=null;sentKey='';}
- game=a;falseStart=load('focus-false-'+a.id,false)===true;
+ game=a;
  const saved=load('focus-event-'+a.id,null);
  if(saved&&saved.revision===a.revision&&a.status==='running'){pending=saved;if(JSON.stringify(saved)!==sentKey)publish();}
  else{store('focus-event-'+a.id,null);}

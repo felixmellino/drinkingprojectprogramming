@@ -34,8 +34,9 @@ The game is only the reaction tries (changed 19 November 2026, contributor
 request; Memory and Precision were removed). Passing wins the boost at once.
 There are three tries (five in seasons created earlier, which keep their frozen
 count) and the middle time must be at most 350 ms. Every try shows its reaction
-time. A tap before the signal is a false start: red screen, attempt over. The
-result screen lists all times and their average. There is no countdown clock and
+time. A tap before the signal is a false start: red screen the player taps away;
+that try does not count and repeats with a new wait (the attempt goes on). Every
+season plays three tries, including seasons that had frozen five. The result screen lists all times and their average. There is no countdown clock and
 no second start button. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
