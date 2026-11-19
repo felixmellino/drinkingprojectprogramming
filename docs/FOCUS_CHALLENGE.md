@@ -151,7 +151,7 @@ history/retention policy remains applicable.
 
 ## Verification
 
-- Current revision: all 947 Python tests passed, including the migration
+- Current revision after integrating the latest main: all 952 Python tests passed, including the migration
   availability guard. Node
   component checks cover missed-task handoffs, per-task summary and x1.25 text.
   `SCORING_PYTHON=.venv/Scripts/python.exe node tests/focus_complete_postgres.cjs`
