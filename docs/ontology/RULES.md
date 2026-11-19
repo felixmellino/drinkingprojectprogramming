@@ -219,14 +219,12 @@ loss can resume the saved started game until expiry. A lost successful reply
 recovers its existing start/result instead of creating another one.
 
 Minigames is the Games tab, immediately right of the check-in plus in the bottom navigation.
-The catalogue shows pending counts for incoming **Minigame invites** and
-outgoing **Minigame requests** for Chug Duel, Quiz Duel and Time Duel in the
-selected lobby. Open either list to see the game, the other player and any
-drink or stake terms. Recipients can accept or decline in the pop-up, and
-senders can cancel pending requests there. Accepting opens that game's setup
-on the recipient's device. The catalogue refreshes automatically and offers
-a **Join** button for accepted or running duels. Game screens retain their
-own setup, start and outcome flows. Migration 021 for Time Duel and migration
+The catalogue shows pending incoming invitation counts on the Chug Duel, Quiz
+Duel and Time Duel tiles for the selected season. The Games tab icon shows
+the combined count. Counts refresh automatically. Open a game to accept or
+decline an invitation, cancel a sent invitation or resume an accepted or
+running duel. Accepting opens that game's setup on the recipient's device.
+Migration 021 for Time Duel and migration
 022 for Quiz Duel keep every pending invitation visible when a player has
 more than 20. Both migrations were verified on the shared WeGoPub database
 on 19 November 2026.

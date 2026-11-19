@@ -13,8 +13,6 @@ import data.db as db
 from camera_capture import CameraCancelled, camera_photo
 from chug_duel_component import duel_board
 from core.chug_duel import allowances, component_action, night_id, unlimited_plays, validate_pair, ERRORS
-from core.quiz_duel import ACTIVE as QUIZ_ACTIVE
-from core.time_duel import ACTIVE as TIME_ACTIVE
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
@@ -47,127 +45,6 @@ def _act(player, duel, action, winner=None):
         _error(error)
 
 
-def _load_game_status(load, player, season_id):
-    try:
-        return load(player, season_id)
-    except (ValueError, PermissionError) + SERVICE_ERRORS:
-        return None
-
-
-def _close_invitations():
-    st.session_state.pop("minigame_invitations", None)
-    st.session_state.pop("minigame_invitation_notice", None)
-    st.session_state.pop("hub_time_confirmation", None)
-
-
-def _invitation_rows(games, member, participant_key, statuses):
-    return [(game, duel) for game in games for duel in game["duels"]
-            if duel[participant_key] == member and duel["status"] in statuses]
-
-
-def _manage_invitation(player, game, duel, action):
-    try:
-        saved = game["action"](player, duel["id"], action)
-    except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-        _error(error)
-        return
-    st.session_state.pop("hub_time_confirmation", None)
-    if action == "accept" and saved["status"] in game["active"]:
-        _close_invitations()
-        st.session_state["minigame_selected"] = game["key"]
-    elif saved["status"] != {"accept": "accepted", "decline": "declined", "cancel": "cancelled"}[action]:
-        st.session_state["minigame_invitation_notice"] = "This invitation is no longer pending."
-    else:
-        st.session_state.pop("minigame_invitation_notice", None)
-    st.rerun()
-
-
-def _invitation_dialog(title, player, rows, labels, rules, unavailable, *, incoming):
-    @st.dialog(title, on_dismiss=_close_invitations)
-    def show():
-        if notice := st.session_state.get("minigame_invitation_notice"):
-            st.warning(notice)
-        if unavailable:
-            st.warning(f"Invitations temporarily unavailable for {', '.join(unavailable)}.")
-        if not rows:
-            st.caption("No pending invites." if incoming else "No pending requests.")
-        confirm_time = incoming and sum(game["key"] == "time" for game, _ in rows) > 1
-        for game, duel in rows:
-            other = labels.get(duel["challenger_id" if incoming else "opponent_id"], "Lobby member")
-            key = f"hub_{game['key']}_{duel['id']}"
-            with st.container(border=True):
-                st.subheader(game["title"], anchor=False)
-                st.text(f"{'From' if incoming else 'To'} {other}")
-                if game["key"] == "chug_duel":
-                    drink, size = duel["drink_type"], duel.get("size")
-                    selection = DRINK_LABELS[drink]
-                    if size:
-                        selection += f" · {size_label(drink, size, rules)}"
-                    st.caption(f"{selection} · Winner gains {2 * base_points(drink, size, rules)} base points total")
-                elif game["key"] == "quiz":
-                    st.caption(f"Stake {duel['stake']} points each")
-                if incoming:
-                    accept, decline = st.columns(2)
-                    needs_confirmation = confirm_time and game["key"] == "time"
-                    if needs_confirmation and st.session_state.get("hub_time_confirmation") == duel["id"]:
-                        st.warning("If you accept this invite, the other invites for this minigame will be declined.")
-                        if accept.button("Confirm acceptance", key=key + "_confirm", type="primary",
-                                         width="stretch", disabled=not game["incoming"]):
-                            _manage_invitation(player, game, duel, "accept")
-                        if st.button("Keep invitations", key=key + "_keep", width="stretch"):
-                            st.session_state.pop("hub_time_confirmation", None)
-                            st.rerun()
-                    elif accept.button("Accept", key=key + "_accept", type="primary", width="stretch",
-                                       disabled=not game["incoming"]):
-                        if needs_confirmation:
-                            st.session_state["hub_time_confirmation"] = duel["id"]
-                            st.rerun()
-                        _manage_invitation(player, game, duel, "accept")
-                    if decline.button("Decline", key=key + "_decline", width="stretch"):
-                        _manage_invitation(player, game, duel, "decline")
-                    if not game["incoming"]:
-                        st.caption("Your acceptance for this game is used or reserved.")
-                elif st.button("Cancel request", key=key + "_cancel", width="stretch"):
-                    _manage_invitation(player, game, duel, "cancel")
-    show()
-
-
-INVITATION_SECTIONS = {"Minigame invites": "opponent_id", "Minigame requests": "challenger_id"}
-
-
-def _invitation_controls(member, games):
-    for column, (title, participant) in zip(st.columns(2), INVITATION_SECTIONS.items()):
-        rows = _invitation_rows(games, member, participant, {"invited"})
-        if column.button(f"{title} ({len(rows)})", key=title, width="stretch"):
-            _close_invitations()
-            st.session_state["minigame_invitations"] = title
-            st.rerun()
-    for game in games:
-        if any(d["status"] in game["active"] and member in (d["challenger_id"], d["opponent_id"])
-               for d in game["duels"]):
-            if st.button(f"Join {game['title']}", key=f"join_{game['key']}", width="stretch"):
-                _close_invitations()
-                st.session_state["minigame_selected"] = game["key"]
-                st.rerun()
-
-
-def _catalogue_games(player, member, season, now):
-    chug, quiz, time = run_parallel(
-        lambda: _load_game_status(db.list_chug_duels, player, season.id),
-        lambda: _load_game_status(db.quiz_status, player, season.id),
-        lambda: _load_game_status(db.time_status, player, season.id),
-    )
-    _, chug_incoming = allowances(member, night_id(now, season.timezone_name), chug or [], season=season)
-    return (
-        dict(key="chug_duel", title="Chug Duel", duels=chug or [], unavailable=chug is None,
-             incoming=chug_incoming, active={"accepted", "started"}, action=db.chug_duel_action),
-        dict(key="quiz", title="Quiz Duel", duels=(quiz or {}).get("duels", []), unavailable=quiz is None,
-             incoming=(quiz or {}).get("incoming", False), active=QUIZ_ACTIVE, action=db.quiz_action),
-        dict(key="time", title="Time Duel", duels=(time or {}).get("duels", []), unavailable=time is None,
-             incoming=(time or {}).get("incoming", False), active=TIME_ACTIVE, action=db.time_action),
-    )
-
-
 GAME_ART = Path(__file__).parent / "assets" / "games"
 
 
@@ -176,7 +53,7 @@ def _art(name):
     return "data:image/svg+xml;base64," + b64encode((GAME_ART / f"{name}.svg").read_bytes()).decode()
 
 
-def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
+def _game_tile(key, art, title, line, *, invites=0, alert=False, playable=True, real=True):
     """One colourful square tile: animated picture, name, one status line.
     A playable tile has its "Open …" button laid invisibly over it (CSS), so
     the whole tile is the tap target and keeps the button's accessible name.
@@ -184,9 +61,16 @@ def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
     coming-soon tile (real=False) has none."""
     tone = " game-tile-alert" if alert else ""
     off = "" if playable else " game-tile-off"
+    badge = ""
+    if invites:
+        number = str(invites) if invites <= 99 else "99+"
+        label = "invite" if invites == 1 else "invites"
+        badge = (f'<span class="game-tile-invite-badge" role="img" '
+                 f'aria-label="{invites} pending {escape(title)} {label}">{number} {label}</span>')
     with st.container(key=f"game_tile_{key}"):
         st.markdown(
             f'<div class="game-tile game-tile-{key}{off}"><img class="game-tile-art" src="{_art(art)}" alt="">'
+            f'{badge}'
             f'<div class="game-tile-text"><strong>{escape(title)}</strong>'
             f'<small class="{tone.strip()}">{escape(line)}</small></div></div>',
             unsafe_allow_html=True)
@@ -197,23 +81,26 @@ def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
 COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2)]
 
 
-def _game_cards(member, duels, *, service_available=True, focus_available=False, focus_qa=False):
+def _game_cards(player, season, member, duels, *, service_available=True):
     """Six colourful tiles (3 rows of 2): the playable games first, then what is coming.
     Frozen season rules decide whether the Reaction Test (Focus Challenge) is open;
     test seasons allow unlimited Reaction Test plays (focus_qa)."""
-    active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
-    invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
+    try:
+        invites = db.pending_minigame_invites(player, season.id)
+    except SERVICE_ERRORS:
+        invites = {}  # The next refresh retries. Players can still open each game.
+    active = any(d['status'] in {'accepted', 'started'}
+                 or (d['status'] == 'invited' and d['challenger_id'] == member) for d in duels)
+    focus_available, focus_qa = focus_enabled(season), focus_test_mode(season)
     if not service_available:
         chug_line = 'Unavailable'
-    elif invitations:
-        chug_line = f'{invitations} incoming invitation' + ('s' if invitations != 1 else '')
     elif active:
         chug_line = 'Duel open'
     else:
         chug_line = '1 vs 1 · Race on one phone'
     with st.container(key='games_grid'):
         if _game_tile('chug', 'chug-duel', 'Chug Duel', chug_line,
-                      alert=bool(invitations or active), playable=service_available):
+                      invites=invites.get('chug', 0), alert=active, playable=service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
         if _game_tile('focus', 'reaction-test', 'Reaction Test',
@@ -222,10 +109,12 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False,
                       playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
-        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points'):
+        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points',
+                      invites=invites.get('quiz', 0)):
             st.session_state['minigame_selected'] = 'quiz'
             st.rerun()
-        if _game_tile('time', 'time-duel', 'Time Duel', '1 vs 1 · Win ×1.25 for an hour'):
+        if _game_tile('time', 'time-duel', 'Time Duel', '1 vs 1 · Win ×1.25 for an hour',
+                      invites=invites.get('time', 0)):
             st.session_state['minigame_selected'] = 'time'
             st.rerun()
         for key, art, title in COMING_SOON:
@@ -329,7 +218,6 @@ def render_minigames(player, member, lobby, season):
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     context = (member, lobby.id, season.id)
     if st.session_state.get('minigames_context', context) != context:
-        _close_invitations()
         st.session_state.pop('minigame_selected', None)
         st.session_state.pop('chug_focused_duel', None)
         st.session_state.pop('focus_focused_id', None)
@@ -367,17 +255,15 @@ def render_minigames(player, member, lobby, season):
         if st.session_state.get('minigame_selected') == 'focus' and focus_enabled(season):
             render_focus(player, season)
             return
-        games = None
-        if st.session_state.get('minigame_selected') != 'chug_duel':
-            games = _catalogue_games(player, member, season, now)
-            duels = games[0]["duels"]
-        else:
-            try:
-                duels = db.list_chug_duels(player, season.id)
-            except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+        try:
+            duels = db.list_chug_duels(player, season.id)
+        except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+            if st.session_state.get('minigame_selected') == 'chug_duel':
                 game_header('Chug Duel', '', 'minigames_home')
                 _error(error)
-                return
+            else:
+                _game_cards(player, season, member, [], service_available=False)
+            return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
         if running:
             st.session_state["chug_focused_duel"] = running["id"]
@@ -388,12 +274,10 @@ def render_minigames(player, member, lobby, season):
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
-        if games is not None:
+        if st.session_state.get('minigame_selected') != 'chug_duel':
             # The game list; an opened game replaces it, like a page on a phone.
-            _invitation_controls(member, games)
-            _game_cards(member, duels, service_available=not games[0]["unavailable"],
-                        focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
-            return games
+            _game_cards(player, season, member, duels)
+            return
         game_header('Chug Duel', '', 'minigames_home')
         track_location()
         outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
@@ -478,10 +362,4 @@ def render_minigames(player, member, lobby, season):
                 st.success(f"{who(duel['winner_id'])} won · +{points * 2}")
             else:
                 game_note(f"{who(duel['challenger_id'])} vs {who(duel['opponent_id'])} · {duel['status'].capitalize()}")
-    games = live_duels()
-    title = st.session_state.get("minigame_invitations")
-    if games is not None and title in INVITATION_SECTIONS:
-        participant = INVITATION_SECTIONS[title]
-        rows = _invitation_rows(games, member, participant, {"invited"})
-        unavailable = [game["title"] for game in games if game["unavailable"]]
-        _invitation_dialog(title, player, rows, labels, rules, unavailable, incoming=participant == "opponent_id")
+    live_duels()

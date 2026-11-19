@@ -41,10 +41,10 @@ snapshot, never current bonuses. Photo deletion preserves the award.
 
 ## Lifecycle defaults
 
-Invitation flow, contributor decisions 19 November 2026: the Minigames
-catalogue shows Time Duel invitations in **Minigame invites** and lets senders
-cancel them in **Minigame requests**. The Time Duel game screen also shows
-invitations and their remaining time. One pending outgoing invitation blocks another send
+The Time Duel tile shows a count of pending incoming invitations. Open Time
+Duel to accept or decline an invite, manage a sent challenge, or resume
+an active duel. The sender sees a **Pending Challenge invite** box, the recipient,
+remaining time and Cancel. One pending outgoing invitation blocks another send
 to any player, including from another tab or after reconnecting. Multiple
 incoming invitations are allowed. When there is more than one, Accept first
 shows "If you accept this invite, the other invites for this minigame will be
