@@ -1,6 +1,7 @@
 """Two independent Streamlit sessions exercise the actual duel widgets."""
 from copy import deepcopy
 from dataclasses import replace
+from html import unescape
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import Mock
@@ -38,7 +39,8 @@ def service(monkeypatch):
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: members)
     monkeypatch.setattr(db, "list_public_usernames", lambda: [{"id": "pa", "display_name": "Alice"}, {"id": "pb", "display_name": "Bob"}])
     monkeypatch.setattr(db, "list_chug_duels", lambda *args: deepcopy(state["duels"]))
-    monkeypatch.setattr(db, "time_status", lambda *args: dict(duels=[], incoming=True))
+    monkeypatch.setattr(db, "quiz_status", lambda *args: quiz_state())
+    monkeypatch.setattr(db, "time_status", lambda *args: {"duels": [], "incoming": True})
     monkeypatch.setattr("shared.require_login", lambda: __import__("streamlit").session_state["player_id"])
     monkeypatch.setattr("shared.require_active_membership", lambda: (__import__("streamlit").session_state["member"], "lobby", "season"))
     monkeypatch.setattr(ui, "current_time", lambda: START)
@@ -115,35 +117,115 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     assert not page.exception and not page.metric and service['duels'] == []
 
 
-def test_catalogue_surfaces_invitations_and_opening_recovers_them(service):
+def test_accepting_from_catalogue_opens_chug_setup_and_sender_can_join(service):
     host = open_page()
     button(host, 'Challenge').click().run()
     guest = open_page('pb', 'b', selected=None)
-    assert any('1 incoming invitation' in m.value for m in guest.markdown if 'class="game-tile' in m.value)
     assert not any(b.label == 'Accept' for b in guest.button)
-    button(guest, 'Open Chug Duel').click().run()
+    button(guest, 'Minigame invites (1)').click().run()
     assert not guest.exception and button(guest, 'Accept')
+    assert any(item.value == "From Alice" for item in guest.text)
     button(guest, 'Accept').click().run()
     assert service['duels'][0]['status'] == 'accepted'
+    assert not guest.exception and "Go to Alice's phone" in unescape(notes(guest))
+    assert guest.session_state["minigame_selected"] == "chug_duel"
+    assert "minigame_invitations" not in guest.session_state
+    host = open_page(selected=None)
+    button(host, "Join Chug Duel").click().run()
+    assert not host.exception and host.session_state["minigame_selected"] == "chug_duel"
 
 
-def test_catalogue_shows_time_inbox_above_tiles_and_accept_opens_time(service, monkeypatch):
+def test_catalogue_groups_pending_games_and_refreshes_after_decline_and_cancel(service, monkeypatch):
+    host = open_page()
+    button(host, "Challenge").click().run()
+    quiz = dict(id="q", challenger_id="a", opponent_id="b", status="invited", stake=5)
+    time = dict(id="t", challenger_id="b", opponent_id="a", status="invited")
+    unrelated = dict(id="other", challenger_id="c", opponent_id="d", status="invited", stake=3)
+    expired = dict(id="old", challenger_id="a", opponent_id="b", status="expired", stake=3)
+    monkeypatch.setattr(db, "quiz_status", lambda *args: quiz_state(duels=deepcopy([quiz, unrelated, expired])))
+    monkeypatch.setattr(db, "time_status", lambda *args: {"duels": [deepcopy(time)], "incoming": True})
+
+    def decline(player, duel, action):
+        assert (player, duel, action) == ("pb", "q", "decline")
+        quiz["status"] = "declined"
+        return quiz
+
+    monkeypatch.setattr(db, "quiz_action", decline)
+    guest = open_page("pb", "b", selected=None)
+    button(guest, "Minigame invites (2)").click().run()
+    assert not guest.exception and any(c.value == "Stake 5 points each" for c in guest.caption)
+    guest.button(key="hub_quiz_q_decline").click().run()
+    assert not guest.exception and button(guest, "Minigame invites (1)")
+    assert guest.session_state["minigame_invitations"] == "Minigame invites"
+
+    host = open_page(selected=None)
+    button(host, "Minigame requests (1)").click().run()
+    button(host, "Cancel request").click().run()
+    assert not host.exception and service["duels"][0]["status"] == "cancelled"
+    assert button(host, "Minigame requests (0)") and button(host, "Minigame invites (1)")
+    assert any(c.value == "No pending requests." for c in host.caption)
+
+
+@pytest.mark.parametrize("game,stage", [("quiz", "quiz_stage"), ("time", "time_stage")])
+def test_accepting_two_phone_duel_opens_its_ready_board(service, monkeypatch, game, stage):
+    duel = dict(id="ready", challenger_id="a", opponent_id="b", status="invited", stake=4)
+    monkeypatch.setattr(db, f"{game}_status", lambda *args: quiz_state(duels=[deepcopy(duel)]))
+    import importlib
+    game_ui = importlib.import_module(f"{game}_duel_ui")
+    board = Mock(return_value=None)
+    monkeypatch.setattr(game_ui, f"{game}_board", board)
+
+    def accept(player, duel_id, action):
+        assert (player, duel_id, action) == ("pb", "ready", "accept")
+        duel["status"] = "accepted"
+        return duel
+
+    monkeypatch.setattr(db, f"{game}_action", accept)
+    guest = open_page("pb", "b", selected=None)
+    button(guest, "Minigame invites (1)").click().run()
+    button(guest, "Accept").click().run()
+    assert not guest.exception and guest.session_state["minigame_selected"] == game
+    assert any(c.proto.id.endswith(stage) for c in guest.get("flex_container"))
+    assert board.call_args.args[0]["status"] == "accepted"
+
+
+def test_stale_invitation_does_not_open_a_game(service, monkeypatch):
+    host = open_page()
+    button(host, "Challenge").click().run()
+    guest = open_page("pb", "b", selected=None)
+    button(guest, "Minigame invites (1)").click().run()
+    duel = service["duels"][0]
+
+    def expire(*args):
+        duel["status"] = "expired"
+        return duel
+
+    monkeypatch.setattr(db, "chug_duel_action", expire)
+    button(guest, "Accept").click().run()
+    assert not guest.exception and button(guest, "Minigame invites (0)")
+    assert any("no longer pending" in item.value for item in guest.warning)
+    assert "minigame_selected" not in guest.session_state
+
+
+def test_catalogue_confirms_time_acceptance_before_declining_other_invites(service, monkeypatch):
     from tests.test_time_duel_ui import invitation
-    time_state = dict(duels=[invitation('time-one', 'a', 'b')], incoming=True)
+
+    time_state = dict(duels=[invitation('time-one', 'a', 'b'), invitation('time-two', 'c', 'b')], incoming=True)
     monkeypatch.setattr(db, 'time_status', lambda *args: deepcopy(time_state))
-    def accept(*args):
-        assert args == ('pb', 'time-one', 'accept')
-        time_state['duels'] = []
-        return dict(status='accepted')
+    accept = Mock(return_value=dict(status='accepted'))
     monkeypatch.setattr(db, 'time_action', accept)
     render = Mock()
     monkeypatch.setattr(ui, 'render_time', render)
     guest = open_page('pb', 'b', selected=None)
-    assert not guest.exception
-    texts = [m.value for m in guest.markdown]
-    assert next(i for i, t in enumerate(texts) if 'Time Duel invitation' in t) < next(
-        i for i, t in enumerate(texts) if 'class="game-tile' in t)
-    button(guest, 'Accept Time Duel').click().run()
+    button(guest, 'Minigame invites (2)').click().run()
+    guest.button(key='hub_time_time-one_accept').click().run()
+    accept.assert_not_called()
+    assert any('will be declined' in item.value for item in guest.warning)
+    button(guest, 'Keep invitations').click().run()
+    assert not guest.exception and button(guest, 'Minigame invites (2)')
+    guest.button(key='hub_time_time-one_accept').click().run()
+    button(guest, 'Confirm acceptance').click().run()
+    accept.assert_called_once_with('pb', 'time-one', 'accept')
     assert not guest.exception and guest.session_state['minigame_selected'] == 'time'
     render.assert_called()
 
