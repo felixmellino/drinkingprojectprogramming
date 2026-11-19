@@ -24,6 +24,13 @@ def test_focus_configuration_is_frozen_and_not_added_to_old_snapshots():
     assert not enabled(replace(old, scoring_version='legacy'))
 
 
+def test_selected_single_reaction_keeps_mains_longer_random_wait():
+    rules=new_focus_rules()
+    assert rules['reaction_trials']==1 and rules['reaction_median_ms']==220
+    assert rules['reaction_wait_min_ms']==3500 and rules['reaction_wait_max_ms']==6500
+    assert rules['flow_version']==2
+
+
 @pytest.mark.parametrize('flag,expected', [(True,True),(False,False),('true',False),(1,False),(None,False)])
 def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot(flag,expected):
     game=season()

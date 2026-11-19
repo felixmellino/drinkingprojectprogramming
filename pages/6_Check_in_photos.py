@@ -144,7 +144,7 @@ if entry.get("rule_version") == "v1":
             selection += f" · {size_label(model.drink_type, model.size, season.scoring_rules)}"
         st.text(selection)
         territory_points = model.points_awarded if model.location_check_result == "matched" else 0
-        st.text(f"Drinker: +{format_points(model.points_awarded)} season points · +{format_points(territory_points)} territory points")
+        st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points · +{format_points(territory_points)} territory points")
         if model.focus_attempt_id:
             st.caption('Focus boost ×1.5 · This check-in keeps its earned multiplier after the boost ends.')
         if model.owner_bonus_quarters:

@@ -1,11 +1,11 @@
--- Restore the contributor-selected three-stage Focus flow after 018/019.
+-- Restore the contributor-selected three-stage Focus flow after 018/019/020.
 -- Requires 015. Self-contained; 017_focus_reaction_flow.sql is optional.
 -- If installing older Focus migrations too, apply this file LAST.
 -- Existing season snapshots and in-progress attempt rules are preserved.
 begin;
 alter table public.focus_attempts add column if not exists config jsonb;
 drop trigger if exists focus_snapshot_config on public.focus_attempts;
--- 018/019 ignored the optional attempt snapshot and used current season rules.
+-- 018/019/020 ignored the optional attempt snapshot and used current season rules.
 -- Preserve that behavior for existing running reaction-only attempts, without
 -- changing their results, deadlines, progress, scores or season snapshots.
 do $$ begin
@@ -24,7 +24,7 @@ create or replace function public._focus_rules(s public.seasons)
 returns jsonb language sql immutable set search_path=public as $$
  select case when s.scoring_version='v1' and s.scoring_rules->'focus_challenge'->>'version'='1'
   then s.scoring_rules->'focus_challenge'
-  when public._focus_is_test(s) then '{"version":1,"first_unlock":5,"retry_step":2,"reaction_trials":5,"reaction_median_ms":350,"reaction_wait_min_ms":1500,"reaction_wait_max_ms":4500,"reaction_response_ms":2000,"memory_length":7,"memory_cells":9,"memory_flash_ms":650,"memory_gap_ms":200,"memory_input_ms":15000,"precision_targets":12,"precision_ms":12000,"ready_seconds":30,"attempt_seconds":180,"delivery_grace_ms":2000,"boost_seconds":3600,"multiplier":1.5}'::jsonb else null end || '{"reaction_trials":1,"reaction_median_ms":220,"reaction_response_ms":500,"flow_version":2}'::jsonb
+  when public._focus_is_test(s) then '{"version":1,"first_unlock":5,"retry_step":2,"reaction_trials":5,"reaction_median_ms":350,"reaction_wait_min_ms":1500,"reaction_wait_max_ms":4500,"reaction_response_ms":2000,"memory_length":7,"memory_cells":9,"memory_flash_ms":650,"memory_gap_ms":200,"memory_input_ms":15000,"precision_targets":12,"precision_ms":12000,"ready_seconds":30,"attempt_seconds":180,"delivery_grace_ms":2000,"boost_seconds":3600,"multiplier":1.5}'::jsonb else null end || '{"reaction_trials":1,"reaction_median_ms":220,"reaction_response_ms":500,"reaction_wait_min_ms":3500,"reaction_wait_max_ms":6500,"flow_version":2}'::jsonb
 $$;
 create or replace function public._focus_public(a public.focus_attempts,at_time timestamptz)
 returns jsonb language sql stable set search_path=public as $$

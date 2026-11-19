@@ -190,8 +190,8 @@ def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
         reason = getattr(error, "message", "")
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby membership.") from None
-        if reason == "minigame_active":
-            raise ValueError("Finish your active duel or Focus Challenge before leaving, or wait for it to expire.") from None
+        if reason in {"minigame_active", "time_busy"}:
+            raise ValueError("Finish your active minigame before leaving, or wait for it to expire.") from None
         raise
 
 
@@ -344,6 +344,7 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
         duel_transfer_order=r.get("duel_transfer_order"),
         focus_attempt_id=r.get('focus_attempt_id'),
+        time_duel_id=r.get('time_duel_id'), time_bonus=_score_number(r.get('time_bonus', 0)),
         absent_member_ids=tuple(r.get('absent_member_ids') or ()),
     )
 
@@ -622,6 +623,9 @@ def _focus_rpc(name: str, parameters: dict) -> dict:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = error.message.strip()
+        if reason == "time_busy":
+            from core.time_duel import ERRORS as TIME_ERRORS
+            raise ValueError(TIME_ERRORS[reason]) from None
         if reason == "quiz_busy":
             raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason == 'permission_denied':
@@ -653,6 +657,9 @@ def _duel_rpc(name: str, parameters: dict) -> list[dict]:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = error.message.strip()
+        if reason == 'time_busy':
+            from core.time_duel import ERRORS as TIME_ERRORS
+            raise ValueError(TIME_ERRORS[reason]) from None
         if reason in {"quiz_busy", "quiz_reserved_points"}:
             raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason == "permission_denied":
@@ -1097,6 +1104,9 @@ def _team_rpc(name: str, parameters: dict):
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = getattr(error, "message", "")
+        if reason == 'time_busy':
+            from core.time_duel import ERRORS as TIME_ERRORS
+            raise ValueError(TIME_ERRORS[reason]) from None
         if reason in {"quiz_busy", "quiz_reserved_points"}:
             raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason in messages:
@@ -1127,6 +1137,9 @@ def _quiz_rpc(name, parameters):
     try:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
+        if error.message == 'time_busy':
+            from core.time_duel import ERRORS as TIME_ERRORS
+            raise ValueError(TIME_ERRORS['time_busy']) from None
         if error.message in ERRORS:
             raise ValueError(ERRORS[error.message]) from None
         if error.code in {"PGRST202", "42P01", "PGRST205"}:
@@ -1162,3 +1175,35 @@ def list_season_transfers(season_id):
             return []
         raise
     return [SeasonTransfer(**dict(row, created_at=datetime.fromisoformat(row["created_at"]))) for row in rows]
+
+
+# -- Time Duel: server-owned rounds, first-result locks and automatic rewards --
+def _time_rpc(name, parameters):
+    from core.time_duel import ERRORS
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        reason = error.message.strip()
+        if reason == 'permission_denied':
+            raise PermissionError(ERRORS[reason]) from None
+        if reason in ERRORS:
+            raise ValueError(ERRORS[reason]) from None
+        if reason in {'quiz_busy', 'focus_busy'}:
+            raise ValueError(ERRORS['time_busy']) from None
+        if error.code in {'PGRST202', '42P01', 'PGRST205', '42703', 'PGRST204'}:
+            raise RuntimeError('Time Duel needs database migration 017 before it can open.') from None
+        raise
+
+
+def time_status(player_id, season_id):
+    return _time_rpc('time_status', dict(actor_player=player_id, target_season=season_id))
+
+
+def invite_time_duel(player_id, season_id, invitation_id, opponent_id):
+    return _time_rpc('invite_time_duel', dict(actor_player=player_id, target_season=season_id,
+        invitation_id=invitation_id, opponent_member=opponent_id))
+
+
+def time_action(player_id, duel_id, action, round_no=None, elapsed_ms=None):
+    return _time_rpc('time_action', dict(actor_player=player_id, target_duel=duel_id,
+        selected_action=action, expected_round=round_no, elapsed=elapsed_ms))

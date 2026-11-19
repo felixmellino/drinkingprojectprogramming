@@ -39,7 +39,7 @@ async function win(p,a){
  create table test_clock(at_time timestamptz);insert into test_clock values('${now}');
  grant select on test_clock to service_role;grant usage on schema public to anon,authenticated,service_role;`);
  await pg.exec(fs.readFileSync('schema.sql','utf8').replace('create extension if not exists pgcrypto;',''));
- for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql','017_focus_reaction_flow.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql','020_focus_three_stage_flow.sql']){
+ for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql','017_focus_reaction_flow.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql','020_focus_wait_time.sql','021_focus_three_stage_flow.sql']){
   const sql=fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)');
   await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql'||file==='017_focus_reaction_flow.sql')await pg.exec(sql);
  }
@@ -180,7 +180,7 @@ async function win(p,a){
  const latestQa=(await status(1,qaSid)).attempt.id;
  await pg.exec(fs.readFileSync('migrations/015_focus_test_replays.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
  await pg.exec(fs.readFileSync('migrations/017_focus_reaction_flow.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
- await pg.exec(fs.readFileSync('migrations/020_focus_three_stage_flow.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
+ await pg.exec(fs.readFileSync('migrations/021_focus_three_stage_flow.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
  assert.equal((await status(1,qaSid)).unlimited,true,'Repeat migration preserves multiple QA wins');
  await pg.close();pg=new PGlite(disk);
  assert.equal((await status(1,qaSid)).attempt.id,latestQa,'QA replay state survives restart');
@@ -203,10 +203,12 @@ async function win(p,a){
  await clock('2026-11-23T20:00:00Z');
  const install=async file=>pg.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
  await install('019_focus_false_start_three_tries.sql');
+ await install('020_focus_wait_time.sql');
  let legacy=await act(1,await start(1,qaSid,1300),'ready');
  assert.equal(legacy.config.reaction_trials,3);
+ assert.equal(legacy.config.reaction_wait_min_ms,3500);
  const legacyExpiry=legacy.expires_at;
- await install('020_focus_three_stage_flow.sql');
+ await install('021_focus_three_stage_flow.sql');
  legacy=(await status(1,qaSid)).attempt;
  assert.equal(legacy.config.reaction_only,true);
  assert.equal(legacy.expires_at,legacyExpiry,'Migration cannot extend a running deadline');
@@ -223,7 +225,7 @@ async function win(p,a){
  assert.equal(successor.phase,'memory_ready');assert.equal(successor.status,'running');
  assert.equal(successor.boost_ends_at,null,'One fast reaction alone does not award the new boost');
  successor=await act(1,successor,'fail');
- await install('020_focus_three_stage_flow.sql');
+ await install('021_focus_three_stage_flow.sql');
  assert.equal((await status(1,qaSid)).attempt.id,successor.id,'Repeat installation preserves results');
  await q('set role anon');await assert.rejects(q('select * from focus_attempts'),/permission denied/);
  await assert.rejects(q('select focus_status($1,$2)',[uid(1),sid]),/permission denied/);await q('reset role');

@@ -32,7 +32,7 @@ Only one game may be actively running for a member at a time.
 
 Pass reaction, memory and precision consecutively. Contributor revision,
 19 November 2026: new attempts use one signal and a tap within 220 ms; no early
-taps. Migration 020 supersedes reaction-only migrations 018/019 and applies this
+taps. Migration 021 supersedes reaction-only migrations 018/019/020 and applies this
 to new attempts in existing eligible seasons
 without editing season snapshots. Attempt-level configuration preserves rules
 for games already started before this revision. Memory requires reproducing seven
@@ -41,7 +41,7 @@ a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
 Each new attempt receives private server-generated random material: independent
-1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
+3500–6500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
 and new valid precision positions. Refreshing cannot reroll it. Memory flashes
 650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
 New attempts again require all three stages (contributor choice resolving PR #64).
@@ -98,6 +98,17 @@ determines rewards and awards; browser timing/tap evidence is trust-based and
 does not establish automated anti-cheat or sobriety verification.
 
 See [implementation and activation](../FOCUS_CHALLENGE.md).
+
+
+### R-M10 Time Duel
+
+Contributor-approved 19 November 2026: [Time Duel](TIME_DUEL.md) defines three
+hidden-timer rounds on two phones, identical random 5–12 second targets,
+independent outgoing/incoming nightly roles, abandonment and exact-tie rules,
+and an automatic one-hour x1.25 **season-only** ordinary-check-in reward.
+Focus retains its existing effects; only the higher active multiplier applies.
+Shared migration 017 was applied on 19 November 2026. Teammate review and
+deployment remain pending.
 
 
 ### R-M01 Chug Duel invitation and opponents

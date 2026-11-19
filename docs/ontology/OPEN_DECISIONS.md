@@ -65,3 +65,9 @@ authorized shared application on 19 November 2026: migration 016 succeeded,
 all 19 live schema/access/history checks passed, and a fresh app process read
 the new fields and verified nonmember RPC denial. Frontend review, merge,
 deployment and deployed UI checks remain pending.
+
+Time Duel decided by the contributor, 19 November 2026: see [R-M10](RULES.md#r-m10-time-duel)
+and [the detailed rules](TIME_DUEL.md). Separate nightly duel roles, three rounds,
+exact millisecond ties and automatic one-hour x1.25 season-only boosts are agreed.
+Shared migration 017 was applied and verified on 19 November 2026. Teammate
+review, deployment and verification on two physical phones remain pending.

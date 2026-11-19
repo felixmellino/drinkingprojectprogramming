@@ -11,6 +11,9 @@ Migration 016 was applied to the shared project on 19 November 2026; no question
 import is needed. New databases still apply 016 after 014. See the
 [activation verification](docs/QUIZ_DUEL.md).
 
+Time Duel (three hidden-timer rounds on two phones, one-hour ×1.25 season bonus):
+[implementation, local verification and migration 017](docs/TIME_DUEL.md).
+
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**
@@ -309,7 +312,7 @@ four building blocks, and the team's workflow rules.
   the QA replay UI update requires deployment with the new Python code.
   Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
   [CHUG_DUEL.md](docs/CHUG_DUEL.md).
-  Focus Challenge is implemented; migrations 014 and 015 activate existing explicit test seasons and new normal seasons. Other minigames remain future work. See the build order in
+  Focus Challenge is implemented; migrations 014 and 015 activate existing explicit test seasons and new normal seasons. Quiz Duel and Time Duel are implemented with activation notes linked above. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season
@@ -479,8 +482,8 @@ require database credentials.
 
 The second playable minigame adds randomized reaction, seven-step memory and
 precision tests. The selected flow uses one reaction within 220 ms, Start memory,
-then Start precision. Apply [`migrations/020_focus_three_stage_flow.sql`](migrations/020_focus_three_stage_flow.sql)
-last, after 015 and any already-installed 018/019 changes; it includes the optional
+then Start precision. Apply [`migrations/021_focus_three_stage_flow.sql`](migrations/021_focus_three_stage_flow.sql)
+last, after 015 and any already-installed 018/019/020 changes; it includes the optional
 017 Focus setup and preserves running games. This migration is prepared, not yet
 installed on the shared project. Accepted entries unlock attempts at five, then seven/nine/etc.
 after failures. One win per evening grants a personal 60-minute x1.5 ordinary

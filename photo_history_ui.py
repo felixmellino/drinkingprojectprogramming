@@ -53,7 +53,7 @@ def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
     label = DRINK_LABELS.get(kind, "Long drink" if kind == "longdrink" else kind or "Drink")
     if model and model.size:
         label += f" · {size_label(kind, model.size, entry['season'].scoring_rules)}"
-    points = model.points_awarded if model else entry.get("base_points")
+    points = model.points_awarded + model.time_bonus if model else entry.get("base_points")
     matched = entry["location"] == "matched"
     colour = identity_colour(entry)
     if photo is not None:
@@ -107,7 +107,7 @@ def photo_metadata(entry: dict) -> None:
         award = "Points unavailable"
     else:
         territory_points = points if entry["location"] == "matched" else 0
-        season_points = entry.get("duel_season_points", points) if entry.get("duel_id") else points
+        season_points = entry.get("duel_season_points", points) if entry.get("duel_id") else points + (model.time_bonus if model else 0)
         award = f"+{format_points(season_points)} season pts · +{format_points(territory_points)} territory pts"
     timestamp = entry.get("captured_at") or entry["submitted_at"]
     zone = ZoneInfo(entry.get("timezone_name", "UTC"))
@@ -119,6 +119,8 @@ def photo_metadata(entry: dict) -> None:
                 unsafe_allow_html=True)
     if entry.get("duel_id"):
         st.caption("Chug Duel · Shared capture · Drink selection agreed by both players.")
+    if model and model.time_bonus:
+        st.caption('Time Duel ×1.25 · Included in season points only.')
     if model and model.focus_attempt_id:
         st.caption('Focus boost ×1.5 · Included in the displayed season and territory awards.')
     bonus = model.owner_bonus_quarters if model else entry.get("owner_bonus_quarters", 0)
