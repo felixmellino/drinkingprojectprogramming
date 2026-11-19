@@ -178,6 +178,33 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
+Map owner badge update (19 November 2026, contributor request):
+
+- Claimed areas show a circular, blurred owner picture with crisp public-name
+  initials. Individual photos use the existing profile-photo audience checks;
+  missing, inaccessible or unreadable photos use a plain initials badge.
+  Team pictures retain lobby-only visibility. No photo permissions change.
+- Territories sharing a border and the same owner id have one badge per
+  connected group. Corner contact alone does not group areas; hand-drawn
+  border differences up to 0.5 m are tolerated. Separate areas retain separate
+  badges. Each territory keeps its own outline, name, colour and account.
+- Badge diameter scales with area and available interior space, capped at
+  120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
+  Green remains yours/your team's, red others', grey unclaimed.
+- Clicking a badge opens a small territory-points dialog. Shared badges list
+  every territory separately: current owner, owner's territory points, your
+  territory points. A single-territory popup also shows the capture-gap
+  explanation; shared popups use a compact, scrollable score table. In team lobbies
+  "your points" means your team's combined territory points, as requested;
+  personal contributions and season owner income are excluded.
+- Clicking an individual territory also opens its own detail dialog. Existing
+  hover details, GPS tracking/accuracy, quick zoom, check-in action, HUD,
+  bottom location card and territory list remain available. The current base
+  map is Carto Dark Matter with a floating HUD and location card.
+- Closing the dialog clears Streamlit's read-only selection via a fresh chart
+  key so the same icon can be clicked again. This returns the viewport to the
+  selected quick-zoom focus; a manually panned viewport is not retained.
+
 ## Memories
 
 - Implemented as Photo history: retained lobby photos arranged chronologically,

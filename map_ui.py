@@ -17,6 +17,7 @@ import streamlit as st
 
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season
+from map_markers import owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
 # --territory-* tokens in assets/theme.css (design system "Rush").
@@ -123,6 +124,8 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
             "name": territory.name,
             "status": status,
             "owner": owner_name,
+            "owner_id": owner,
+            "owner_points": dict(standings).get(owner, 0),
             "my_points": my_points,
             "needed": needed,
             "detail": detail,
@@ -163,8 +166,43 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
                          zoom=max(9.0, min(zoom, 17.0)))
 
 
+def _map_selection_changed():
+    st.session_state["_map_open_popup"] = True
+
+
+def selected_territories(selection, rows, markers):
+    """Resolve browser selection by index against fresh server-side data only."""
+    indices = selection.get("indices", {})
+    ids = set()
+    for layer, data in (("owner-badges", markers), ("territories", rows)):
+        for index in indices.get(layer, []):
+            if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(data):
+                ids.update(data[index]["territory_ids"] if layer == "owner-badges" else [data[index]["id"]])
+    return [row for row in rows if row["id"] in ids]
+
+
+def _clear_map_selection():
+    # Streamlit selections are read-only. A fresh widget key clears the old
+    # selection so the same badge can be opened again after closing its dialog.
+    st.session_state["_map_selection_version"] = st.session_state.get("_map_selection_version", 0) + 1
+
+
+@st.dialog("Territory points", on_dismiss=_clear_map_selection)
+def territory_popup(rows, team_mode=False):
+    st.markdown(f'<p>Current owner: <strong>{escape(rows[0]["owner"])}</strong></p>', unsafe_allow_html=True)
+    body = "".join(f'<tr><th scope="row">{escape(row["name"])}</th>'
+                   f'<td>{row["owner_points"]}</td><td>{row["my_points"]}</td></tr>' for row in rows)
+    st.markdown('<div class="map-points-scroll"><table class="map-points-table">'
+                '<thead><tr><th scope="col">Territory</th><th scope="col">Owner points</th>'
+                f'<th scope="col">{"Your team’s points" if team_mode else "Your points"}</th></tr></thead>'
+                f'<tbody>{body}</tbody></table></div>', unsafe_allow_html=True)
+    if len(rows) == 1:
+        st.caption(rows[0]["detail"])
+    st.caption("Only territory points count here; season owner income is excluded.")
+
+
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
-               focus: str = "Bairro Alto") -> None:
+               focus: str = "Bairro Alto", *, pictures=None, team_mode=False, context="map") -> None:
     features = [
         {
             "type": "Feature",
@@ -173,7 +211,8 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                 # The tooltip is HTML, and usernames are free text: escape them.
                 "name": escape(row["name"]),
                 "detail": escape(row["detail"]),
-                "points": f"Your points here: {row['my_points']}",
+                "points": f"Owner: {escape(row['owner'])} · {row['owner_points']} points · "
+                          f"{'Your team’s' if team_mode else 'Your'} points here: {row['my_points']}",
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
                 "line": COLOURS[row["status"]] + [235 if row["status"] != "free" else 120],
             },
@@ -184,6 +223,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         pdk.Layer(
             "GeoJsonLayer",
             {"type": "FeatureCollection", "features": features},
+            id="territories",
             pickable=True,
             auto_highlight=True,
             highlight_color=HOVER_COLOUR,
@@ -194,23 +234,38 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             line_width_min_pixels=2.5,
         )
     ]
+    markers = owner_markers(rows, pictures or {}, COLOURS)
+    # Marker tooltip strings are HTML too; the unescaped owner name stays server-side.
+    for marker in markers:
+        marker["name"] = escape(marker["name"])
+    layers += [
+        pdk.Layer("IconLayer", markers, id="owner-badges", get_position="position", get_icon="icon",
+                  get_size="size", size_units="meters", size_min_pixels=12, size_max_pixels=52,
+                  pickable=True, billboard=True),
+        pdk.Layer("TextLayer", markers, id="owner-initials", get_position="position", get_text="initials",
+                  get_size="text_size", size_units="meters", size_min_pixels=6, size_max_pixels=16,
+                  get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
+                  get_text_anchor="'middle'", get_alignment_baseline="'center'", pickable=False),
+    ]
     # Territory names written on the map, like place names in a game.
-    labels = [{"position": _centre(row["boundary"]), "name": _label(row["name"])} for row in rows]
+    labels = [{"position": _centre(row["boundary"]), "name": _label(row["name"]),
+               "offset": [0, 34] if row.get("owner_id") else [0, 0]} for row in rows]
     layers.append(pdk.Layer(
-        "TextLayer", labels, get_position="position", get_text="name", get_size=11,
+        "TextLayer", labels, id="territory-labels", get_position="position", get_text="name", get_size=11,
+        get_pixel_offset="offset",
         get_color=[240, 225, 206, 240], get_text_anchor="'middle'", get_alignment_baseline="'center'",
         font_weight=700, font_settings={"sdf": True}, outline_width=3, outline_color=[26, 40, 65, 235],
     ))
     if location is not None:
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
-            pdk.Layer("ScatterplotLayer", here, get_position="[lng, lat]", get_radius="radius",
+            pdk.Layer("ScatterplotLayer", here, id="gps-accuracy", get_position="[lng, lat]", get_radius="radius",
                       get_fill_color=[90, 168, 255, 45], stroked=False),
-            pdk.Layer("ScatterplotLayer", here, get_position="[lng, lat]", get_radius=1,
+            pdk.Layer("ScatterplotLayer", here, id="gps-position", get_position="[lng, lat]", get_radius=1,
                       radius_min_pixels=8, get_fill_color=[90, 168, 255, 255],
                       get_line_color=[255, 255, 255, 255], stroked=True, line_width_min_pixels=3),
         ]
-    st.pydeck_chart(
+    event = st.pydeck_chart(
         pdk.Deck(
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
@@ -219,7 +274,14 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             tooltip={"html": "<b>{name}</b><br/>{detail}<br/>{points}"},
         ),
         height=600,
+        key=f"territory_map:{context}:{st.session_state.get('_map_selection_version', 0)}",
+        on_select=_map_selection_changed,
+        selection_mode="single-object",
     )
+    if st.session_state.pop("_map_open_popup", False):
+        selected = selected_territories(event.selection, rows, markers)
+        if selected:
+            territory_popup(selected, team_mode)
 
 
 def _centre(boundary: dict) -> list[float]:
