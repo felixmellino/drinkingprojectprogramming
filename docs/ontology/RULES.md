@@ -659,3 +659,20 @@ Source: contributor request and explicit answers, 19 November 2026. Migration
 19 November 2026. All 19 schema/access/history checks and a fresh app-process
 read/RPC check passed. Frontend review, merge, deployment and deployed browser
 verification remain pending.
+
+### R-LB04 Deleting a lobby
+
+Only the player who created a lobby (its earliest membership, even if they have
+since left) can delete it. Deleting hides the lobby for everyone: it leaves
+every lobby list, nobody can open it, check in, or play minigames in it, and
+saved lobby choices pointing at it are cleared. Nothing is erased: scores,
+photos and history stay in the database, in the same spirit as R-LB01. Open
+duel invitations and running duels are cancelled. There is no undo in the app.
+Allowed: creator deletes after a second, deliberate click. Rejected: any other
+player, even a current member, gets "Only the person who created this lobby can
+delete it." Boundary: a retry of an already completed deletion is harmless.
+Needs migration `017_delete_lobby.sql` (the app keeps working without it, but
+Delete lobby fails until it is applied).
+
+Source: contributor request, 19 November 2026 (who may delete and "hide, keep
+history" are the implementer's decisions; the team should confirm).

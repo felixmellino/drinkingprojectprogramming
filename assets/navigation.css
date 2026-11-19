@@ -54,3 +54,19 @@
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stSidebar"],
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Expand sidebar"],
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Collapse sidebar"] { display: none; }
+
+/* Back button: small, quiet, at the top of every page. On the phone Map (a full-screen map)
+   it becomes a round button left of the top bar. */
+.stApp .st-key-wego_back { margin: -6px 0 -8px; }
+.stApp .st-key-wego_back button { min-height: 30px; width: auto; padding: 0 10px 0 2px; gap: 0; border: 0;
+  background: transparent; color: var(--text-muted); font-weight: 600; box-shadow: none; }
+@media (max-width: 640px) {
+  .stApp:has(.st-key-game_map) .st-key-wego_back { position: fixed; z-index: 11; margin: 0; width: 38px !important;
+    top: calc(8px + env(safe-area-inset-top, 0px)); left: 10px; }
+  .stApp:has(.st-key-game_map) .st-key-wego_back button { width: 38px; height: 38px; min-height: 38px; padding: 0 0 0 6px;
+    border-radius: 50%; background: var(--hud-bg); color: var(--text); box-shadow: var(--shadow-card);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .stApp:has(.st-key-game_map) .st-key-wego_back button [data-testid="stMarkdownContainer"] {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .stApp:has(.st-key-wego_back):has(.st-key-game_map) .game-hud { margin-left: 46px; }
+}

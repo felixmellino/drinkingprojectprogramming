@@ -116,6 +116,17 @@ or drink selection, the 50 m boundary, missing/inaccurate readings, gallery
 access and saved-result recovery. Live camera/location permission testing on
 a phone still needs the configured app; mocked tests do not grant permissions.
 
+## Start screen and Back (19 November 2026)
+
+- After login the app opens on the **Map** (`app.py` redirects there).
+- Every page has a small **‹ Back** button at the top that returns to the page
+  visited before (history of this session, last 20). With no history it goes
+  to the Map; on the Map itself it only appears once you came from another
+  page. On the phone Map it is a round button left of the top bar. Views
+  inside a page (such as Edit profile) keep their own back links.
+- Deleting a lobby: the lobby's creator sees **Delete lobby** in the lobby
+  dialog (below Leave lobby) and must confirm once more. See R-LB04.
+
 ## Bottom navigation (requested 17 November 2026)
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned

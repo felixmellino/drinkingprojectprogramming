@@ -17,6 +17,7 @@ from core.profile_photo import initials
 from core.scoring_v1 import utc
 from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
+from core.lobbies import lobby_creator
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
 
@@ -210,6 +211,45 @@ def leave_lobby_controls(player_id, lobby):
             st.rerun()
 
 
+def delete_lobby_controls(player_id, lobby):
+    """Only the creator sees this; two deliberate clicks. Shared by both lobby dialogs."""
+    try:
+        creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
+    except LOAD_ERRORS:
+        return
+    if creator != player_id:
+        return
+    key = f'confirm_delete_{lobby.id}'
+    if st.button('Delete lobby', key=f'delete_{lobby.id}', icon=':material/delete:', width='stretch'):
+        st.session_state[key] = True
+    if not st.session_state.get(key):
+        return
+    st.warning('This deletes the lobby for everyone. Nobody can open it again. '
+               'Points and history stay saved in the database.')
+    confirm, cancel = st.columns(2)
+    with confirm:
+        if st.button('Yes, delete lobby', key=f'confirm_delete_btn_{lobby.id}', type='primary', width='stretch'):
+            try:
+                db.delete_lobby(player_id, lobby.id)
+            except PermissionError as error:
+                st.error(str(error))
+            except (*LOAD_ERRORS, ValueError):
+                st.error('Could not delete the lobby. Refresh lobbies and try again.')
+            else:
+                dismiss_members()
+                st.session_state.pop(key, None)
+                st.session_state.pop('_lobby_choice_pending', None)
+                st.session_state.pop('_saved_lobby_choice', None)
+                if st.session_state.get('current_lobby_id') == lobby.id:
+                    clear_selection()
+                st.session_state['_left_lobby_notice'] = f'{lobby.name} was deleted.'
+                st.rerun()
+    with cancel:
+        if st.button('Keep lobby', key=f'cancel_delete_{lobby.id}', width='stretch'):
+            st.session_state.pop(key, None)
+            st.rerun()
+
+
 def close_members_button():
     if st.button('Close', key='close_lobby_members'):
         dismiss_members()
@@ -246,6 +286,7 @@ def show_lobby_details(player_id, lobby, membership, season):
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
     leave_lobby_controls(player_id, lobby)
+    delete_lobby_controls(player_id, lobby)
     close_members_button()
 
 
