@@ -11,39 +11,34 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .st-key-focus_exit button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
 .st-key-focus_exit button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 .st-key-focus_stage [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
-/* Game catalogue: a colourful 3 x 3 grid of square tiles, three per row on
+/* Game catalogue: a colourful grid of square tiles, three rows of two on
    every screen (designed for phones first). Each tile is a markdown block
    with the "Open …" button laid invisibly over it: the whole tile taps. */
-.stApp .st-key-games_grid { display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; max-width:560px; }
+.stApp .st-key-games_grid { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; max-width:440px; }
 .stApp .st-key-games_grid > * { width:auto!important; min-width:0; }
 [class*="st-key-game_tile_"] { position:relative; gap:0!important; }
 /* Streamlit pulls markdown blocks up by 1rem; tiles need their full height. */
 [class*="st-key-game_tile_"] [data-testid="stMarkdownContainer"], [class*="st-key-game_tile_"] [data-testid="stElementContainer"] { margin:0!important; }
-.game-tile { position:relative; aspect-ratio:1; border-radius:20px; overflow:hidden; padding:8px 10px 9px;
+.game-tile { position:relative; aspect-ratio:1; border-radius:22px; overflow:hidden; padding:12px 14px;
   display:flex; flex-direction:column; justify-content:flex-end; color:#fff;
   box-shadow:0 6px 16px -8px rgba(20,43,61,.45); transition:transform 120ms ease; }
 .game-tile-chug { background:linear-gradient(150deg,#FFB03A 0%,#F2701E 100%); }
 .game-tile-focus { background:linear-gradient(150deg,#7B83FF 0%,#4B3FD8 100%); }
 .game-tile-quiz { background:linear-gradient(150deg,#3CCB97 0%,#13967A 100%); }
 [class*="game-tile-soon_"] { background:var(--surface); color:var(--text-muted); box-shadow:none; border:1px dashed var(--border); }
-.game-tile-art { position:absolute; top:4%; left:50%; width:68%; transform:translateX(-50%); pointer-events:none; }
+.game-tile-art { position:absolute; top:5%; left:50%; width:64%; transform:translateX(-50%); pointer-events:none; }
 [class*="game-tile-soon_"] .game-tile-art { width:56%; top:10%; }
 .game-tile-text { position:relative; display:flex; flex-direction:column; gap:0; min-width:0; }
-.game-tile-text strong { font-size:0.82rem; font-weight:700; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.game-tile-text strong { font-size:1rem; font-weight:700; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.2); }
-.game-tile-text small { font-size:0.66rem; opacity:.92; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.game-tile-text small { font-size:0.76rem; opacity:.92; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 [class*="game-tile-soon_"] .game-tile-text strong { text-shadow:none; color:var(--text); }
 .game-tile-text small.game-tile-alert { opacity:1; font-weight:700; background:#fff; color:#B4520A; white-space:normal;
   border-radius:999px; padding:1px 6px; align-self:flex-start; margin-top:2px; }
 .game-tile-focus.game-tile-off { filter:grayscale(.6); opacity:.75; }
-@media (min-width:700px) {
-  .game-tile { padding:12px 14px; border-radius:22px; }
-  .game-tile-text strong { font-size:1rem; }
-  .game-tile-text small { font-size:0.76rem; }
-}
 .stApp [class*="st-key-game_tile_"] [data-testid="stElementContainer"]:has([data-testid="stButton"]) { position:absolute; inset:0; z-index:2; }
 .stApp [class*="st-key-game_tile_"] [data-testid="stButton"], .stApp [class*="st-key-game_tile_"] button { width:100%; height:100%; min-height:0; }
-.stApp [class*="st-key-game_tile_"] button { opacity:0; border:0; border-radius:20px; }
+.stApp [class*="st-key-game_tile_"] button { opacity:0; border:0; border-radius:22px; }
 .stApp [class*="st-key-game_tile_"] button:focus-visible { opacity:1; background:transparent; outline:3px solid var(--accent-ink); outline-offset:2px; }
 .stApp [class*="st-key-game_tile_"]:has(button:active) .game-tile { transform:scale(.96); }
 @media (prefers-reduced-motion:reduce) { .game-tile { transition:none; } }

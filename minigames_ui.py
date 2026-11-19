@@ -68,12 +68,11 @@ def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
 
 
 # Tiles after the playable games; each becomes a real game later.
-# "Quiz" is the general knowledge quiz.
-COMING_SOON = [("quiz", "quiz", "Quiz")] + [(f"soon_{n}", "coming-soon", "New game") for n in range(1, 7)]
+COMING_SOON = [("quiz", "quiz", "Knowledge Quiz")] + [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
 
 
 def _game_cards(member, duels, *, service_available=True, focus_available=False):
-    """Nine colourful tiles (3 x 3): the playable games first, then what is coming.
+    """Six colourful tiles (3 rows of 2): the playable games first, then what is coming.
     Frozen season rules decide whether the Reaction Test (Focus Challenge) is open."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
@@ -84,14 +83,14 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False)
     elif active:
         chug_line = 'Duel open'
     else:
-        chug_line = '1 vs 1'
+        chug_line = '1 vs 1 · Race on one phone'
     with st.container(key='games_grid'):
         if _game_tile('chug', 'chug-duel', 'Chug Duel', chug_line,
                       alert=bool(invitations or active), playable=service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
         if _game_tile('focus', 'reaction-test', 'Reaction Test',
-                      'Solo · ×1.5' if focus_available else 'Not this season',
+                      'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
                       playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
