@@ -236,7 +236,8 @@ def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
         member = competitor(entry)
         territory = entry.territory_id if entry.location_check_result == "matched" else None
         owner = state.owners.get(territory) if territory else None
-        bonus = points if entry.rule_version == VERSION and owner and owner != member else 0
+        bonus = (points if entry.rule_version == VERSION and owner and owner != member
+                 and (entry.team_id is not None or owner not in entry.absent_member_ids) else 0)
         recipient = owner if bonus else None
         state.awards[entry.id] = (recipient, bonus)
         if recipient:

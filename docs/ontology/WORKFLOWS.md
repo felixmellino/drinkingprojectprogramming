@@ -172,3 +172,21 @@ the account preference. Reopening restores the latest successfully saved
 explicit choice. A failed preference write leaves the lobby usable for the
 current visit and shows a retry message. A failed restoration is retried on
 the next page load; existing access checks still apply.
+
+## Leave or return to a lobby
+
+1. Open Lobby, then View lobby → in an individual or team lobby.
+2. Choose Leave lobby. Review the explanation that scores and the reserved team
+   slot remain, while access and personal owner income pause.
+3. Choose Stay in lobby to cancel, or Confirm leave. The database rechecks the
+   actor and expires stale games under the same lock used by scoring. Active
+   accepted/started duels and running Focus attempts reject departure.
+4. On success the popup closes, the lobby card disappears and a success notice
+   confirms retained points. Another active lobby may become selected. Profile
+   statistics still load the departed membership and its full scoring history.
+5. To return, use Join with a code and the original invite code. The original
+   membership, team and limits resume. A finished competition stays finished.
+
+Service errors keep the lobby open with an error and a refresh instruction;
+a retry is safe when the original response was lost. Active membership checks
+on pages, photo reads and game RPCs revoke access from other open sessions too.

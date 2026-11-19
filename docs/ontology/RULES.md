@@ -599,3 +599,60 @@ shows an error rather than a partial total. No scores or entities are changed.
 
 Source: contributor request and clarified answers, 18 November 2026;
 active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.
+
+## Leaving and rejoining a lobby
+
+### R-LB01 Departure preserves history
+
+A signed-in member can choose Leave lobby inside the individual or team lobby
+popup, review the consequences and confirm, or choose Stay in lobby. This works
+before, during and after the competition. Departure sets `LobbyMembership.left_at`;
+it does not delete the membership, entries, earned points, team assignment or
+minigame history. The lobby disappears from the departing player's joined list.
+Fresh membership checks deny further check-ins, corrections, games, team edits
+and lobby photo viewing, including from an already-open page. Retained scores
+remain in lobby/territory standings and personal lifetime statistics; existing
+win and tie rules remain unchanged. Thus a departed player can still win.
+
+### R-LB02 Owner income while absent
+
+Previously earned personal territory-owner income is kept. Individual territory
+ownership and territory points remain unchanged, but visitors' accepted drinks
+pay no personal owner income to a member who is absent at their acceptance.
+Rejoining resumes eligibility for future income; no missed income is backfilled.
+Team ownership and income belong to the team and continue normally.
+
+Each accepted entry records the absent membership IDs under the lobby lock.
+Replay and corrections use this immutable roster snapshot, including when a
+correction changes who owned a territory. This prevents a later departure or
+return from changing previously earned income. Existing entries start with an
+empty absent roster because departure was not available before migration 016.
+
+### R-LB03 Return and interruptions
+
+Joining again with the invite code restores the same membership, original
+joining time, scores, team assignment, cooldown and minigame allowances. A team
+slot remains reserved while absent and is shown as Left (slot reserved); leaving
+does not let another player occupy it. Returning to a finished lobby restores
+history access but does not restart its competition or reopen scoring.
+
+Leaving is rejected while the member has an accepted/started Chug Duel or a
+running Focus Challenge. Finish the game or wait for its existing timeout;
+expired games are settled by the normal expiry rules when departure is retried.
+Unaccepted duel invitations are cancelled on departure. A retry of an already
+completed departure is harmless. The player's saved selection of that lobby is
+cleared, and the UI can select another active lobby.
+
+Allowed: leave after scoring, keep points in both statistics and standings,
+return with the same identity. Rejected: leaving during an active game, acting
+for another player, scoring while absent, editing an absence snapshot, claiming
+a departed member's reserved team slot. Boundaries: scoring and departure share
+the lobby lock; whichever is accepted first determines the absent roster.
+Corrections never rewrite that roster. Saved departure and score history survive
+a database restart.
+
+Source: contributor request and explicit answers, 19 November 2026. Migration
+016 was applied to shared Supabase with contributor authorization on
+19 November 2026. All 19 schema/access/history checks and a fresh app-process
+read/RPC check passed. Frontend review, merge, deployment and deployed browser
+verification remain pending.

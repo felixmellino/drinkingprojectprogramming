@@ -33,8 +33,8 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
         st.success(notice)
     try:
         teams = db.list_lobby_teams(player_id, lobby.id)
-        members = db.list_memberships_for_lobby(lobby.id)
-        me = next((m for m in members if m.player_id == player_id), None)
+        members = db.list_memberships_for_lobby(lobby.id, include_left=True)
+        me = next((m for m in members if m.player_id == player_id and m.left_at is None), None)
         names = {p['id']: p['display_name'] for p in db.list_public_usernames()}
         entries = db.list_drink_entries(season.id) if season else []
         transfers = db.list_season_transfers(season.id) if season else []
@@ -94,7 +94,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                 # Existing profile-picture privacy remains authoritative.
                 if picture:
                     st.markdown(f'<img src="data:image/jpeg;base64,{base64.b64encode(picture).decode("ascii")}" alt="Member picture" style="width:28px;height:28px;border-radius:50%">', unsafe_allow_html=True)
-                st.text(label if picture else f'{initials(label)} · {label}')
+                st.text((label if picture else f'{initials(label)} · {label}') + (' · Left (slot reserved)' if member.left_at else ''))
             if not teammates:
                 st.caption('No members yet')
             if lobby.team_assignment == 'manual' and not own:
@@ -113,6 +113,8 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     if season is None:
         from lobby_ui import retry_setup
         retry_setup(player_id, lobby)
+    from lobby_ui import leave_lobby_controls
+    leave_lobby_controls(player_id, lobby)
     if st.button('Close', key='close_lobby_teams'):
         dismiss_lobby_dialog()
         st.rerun()
