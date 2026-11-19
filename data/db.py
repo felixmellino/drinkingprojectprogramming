@@ -296,16 +296,23 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         photo_gps=photo_gps,
         territory_id=r.get("territory_id"),
         location_check_result=r["location_check_result"],
-        points_awarded=r["points_awarded"],
+        points_awarded=_score_number(r['points_awarded']),
         submitted_at=datetime.fromisoformat(r["submitted_at"]),
         photo_captured_at=datetime.fromisoformat(r["photo_captured_at"]) if r.get("photo_captured_at") else None,
         size=r.get("size"), rule_version=r.get("rule_version", "legacy"), event_order=r.get("event_order"),
-        owner_membership_id=r.get("owner_membership_id"), owner_bonus_quarters=r.get("owner_bonus_quarters", 0),
+        owner_membership_id=r.get("owner_membership_id"), owner_bonus_quarters=_score_number(r.get('owner_bonus_quarters', 0)),
         corrected_at=datetime.fromisoformat(r["corrected_at"]) if r.get("corrected_at") else None,
         revision=r.get("revision", 0), team_id=r.get("team_id"), owner_team_id=r.get("owner_team_id"),
         duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
         duel_transfer_order=r.get("duel_transfer_order"),
+        focus_attempt_id=r.get('focus_attempt_id'),
     )
+
+
+def _score_number(value) -> int | float:
+    """DB numeric half-units are binary-exact; retain old integer presentation."""
+    number = float(value)
+    return int(number) if number.is_integer() else number
 
 
 def _drink_entry_row(entry: DrinkEntry) -> dict:
@@ -330,6 +337,8 @@ def _drink_entry_row(entry: DrinkEntry) -> dict:
         row["photo_captured_at"] = entry.photo_captured_at.isoformat()
     if entry.rule_version != "legacy":
         row.update(size=entry.size, rule_version=entry.rule_version)
+    if entry.focus_attempt_id:
+        row['focus_attempt_id'] = entry.focus_attempt_id
     return row
 
 
@@ -566,6 +575,34 @@ def cleanup_checkin_photos(*, apply: bool = False) -> dict[str, int]:
 
 
 # -- minigame attempts ------------------------------------------------
+
+def _focus_rpc(name: str, parameters: dict) -> dict:
+    from core.focus_challenge import ERRORS
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        reason = error.message.strip()
+        if reason == 'permission_denied':
+            raise PermissionError(ERRORS[reason]) from None
+        if reason in ERRORS:
+            raise ValueError(ERRORS[reason]) from None
+        if error.code in {'42P01', '42703', 'PGRST202', 'PGRST204'}:
+            raise RuntimeError('Focus Challenge setup is required: apply migration 014.') from None
+        raise
+
+
+def focus_status(player_id: str, season_id: str) -> dict:
+    return _focus_rpc('focus_status', {'actor_player': player_id, 'target_season': season_id})
+
+
+def start_focus_attempt(player_id: str, season_id: str, request_id: str) -> dict:
+    return _focus_rpc('start_focus_attempt', {'actor_player': player_id,
+        'target_season': season_id, 'request_id': request_id})
+
+
+def focus_attempt_action(player_id: str, attempt_id: str, revision: int, action: str, evidence: dict) -> dict:
+    return _focus_rpc('focus_attempt_action', {'actor_player': player_id, 'target_attempt': attempt_id,
+        'expected_revision': revision, 'selected_action': action, 'evidence': evidence})
 
 def _duel_rpc(name: str, parameters: dict) -> list[dict]:
     from core.chug_duel import ERRORS

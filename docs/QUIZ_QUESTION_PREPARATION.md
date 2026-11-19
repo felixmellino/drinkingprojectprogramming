@@ -81,9 +81,9 @@ payloads. AppTest and the developer preview exercise all three categories, the
 is touched. Refresh/restart recovery of a real duel remains part of the later
 Supabase implementation, rather than a claim of this content-only patch.
 
-The updated bank and preview pass 141 targeted tests. The earlier 40%-football
-draft has been replaced; the full suite is rerun for the revised bank before handoff.
-The existing Streamlit/NumPy timedelta deprecation warnings remain.
+Verification on 19 November 2026: all 782 pytest tests passed after integration
+with current main, including the 141 question/preview tests. The existing 315
+Streamlit/NumPy timedelta deprecation warnings remain.
 The content checker/export command passed. The optional Playwright browser check
 passed at 390 px and 1280 px, including one saved pack across rounds, 10×10,
 the longer box puzzle and answer/source review. Preview screenshots are local,

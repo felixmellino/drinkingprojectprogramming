@@ -52,6 +52,9 @@ weighted as shown below.
    unlimited sequential replays (R-M02). The winner receives both drinks' base season
    points. Territory scoring and owner income stay normal. See R-M01–R-M05
    in `docs/ontology/RULES.md`. Reuse shared rules for additional minigames.
+   Focus Challenge is also team-approved (19 November 2026): see R-M06–R-M09.
+   It has separate personal attempts, three randomized skill tests and one
+   automatic 60-minute x1.5 ordinary-check-in boost per lobby evening.
 3. Once the core is stable, prioritize additions that make the game
    better and can be demonstrated and tested. The territory owner
    advantage, team events, and special effects depend on rules agreed by

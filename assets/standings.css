@@ -15,6 +15,10 @@
 .standings-podium-2 .standings-podium-points, .standings-podium-3 .standings-podium-points { font-size: 12px; }
 .standings-podium-block { width: 100%; border-radius: var(--radius-md) var(--radius-md) 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 8px; font-weight: 800; font-size: 20px; }
 .standings-podium-2 .standings-podium-block, .standings-podium-3 .standings-podium-block { font-size: 17px; padding-top: 6px; }
+/* Winner's block: a shadow tinted to its own accent colour instead of the
+   flat navy shadow the other two get -- same trick as the login card's
+   shadow tinted to its sky backdrop. */
+.standings-podium-1 .standings-podium-block { box-shadow: 0 14px 28px -6px rgba(44, 153, 214, .55), 0 2px 6px rgba(44, 153, 214, .3); }
 
 /* Ranks 4+: a flat list. */
 .standings-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

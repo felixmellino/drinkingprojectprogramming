@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from decimal import Decimal
 from html import escape
 from hashlib import sha256
@@ -10,15 +10,64 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from core.scoring_v1 import DRINK_LABELS, format_points, size_label, utc
-from drink_entry_ui import context_line
+from core.scoring_v1 import DRINK_LABELS, format_points, size_label, utc, window_bounds
 
 
-def photo_card(entry: dict, photo: bytes | None) -> None:
-    location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
-    context_line(entry["username"], location or "No territory assigned")
-    framed_photo(entry, photo)
-    photo_metadata(entry)
+def _entry_time(entry: dict) -> datetime:
+    timestamp = entry.get("captured_at") or entry["submitted_at"]
+    return utc(datetime.fromisoformat(timestamp))
+
+
+def game_night_bounds(entry: dict) -> tuple[datetime, datetime]:
+    """The Thu 18:00-Sun 18:00 game night containing this entry's timestamp.
+    Uses the season's own rules (so a QA season's shifted window groups
+    correctly) and falls back to the standard window for legacy entries
+    with no season object."""
+    ts = _entry_time(entry)
+    season = entry.get("season")
+    if season is not None:
+        return window_bounds(ts, season)
+    zone = ZoneInfo(entry.get("timezone_name", "UTC"))
+    local = ts.astimezone(zone)
+    monday = local.date() - timedelta(days=local.weekday())
+    start = datetime.combine(monday + timedelta(days=3), time(18), zone)
+    end = datetime.combine(monday + timedelta(days=6), time(18), zone)
+    return start, end
+
+
+def game_night_label(start: datetime, end: datetime) -> str:
+    last_day = end - timedelta(days=1)  # end is exclusive Sunday 18:00
+    if start.month == last_day.month:
+        return f"Game night · {start:%d}–{last_day:%d %b}"
+    return f"Game night · {start:%d %b}–{last_day:%d %b}"
+
+
+def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
+    """One tap-to-open grid tile: photo, points badge and a territory dot,
+    overlaid with a transparent full-tile button. Returns True once clicked."""
+    name = entry["username"]
+    if entry.get("team_id"):
+        name = f"{entry.get('team_name') or 'Team'} · {name}"
+    model = entry.get("entry")
+    kind = model.drink_type if model else entry.get("drink_type")
+    label = DRINK_LABELS.get(kind, "Long drink" if kind == "longdrink" else kind or "Drink")
+    if model and model.size:
+        label += f" · {size_label(kind, model.size, entry['season'].scoring_rules)}"
+    points = model.points_awarded if model else entry.get("base_points")
+    matched = entry["location"] == "matched"
+    colour = identity_colour(entry)
+    if photo is not None:
+        encoded = b64encode(photo).decode("ascii")
+        photo_html = f'<img class="memory-photo" src="data:image/jpeg;base64,{encoded}" alt="">'
+    else:
+        photo_html = '<div class="memory-photo memory-photo-missing"></div>'
+    badge = f'<span class="memory-points">+{escape(format_points(points))}</span>' if points is not None else ""
+    dot = f'<span class="memory-dot {"memory-dot-matched" if matched else "memory-dot-outside"}" aria-hidden="true"></span>'
+    st.html(
+        f'<div class="memory-tile-visual" style="--photo-identity:{colour}">{photo_html}{badge}{dot}</div>'
+        f'<div class="memory-meta"><strong>{escape(name)}</strong><span>{escape(label)}</span></div>'
+    )
+    return st.button(f"View {name}'s check-in", key=f"{key}_open")
 
 
 def identity_colour(entry: dict) -> str:
@@ -70,6 +119,8 @@ def photo_metadata(entry: dict) -> None:
                 unsafe_allow_html=True)
     if entry.get("duel_id"):
         st.caption("Chug Duel · Shared capture · Drink selection agreed by both players.")
+    if model and model.focus_attempt_id:
+        st.caption('Focus boost ×1.5 · Included in the displayed season and territory awards.')
     bonus = model.owner_bonus_quarters if model else entry.get("owner_bonus_quarters", 0)
     if bonus:
         income = format_points(Decimal(bonus) / 4)

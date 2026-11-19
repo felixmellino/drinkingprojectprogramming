@@ -16,7 +16,7 @@ import pydeck as pdk
 import streamlit as st
 
 from core.territories import capture_status, territory_owner, territory_standings
-from core.scoring_v1 import replay_season
+from core.scoring_v1 import replay_season, format_points
 from map_markers import owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
@@ -106,19 +106,20 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
     """One row per territory with everything the map and list show."""
     rows = []
     snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
+    point_step = .5 if any(e.focus_attempt_id for e in entries) else 1
     for territory in territories:
         owner = snapshot.owners.get(territory.id) if snapshot else territory_owner(entries, territory.id)
         standings = snapshot.territory_rows(territory.id) if snapshot else territory_standings(entries, territory.id)
-        status, number = capture_status(standings, owner, me)
+        status, number = capture_status(standings, owner, me, point_step=point_step)
         needed = number if status == "theirs" else None
         my_points = dict(standings).get(me, 0)
         owner_name = names.get(owner, "Unknown player") if owner else "Nobody"
         if status == "free":
             detail = "Unclaimed: your next drink here claims it."
         elif status == "yours":
-            detail = f"Yours: you lead by {number} point{'s' if number != 1 else ''}."
+            detail = f"Yours: you lead by {format_points(number)} point{'s' if number != 1 else ''}."
         else:
-            detail = f"Owned by {owner_name}: you need {number} more point{'s' if number != 1 else ''} to take it."
+            detail = f"Owned by {owner_name}: you need {format_points(number)} more point{'s' if number != 1 else ''} to take it."
         rows.append({
             "id": territory.id,
             "name": territory.name,

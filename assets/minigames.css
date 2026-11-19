@@ -1,5 +1,16 @@
 .chug-photo { display:block; width:min(100%,420px); max-height:360px; object-fit:cover;
   border-radius:var(--radius-lg); border:var(--border-width) solid var(--border); margin:auto; }
+.st-key-focus_stage {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
+  max-width:none!important;height:100dvh!important;margin:0!important;background:var(--bg);overflow:hidden;}
+.st-key-focus_stage iframe {width:100vw!important;height:100dvh!important;border:0;}
+body:has(.st-key-focus_stage) [data-testid="stHeader"],
+body:has(.st-key-focus_stage) [data-testid="stSidebar"],
+body:has(.st-key-focus_stage) .st-key-wego_bottom_nav {display:none!important;}
+body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;}
+.st-key-focus_exit {position:fixed!important;top:calc(10px + env(safe-area-inset-top));right:12px;width:auto!important;z-index:100001;}
+.st-key-focus_exit button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
+.st-key-focus_exit button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+.st-key-focus_stage [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
 .st-key-minigame_card_chug, .st-key-minigame_card_focus {
   background:var(--surface); border:var(--border-width) solid var(--border)!important;
   border-radius:var(--radius-lg); padding:20px!important; height:100%;
