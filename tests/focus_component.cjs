@@ -2,7 +2,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const logic=require('../components/focus_challenge/logic.js');
 const {execFileSync}=require('node:child_process');
 const cfg=JSON.parse(execFileSync(process.env.SCORING_PYTHON||'.venv/Scripts/python.exe',['-c','import json;from core.focus_challenge import new_focus_rules;print(json.dumps(new_focus_rules()))'],{encoding:'utf8'}));
-const code=fs.readFileSync('components/focus_challenge/index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const html=fs.readFileSync('components/focus_challenge/index.html','utf8');
+const code=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+for(const [,id] of code.matchAll(/\$\('([^']+)'\)/g)){
+ assert(html.includes('id="'+id+'"'),'The restored board must contain its referenced DOM node: '+id);
+}
 const epoch=Date.parse('2026-11-19T20:00:00Z'),iso=ms=>new Date(epoch+ms).toISOString();
 function setup(cache=new Map()){
  const elements={},messages=[],listeners={},bars=Array.from({length:3},()=>({classList:{toggle(){}}}));
@@ -23,6 +27,11 @@ function setup(cache=new Map()){
 const attempt=(phase,extra={})=>({id:'attempt',revision:1,status:'running',phase,step:0,config:cfg,
  server_now:iso(0),signal_at:iso(1500),deadline:iso(3500),expires_at:iso(180000),reaction_ms:[],precision_taps:[],...extra});
 const early=setup();early.render(attempt('reaction'));early.pressReaction();assert.equal(early.last().action,'fail');
+const legacyEarly=setup();legacyEarly.render(attempt('reaction',{config:{...cfg,reaction_only:true,reaction_trials:3}}));
+legacyEarly.pressReaction();assert.equal(legacyEarly.last().action,'false_start');
+assert.equal(legacyEarly.elements.falsestart.hidden,false);
+legacyEarly.elements.falsestart.handlers.pointerdown({preventDefault(){}});
+assert.equal(legacyEarly.elements.falsestart.hidden,true);
 const reaction=setup();reaction.render(attempt('reaction'));reaction.advance(1500);
 assert.equal(reaction.elements.react.textContent,'TAP NOW');reaction.advance(250);reaction.pressReaction();
 assert.equal(reaction.last().payload.elapsed_ms,250);

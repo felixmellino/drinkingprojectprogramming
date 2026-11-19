@@ -31,15 +31,15 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'get_lobby_choice', lambda pid: state['choices'].get(pid))
     monkeypatch.setattr('shared.require_login', lambda: 'me')
     monkeypatch.setattr('shared.show_logged_in_as', lambda: None)
-    monkeypatch.setattr(db, 'list_memberships_for_player', lambda _: state['members'])
+    monkeypatch.setattr(db, 'list_memberships_for_player', lambda _, **kwargs: state['members'])
     monkeypatch.setattr(db, 'list_lobbies', lambda: state['lobbies'])
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))
-    state['lobby_members'] = {l.id: [m for m in members if m.lobby_id == l.id] + [Obj(id='leo', player_id='leo-id')] for l in lobbies}
+    state['lobby_members'] = {l.id: [m for m in members if m.lobby_id == l.id] + [Obj(id='leo', player_id='leo-id', joined_at=now + timedelta(seconds=5))] for l in lobbies}
     state['users'] = [{'id': 'me', 'display_name': 'MyUsername'}, {'id': 'leo-id', 'display_name': 'Leo'}]
     state['relationships'] = []
-    monkeypatch.setattr(db, 'list_memberships_for_lobby', lambda lid: state['lobby_members'][lid])
+    monkeypatch.setattr(db, 'list_memberships_for_lobby', lambda lid, **kwargs: state['lobby_members'][lid])
     monkeypatch.setattr(db, 'list_public_usernames', lambda: state['users'])
     monkeypatch.setattr(db, 'list_friendships', lambda pid: [r.copy() for r in state['relationships'] if pid in (r['sender_id'], r['recipient_id'])])
     def change(actor, other, action):
@@ -284,7 +284,7 @@ def test_removed_membership_hides_open_members_and_actions(ui):
 
 
 def test_stale_membership_fails_closed(ui):
-    ui['lobby_members']['new'] = [Obj(id='leo', player_id='leo-id')]
+    ui['lobby_members']['new'] = [Obj(id='leo', player_id='leo-id', joined_at=datetime.now(timezone.utc))]
     at = open_members(page())
     assert not at.exception and any('no longer a member' in e.value for e in at.error)
     assert not at.text and not any(b.label == 'Add friend' for b in at.button)
@@ -512,3 +512,148 @@ def test_rechoosing_same_lobby_overrides_another_devices_choice(ui):
     open_members(at, 'old')
     assert not at.exception and ui['choices']['me'] == 'old'
     assert ui['save_choice'].call_count == 2
+
+
+def test_leave_confirmation_cancellation_and_retained_scores(ui, monkeypatch):
+    saved = entry('earned', 'm-new', 'beer', 'large', 0)
+    ui['entries'] = [saved]
+    leave = Mock()
+    def depart(pid, lid):
+        assert (pid, lid) == ('me', 'new')
+        ui['members'] = [m for m in ui['members'] if m.lobby_id != lid]
+        ui['lobby_members'][lid] = [m for m in ui['lobby_members'][lid] if m.player_id != pid]
+    leave.side_effect = depart
+    monkeypatch.setattr(db, 'leave_lobby', leave)
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    click(at, 'Leave lobby')
+    assert any('earned points' in w.value for w in at.warning)
+    leave.assert_not_called()
+    click(at, 'Stay in lobby')
+    leave.assert_not_called()
+    assert not any(b.label == 'Confirm leave' for b in at.button)
+    click(at, 'Leave lobby')
+    click(at, 'Confirm leave')
+    assert not at.exception
+    leave.assert_called_once_with('me', 'new')
+    assert all('Newest lobby' not in s for s in cards(at))
+    assert at.session_state['current_lobby_id'] == 'old'
+    assert ui['entries'] == [saved]
+    assert any('earned points are kept' in s.value for s in at.success)
+
+
+@pytest.mark.parametrize('error', [ValueError('Finish your active duel first.'), RuntimeError('offline'), PermissionError('Access denied.')])
+def test_leave_failure_keeps_lobby_and_selection(ui, monkeypatch, error):
+    leave = Mock(side_effect=error)
+    monkeypatch.setattr(db, 'leave_lobby', leave)
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    click(at, 'Leave lobby')
+    click(at, 'Confirm leave')
+    assert not at.exception and at.error
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert len(ui['members']) == 3
+
+
+def test_rejoin_restores_existing_membership_without_insert(ui, monkeypatch):
+    member = ui['members'][1]
+    member.left_at = datetime.now(timezone.utc)
+    def memberships(pid, *, include_left=False):
+        return ui['members'] if include_left else [m for m in ui['members'] if m.left_at is None]
+    monkeypatch.setattr(db, 'list_memberships_for_player', memberships)
+    rejoin = Mock(side_effect=lambda *_: setattr(member, 'left_at', None))
+    insert = Mock()
+    monkeypatch.setattr(db, 'rejoin_lobby', rejoin)
+    monkeypatch.setattr(db, 'insert_membership', insert)
+    at = page()
+    click(at, 'Join with a code')
+    at.text_input[0].input('NEWEST')
+    click(at, 'Join lobby')
+    assert not at.exception
+    rejoin.assert_called_once_with('me', 'new')
+    insert.assert_not_called()
+    assert at.session_state['current_membership_id'] == member.id
+
+
+def test_creator_can_delete_a_lobby_after_a_second_click(ui, monkeypatch):
+    delete = Mock()
+    def remove(pid, lid):
+        assert (pid, lid) == ('me', 'new')
+        ui['lobbies'] = [l for l in ui['lobbies'] if l.id != lid]
+        ui['members'] = [m for m in ui['members'] if m.lobby_id != lid]
+    delete.side_effect = remove
+    monkeypatch.setattr(db, 'delete_lobby', delete)
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    click(at, 'Delete lobby')
+    assert any('deletes the lobby for everyone' in w.value for w in at.warning)
+    delete.assert_not_called()
+    click(at, 'Keep lobby')
+    delete.assert_not_called()
+    click(at, 'Delete lobby')
+    click(at, 'Yes, delete lobby')
+    assert not at.exception
+    delete.assert_called_once_with('me', 'new')
+    assert all('Newest lobby' not in s for s in cards(at))
+    assert any('was deleted' in s.value for s in at.success)
+
+
+def test_only_the_creator_sees_delete(ui):
+    ui['lobby_members']['new'] = [Obj(id='leo', player_id='leo-id', joined_at=datetime(2020, 1, 1, tzinfo=timezone.utc)),
+                                  *ui['lobby_members']['new'][:1]]
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    assert not at.exception
+    assert any(b.label == 'Leave lobby' for b in at.button)
+    assert not any(b.label == 'Delete lobby' for b in at.button)
+
+
+@pytest.mark.parametrize('error', [PermissionError('Only the person who created this lobby can delete it.'), RuntimeError('offline')])
+def test_delete_failure_keeps_the_lobby(ui, monkeypatch, error):
+    monkeypatch.setattr(db, 'delete_lobby', Mock(side_effect=error))
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    click(at, 'Delete lobby')
+    click(at, 'Yes, delete lobby')
+    assert not at.exception and at.error
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert len(ui['members']) == 3
+
+
+def test_every_lobby_card_has_a_trash_button(ui):
+    at = page()
+    assert not at.exception
+    for lobby_id in ('old', 'new', 'past'):
+        assert at.button(key=f'remove_{lobby_id}').label == 'Remove from my lobbies'
+    assert not any(b.key == 'remove_secret' for b in at.button)       # not joined: no card
+
+
+def test_trash_removes_the_lobby_for_me_after_a_second_click(ui, monkeypatch):
+    leave = Mock()
+    def depart(pid, lid):
+        assert (pid, lid) == ('me', 'new')
+        ui['members'] = [m for m in ui['members'] if m.lobby_id != lid]
+    leave.side_effect = depart
+    monkeypatch.setattr(db, 'leave_lobby', leave)
+    at = page()
+    at.button(key='remove_new').click().run()
+    assert any('Remove Newest lobby from your lobbies' in w.value for w in at.warning)
+    leave.assert_not_called()
+    at.button(key='confirm_remove_no_new').click().run()
+    leave.assert_not_called()
+    assert not any(b.key == 'confirm_remove_yes_new' for b in at.button)
+    at.button(key='remove_new').click().run()
+    at.button(key='confirm_remove_yes_new').click().run()
+    assert not at.exception
+    leave.assert_called_once_with('me', 'new')
+    assert all('Newest lobby' not in s for s in cards(at))
+    assert any('earned points are kept' in s.value for s in at.success)
+
+
+def test_trash_failure_keeps_the_lobby(ui, monkeypatch):
+    monkeypatch.setattr(db, 'leave_lobby', Mock(side_effect=ValueError('Finish your active duel first.')))
+    at = page()
+    at.button(key='remove_new').click().run()
+    at.button(key='confirm_remove_yes_new').click().run()
+    assert not at.exception and any('active duel' in e.value for e in at.error)
+    assert len(ui['members']) == 3

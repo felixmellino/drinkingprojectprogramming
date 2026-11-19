@@ -7,7 +7,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
  let f,server,app,browser,log='';
  try{
   f=await fixture();
-  for(const file of ['015_focus_test_replays.sql','017_focus_reaction_flow.sql'])
+  for(const file of ['015_focus_test_replays.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql','020_focus_three_stage_flow.sql'])
    await f.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
   const l=await f.lobby(1,{test:true}),base=Date.parse(f.now()),start=Date.now();let queue=Promise.resolve();
   server=http.createServer((req,res)=>{
@@ -29,7 +29,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   const launch={headless:true};if(!fs.existsSync(chromium.executablePath()))launch.channel='msedge';
   browser=await chromium.launch(launch);const page=await browser.newPage({viewport:{width:390,height:844}});
   await page.goto('http://127.0.0.1:8774');
-  await page.getByRole('button',{name:'Start Focus Challenge',exact:true}).click();
+  await page.getByRole('button',{name:'Start',exact:true}).click();
   const board=page.frameLocator('iframe[title="focus_challenge_component.focus_challenge"]');
   await board.getByRole('button',{name:'Start reaction',exact:true}).click();
   // Tap 80ms after the actual visible signal, not a pre-guessed server timestamp.

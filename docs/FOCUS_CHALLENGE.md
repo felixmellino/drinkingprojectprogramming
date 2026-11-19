@@ -1,28 +1,17 @@
 # Focus Challenge — implementation handoff, 19 November 2026
 
+Shown to players as **Reaction Test** (Minigames tile, page title and start
+button). Code, database and rules keep the name Focus Challenge.
+
 The contributor confirmed teammate approval and requested the complete game.
 R-M06–R-M09 in `docs/ontology/RULES.md` are the active implementation contract.
-Reaction/transition revision: apply migration 017 after 015. New attempts in
-existing eligible seasons use one tap within 220 ms; already-started attempts
-retain their saved configuration. Reaction success opens Start memory with a
-one-second preview lead-in; memory success opens Start precision. Stage events
-no longer force full-page reruns: the board updates through a one-second poll.
 This branch includes the game, authoritative persistence and the scoring effect.
-Shared Supabase migration/activation and human phone difficulty calibration are
-still required. No shared-project records were changed during development.
-
-## Reaction revision verification
-
-19 November 2026: `python -m pytest -q` passed all 854 tests (332 existing
-Streamlit/NumPy deprecation warnings). The optional Node checks
-`tests/focus_component.cjs` and `tests/focus_postgres.cjs` passed, including
-220 ms acceptance, 221 ms failure, explicit memory readiness, migration repeat
-and database restart. `tests/focus_browser.cjs <path-to-playwright>` passed
-against real disposable PostgreSQL and a mobile Streamlit session: single
-reaction → memory-ready reload → seven memory answers → twelve precision taps
-→ saved boost. Set `SCORING_PYTHON` and `PGLITE_MODULE` to local installations
-for the integration tests. Production needs no new dependencies.
-Shared-project migration 017 and deployed-phone verification remain pending.
+The contributor applied migrations 014/015 to shared Supabase on 19 November
+2026. A fresh server client verified Focus status in all eight explicit QA
+seasons: zero uploads, threshold zero and unlimited=true, including six older
+snapshots without Focus rules. This confirms setup/status, not a completed
+deployed game. Human phone difficulty calibration and deployed gameplay remain.
+No shared game attempts or scores were created by that verification.
 
 ## Activation
 
@@ -57,15 +46,15 @@ by two. QA instead shows a test-mode label and immediate Start, without progress
 or a nightly win block. Finish the result screen with Back to games, then reopen
 Focus to replay. A missing migration 015 shows an explicit setup message.
 
-Start opens a full-screen board. Each trial has a new private server-generated
-challenge. Reaction uses one unpredictable wait of 1.5–4.5 seconds and a tap
-within 220 ms, without early taps. Press Start memory after passing it.
-Memory shows seven positions on a 3x3
-grid, flashing 650 ms with 200 ms gaps, then allows fifteen seconds for input.
-Precision requires twelve correct targets in twelve seconds. Targets move with
-consistent margins/minimum distance; tapping the play area elsewhere fails.
+Start opens a full-screen board. Start reaction begins one unpredictable signal
+after a 1.5–4.5 second wait; pass within 220 ms. Start memory begins a one-second
+lead-in and seven highlighted positions on a 3x3 grid, followed by fifteen seconds
+for input. Start precision opens twelve targets to tap within twelve seconds.
+New attempts must pass all three stages before earning the boost. An early tap,
+wrong memory answer or wrong precision target ends the attempt. Running games
+from the older reaction-only release retain their previous rules.
 
-Ready screens time out after thirty seconds; reaction responses after 500 ms.
+Ready screens time out after thirty seconds; reaction responses after two.
 The entire attempt lasts at most three minutes, and ends sooner at 06:00,
 scoring closure (normal seasons) or season end. Closing/reloading does not reset it or generate
 new content. Memory/reaction steps and precision checkpoints are persisted.
@@ -173,10 +162,29 @@ history/retention policy remains applicable.
   the real component and RPCs against isolated PostgreSQL with five synthetic
   accepted entries. The saved reaction times were 193/114/171/111/215 ms; the twelve precision taps finished at 3709 ms. This proves the automated software flow, not human difficulty balance.
 
-Still check after deployment: installation of both 014 and 015, immediate QA
+Still check after deployment: immediate QA
 play with zero uploads and repeated wins, real iPhone/Android timing and target usability,
 switch-away/reconnect on mobile networks, an actual boosted check-in and its
-territory/leaderboard/history, teammate review and shared migration installation.
+territory/leaderboard/history and teammate review.
+
+## Zero-threshold UI fix — 19 November 2026
+
+A deployed test-season page raised ZeroDivisionError while drawing unlock
+progress after migration 015 returned threshold zero. Its traceback referenced
+an earlier function layout, suggesting an imported screen or fragment had
+survived deployment. Reboot the Cloud app and reload the browser after merging
+this fix to replace old running functions. No additional SQL is required.
+
+The screen now uses the authoritative status response for QA presentation,
+so stale page season metadata cannot route a zero QA threshold through the
+normal progress calculation. Nonpositive, missing or invalid normal thresholds
+show a reload error without starting a game. The server still enforces every
+start and award. Streamlit regression tests reproduce the zero-division failure
+before the fix and verify stale metadata, normal invalid values, QA replay and
+normal unlock behavior after it.
+Verification: `python -m pytest tests/test_focus_ui.py tests/test_focus_challenge.py
+tests/test_chug_duel_ui.py -q --tb=short` passed all 61 tests. Deployment/reboot
+and a completed game on the public URL remain to verify.
 
 ## Integration with photo sharing — 19 November 2026
 
@@ -188,3 +196,33 @@ Privacy migration 013 is already applied to the shared project. Focus's new
 migration is numbered 014 to avoid colliding with that deployed migration.
 Its SQL behavior is unchanged; if an earlier Focus 013 script was already
 applied, 014 can still be applied safely because it is repeatable.
+
+
+## PR #64 conflict resolution: three-stage flow restored
+
+The contributor explicitly selected one reaction within 220 ms, followed by
+Memory and Precision, instead of main's reaction-only three-try game. The full
+three-stage component and its DOM are restored together; the compact main page,
+QA zero-upload fix, latest navigation and other teammates' work stay intact.
+
+Apply `020_focus_three_stage_flow.sql` after 015, and after 018/019 if those
+older changes are installed. It includes the optional 017 attempt-config setup,
+so new installations do not need to apply 017 separately. Always apply 020 last.
+No season snapshot, saved result or existing point award is rewritten.
+Already-running reaction-only games retain their rules and false-start retry;
+new games use one 220 ms reaction, a Start memory handoff with a one-second
+lead-in, seven memory answers, then Start precision and twelve targets.
+The reward is granted only after all three stages. QA/normal unlocks, score
+correction provenance, owner income and nonstacking boost behavior are unchanged.
+
+Migration 020 is prepared, not installed on the shared project by this resolution.
+Earlier reaction-only descriptions in this handoff are historical; R-M07/R-M08
+and this section define the selected final behavior after migration 020.
+
+Resolution verification: all 912 Python tests passed. The component checks now
+also assert that every referenced DOM node exists. The PostgreSQL suite applies
+the full migration order and verifies 220/221 ms, every stage, rewards, QA/normal
+gates, migration repeat, restart and preservation of an already-running 019 game.
+A real browser completed one fast reaction, reloaded at Start memory, observed
+and repeated all seven flashes, tapped twelve precision targets and received
+the saved boost against isolated PostgreSQL. Shared Supabase was not used.

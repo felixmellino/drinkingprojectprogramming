@@ -94,9 +94,11 @@ def insert_player(player: Player) -> None:
 
 def list_lobbies() -> list[Lobby]:
     rows = get_client().table("lobbies").select("*").execute().data
+    # Deleted lobbies are hidden for everyone (r.get: works before migration 017 too).
     return [Lobby(id=r["id"], name=r["name"], invite_code=r["invite_code"],
                   game_mode=r.get("game_mode", "individual"), team_count=r.get("team_count"),
-                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment")) for r in rows]
+                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment"))
+            for r in rows if not r.get("deleted_at")]
 
 
 def insert_lobby(lobby: Lobby) -> None:
@@ -121,7 +123,7 @@ def save_lobby_choice(player_id: str, lobby_id: str) -> None:
     ).execute()
 
 
-def list_memberships_for_player(player_id: str) -> list[LobbyMembership]:
+def list_memberships_for_player(player_id: str, *, include_left: bool = False) -> list[LobbyMembership]:
     rows = get_client().table("lobby_memberships").select("*").eq("player_id", player_id).execute().data
     return [
         LobbyMembership(
@@ -130,12 +132,13 @@ def list_memberships_for_player(player_id: str) -> list[LobbyMembership]:
             lobby_id=r["lobby_id"],
             joined_at=datetime.fromisoformat(r["joined_at"]),
             team_id=r.get("team_id"),
+            left_at=datetime.fromisoformat(r["left_at"]) if r.get("left_at") else None,
         )
-        for r in rows
+        for r in rows if include_left or not r.get("left_at")
     ]
 
 
-def list_memberships_for_lobby(lobby_id: str) -> list[LobbyMembership]:
+def list_memberships_for_lobby(lobby_id: str, *, include_left: bool = False) -> list[LobbyMembership]:
     rows = get_client().table("lobby_memberships").select("*").eq("lobby_id", lobby_id).execute().data
     return [
         LobbyMembership(
@@ -144,8 +147,9 @@ def list_memberships_for_lobby(lobby_id: str) -> list[LobbyMembership]:
             lobby_id=r["lobby_id"],
             joined_at=datetime.fromisoformat(r["joined_at"]),
             team_id=r.get("team_id"),
+            left_at=datetime.fromisoformat(r["left_at"]) if r.get("left_at") else None,
         )
-        for r in rows
+        for r in rows if include_left or not r.get("left_at")
     ]
 
 
@@ -158,6 +162,37 @@ def insert_membership(membership: LobbyMembership) -> None:
             "joined_at": membership.joined_at.isoformat(),
         }
     ).execute()
+
+
+def leave_lobby(player_id: str, lobby_id: str) -> None:
+    """Retain history; the database serializes departure with game actions."""
+    _membership_rpc("leave_lobby", player_id, lobby_id)
+
+
+def rejoin_lobby(player_id: str, lobby_id: str) -> None:
+    _membership_rpc("rejoin_lobby", player_id, lobby_id)
+
+
+def delete_lobby(player_id: str, lobby_id: str) -> None:
+    """Hide the lobby for everyone; history stays. The database allows only its creator."""
+    try:
+        get_client().rpc("delete_lobby", {"actor_player": player_id, "target_lobby": lobby_id}).execute()
+    except APIError as error:
+        if getattr(error, "message", "") == "permission_denied":
+            raise PermissionError("Only the person who created this lobby can delete it.") from None
+        raise
+
+
+def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
+    try:
+        get_client().rpc(action, {"actor_player": player_id, "target_lobby": lobby_id}).execute()
+    except APIError as error:
+        reason = getattr(error, "message", "")
+        if reason == "permission_denied":
+            raise PermissionError("This account cannot change that lobby membership.") from None
+        if reason == "minigame_active":
+            raise ValueError("Finish your active duel or Focus Challenge before leaving, or wait for it to expire.") from None
+        raise
 
 
 def membership_display_name(membership_id: str, lobby_id: str) -> str:
@@ -178,7 +213,7 @@ def membership_context(player_id: str, membership_id: str, lobby_id: str, season
     rows = (get_client().table("lobby_memberships")
         .select("*,lobbies!inner(seasons(*))")
         .eq("id", membership_id).eq("player_id", player_id).eq("lobby_id", lobby_id).execute().data)
-    if not rows:
+    if not rows or rows[0].get("left_at"):
         return None, None
     row = rows[0]
     member = LobbyMembership(row["id"], row["player_id"], row["lobby_id"],
@@ -309,6 +344,7 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         duel_id=r.get("duel_id"), duel_transfer_to=r.get("duel_transfer_to"),
         duel_transfer_order=r.get("duel_transfer_order"),
         focus_attempt_id=r.get('focus_attempt_id'),
+        absent_member_ids=tuple(r.get('absent_member_ids') or ()),
     )
 
 

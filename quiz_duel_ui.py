@@ -1,4 +1,5 @@
 """Quiz lobby and invitations. Only sanitized state crosses the component bridge."""
+from html import escape
 from uuid import uuid4
 import streamlit as st
 from httpx import RequestError
@@ -61,34 +62,28 @@ def render_quiz(player, member, lobby, season, members, labels):
         st.session_state["quiz_focused_id"] = focused["id"]
         _stage(player, member, focused, labels)
         return
-    if st.button("All games", key="quiz_back"):
-        st.session_state.pop("minigame_selected", None)
-        st.rerun()
-    st.subheader("Quiz Duel", anchor=False)
-    st.write("General knowledge → multiplication → logic. First to two, or the higher score after three rounds.")
-    st.caption("20 seconds · One locked answer · Faster correct answer earns one round point. "
-               "Ties: up to three deciding questions. Server receipt time includes network latency.")
-    st.metric("Available team points" if lobby.game_mode == "team" else "Available season points",
-              format_points(state["available_points"]))
-    st.caption("Stake 3–10 points. Both stakes are reserved on acceptance. Winner takes the loser's stake; "
-               "a draw returns both stakes. Territory points stay unchanged.")
-    st.caption("Test season · Unlimited sequential quizzes" if state["test_mode"] else
-               "One challenge + one acceptance per evening · Resets at 06:00 in " + season.timezone_name)
-    columns = st.columns(2)
-    columns[0].caption("Challenge: " + ("Available" if state["outgoing"] else "Used / reserved"))
-    columns[1].caption("Accept: " + ("Available" if state["incoming"] else "Used / reserved"))
+    from minigames_ui import game_header, game_note
+    game_header("Quiz Duel", "", "quiz_back")
+    points = format_points(state["available_points"])
+    game_note(f"{points} points")
     pending = [d for d in duels if d["status"] == "invited"]
     for duel in pending:
         with st.container(border=True):
-            st.write(f"{labels.get(duel['challenger_id'], 'Player')} vs {labels.get(duel['opponent_id'], 'Player')}")
-            st.write(f"Stake: {duel['stake']} points each")
+            st.markdown(f'<p class="duel-vs">{escape(labels.get(duel["challenger_id"], "Player"))} <span>vs</span> '
+                        f'{escape(labels.get(duel["opponent_id"], "Player"))}</p>'
+                        f'<p class="duel-what">Stake {duel["stake"]} each</p>', unsafe_allow_html=True)
             if member == duel["opponent_id"]:
-                if st.button("Accept quiz", key="quiz_accept_" + duel["id"], type="primary"):
-                    _action(player, duel, "accept")
-                if st.button("Decline", key="quiz_decline_" + duel["id"]):
-                    _action(player, duel, "decline")
-            elif st.button("Cancel invitation", key="quiz_cancel_" + duel["id"]):
-                _action(player, duel, "cancel")
+                accept, decline = st.columns(2)
+                with accept:
+                    if st.button("Accept", key="quiz_accept_" + duel["id"], type="primary", width="stretch"):
+                        _action(player, duel, "accept")
+                with decline:
+                    if st.button("Decline", key="quiz_decline_" + duel["id"], width="stretch"):
+                        _action(player, duel, "decline")
+            else:
+                game_note("Waiting for an answer.")
+                if st.button("Cancel", key="quiz_cancel_" + duel["id"], width="stretch"):
+                    _action(player, duel, "cancel")
     own = next(m for m in members if m.id == member)
     opponents = []
     for other in members:
@@ -98,28 +93,30 @@ def render_quiz(player, member, lobby, season, members, labels):
         except ValueError:
             continue
     if not state["open"]:
-        st.info("Quizzes open during this season's scoring window. Test seasons can play while active.")
+        game_note("Opens with the scoring window.")
     elif opponents:
-        with st.form("quiz_invitation"):
-            opponent = st.selectbox("Challenge player", opponents, format_func=lambda m: labels.get(m, "Lobby member"))
-            stake = st.number_input("Stake (points)", min_value=3, max_value=10, value=3, step=1)
-            sent = st.form_submit_button("Send quiz challenge", type="primary",
-                disabled=not state["outgoing"] or state["available_points"] < stake
-                or any(d["challenger_id"] == member for d in pending))
-        if sent:
-            request = st.session_state.setdefault("quiz_invitation_id", str(uuid4()))
-            try:
-                db.invite_quiz_duel(player, season.id, request, opponent, stake)
-                st.session_state.pop("quiz_invitation_id", None)
-                st.rerun(scope="fragment")
-            except SERVICE_ERRORS as error:
-                st.error(str(error) if isinstance(error, (ValueError, RuntimeError, PermissionError))
-                         else "The invitation could not be confirmed. Retry to recover the same invitation.")
+        if not state["outgoing"]:
+            game_note("You already challenged tonight.")
+        elif not any(d["challenger_id"] == member for d in pending):
+            opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
+                                format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
+                                key="pill_radio_quiz_opponent")
+            stake = st.radio("Stake", list(range(3, 11)), horizontal=True, key="pill_radio_quiz_stake")
+            if st.button("Challenge", type="primary", key="quiz_challenge", width="stretch",
+                         disabled=opponent is None or state["available_points"] < stake):
+                request = st.session_state.setdefault("quiz_invitation_id", str(uuid4()))
+                try:
+                    db.invite_quiz_duel(player, season.id, request, opponent, stake)
+                    st.session_state.pop("quiz_invitation_id", None)
+                    st.rerun(scope="fragment")
+                except SERVICE_ERRORS as error:
+                    st.error(str(error) if isinstance(error, (ValueError, RuntimeError, PermissionError))
+                             else "Could not send. Try again.")
     else:
-        st.info("Another eligible lobby member is needed. In team lobbies, choose an opposing team.")
+        game_note("Needs another player." if lobby.game_mode != "team" else "Needs a rival team.")
     recent = [d for d in duels if d["status"] in FINAL]
     if recent:
-        with st.expander("Recent quizzes"):
+        with st.expander("Recent"):
             for duel in recent[:10]:
                 result = labels.get(duel.get("winner_id"), "Draw") if duel.get("winner_id") else duel["status"].title()
                 st.write(f"{duel['challenger_score']} : {duel['opponent_score']} · {result} · Stake {duel['stake']}")

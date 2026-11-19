@@ -61,3 +61,20 @@ app discards the reused render context and performs fresh checks again.
 Deployment uses the normal branch/PR/team-review workflow. No new Supabase SQL
 is required for this performance change; existing minigame migrations are a
 separate prerequisite.
+
+## Parallel reads (19 November 2026)
+
+Every database call costs about 100 ms, and pages made them one after another.
+`parallel.run_parallel` now overlaps reads that do not depend on each other:
+Map, Ranks and Games load entries, members, players (and the Map's owner
+pictures) at once; the Lobby overview loads every lobby's season at once and
+each card's entries and transfers together; and `shared.require_login` reads
+the account and (on Map, Ranks, Games, Check-in and Photo history) the lobby/
+season membership at the same time. The membership read is only used after the
+account check passed, and is repeated normally if it failed.
+
+Nothing is cached across requests and no access rule changed: the same reads
+run, just overlapped. Measured with 100 ms per fake call (time per click, before
+→ after): Map 646 → 340 ms, Ranks 634 → 228, Games 623 → 430, Check-in 333 → 234,
+Photo history 338 → 231, Lobby 936 → 841. Real speed on the deployed app also
+depends on the distance between the app server and Supabase (EU-West).

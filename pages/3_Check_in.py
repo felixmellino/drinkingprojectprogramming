@@ -27,9 +27,9 @@ from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_re
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
-from drink_entry_ui import context_line, page_header, section_heading
+from drink_entry_ui import context_line, page_header, reward_card_html, section_heading
 from phone_location import current_location, track_location
-from shared import get_territories, require_active_membership, require_login, selected_season, show_logged_in_as
+from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
@@ -38,6 +38,7 @@ membership_id, lobby_id, season_id = require_active_membership()
 season = selected_season(lobby_id, season_id)
 if season is None:
     st.info("Choose a season on the Lobby page first.")
+    lobby_button()
     st.stop()
 modern = season.scoring_version == "v1"
 rules = rules_for(season) if modern else None
@@ -45,6 +46,7 @@ team_mode = st.session_state.get("current_lobby_mode") == "team"
 competitor_id = st.session_state.get("current_team_id") if team_mode else membership_id
 if team_mode and not competitor_id:
     st.info("Open this lobby on the Lobby page and join a team before checking in.")
+    lobby_button()
     st.stop()
 if team_mode:
     st.caption("Team mode · Your check-ins add to your team’s season and territory totals.")
@@ -117,29 +119,29 @@ if modern:
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
-    points, location, owner_income, *saved_ids = saved_result
-    if points == 0:
-        st.warning("Saved in your history with zero points.")
-    elif location == "outside":
-        st.success(f"Logged! +{format_points(points)} season points. Your location is outside the game territories.")
-    else:
-        st.success(f"Logged! +{format_points(points)} points.")
-    if owner_income:
-        st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
-    if saved_ids:
-        try:
-            territory_id = captured_territory(saved_ids[0], db.list_drink_entries(season_id))
-            if territory_id:
-                territory_name = next((t.name for t in get_territories() if t.id == territory_id), "the territory")
-                # Plain text prevents a territory label from injecting Markdown.
-                st.success("Territory captured!")
-                st.text(f"Your team captured {territory_name}!" if team_mode else f"You captured {territory_name}!")
-                st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
-        except (APIError, RequestError, RuntimeError, ValueError):
-            st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
+    with st.container(key="checkin_result"):
+        points, location, owner_income, *saved_ids = saved_result
+        territory_name, captured, unavailable = None, False, False
+        if saved_ids:
+            try:
+                entries = db.list_drink_entries(season_id)
+                saved = next((e for e in entries if e.id == saved_ids[0]), None)
+                names = {t.id: t.name for t in get_territories()}
+                if saved is not None and saved.territory_id:
+                    territory_name = names.get(saved.territory_id)
+                captured = captured_territory(saved_ids[0], entries) is not None
+                if captured and territory_name is None:
+                    territory_name = "the territory"
+            except (APIError, RequestError, RuntimeError, ValueError):
+                unavailable = True
+        income = format_points(Decimal(owner_income) / 4) if owner_income else None
+        # reward_card_html escapes every value, including the territory name.
+        st.markdown(reward_card_html(format_points(points), location, territory=territory_name, captured=captured,
+                                     team_mode=team_mode, owner_income=income, ownership_unavailable=unavailable),
+                    unsafe_allow_html=True)
 
 if st.session_state.get('checkin_posted'):
-    st.info('Your drink is posted. Find it in Photo history or check the Leaderboard.')
+    st.caption('Find your drink in Photo history, or see where you stand on the Leaderboard.')
     if st.button('New check-in', type='primary', width='stretch'):
         reset_camera()
         st.rerun()

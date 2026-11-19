@@ -77,6 +77,11 @@ def set_location(page, state, accuracy_m=10, age_seconds=0):
     page.run()
 
 
+def reward(page):
+    """Text of the check-in reward card (empty when none is shown)."""
+    return "".join(item.value for item in page.markdown if 'class="reward-card"' in item.value)
+
+
 def test_quick_controls_preview_save_and_owner_income(ui):
     state, game = ui
     page = open_checkin()
@@ -88,11 +93,11 @@ def test_quick_controls_preview_save_and_owner_income(ui):
     assert any("+4 season" in item.value for item in page.info)
     set_location(page, state)
     button(page, "Submit").click().run()
-    assert not page.exception and any("Logged! +4" in item.value for item in page.success)
+    assert not page.exception and 'reward-points">+4<' in reward(page)
     assert state["entries"][0].points_awarded == 4
     assert state["entries"][0].size == "large" and state["entries"][0].amount == 250
     assert state["calls"] == 1
-    assert any("owner also earned 1" in item.value for item in page.info)
+    assert "owner also earned +1 season points" in reward(page)
 
 
 def test_shot_skips_size_and_mixed_uses_labels(ui):
@@ -150,7 +155,7 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     page = open_checkin()
     set_location(page, state)
     button(page, 'Submit').click().run()
-    assert not page.exception and any('Logged!' in item.value for item in page.success)
+    assert not page.exception and reward(page)
     assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
     assert not page.radio and button(page, 'New check-in')
     page.session_state['checkin_open_camera'] = True
@@ -225,7 +230,7 @@ def test_lost_save_reply_recovers_without_a_second_award(ui):
     assert not page.exception and page.error
     assert state["calls"] == 1 and len(state["entries"]) == 1
     page.run()
-    assert not page.exception and any("Logged! +1" in item.value for item in page.success)
+    assert not page.exception and 'reward-points">+1<' in reward(page)
     assert state["calls"] == 1 and len(state["entries"]) == 1
 
 
@@ -241,13 +246,14 @@ def test_saved_checkin_shows_only_actual_capture(ui, monkeypatch, previous_membe
     page = open_checkin()
     set_location(page, state)
     radio(page, 'Size').set_value('large').run()
-    assert not any('captured!' in item.value for item in page.success)
+    assert not reward(page)
     button(page, 'Submit').click().run()
     assert not page.exception and state['calls'] == 1
-    assert any('Logged! +3' in item.value for item in page.success)
-    assert any(f'You captured {TERRITORY.name}!' == item.value for item in page.text) is captured
+    assert 'reward-points">+3<' in reward(page)
+    assert (f'You captured {TERRITORY.name}!' in reward(page)) is captured
+    assert f'in {TERRITORY.name}' in reward(page)
     page.run()
-    assert not any('You captured' in item.value for item in page.text)
+    assert 'You captured' not in reward(page)
 
 
 def test_capture_message_recovers_after_lost_save_reply(ui):
@@ -259,7 +265,7 @@ def test_capture_message_recovers_after_lost_save_reply(ui):
     assert page.error and state['calls'] == 1
     page.run()
     assert not page.exception and state['calls'] == 1
-    assert any(f'You captured {TERRITORY.name}!' == item.value for item in page.text)
+    assert f'You captured {TERRITORY.name}!' in reward(page)
 
 
 def test_capture_lookup_failure_preserves_saved_confirmation(ui, monkeypatch):
@@ -273,9 +279,9 @@ def test_capture_lookup_failure_preserves_saved_confirmation(ui, monkeypatch):
     set_location(page, state)
     button(page, 'Submit').click().run()
     assert not page.exception and state['calls'] == 1
-    assert any('Logged! +1' in item.value for item in page.success)
-    assert any('ownership update is unavailable' in item.value for item in page.caption)
-    assert not any('You captured' in item.value for item in page.text)
+    assert 'reward-points">+1<' in reward(page)
+    assert 'ownership update is unavailable' in reward(page)
+    assert 'You captured' not in reward(page)
 
 
 def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch):
@@ -339,7 +345,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
     members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
-    monkeypatch.setattr(db,"list_memberships_for_player",lambda _:list(members))
+    monkeypatch.setattr(db,"list_memberships_for_player",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"insert_lobby",lobbies.append)
     monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))
     monkeypatch.setattr(db,"list_drink_entries",lambda _:[])
@@ -351,7 +357,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
         games.append(game)
         return game
     monkeypatch.setattr(db,"start_scoring_season",start)
-    monkeypatch.setattr(db,"list_memberships_for_lobby",lambda _:list(members))
+    monkeypatch.setattr(db,"list_memberships_for_lobby",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"list_public_usernames",lambda: [{"id": "player", "display_name": "Player"}])
     monkeypatch.setattr(db,"list_friendships",lambda _:[])
     page=AppTest.from_file(ROOT/"pages/2_Lobby.py", default_timeout=10).run()

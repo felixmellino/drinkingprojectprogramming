@@ -2,21 +2,26 @@
 
 ## Minigames catalogue (19 November 2026)
 
-The Minigames page lists game cards together in two columns on larger
-screens and a single column on phones. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+The Minigames page is a colourful grid of square tiles, three rows of two on
+every screen, phones first (redesign 19 November 2026). Each tile has an
+animated picture (`assets/games/*.svg`, drawn for this app), the name and one
+short status line; tapping a playable tile opens the game. Order: Chug Duel
+(orange), Reaction Test = Focus Challenge (violet), Quiz Duel (green) and
+three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
 returns to the catalogue without resetting it. A terminal board shows the saved
 result. Check-in previews and photo history identify the earned multiplier.
 
-Open Chug Duel shows the existing invitation, acceptance, shared capture,
-allowance and history controls below the cards. All games closes these
-controls without cancelling invitations or changing any allowance. The hub
-polls invitations and labels the Chug Duel card when a response is waiting.
+Open Chug Duel replaces the list with the existing invitation, acceptance,
+shared capture, allowance and history controls, like a page on a phone.
+‹ All games returns to the list without cancelling invitations or changing
+any allowance. The hub polls invitations and shows a white status pill on the
+Chug Duel tile when a response is waiting.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
-checked before cards are shown. The catalogue does not mount a continuous
+checked before the list is shown. The catalogue does not mount a continuous
 GPS watcher; the existing duel workflow does. Shared login's initial
 location-permission request remains unchanged.
 
@@ -31,6 +36,25 @@ See [Focus Challenge's discussion draft](FOCUS_CHALLENGE_PROPOSAL.md).
 Interface structure proposal. Colors, typography, icons, dimensions and
 other detailed design choices remain undecided. Gameplay rules belong in
 `RULES.md`; step-by-step journeys belong in `WORKFLOWS.md`.
+
+Game screens cleaned up (19 November 2026, contributor request): opening a game
+shows only "‹ All games", the name, one short line and the next action. No rules
+text, no metrics, no manual refresh (screens update by themselves).
+- Chug Duel: pick who, drink and size as tap-pills (a single possible opponent
+  is preselected), see "Winner +X. Loser +0.", tap Challenge. The other player
+  sees one card with Accept / Decline. The host then takes one photo of both
+  drinks and taps Start duel (location must be ready). Used allowances show as
+  one grey line ("You already challenged tonight."). The form is hidden while a
+  duel is open.
+- Reaction Test play (19 November 2026): only reaction tries, no Memory or
+  Precision. No countdown clock and no second start button; each try shows its
+  reaction time; an early tap turns the screen red with "FALSE START" (tap to
+  continue; that try repeats); the result screen lists all tries and the average.
+- Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
+  only while locked, Start. No slogans or disclaimers on any game screen.
+  Everything on game screens is centred.
+- Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
+  one card with Accept / Decline. Rules are unchanged.
 
 ## Drink Entries interface (implemented 17 November 2026)
 
@@ -86,20 +110,25 @@ The shared navigation and Standings refresh below were explicitly requested
 as follow-ups. Account/lobby behavior and the map remain separate blocks. The
 broader screen proposal below remains a future design outline.
 
-## Standings interface (implemented 17 November 2026)
+## Standings interface (implemented 17 November 2026, simplified 19 November 2026)
 
-- Personal summary: current rank, exact season total and territories owned.
-  Unranked members have no invented position. An unavailable territory service
-  shows an unknown count, rather than zero.
-- Season leaderboard: numbered top-three badges, username initials, a YOU
-  marker and highlighted current-player row. Exact quarter-points remain
-  visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
-  the UI never re-sorts or changes the tie rule.
-- Territory cards show each owner, explicit unclaimed states, every recorded
-  player total and relative bars based only on base territory points. Cards
-  stack on narrow screens. These bars do not represent a capture threshold.
-- Refresh standings reloads the current season. Service failures show a retry
-  message, without writing entries or replacing unavailable scores with zero.
+Minimal by design: only the ranking and territory ownership are on screen.
+The page title is kept for screen readers but hidden; there is no
+description, refresh button or lobby summary line (data reloads on every
+page visit).
+
+- Podium for the top three (2nd, 1st, 3rd left to right; blocks in sky blue,
+  silver and bronze with dark numerals), then one row per
+  player from rank 4. Exact quarter-points remain visible. Rows preserve the
+  order from `core.leaderboard.season_leaderboard`; the UI never re-sorts or
+  changes the tie rule.
+- The current player gets a YOU tag. The upper of two tied rows gets a
+  "reached first" tag (R-R01).
+- Territory pills underneath: sky = yours, scarlet = someone else's,
+  grey = unclaimed.
+- A finished or upcoming season shows a one-line status caption. Service
+  failures show a reload message, without writing entries or replacing
+  unavailable scores with zero.
 - `standings_ui.py` escapes public usernames and territory names. It reuses
   the page header and adds `assets/standings.css`; core rules, database APIs,
   membership checks and season scope are unchanged.
@@ -111,17 +140,37 @@ or drink selection, the 50 m boundary, missing/inaccurate readings, gallery
 access and saved-result recovery. Live camera/location permission testing on
 a phone still needs the configured app; mocked tests do not grant permissions.
 
+## Start screen and Back (19 November 2026)
+
+- After login the app opens on the **Map** (`app.py` redirects there).
+- Every page has a small **‹ Back** button at the top that returns to the page
+  visited before (history of this session, last 20). With no history it goes
+  to the Map; on the Map itself it only appears once you came from another
+  page. On the phone Map it is a round button left of the top bar. Views
+  inside a page (such as Edit profile) keep their own back links.
+- Every lobby card has a trash icon (top right). After a second click it removes
+  the lobby from that player's own list only (the same departure as Leave
+  lobby: points and history stay, rejoin with the invite code, R-LB01–R-LB03).
+- Deleting a lobby: the lobby's creator sees **Delete lobby** in the lobby
+  dialog (below Leave lobby) and must confirm once more. See R-LB04.
+
 ## Bottom navigation (requested 17 November 2026)
 
-- Authenticated pages use **Profile | Lobby | + Check in | Leaderboard | Photo history**.
-- The large central plus opens the camera-first Check-in. Leaderboard and
-  Photo history sit to its right. These are the English player-facing names.
+- Authenticated pages use five tabs, like an iPhone app (redesigned
+  19 November 2026): **Map | Ranks | + Check in | Games | Profile**.
+- The round plus in the middle opens the camera-first Check-in. Ranks opens
+  the Leaderboard, Games the Minigames. Lobbies and Photo history open from
+  the top of the Profile menu; hints that send a player to the Lobby page
+  carry an "Open Lobbies" button. A page without its own tab highlights the
+  tab it is reached from (Lobby and Photo history → Profile).
+- Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
+  filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
   server-side access checks. The bar remains visible when a lobby still needs
   to be selected; it is absent before login. The former sidebar navigation is
   hidden on signed-in pages, and content leaves space above the fixed bar.
 - `app_navigation.py` renders the shared bar after `require_login` verifies
-  identity. `assets/navigation.css` controls its five-slot layout and safe-area
+  identity. `assets/navigation.css` controls its five-tab layout and safe-area
   spacing. It makes no changes to account fields, lobby rules or scoring.
 
 ## Broader structure proposal
@@ -181,8 +230,10 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- City map with the 48 territories coloured for the viewer: green = yours,
-  red = someone else's, grey = unclaimed.
+- City map with the 48 territories coloured for the viewer: sky blue = yours,
+  scarlet red = someone else's, grey = unclaimed (palette colours, changed from
+  green/red on 19 November 2026 so red-green colour-blind players can tell
+  them apart). The player's own position is a white dot with a navy ring.
 - Tapping a territory shows its name, what it means for you and your points
   there: "Unclaimed: your next drink here claims it", "Yours: you lead by X
   points", or "Owned by Y: you need X more points to take it" (owner's
@@ -196,7 +247,7 @@ current lobby's season only. Bars are not part of the game, so none are shown.
 - Three cards below the map: territories you own (e.g. "1 of 48"),
   unclaimed territories, and the easiest one to take (fewest points needed).
 - Small quick-zoom buttons right above the map jump to "Bairro Alto",
-  "Lisbon", "Nova SBE" or "All" (and "📍 Me" when your location is usable),
+  "Lisbon", "Nova SBE", "Jamor Golf" or "All" (and "📍 Me" when your location is usable),
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
@@ -213,21 +264,29 @@ Map owner badge update (19 November 2026, contributor request):
 - Badge diameter scales with area and available interior space, capped at
   120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
   Green remains yours/your team's, red others', grey unclaimed.
-- Clicking a badge opens a small territory-points dialog. Shared badges list
-  every territory separately: current owner, owner's territory points, your
-  territory points. A single-territory popup also shows the capture-gap
-  explanation; shared popups use a compact, scrollable score table. In team lobbies
-  "your points" means your team's combined territory points, as requested;
-  personal contributions and season owner income are excluded.
-- Clicking an individual territory also opens its own detail dialog. Existing
-  hover details, GPS tracking/accuracy, quick zoom, check-in action, HUD,
-  bottom location card and territory list remain available. The current base
+- Tapping (phone) or hovering (laptop) a territory shows a tiny tooltip next
+  to it with the territory name and a list of name and territory points
+  (best five, ranking order; you are marked "(you)"; "no points yet" if
+  nobody has drunk there). It is drawn by the map in the browser itself, so
+  there is no server round trip, no dialog and no full-screen overlay (changed
+  19 November 2026, contributor request: the earlier dialog was too slow).
+  Owner badges are not tappable; a tap on a badge reaches the territory under
+  it. In team lobbies the rows are teams. Season owner income is excluded.
+- Existing hover details, GPS tracking/accuracy, quick zoom, HUD, bottom
+  location card and territory list remain available. There is no check-in
+  button on the map; checking in is the + tab. The current base
   map is Carto Dark Matter without place names (they clashed with territory
   names) with a floating HUD and location card. Every territory border is
   white; the fill colour shows the owner. Territory names show on hover only.
-- Closing the dialog clears Streamlit's read-only selection via a fresh chart
-  key so the same icon can be clicked again. This returns the viewport to the
-  selected quick-zoom focus; a manually panned viewport is not retained.
+- Phone layout (19 November 2026): the map fills the whole screen. A slim
+  bar floats at the top (lobby on the left; yours · rivals · free counts on
+  the right, coloured like the map, which also serves as the legend). Below
+  it the quick-zoom chips stand alone as separate pills in one row that
+  scrolls sideways: Me, Bairro Alto, Lisbon, Nova SBE, Jamor Golf, All. A
+  slim sheet above the tab bar shows where you are, with the All territories
+  list opening upwards inside it. The map's own +/- buttons are hidden (pinch
+  or scroll to zoom). On a laptop the map stays a rounded panel with the same
+  bar, chips and sheet on top.
 
 ## Memories
 

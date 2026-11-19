@@ -295,3 +295,16 @@ cannot read the table or call its RPCs. No health label, photo or GPS is stored.
 half-points and half-quarter owner-income units preserve exact eighth-points;
 whole values remain integers in Python presentation. Timely corrections retain
 the source multiplier; historical replay does not need today's boost status.
+
+### Lobby departure extension (19 November 2026)
+
+`LobbyMembership.left_at` is a nullable server departure timestamp. Null grants
+current membership; a value retains historical identity without lobby access.
+Rejoining clears it and keeps the original ID, joining time and team. Active
+access reads exclude departed rows; profile history, standings names and team
+capacity explicitly include them. See R-LB01–R-LB03.
+
+`DrinkEntry.absent_member_ids` is an immutable roster snapshot at acceptance.
+It suppresses personal owner income for absent owners during replay and later
+corrections, without changing historical points or team income. Migration 016
+adds both fields and the leave/rejoin server functions.

@@ -7,16 +7,18 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 #grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}#grid button{aspect-ratio:1/1;font-size:24px}#grid button.flash{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 #arena{position:relative;width:100%;aspect-ratio:1/1;border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);touch-action:manipulation;overflow:hidden}#target{position:absolute;transform:translate(-50%,-50%);width:52px;height:52px;min-height:52px;border-radius:50%;border:2px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);font-size:22px}
 .progress{display:flex;gap:6px;width:100%;max-width:440px}.progress span{height:5px;flex:1;background:var(--border);border-radius:9px}.progress span.done{background:var(--accent)}#hint{font-size:13px;color:var(--text-muted);max-width:420px;margin-top:auto}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
+#falsestart{position:fixed;inset:0;z-index:5;background:var(--error);color:var(--text);display:grid;place-content:center;text-align:center;padding:24px}
 </style></head><body><main>
-<p class="eyebrow">WEGOPUB · FOCUS CHALLENGE</p><div class="progress" aria-label="Three tests"><span></span><span></span><span></span></div>
-<h1 id="title">Focus Challenge</h1><div id="timer" role="timer"></div>
+<div class="progress" aria-label="Three tests"><span></span><span></span><span></span></div>
+<h1 id="title">Reaction Test</h1><div id="timer" hidden></div>
 <section id="ready" class="panel" hidden><h2 id="readyTitle"></h2><p id="instructions"></p><button id="start" class="primary">I’m ready</button></section>
 <section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button><p class="muted">Wait for TAP NOW. An early tap ends this attempt.</p></section>
 <section id="memory" hidden><p id="memoryHint"></p><div id="grid" aria-label="Memory grid"></div></section>
 <section id="precision" hidden><p id="precisionHint"></p><div id="arena" aria-label="Precision play area"><button id="target" aria-label="Precision target">1</button></div><p class="muted">Tap each numbered target. Tapping elsewhere ends the attempt.</p></section>
 <section id="result" class="panel" hidden><h2 id="resultTitle"></h2><p id="resultText"></p></section>
-<div id="saving" role="status" aria-live="polite"></div><p id="hint">The clock keeps running if you leave. Pass all three tests consecutively.</p>
-</main><script src="logic.js"></script><script>
+<div id="saving" role="status" aria-live="polite"></div><p id="hint" hidden></p>
+</main><script src="logic.js"></script><div id="falsestart" hidden role="alert" tabindex="0"><h1>FALSE START</h1><p>This try does not count. Tap to continue.</p></div>
+<script>
 let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,taps=[],memorySequence=[],sentKey='';
 const $=id=>document.getElementById(id),views=['ready','reaction','memory','precision','result'];
 const send=(type,extra)=>window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*');
@@ -31,9 +33,11 @@ function emit(action,payload={}){
 function publish(){if(!pending)return;sentKey=JSON.stringify(pending);send('streamlit:setComponentValue',{value:pending,dataType:'json'});}
 function cacheTaps(){store('focus-taps-'+game.id,{revision:game.revision,taps});}
 function selectView(name){views.forEach(v=>$(v).hidden=v!==name);}
+let showRed=false;
 function render(){
  if(!game)return;
  const at=now(),c=game.config,ended=game.status!=='running';
+ $('falsestart').hidden=!showRed;
  $('hint').textContent=ended?'Your result is saved. Use × to return to games.':'The clock keeps running if you leave. Pass all three tests consecutively.';
  const index=game.phase.startsWith('reaction')?0:game.phase.startsWith('memory')?1:2;
  document.querySelectorAll('.progress span').forEach((el,i)=>el.classList.toggle('done',i<index||game.status==='passed'));
@@ -83,8 +87,11 @@ $('start').onclick=()=>{if(!pending)emit('ready');};
 function reactionPress(){
  if(pending||!game)return;
  const elapsed=Math.floor(now()-Date.parse(game.signal_at));
+ if(elapsed<0&&game.config.reaction_only){showRed=true;emit('false_start');return;}
  if(elapsed<0||elapsed>game.config.reaction_response_ms)emit('fail');else emit('reaction',{elapsed_ms:elapsed});
 }
+$('falsestart').addEventListener('pointerdown',event=>{event.preventDefault();showRed=false;render();});
+$('falsestart').addEventListener('keydown',event=>{if(['Enter',' ','Escape'].includes(event.key)){event.preventDefault();showRed=false;render();}});
 $('react').addEventListener('pointerdown',event=>{event.preventDefault();reactionPress();});
 $('react').addEventListener('keydown',event=>{if(!event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();reactionPress();}});
 for(let i=0;i<9;i++){

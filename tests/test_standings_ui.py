@@ -55,7 +55,7 @@ def ui(monkeypatch):
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
     monkeypatch.setattr("shared.get_territories", lambda: state["territories"])
     monkeypatch.setattr(db, "list_drink_entries", lambda _: state["entries"])
-    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: [
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
         SimpleNamespace(id="member", player_id="mia"), SimpleNamespace(id="other", player_id="leo")])
     monkeypatch.setattr(db, "list_players", lambda: state["players"])
     return state
@@ -74,7 +74,8 @@ def all_markup(at):
 
 def rank_of(markup, name):
     """The rank a player/team is actually labelled with, regardless of the
-    podium's visual DOM order (2nd, 1st, 3rd left-to-right)."""
+    podium's visual DOM order (2nd, 1st, 3rd left-to-right). The current
+    """
     for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
@@ -158,3 +159,50 @@ def test_whole_season_is_replayed_once_for_all_territory_pills(ui, monkeypatch):
     assert not at.exception
     assert rank_of(all_markup(at), "Mia") == 1
     replay.assert_called_once()
+
+
+def test_departed_player_keeps_rank_and_quiz_transfers(ui, monkeypatch):
+    """The merge must retain both historical membership names and quiz stakes."""
+    from core.models import SeasonTransfer
+    from tests.test_scoring_v1 import START
+
+    ui['entries'] = [entry('a', 'member', 'mixed', 'large', 0, order=1, territory=None),
+                     entry('b', 'other', 'mixed', 'large', 1, order=2, territory=None)]
+    transfer = SeasonTransfer('quiz', 'season', 'member', 'other', 'member', 'other', 3, 3, START)
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [transfer])
+    def memberships(lobby_id, *, include_left=False):
+        assert lobby_id == 'lobby'
+        current = SimpleNamespace(id='member', player_id='mia', left_at=None)
+        departed = SimpleNamespace(id='other', player_id='leo', left_at=START)
+        return [current, departed] if include_left else [current]
+    monkeypatch.setattr(db, 'list_memberships_for_lobby', memberships)
+    at = page()
+    assert not at.exception
+    markup = all_markup(at)
+    assert rank_of(markup, 'Leo') == 1
+    assert rank_of(markup, 'Mia') == 2
+    assert '<span class="standings-podium-points">8</span>' in markup
+    assert '<span class="standings-podium-points">2</span>' in markup
+
+
+# Tie tag: rows arrive ranked, ties earliest-first.
+import standings_ui  # noqa: E402
+from standings_ui import reached_first  # noqa: E402
+
+TIE_NAMES = {"a": "Ana", "b": "Tomás", "c": "Ben", "d": "Dana"}
+
+
+def test_reached_first_only_on_upper_of_equal_neighbours():
+    rows = [("a", 9), ("b", 8), ("c", 8)]
+    assert [reached_first(rows, i) for i in range(3)] == [False, True, False]
+
+
+def test_leaderboard_renders_tie_tag_and_medal_podium(monkeypatch):
+    shown = []
+    monkeypatch.setattr(standings_ui.st, "markdown", lambda markup, **_: shown.append(markup))
+    standings_ui.leaderboard([("a", 9), ("b", 8), ("c", 8), ("d", 5)], TIE_NAMES, "d")
+    markup = "".join(shown)
+    assert markup.count("standings-first-tag") == 1
+    assert "pts behind" not in markup and "standings-gap" not in markup
+    for colour in ("var(--accent)", "var(--medal-2)", "var(--medal-3)"):
+        assert f"background:{colour};" in markup

@@ -7,7 +7,9 @@ leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 
 Quiz Duel (100 English questions, generated multiplication/logic, reserved
 3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
-Apply migration 016 after 014 to activate its database service; no question import is needed.
+Migration 016 was applied to the shared project on 19 November 2026; no question
+import is needed. New databases still apply 016 after 014. See the
+[activation verification](docs/QUIZ_DUEL.md).
 
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
@@ -476,7 +478,11 @@ require database credentials.
 ### Focus Challenge (19 November 2026)
 
 The second playable minigame adds randomized reaction, seven-step memory and
-precision tests. Accepted entries unlock attempts at five, then seven/nine/etc.
+precision tests. The selected flow uses one reaction within 220 ms, Start memory,
+then Start precision. Apply [`migrations/020_focus_three_stage_flow.sql`](migrations/020_focus_three_stage_flow.sql)
+last, after 015 and any already-installed 018/019 changes; it includes the optional
+017 Focus setup and preserves running games. This migration is prepared, not yet
+installed on the shared project. Accepted entries unlock attempts at five, then seven/nine/etc.
 after failures. One win per evening grants a personal 60-minute x1.5 ordinary
 season/territory effect, including 25% owner income on boosted awards.
 Chug Duel scoring is unchanged. Before activation, the Data owner applies
@@ -487,4 +493,41 @@ including unlimited sequential retries/wins throughout the active season.
 Repeated wins refresh the single x1.5 hour. Normal seasons retain 5/7/9 unlocks,
 one win per evening and their scoring window; older normal snapshots stay frozen.
 See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
-Shared-project migration and real-phone difficulty calibration are pending.
+Shared Focus migrations 014/015 are installed. Real-phone difficulty calibration
+and complete deployed gameplay still need verification.
+
+### Leaving and rejoining lobbies
+
+Open a lobby and choose **Leave lobby → Confirm leave**. Scores remain in lobby
+standings and Profile → My stats, including earned owner income. Personal owner
+income pauses while absent. Rejoin using the original invite code to restore
+the same membership, history, team and game limits. Team slots stay reserved;
+accepted/running duels and running Focus attempts block leaving until finished
+or expired. Team owner income continues normally. See R-LB01–R-LB03.
+
+Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
+[`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
+It is **not applied** to Supabase yet. It passed a local in-memory Postgres
+check (creator/other/retry, history kept); apply it before deploying this code.
+
+Before using this feature, the Data owner applies
+[`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**
+and `012_player_lobby_choices.sql`. Apply the migration before deploying this
+code. It runs no migrations automatically and does not delete existing history.
+Migration 016 was applied to the shared Supabase project with contributor
+authorization on 19 November 2026. All 19 schema/access/history checks and a
+fresh app-process read/RPC check passed. The frontend changes still need
+review, merge and deployment before the public app shows the button.
+
+Verification:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/verify_leave_lobby.py
+```
+
+The second command uses disposable local PostgreSQL with the optional
+`pgserver==0.1.4`, `psycopg[binary]==3.2.13` and `fasteners==0.20` tools described
+above. It verifies access denial, scoring/replay parity, game interruption,
+reserved team slots and persistence after a database restart, using synthetic
+data and no Supabase connection.

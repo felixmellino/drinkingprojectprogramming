@@ -101,7 +101,7 @@ def test_stats_all_lobbies_without_selection_and_fresh_session(repo, monkeypatch
     from tests.test_scoring_v1 import entry
     now = datetime.now(timezone.utc)
     memberships = [SimpleNamespace(id=f'm{i}', lobby_id=f'l{i}') for i in range(6)]
-    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: memberships)
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _, **kwargs: memberships)
     def seasons(lid):
         end = now + timedelta(days=1) if lid == 'l5' else now - timedelta(days=1)
         return [SimpleNamespace(id=lid, ends_at=end)]
@@ -124,12 +124,12 @@ def test_stats_all_lobbies_without_selection_and_fresh_session(repo, monkeypatch
 
 
 def test_stats_empty_and_load_failure(repo, monkeypatch):
-    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [])
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _, **kwargs: [])
     at = page(repo)
     click(at, 'My stats')
     assert 'Total points 0' in stats_text(at) and 'Total Wins 0' in stats_text(at)
     assert at.info
-    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _: [SimpleNamespace(id='me', lobby_id='lobby')])
+    monkeypatch.setattr('data.db.list_memberships_for_player', lambda _, **kwargs: [SimpleNamespace(id='me', lobby_id='lobby')])
     monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [])
     at.run()
     assert 'Total points 0' in stats_text(at)
@@ -149,7 +149,7 @@ def test_stats_reads_new_accepted_checkins_and_rejects_invalid_attempts(repo, mo
     game = replace(season(), ends_at=datetime.now(timezone.utc) + timedelta(days=1))
     saved = []
     monkeypatch.setattr('data.db.list_memberships_for_player',
-                        lambda _: [SimpleNamespace(id='me', lobby_id=game.lobby_id)])
+                        lambda _, **kwargs: [SimpleNamespace(id='me', lobby_id=game.lobby_id)])
     monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [game])
     monkeypatch.setattr('data.db.list_drink_entries', lambda _: list(saved))
     at = page(repo)
@@ -228,6 +228,22 @@ def test_privacy_save_failure_shows_no_success_and_preserves_saved_value(repo, m
     assert not repo['sharing']
     assert any(b.label == 'Change password' for b in at.button)
 
+
+def test_stats_keep_departed_lobby_in_a_fresh_session(repo, monkeypatch):
+    from tests.test_scoring_v1 import entry
+    departed = SimpleNamespace(id='me', lobby_id='left', left_at=datetime.now(timezone.utc))
+    def read(pid, *, include_left=False):
+        assert include_left, 'Personal statistics must request historical memberships'
+        return [departed]
+    monkeypatch.setattr('data.db.list_memberships_for_player', read)
+    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [SimpleNamespace(id='season', ends_at=datetime.now(timezone.utc)+timedelta(days=1))])
+    monkeypatch.setattr('data.db.list_drink_entries', lambda _: [entry('a', 'me', 'beer', 'large', 0)])
+    at = page(repo)
+    click(at, 'My stats')
+    assert 'Total points 3' in stats_text(at) and 'Lobbies played 1' in stats_text(at)
+    fresh = page(repo)
+    click(fresh, 'My stats')
+    assert stats_text(fresh) == stats_text(at)
 
 
 def test_security_overview_and_close_discards_unsaved_changes(repo):
