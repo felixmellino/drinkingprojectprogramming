@@ -60,6 +60,9 @@
 }
 
 /* Base */
+/* Present for screen readers, invisible on screen. */
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .stApp { background: var(--bg); color: var(--text); }
 [data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
 /* Invisible helpers (style blocks, the fixed tab bar, background location and
