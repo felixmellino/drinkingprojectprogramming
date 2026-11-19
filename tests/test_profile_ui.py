@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def click(at, label):
-    next(b for b in at.button if b.label == label).click().run()
+    [b for b in at.button if b.label == label][-1].click().run()
     assert not at.exception
     return at
 
@@ -76,6 +76,7 @@ def test_invalid_edit_and_password_change(repo):
     assert at.error and repo['player'].display_name == 'Mia'
     click(at, 'Back to Profile')
     click(at, 'Account & security')
+    click(at, 'Change password')
     original = repo['player'].pin_hash
     for field, value in zip(at.text_input, ['wrong', 'newpass8', 'newpass8']):
         field.input(value)
@@ -199,12 +200,14 @@ def test_save_failure_keeps_form_and_identity(repo, monkeypatch):
 def test_photo_sharing_toggle_saves_across_fresh_app_sessions(repo):
     at = page(repo)
     click(at, 'Account & security')
+    click(at, 'Photo privacy')
     assert not at.toggle[0].value
     at.toggle[0].set_value(True)
     click(at, 'Save photo privacy')
     assert repo['sharing'] and at.success
     fresh = page(repo)
     click(fresh, 'Account & security')
+    click(fresh, 'Photo privacy')
     assert fresh.toggle[0].value
     fresh.toggle[0].set_value(False)
     click(fresh, 'Save photo privacy')
@@ -217,8 +220,59 @@ def test_privacy_save_failure_shows_no_success_and_preserves_saved_value(repo, m
     monkeypatch.setattr('data.db.save_photo_sharing', fail)
     at = page(repo)
     click(at, 'Account & security')
+    click(at, 'Photo privacy')
     at.toggle[0].set_value(True)
     click(at, 'Save photo privacy')
     assert not at.exception and at.error and not at.success
     assert not repo['sharing']
     assert any(b.label == 'Change password' for b in at.button)
+
+
+
+def test_security_overview_and_close_discards_unsaved_changes(repo):
+    at = page(repo)
+    click(at, 'Account & security')
+    assert not at.text_input and not at.toggle
+    assert any('mia@example.test' in t.value for t in at.text)
+    assert [b.label for b in at.button if str(b.key).startswith('open_security_')] == [
+        'Photo privacy', 'Change password']
+
+    click(at, 'Photo privacy')
+    assert len(at.toggle) == 1 and not at.text_input
+    at.toggle[0].set_value(True).run()
+    click(at, 'Close')
+    assert not at.toggle and not repo['sharing']
+    assert '_security_dialog' not in at.session_state
+    click(at, 'Photo privacy')
+    assert not at.toggle[0].value
+    click(at, 'Close')
+
+    click(at, 'Change password')
+    assert len(at.text_input) == 3 and not at.toggle
+    at.text_input[0].input('do-not-retain').run()
+    click(at, 'Close')
+    assert not at.text_input
+    click(at, 'Change password')
+    assert all(f.value == '' for f in at.text_input)
+    click(at, 'Close')
+    click(at, 'Back to Profile')
+    click(at, 'Account & security')
+    assert not at.text_input and not at.toggle
+
+
+def test_password_dialog_service_failure_keeps_account_signed_in(repo, monkeypatch):
+    def unavailable(*args):
+        raise RuntimeError('offline')
+    monkeypatch.setattr('data.db.update_password', unavailable)
+    at = page(repo)
+    click(at, 'Account & security')
+    click(at, 'Change password')
+    original = repo['player'].pin_hash
+    for field, value in zip(at.text_input, ['password8', 'newpass8', 'newpass8']):
+        field.input(value)
+    click(at, 'Change password')
+    assert at.error and not at.success
+    assert repo['player'].pin_hash == original
+    assert at.session_state['player_id'] == 'self'
+    assert at.session_state['_security_dialog'] == 'password'
+    assert len(at.text_input) == 3
