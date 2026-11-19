@@ -371,14 +371,19 @@ def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     records.assert_not_called()
 
 
-def test_history_gallery_paginates_authorized_photos_and_opens_the_chosen_entry(ui, monkeypatch):
+def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monkeypatch):
     state, game = ui
-    models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(5)]
+    # Three game nights: the newest two hold one photo each, the oldest holds
+    # two -- newest-first, matching db.list_checkin_photos's own order.
+    models = [entry("photo-3", "member", "beer", "small", 14 * 24 * 60),
+              entry("photo-2", "member", "beer", "small", 7 * 24 * 60),
+              entry("photo-1", "member", "beer", "small", 5),
+              entry("photo-0", "member", "beer", "small", 0)]
     photos = [{"id": model.id, "username": "Mia", "captured_at": None,
                "submitted_at": model.submitted_at.isoformat(), "is_owner": True,
                "has_photo": True, "timezone_name": game.timezone_name, "rule_version": "v1",
                "entry": model, "season": game, "corrected_at": None, "income_recipient": None,
-               "location": "matched", "territory": TERRITORY.name} for model in reversed(models)]
+               "location": "matched", "territory": TERRITORY.name} for model in models]
     photos[0]["username"] = '<img src=x onerror="alert(1)">'
     downloads = []
     monkeypatch.setattr(db, "list_checkin_photos", lambda *args: photos)
@@ -389,26 +394,43 @@ def test_history_gallery_paginates_authorized_photos_and_opens_the_chosen_entry(
     monkeypatch.setattr(db, "download_checkin_photo", download)
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
     assert not page.exception
-    assert downloads == ["photo-4", "photo-3", "photo-2", "photo-1"]
-    assert len(page.get("html")) == 4
+
+    # Page 1: the two newest game nights, one photo each. The oldest night
+    # (two photos) isn't downloaded until its page is opened.
+    assert downloads == ["photo-3", "photo-2"]
     markup = "\n".join(item.value for item in page.markdown)
-    assert "&lt;img" in markup and photos[0]["username"] not in markup
-    assert "+1 season pts" in markup and "Small" in markup
-    button(page, "Older photos").click().run()
-    assert not page.exception and len(page.get("html")) == 1
-    assert button(page, "Older photos").disabled
-    button(page, "View details").click().run()
+    assert markup.count("Game night") == 2
+    tiles = "\n".join(item.value for item in page.get("html"))
+    assert "&lt;img" in tiles and photos[0]["username"] not in tiles
+    assert button(page, "Newer nights").disabled
+    assert not button(page, "Older nights").disabled
+
+    button(page, "Older nights").click().run()
     assert not page.exception
-    assert page.selectbox[0].value == "photo-0"
-    assert any("+1 season" in item.value for item in page.text)
-    button(page, "All photos").click().run()
-    assert not page.exception and button(page, "View details")
+    # A button-triggered rerun re-renders the page once before the session
+    # state update takes effect, so only the tail (the newly visible night)
+    # is asserted here -- see the identical pattern this replaced.
+    assert downloads[-2:] == ["photo-1", "photo-0"]
+    assert not button(page, "Newer nights").disabled
+    assert button(page, "Older nights").disabled
+
+    next(b for b in page.button if b.key == "memory_tile_photo-0_open").click().run()
+    assert not page.exception
+    assert page.session_state["history_detail_id"] == "photo-0"
+    assert any("Mia" in item.value for item in page.text)
+
+    button(page, "Back to photos").click().run()
+    assert not page.exception
+    assert "history_detail_id" not in page.session_state
+    assert any(b.key == "memory_tile_photo-0_open" for b in page.button)
 
 
 def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
     _, game = ui
     models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(2)]
-    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: [{"id": model.id} for model in models])
+    stubs = [{"id": model.id, "submitted_at": model.submitted_at.isoformat(), "captured_at": None,
+              "timezone_name": game.timezone_name, "season": game} for model in models]
+    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: stubs)
     def denied(*args):
         raise PermissionError("Membership revoked")
     monkeypatch.setattr(db, "download_checkin_photo", denied)

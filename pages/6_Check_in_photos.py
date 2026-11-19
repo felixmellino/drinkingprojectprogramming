@@ -14,7 +14,7 @@ from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import context_line, page_header, section_heading
-from photo_history_ui import photo_card, photo_metadata, framed_photo
+from photo_history_ui import game_night_bounds, game_night_label, memory_tile, photo_metadata, framed_photo
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -60,49 +60,57 @@ if detail_id not in entries_by_id:
     st.session_state.pop("history_detail_id", None)
     detail_id = None
 
+NIGHTS_PER_PAGE = 2
+
 if len(entries) > 1 and detail_id is None:
-    page_size = 4
-    last_page = (len(entries) - 1) // page_size
+    nights = []  # [[start, end, [entries...]], ...], newest night first
+    for item in entries:  # already newest-first
+        start, end = game_night_bounds(item)
+        if nights and nights[-1][0] == start:
+            nights[-1][2].append(item)
+        else:
+            nights.append([start, end, [item]])
+
+    last_page = (len(nights) - 1) // NIGHTS_PER_PAGE
     page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
-    first = page_number * page_size
-    visible_entries = entries[first:first + page_size]
-    st.caption(f"Showing {first + 1}–{first + len(visible_entries)} of {len(entries)} check-ins · newest first")
-    for column, item in zip(st.columns(len(visible_entries)), visible_entries):
-        with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
-            try:
-                photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
-            except PermissionError:
-                st.warning("Photo access changed. Refresh to load the current photo history.")
-                st.stop()
-            except (APIError, RequestError, RuntimeError, StorageException):
-                st.warning("This photo could not be loaded. Its details are still available.")
-                photo = None
-            photo_card(item, photo)
-            if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
-                st.session_state["history_detail_id"] = item["id"]
+    first = page_number * NIGHTS_PER_PAGE
+    visible_nights = nights[first:first + NIGHTS_PER_PAGE]
+
+    for start, end, night_entries in visible_nights:
+        count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
+        st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
+                    f'<span>{count}</span></div>', unsafe_allow_html=True)
+        with st.container(key=f"memory_row_{start.date().isoformat()}"):
+            for column, item in zip(st.columns(len(night_entries)), night_entries):
+                with column, st.container(key=f"memory_tile_{item['id']}"):
+                    try:
+                        photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
+                    except PermissionError:
+                        st.warning("Photo access changed. Refresh to load the current photo history.")
+                        st.stop()
+                    except (APIError, RequestError, RuntimeError, StorageException):
+                        st.warning("This photo could not be loaded. Its details are still available.")
+                        photo = None
+                    if memory_tile(item, photo, key=f"memory_tile_{item['id']}"):
+                        st.session_state["history_detail_id"] = item["id"]
+                        st.rerun()
+
+    if last_page > 0:
+        newer, _, older = st.columns(3)
+        with newer:
+            if st.button("Newer nights", disabled=page_number == 0):
+                st.session_state["history_page"] = page_number - 1
                 st.rerun()
-    newer, _, older = st.columns(3)
-    with newer:
-        if st.button("Newer photos", disabled=page_number == 0):
-            st.session_state["history_page"] = page_number - 1
-            st.rerun()
-    with older:
-        if st.button("Older photos", disabled=page_number == last_page):
-            st.session_state["history_page"] = page_number + 1
-            st.rerun()
+        with older:
+            if st.button("Older nights", disabled=page_number == last_page):
+                st.session_state["history_page"] = page_number + 1
+                st.rerun()
     st.stop()
 
-if len(entries) > 1 and st.button("All photos"):
+if len(entries) > 1 and st.button("Back to photos"):
     st.session_state.pop("history_detail_id", None)
     st.rerun()
-with st.container(key="drink_ui_panel_picker"):
-    section_heading("01", "Check-in details", "Photo, points and available actions.")
-    ids = list(entries_by_id)
-    selected_id = st.selectbox("Check-in", ids, index=ids.index(detail_id) if detail_id else 0,
-                               format_func=lambda value: entry_label(entries_by_id[value]))
-if selected_id is None:
-    st.stop()
-entry = entries_by_id[selected_id]
+entry = entries_by_id[detail_id] if detail_id in entries_by_id else entries_by_id[next(iter(entries_by_id))]
 
 try:
     photo = db.download_checkin_photo(player_id, lobby_id, entry["id"])
