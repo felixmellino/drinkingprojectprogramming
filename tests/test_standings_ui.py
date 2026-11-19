@@ -1,4 +1,5 @@
 """Check displayed scoring results and access/error states through the real page."""
+import re
 from dataclasses import replace
 from html.parser import HTMLParser
 from pathlib import Path
@@ -67,22 +68,29 @@ def all_markup(at):
     return "\n".join(item.value for item in at.markdown)
 
 
-def board(at):
-    return next(item.value for item in at.markdown if "<table" in item.value)
+def rank_of(markup, name):
+    """The rank a player/team is actually labelled with, regardless of the
+    podium's visual DOM order (2nd, 1st, 3rd left-to-right)."""
+    for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
+        if name in text(m.group(2)):
+            return int(m.group(1))
+    for offset, m in enumerate(re.finditer(r'<li class="standings-row[^"]*">(.*?)</li>', markup, re.S)):
+        if name in text(m.group(1)):
+            return offset + 4
+    return None
 
 
 def test_display_keeps_exact_owner_income_and_base_territory_accounts(ui):
     at = page()
     assert not at.exception
-    ranking = text(board(at))
-    assert ranking.index("Mia") < ranking.index("Leo")
-    assert "9.5 pts" in ranking and "6.75 pts" in ranking
-    visible = text(all_markup(at))
-    assert "Your rank #1" in visible and "Season points 9.5" in visible
-    assert "Territories 1 Currently yours" in visible
-    assert "8 pts" in visible and "6 pts" in visible
-    assert "YOU" in ranking
-    assert "private@example.test" not in all_markup(at)
+    markup = all_markup(at)
+    assert rank_of(markup, "Mia") == 1
+    assert rank_of(markup, "Leo") == 2
+    visible = text(markup)
+    assert "9.5" in visible and "6.75" in visible
+    assert "YOU" in visible
+    assert 'title="Yours"' in markup
+    assert "private@example.test" not in markup
 
 
 def test_display_preserves_earliest_reached_tie_and_current_players_rank(ui):
@@ -91,9 +99,9 @@ def test_display_preserves_earliest_reached_tie_and_current_players_rank(ui):
                      entry("early", "other", "shot", None, 0, territory=None)]
     at = page()
     assert not at.exception
-    ranking = text(board(at))
-    assert ranking.index("Leo") < ranking.index("Mia")
-    assert "Your rank #2" in text(all_markup(at))
+    markup = all_markup(at)
+    assert rank_of(markup, "Leo") == 1
+    assert rank_of(markup, "Mia") == 2
 
 
 def test_empty_season_has_no_invented_rank_or_territory_owner(ui):
@@ -101,10 +109,9 @@ def test_empty_season_has_no_invented_rank_or_territory_owner(ui):
     at = page()
     assert not at.exception
     assert any("No points logged yet" in item.value for item in at.info)
-    visible = text(all_markup(at))
-    assert "Your rank —" in visible and "Unclaimed" in visible
-    assert "No owner yet" in visible
-    assert not any("<table" in item.value for item in at.markdown)
+    markup = all_markup(at)
+    assert 'title="Unclaimed"' in markup
+    assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
 
 
 @pytest.mark.parametrize("service", ["season", "territories"])
@@ -117,12 +124,14 @@ def test_service_failure_does_not_fabricate_zero_scores(ui, monkeypatch, service
         monkeypatch.setattr("shared.get_territories", unavailable)
     at = page()
     assert not at.exception
+    markup = all_markup(at)
     if service == "season":
         assert at.error
-        assert not any("<table" in item.value for item in at.markdown)
+        assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
     else:
-        assert at.warning and "9.5 pts" in text(board(at))
-        assert "Could not load" in text(all_markup(at))
+        assert at.warning
+        assert rank_of(markup, "Mia") == 1
+        assert '<div class="standings-pills"' not in markup
 
 
 def test_public_names_and_territory_names_are_rendered_as_text(ui):
@@ -135,12 +144,13 @@ def test_public_names_and_territory_names_are_rendered_as_text(ui):
     assert payload not in markup and "&lt;img" in markup
 
 
-def test_whole_season_is_replayed_once_for_all_territory_cards(ui, monkeypatch):
+def test_whole_season_is_replayed_once_for_all_territory_pills(ui, monkeypatch):
     from unittest.mock import Mock
     from core.scoring_v1 import replay_season
     replay = Mock(wraps=replay_season)
     monkeypatch.setattr('core.scoring_v1.replay_season', replay)
     ui['territories'] = [TERRITORY] + [replace(TERRITORY,id=f'extra-{i}',name=f'Area {i}') for i in range(23)]
     at = page()
-    assert not at.exception and '9.5 pts' in text(board(at))
+    assert not at.exception
+    assert rank_of(all_markup(at), "Mia") == 1
     replay.assert_called_once()

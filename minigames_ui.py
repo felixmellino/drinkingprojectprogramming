@@ -118,7 +118,7 @@ def render_minigames(player, member, lobby, season):
     unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    page_header("Minigames", "Chug Duel · Challenge someone in your lobby.", compact=True, section="MINIGAMES")
+    page_header("Minigames", "Chug Duel · Challenge someone in your lobby.", compact=True)
     context_line(lobby.name, "Test season · Unlimited minigame plays" if unlimited
                  else f"Evening resets at 06:00 · {season.timezone_name}")
     track_location()
