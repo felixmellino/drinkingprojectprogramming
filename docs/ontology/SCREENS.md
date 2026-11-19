@@ -206,8 +206,10 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- City map with the 48 territories coloured for the viewer: green = yours,
-  red = someone else's, grey = unclaimed.
+- City map with the 48 territories coloured for the viewer: sky blue = yours,
+  scarlet red = someone else's, grey = unclaimed (palette colours, changed from
+  green/red on 19 November 2026 so red-green colour-blind players can tell
+  them apart). The player's own position is a white dot with a navy ring.
 - Tapping a territory shows its name, what it means for you and your points
   there: "Unclaimed: your next drink here claims it", "Yours: you lead by X
   points", or "Owned by Y: you need X more points to take it" (owner's
