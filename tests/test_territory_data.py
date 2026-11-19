@@ -23,7 +23,7 @@ METRES_PER_DEG_LNG = 86_900
 METRES_PER_DEG_LAT = 110_574
 
 OVERLAP_TOLERANCE_M = 0.5
-SAMPLE_STEP_M = 1.0
+SAMPLE_STEP_M = 2.0
 
 # Rough box around Lisbon and Carcavelos (Nova SBE), as (lng, lat) like
 # GeoJSON. Catches swapped coordinates, which would land in Ethiopia.
@@ -56,35 +56,45 @@ def distance_to_edge_m(lng, lat, ring):
     return best
 
 
+def _boundary_samples(ring):
+    """Every corner plus a point every SAMPLE_STEP_M metres along each edge."""
+    for (ax, ay), (bx, by) in zip(ring, ring[1:]):
+        length_m = math.hypot((bx - ax) * METRES_PER_DEG_LNG, (by - ay) * METRES_PER_DEG_LAT)
+        steps = max(1, int(length_m // SAMPLE_STEP_M))
+        for i in range(steps):
+            t = i / steps
+            yield ax + (bx - ax) * t, ay + (by - ay) * t
+
+
+def _deepest_into(ring_a, ring_b):
+    """How far ring_a's outline reaches inside ring_b, in metres."""
+    lngs, lats = [p[0] for p in ring_b], [p[1] for p in ring_b]
+    box = (min(lngs), max(lngs), min(lats), max(lats))
+    deepest = 0.0
+    for lng, lat in _boundary_samples(ring_a):
+        if box[0] < lng < box[1] and box[2] < lat < box[3] and point_in_polygon(lat, lng, ring_b):
+            deepest = max(deepest, distance_to_edge_m(lng, lat, ring_b))
+    return deepest
+
+
 def deepest_overlap_m(ring_a, ring_b):
-    """How far (in metres) the deepest shared spot of two outlines lies
-    inside both of them. 0 means they do not overlap."""
+    """How far (in metres) two outlines reach into each other. 0 means they
+    don't overlap. If two areas overlap, part of one outline must lie inside
+    the other (or one sits completely inside the other), so checking points
+    along both outlines is enough, and fast even for very large areas."""
     lng_min = max(min(p[0] for p in ring_a), min(p[0] for p in ring_b))
     lng_max = min(max(p[0] for p in ring_a), max(p[0] for p in ring_b))
     lat_min = max(min(p[1] for p in ring_a), min(p[1] for p in ring_b))
     lat_max = min(max(p[1] for p in ring_a), max(p[1] for p in ring_b))
     if lng_min >= lng_max or lat_min >= lat_max:
         return 0.0  # bounding boxes don't even touch
-
-    step_lng = SAMPLE_STEP_M / METRES_PER_DEG_LNG
-    step_lat = SAMPLE_STEP_M / METRES_PER_DEG_LAT
-    deepest = 0.0
-    lat = lat_min
-    while lat <= lat_max:
-        lng = lng_min
-        while lng <= lng_max:
-            if point_in_polygon(lat, lng, ring_a) and point_in_polygon(lat, lng, ring_b):
-                depth = min(distance_to_edge_m(lng, lat, ring_a), distance_to_edge_m(lng, lat, ring_b))
-                deepest = max(deepest, depth)
-            lng += step_lng
-        lat += step_lat
-    return deepest
+    return max(_deepest_into(ring_a, ring_b), _deepest_into(ring_b, ring_a))
 
 
 # -- R-T01: every territory is a named, closed polygon in Lisbon --------------
 
-def test_file_has_the_twenty_four_territories():
-    assert len(load_features()) == 24
+def test_file_has_the_forty_eight_territories():
+    assert len(load_features()) == 48
 
 
 def test_app_loader_reads_every_territory_with_its_permanent_id():
@@ -93,7 +103,7 @@ def test_app_loader_reads_every_territory_with_its_permanent_id():
     territories = load_territories()
     file_ids = [f["properties"]["id"] for f in load_features()]
     assert [t.id for t in territories] == file_ids
-    assert len(set(file_ids)) == 24
+    assert len(set(file_ids)) == 48
 
 
 def test_every_territory_has_a_unique_name():
@@ -156,6 +166,9 @@ def test_overlap_check_allows_a_shared_border():
         ("Nova SBE main building", (38.6782, -9.3259), "Nova SBE Campus"),
         ("Carcavelos beach, part of the Nova area", (38.6790, -9.3360), "Nova SBE Campus"),
         ("Largo de Camões", (38.71057, -9.14343), "Chiado"),
+        ("Praça do Comércio", (38.7075, -9.1365), "Baixa"),
+        ("Mosteiro dos Jerónimos", (38.6979, -9.2068), "Belém"),
+        ("Jamor golf course", (38.7134, -9.2540), "Jamor Golf"),
         ("Jardim do Príncipe Real", (38.71628, -9.14861), "Príncipe Real"),
         ("Rua Nova do Carvalho", (38.70723, -9.14380), "Pink Street"),
     ],
@@ -167,9 +180,9 @@ def test_known_places_match_their_territory(place, lat_lng, expected_name):
     assert next(t.name for t in territories if t.id == territory_id) == expected_name
 
 
-def test_praca_do_comercio_is_outside_every_territory():
-    """Outside case (R1): beyond the covered centre a drink counts for the season only."""
-    result, territory_id = evaluate_location((38.7075, -9.1365), None, load_territories())
+def test_the_airport_is_outside_every_territory():
+    """Outside case (R1): beyond the covered area a drink counts for the season only."""
+    result, territory_id = evaluate_location((38.7742, -9.1342), None, load_territories())
     assert result == "outside"
     assert territory_id is None
 

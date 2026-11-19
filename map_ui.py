@@ -24,7 +24,14 @@ COLOURS = {
     "theirs": [255, 93, 82],    # #FF5D52 red
     "free": [126, 136, 156],    # #7E889C grey
 }
-FILL_ALPHA = {"yours": 125, "theirs": 120, "free": 55}
+FILL_ALPHA = {"yours": 125, "theirs": 120, "free": 70}
+# Outlines: unclaimed areas get a light, neutral cream edge so every border
+# stays clearly visible on the dark map without looking like a colour status.
+LINE_COLOURS = {
+    "yours": COLOURS["yours"] + [240],
+    "theirs": COLOURS["theirs"] + [240],
+    "free": [240, 225, 206, 215],   # --text cream
+}
 LEGEND = {"yours": "Yours", "theirs": "Someone else's", "free": "Unclaimed"}
 HOVER_COLOUR = [255, 255, 255, 70]  # lightens the area under the pointer
 
@@ -38,7 +45,7 @@ AREAS = {
         "santa-catarina", "tower-bar", "santos-kiosk", "after8", "principe-real",
         "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
         "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
-    "Nova SBE": ["nova-sbe"],
+    "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
 }
 ME = ":material/my_location: Me"
 ALL = "All"
@@ -173,7 +180,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                 "detail": escape(row["detail"]),
                 "points": f"Your points here: {row['my_points']}",
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
-                "line": COLOURS[row["status"]] + [235 if row["status"] != "free" else 120],
+                "line": LINE_COLOURS[row["status"]],
             },
         }
         for row in rows
