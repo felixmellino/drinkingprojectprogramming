@@ -141,3 +141,28 @@ def test_qa_with_only_migration_014_shows_the_required_upgrade(focus):
     page=open_page(selected='focus')
     assert not page.exception and any('migration 015' in e.value for e in page.error)
     assert not start.called
+
+
+def test_server_qa_status_handles_a_stale_season_snapshot_without_dividing_by_zero(focus):
+    state,start,action,service=focus
+    # The page still has a normal-looking snapshot while the authoritative RPC
+    # reports QA. Only the server can permit an actual start or grant an award.
+    assert 'test_mode' not in service['game'].scoring_rules
+    state.update(count=0,threshold=0,unlimited=True)
+    page=open_page(selected='focus')
+    assert not page.exception
+    assert not page.get('progress')
+    assert not button(page,'Start Focus Challenge').disabled
+    button(page,'Start Focus Challenge').click().run()
+    assert not page.exception and start.call_count==1
+
+
+@pytest.mark.parametrize('threshold',[0,-1,None,True])
+def test_invalid_normal_unlock_threshold_shows_reload_message_without_crashing_or_starting(focus,threshold):
+    state,start,action,_=focus
+    state.update(count=0,threshold=threshold,unlimited=False)
+    page=open_page(selected='focus')
+    assert not page.exception
+    assert any('Reload' in e.value for e in page.error)
+    assert not any(b.label=='Start Focus Challenge' for b in page.button)
+    assert not start.called and not action.called

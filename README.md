@@ -5,6 +5,10 @@ and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
 
+Quiz Duel (100 English questions, generated multiplication/logic, reserved
+3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
+Apply migration 016 after 014 to activate its database service; no question import is needed.
+
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**
@@ -338,7 +342,10 @@ still need `005_scoring_v1.sql` after photo setup as described above.
 Profile opens Edit profile, Friends, My stats and Account & security as
 separate views with Back to Profile. Log out signs out immediately. Players
 can edit username/first name/surname; email stays read-only. Password changes
-require the current password and sign out all devices. My stats shows Total points, Drinks, Lobbies played and Total Wins across
+require the current password and sign out all devices. Account & security keeps
+private name and email above Photo privacy and Change password buttons. Each
+opens a dismissible popup; closing discards unsaved inputs, and privacy saves
+show confirmation inside the popup. My stats shows Total points, Drinks, Lobbies played and Total Wins across
 active and finished lobbies, independently of the selected lobby. Accepted
 scoring check-ins count immediately, including existing history.
 Points include the player's own drinks and individual

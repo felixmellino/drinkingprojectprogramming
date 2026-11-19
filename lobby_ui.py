@@ -124,7 +124,7 @@ def show_summary(player_id, lobby, season, status, now):
     if season:
         try:
             entries = db.list_drink_entries(season.id)
-            leader = season_leader(entries)
+            leader = season_leader(entries, db.list_season_transfers(season.id))
             if leader:
                 if lobby.game_mode == 'team':
                     teams = db.list_lobby_teams(player_id, lobby.id)

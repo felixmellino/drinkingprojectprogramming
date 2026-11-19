@@ -223,6 +223,9 @@ def _scoring_rpc(name: str, parameters: dict):
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = getattr(error, "message", "")
+        if reason == "quiz_reserved_points":
+            from core.quiz_duel import ERRORS
+            raise ValueError(ERRORS[reason]) from None
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby or entry.") from None
         if reason in {"invalid_selection", "scoring_closed", "cooldown", "correction_closed", "correction_conflict",
@@ -602,10 +605,13 @@ def cleanup_checkin_photos(*, apply: bool = False) -> dict[str, int]:
 
 def _focus_rpc(name: str, parameters: dict) -> dict:
     from core.focus_challenge import ERRORS
+    from core.quiz_duel import ERRORS as QUIZ_ERRORS
     try:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = error.message.strip()
+        if reason == "quiz_busy":
+            raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason == 'permission_denied':
             raise PermissionError(ERRORS[reason]) from None
         if reason in ERRORS:
@@ -630,10 +636,13 @@ def focus_attempt_action(player_id: str, attempt_id: str, revision: int, action:
 
 def _duel_rpc(name: str, parameters: dict) -> list[dict]:
     from core.chug_duel import ERRORS
+    from core.quiz_duel import ERRORS as QUIZ_ERRORS
     try:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = error.message.strip()
+        if reason in {"quiz_busy", "quiz_reserved_points"}:
+            raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason == "permission_denied":
             raise PermissionError(ERRORS[reason]) from None
         if reason in ERRORS:
@@ -1061,6 +1070,7 @@ def list_lobby_teams(player_id: str, lobby_id: str) -> list[Team]:
 
 
 def _team_rpc(name: str, parameters: dict):
+    from core.quiz_duel import ERRORS as QUIZ_ERRORS
     messages = {
         "team_full": "That team is full. Choose another team.",
         "lobby_full": "This lobby is full.",
@@ -1075,6 +1085,8 @@ def _team_rpc(name: str, parameters: dict):
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
         reason = getattr(error, "message", "")
+        if reason in {"quiz_busy", "quiz_reserved_points"}:
+            raise ValueError(QUIZ_ERRORS[reason]) from None
         if reason in messages:
             raise ValueError(messages[reason]) from None
         if error.code == "23505":
@@ -1095,3 +1107,46 @@ def edit_lobby_team(player_id: str, team_id: str, name: str, raw_photo: bytes | 
         raise ValueError("Choose a simpler picture.")
     _team_rpc("edit_lobby_team", {"actor_player": player_id, "target_team": team_id,
         "new_name": team_name(name), "new_photo": photo, "change_photo": raw_photo is not None or remove_photo})
+
+
+# -- Quiz Duel: private question packs and transactional server decisions --
+def _quiz_rpc(name, parameters):
+    from core.quiz_duel import ERRORS
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        if error.message in ERRORS:
+            raise ValueError(ERRORS[error.message]) from None
+        if error.code in {"PGRST202", "42P01", "PGRST205"}:
+            raise RuntimeError("Quiz Duel needs database migration 016 before it can open.") from None
+        raise
+
+
+def quiz_status(player_id, season_id):
+    return _quiz_rpc("quiz_status", {"actor_player": player_id, "target_season": season_id})
+
+
+def invite_quiz_duel(player_id, season_id, invitation_id, opponent_id, stake):
+    from core.quiz_duel import validate_stake
+    from data.quiz_questions import prepare_duel_deck
+    return _quiz_rpc("invite_quiz_duel", dict(actor_player=player_id, target_season=season_id,
+        invitation_id=invitation_id, opponent_member=opponent_id, selected_stake=validate_stake(stake),
+        private_questions=prepare_duel_deck(invitation_id)))
+
+
+def quiz_action(player_id, duel_id, action, round_no=None, choice=None):
+    return _quiz_rpc("quiz_action", dict(actor_player=player_id, target_duel=duel_id,
+        selected_action=action, expected_round=round_no, selected_choice=choice))
+
+
+def list_season_transfers(season_id):
+    from core.models import SeasonTransfer
+    try:
+        rows = (get_client().table("quiz_transfers").select("*").eq("season_id", season_id)
+                .order("event_order").execute().data)
+    except APIError as error:
+        # Additive deployment: ordinary standings still work before migration 016.
+        if error.code in {"42P01", "PGRST205"}:
+            return []
+        raise
+    return [SeasonTransfer(**dict(row, created_at=datetime.fromisoformat(row["created_at"]))) for row in rows]

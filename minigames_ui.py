@@ -19,6 +19,7 @@ from drink_entry_ui import page_header, context_line
 from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
+from quiz_duel_ui import render_quiz
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
@@ -70,6 +71,14 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False,
                    else 'Available in new normal seasons or explicitly marked test seasons')
         if st.button('Open Focus Challenge', key='open_game_focus', width='stretch', disabled=not focus_available):
             st.session_state['minigame_selected'] = 'focus'
+            st.rerun()
+    with st.container(key='minigame_card_quiz', border=True):
+        st.markdown(':material/quiz: **HEAD TO HEAD · 2 PLAYERS**')
+        st.subheader('Quiz Duel')
+        st.write('General knowledge, multiplication and logic. Same questions. Fastest correct answer wins.')
+        st.caption('Stake 3–10 season points · Play on your own phones')
+        if st.button('Open Quiz Duel', key='open_game_quiz', width='stretch'):
+            st.session_state['minigame_selected'] = 'quiz'
             st.rerun()
 
 
@@ -162,6 +171,8 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('chug_focused_duel', None)
         st.session_state.pop('focus_focused_id', None)
         st.session_state.pop('focus_start_request', None)
+        st.session_state.pop('quiz_focused_id', None)
+        st.session_state.pop('quiz_invitation_id', None)
     st.session_state['minigames_context'] = context
     try:
         members = db.list_memberships_for_lobby(lobby.id)
@@ -174,9 +185,12 @@ def render_minigames(player, member, lobby, season):
         return
     labels = {m.id: names.get(m.player_id, "Lobby member") for m in members}
 
-    @st.fragment(run_every="3s")
+    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') == 'quiz' else "3s")
     def live_duels():
         now = current_time()
+        if st.session_state.get('minigame_selected') == 'quiz':
+            render_quiz(player, member, lobby, season, members, labels)
+            return
         if st.session_state.get('minigame_selected') == 'focus' and focus_enabled(season):
             render_focus(player, season)
             return

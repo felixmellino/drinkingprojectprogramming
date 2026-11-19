@@ -3,8 +3,12 @@
 The contributor confirmed teammate approval and requested the complete game.
 R-M06–R-M09 in `docs/ontology/RULES.md` are the active implementation contract.
 This branch includes the game, authoritative persistence and the scoring effect.
-Shared Supabase migration/activation and human phone difficulty calibration are
-still required. No shared-project records were changed during development.
+The contributor applied migrations 014/015 to shared Supabase on 19 November
+2026. A fresh server client verified Focus status in all eight explicit QA
+seasons: zero uploads, threshold zero and unlimited=true, including six older
+snapshots without Focus rules. This confirms setup/status, not a completed
+deployed game. Human phone difficulty calibration and deployed gameplay remain.
+No shared game attempts or scores were created by that verification.
 
 ## Activation
 
@@ -154,10 +158,29 @@ history/retention policy remains applicable.
   the real component and RPCs against isolated PostgreSQL with five synthetic
   accepted entries. The saved reaction times were 193/114/171/111/215 ms; the twelve precision taps finished at 3709 ms. This proves the automated software flow, not human difficulty balance.
 
-Still check after deployment: installation of both 014 and 015, immediate QA
+Still check after deployment: immediate QA
 play with zero uploads and repeated wins, real iPhone/Android timing and target usability,
 switch-away/reconnect on mobile networks, an actual boosted check-in and its
-territory/leaderboard/history, teammate review and shared migration installation.
+territory/leaderboard/history and teammate review.
+
+## Zero-threshold UI fix — 19 November 2026
+
+A deployed test-season page raised ZeroDivisionError while drawing unlock
+progress after migration 015 returned threshold zero. Its traceback referenced
+an earlier function layout, suggesting an imported screen or fragment had
+survived deployment. Reboot the Cloud app and reload the browser after merging
+this fix to replace old running functions. No additional SQL is required.
+
+The screen now uses the authoritative status response for QA presentation,
+so stale page season metadata cannot route a zero QA threshold through the
+normal progress calculation. Nonpositive, missing or invalid normal thresholds
+show a reload error without starting a game. The server still enforces every
+start and award. Streamlit regression tests reproduce the zero-division failure
+before the fix and verify stale metadata, normal invalid values, QA replay and
+normal unlock behavior after it.
+Verification: `python -m pytest tests/test_focus_ui.py tests/test_focus_challenge.py
+tests/test_chug_duel_ui.py -q --tb=short` passed all 61 tests. Deployment/reboot
+and a completed game on the public URL remain to verify.
 
 ## Integration with photo sharing — 19 November 2026
 

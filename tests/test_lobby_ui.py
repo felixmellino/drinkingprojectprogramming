@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def ui(monkeypatch):
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     now = datetime.now(timezone.utc)
     lobbies = [Lobby('old', 'Older lobby', 'OLDER'), Lobby('new', 'Newest lobby', 'NEWEST'),
                Lobby('past', 'Finished lobby', 'PAST'), Lobby('secret', 'Not joined', 'PRIVATE')]

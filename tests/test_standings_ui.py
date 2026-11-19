@@ -39,6 +39,7 @@ def text(markup):
 
 @pytest.fixture
 def ui(monkeypatch):
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     state = {
         "entries": [entry("m1", "member", "beer", "large", 0),
                     entry("l1", "other", "shot", None, 1),
@@ -157,3 +158,27 @@ def test_whole_season_is_replayed_once_for_all_territory_pills(ui, monkeypatch):
     assert not at.exception
     assert rank_of(all_markup(at), "Mia") == 1
     replay.assert_called_once()
+
+
+def test_departed_player_keeps_rank_and_quiz_transfers(ui, monkeypatch):
+    """The merge must retain both historical membership names and quiz stakes."""
+    from core.models import SeasonTransfer
+    from tests.test_scoring_v1 import START
+
+    ui['entries'] = [entry('a', 'member', 'mixed', 'large', 0, order=1, territory=None),
+                     entry('b', 'other', 'mixed', 'large', 1, order=2, territory=None)]
+    transfer = SeasonTransfer('quiz', 'season', 'member', 'other', 'member', 'other', 3, 3, START)
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [transfer])
+    def memberships(lobby_id, *, include_left=False):
+        assert lobby_id == 'lobby'
+        current = SimpleNamespace(id='member', player_id='mia', left_at=None)
+        departed = SimpleNamespace(id='other', player_id='leo', left_at=START)
+        return [current, departed] if include_left else [current]
+    monkeypatch.setattr(db, 'list_memberships_for_lobby', memberships)
+    at = page()
+    assert not at.exception
+    markup = all_markup(at)
+    assert rank_of(markup, 'Leo') == 1
+    assert rank_of(markup, 'Mia') == 2
+    assert '<span class="standings-podium-points">8</span>' in markup
+    assert '<span class="standings-podium-points">2</span>' in markup
