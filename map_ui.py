@@ -19,11 +19,11 @@ from core.scoring_v1 import replay_season, format_points
 from map_markers import owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
-# --territory-* tokens in assets/theme.css (design system "Rush").
+# --territory-* tokens in assets/theme.css (design system "Tennis").
 COLOURS = {
-    "yours": [76, 195, 138],    # #4CC38A green
-    "theirs": [255, 93, 82],    # #FF5D52 red
-    "free": [126, 136, 156],    # #7E889C grey
+    "yours": [44, 153, 214],    # #2C99D6 Sky Blue
+    "theirs": [235, 47, 51],    # #EB2F33 Scarlet Red
+    "free": [138, 151, 166],    # #8A97A6 grey
 }
 FILL_ALPHA = {"yours": 150, "theirs": 150, "free": 55}
 # Every border is plain white, so each area stands out clearly on the dark
@@ -235,10 +235,10 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
             pdk.Layer("ScatterplotLayer", here, id="gps-accuracy", get_position="[lng, lat]", get_radius="radius",
-                      get_fill_color=[90, 168, 255, 45], stroked=False),
+                      get_fill_color=[255, 255, 255, 40], stroked=False),
             pdk.Layer("ScatterplotLayer", here, id="gps-position", get_position="[lng, lat]", get_radius=1,
-                      radius_min_pixels=8, get_fill_color=[90, 168, 255, 255],
-                      get_line_color=[255, 255, 255, 255], stroked=True, line_width_min_pixels=3),
+                      radius_min_pixels=8, get_fill_color=[255, 255, 255, 255],  # --you-dot
+                      get_line_color=[20, 43, 61, 255], stroked=True, line_width_min_pixels=3),
         ]
     st.pydeck_chart(
         pdk.Deck(

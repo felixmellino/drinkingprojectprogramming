@@ -107,6 +107,16 @@
 /* A small "it worked" beat on a successful check-in, same fly-in trick
    as the login card. */
 [class*="st-key-checkin_result"] { animation: checkin-result-in 420ms cubic-bezier(.2, .8, .2, 1) both; }
+/* Check-in reward card: one centred scoreboard instead of a stack of alerts. */
+.stApp .reward-card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 18px 16px 16px; text-align: center; }
+.stApp .reward-card p { margin: 0; }
+.stApp .reward-eyebrow { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+.stApp .reward-points { font-family: var(--font-display); font-size: 4rem; line-height: 1; color: var(--accent); margin-top: 4px !important; }
+.stApp .reward-points.reward-zero { color: var(--text-muted); }
+.stApp .reward-unit { font-size: 0.85rem; color: var(--text-muted); }
+.stApp .reward-where { margin-top: 10px !important; font-size: 1rem; font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+.stApp .reward-chip { display: inline-block; margin-top: 10px !important; padding: 5px 12px; border-radius: var(--radius-pill); background: #FDECEC; color: var(--territory-theirs-ink); font-size: 0.85rem; font-weight: 700; overflow-wrap: anywhere; }
+.stApp .reward-note { margin-top: 10px !important; font-size: 0.8rem; color: var(--text-muted); }
 @keyframes checkin-result-in {
   from { opacity: 0; transform: translateY(10px) scale(.98); }
   to { opacity: 1; transform: none; }
@@ -126,7 +136,7 @@
 .history-photo-frame .drink-photo { margin: 0; width: 100%; }
 .history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
-.history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
+.history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success-ink); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
 
 /* Photo memories: tap-to-open tiles grouped by game night. Each night is a
