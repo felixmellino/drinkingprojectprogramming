@@ -48,44 +48,29 @@ def render_focus(player, season):
                 except (ValueError, PermissionError) + SERVICE_ERRORS as error:
                     _error(error)
         return
-    if st.button('All games', icon=':material/arrow_back:', key='focus_home'):
-        st.session_state.pop('minigame_selected', None)
-        st.rerun()
-    st.subheader('Reaction Test')
-    st.write('Reaction → memory → precision. Pass all three in one attempt.')
-    st.caption('A skill game for fun. Passing does not establish sobriety or fitness to ride or drive.')
-    st.markdown('- **Reaction:** 5 trials, median ≤350 ms; no early taps.\n'
-                '- **Memory:** repeat a fresh 7-position sequence.\n'
-                '- **Precision:** 12 correct targets in 12 seconds; no wrong taps.')
-    reward = ('Test mode: play without uploads and replay after every attempt. '
-              'Wins refresh a ×1.5 boost for 60 minutes. ' if qa else
-              'Win once per evening: ×1.5 on your ordinary season and territory check-ins for 60 minutes. ')
-    st.info(reward + 'Owner income uses boosted points. Chug Duel scoring stays unchanged.')
-    st.caption('Your own Chug Duel entry counts toward unlocks. In teams, only your entries are boosted. '
-               'Leaving or refreshing resumes the same attempt; its clock keeps running.')
+    from minigames_ui import game_header, game_note
+    game_header('Reaction Test', '×1.5 points for 1 hour', 'focus_home')
     count, threshold = info['count'], info['threshold']
-    if qa:
-        st.caption('TEST SEASON · No check-ins required · Unlimited sequential attempts · Boosts never stack')
-    else:
+    if not qa:
         if type(threshold) is not int or threshold <= 0:
-            st.error('Focus availability could not be refreshed. Reload the page before starting a game.')
+            st.error('Could not load. Reload the page.')
             return
-        st.progress(min(1.0, count / threshold), text=f'{count} accepted check-ins · next unlock at {threshold}')
+        if count < threshold and not info['won'] and not info.get('boost_ends_at'):
+            st.progress(min(1.0, count / threshold), text=f'{count} / {threshold} check-ins to unlock')
     if info.get('boost_ends_at'):
         end = datetime.fromisoformat(info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
-        st.success(f'Focus boost active · ×1.5 until {end:%H:%M:%S %Z}.')
-    if info['won'] and not qa:
-        st.info('You have earned this evening’s boost. The evening resets at 06:00 in the lobby timezone.')
+        st.success(f'×1.5 active until {end:%H:%M}')
+    elif info['won'] and not qa:
+        game_note('Done for tonight. Resets at 06:00.')
     elif attempt and attempt['status'] == 'failed' and not qa:
-        st.warning(f'Last attempt ended. The next attempt unlocks at {threshold} accepted check-ins.')
+        game_note(f'Missed. Next try after {threshold} check-ins.')
     now = current_time()
     open_now = (utc(season.starts_at) <= utc(now) < utc(season.ends_at)
                 if qa else scoring_open(now, season))
     if not open_now:
-        st.warning('Reaction Test requires an active season.' if qa
-                   else 'Reaction Test opens during this season’s scoring window.')
+        game_note('Opens with the scoring window.')
     allowed = open_now and (qa or (count >= threshold and not info['won'] and not info.get('boost_ends_at')))
-    if st.button('Start Reaction Test', type='primary', width='stretch', disabled=not allowed):
+    if st.button('Start', type='primary', width='stretch', disabled=not allowed, key='focus_start'):
         request = st.session_state.setdefault('focus_start_request', str(uuid4()))
         try:
             saved = db.start_focus_attempt(player, season.id, request)

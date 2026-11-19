@@ -37,6 +37,21 @@ Interface structure proposal. Colors, typography, icons, dimensions and
 other detailed design choices remain undecided. Gameplay rules belong in
 `RULES.md`; step-by-step journeys belong in `WORKFLOWS.md`.
 
+Game screens cleaned up (19 November 2026, contributor request): opening a game
+shows only "‹ All games", the name, one short line and the next action. No rules
+text, no metrics, no manual refresh (screens update by themselves).
+- Chug Duel: pick who, drink and size as tap-pills (a single possible opponent
+  is preselected), see "Winner +X. Loser +0.", tap Challenge. The other player
+  sees one card with Accept / Decline. The host then takes one photo of both
+  drinks and taps Start duel (location must be ready). Used allowances show as
+  one grey line ("You already challenged tonight."). The form is hidden while a
+  duel is open.
+- Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
+  only while locked, Start. No slogans or disclaimers on any game screen.
+  Everything on game screens is centred.
+- Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
+  one card with Accept / Decline. Rules are unchanged.
+
 ## Drink Entries interface (implemented 17 November 2026)
 
 The Drink Entries block has a mobile layout on Check-in and Lobby photos.

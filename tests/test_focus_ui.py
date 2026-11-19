@@ -30,22 +30,22 @@ def test_hub_opens_focus_with_a_locked_start_and_no_location_access(focus, monke
     monkeypatch.setattr(ui,'track_location',gps)
     page = open_page(selected=None)
     button(page,'Open Reaction Test').click().run()
-    assert not page.exception and button(page,'Start Reaction Test').disabled
-    assert any('4 accepted' in p.text for p in page.get('progress'))
+    assert not page.exception and button(page,'Start').disabled
+    assert any('4 / 5' in p.text for p in page.get('progress'))
     assert not start.called and not action.called and not gps.called
     state['count']=5
     page.run()
-    assert not button(page,'Start Reaction Test').disabled
-    button(page,'Start Reaction Test').click().run()
+    assert not button(page,'Start').disabled
+    button(page,'Start').click().run()
     assert not page.exception and start.call_count==1 and button(page,'Back to games')
-    assert not any(b.label=='Start Reaction Test' for b in page.button)
+    assert not any(b.label=='Start' for b in page.button)
 
 
 def test_saved_attempt_resumes_after_a_fresh_app_session_and_leaving_does_not_reset_it(focus):
     state,start,action,_ = focus
     state['count']=5
     page = open_page(selected='focus')
-    button(page,'Start Reaction Test').click().run()
+    button(page,'Start').click().run()
     saved=deepcopy(state['attempt'])
     button(page,'Back to games').click().run()
     assert not page.exception and state['attempt']==saved
@@ -58,7 +58,7 @@ def test_component_action_uses_saved_revision_and_cannot_award_points(focus):
     state,start,action,_ = focus
     state['count']=5
     page=open_page(selected='focus')
-    button(page,'Start Reaction Test').click().run()
+    button(page,'Start').click().run()
     state['board']={'attempt_id':'attempt','revision':0,'action':'ready','payload':{}}
     page.run()
     assert not page.exception and action.call_count==1
@@ -85,7 +85,7 @@ def test_lost_start_reply_recovers_and_does_not_reuse_its_request_for_a_later_at
         raise ReadTimeout('Reply lost after committed start')
     start.side_effect = lose_reply
     page = open_page(selected='focus')
-    button(page,'Start Reaction Test').click().run()
+    button(page,'Start').click().run()
     assert not page.exception and page.error
     first_request = start.call_args.args[2]
     page.run()
@@ -97,7 +97,7 @@ def test_lost_start_reply_recovers_and_does_not_reuse_its_request_for_a_later_at
     button(page,'Back to games').click().run()
     button(page,'Open Reaction Test').click().run()
     start.side_effect=save
-    button(page,'Start Reaction Test').click().run()
+    button(page,'Start').click().run()
     assert not page.exception and start.call_count==2
     assert start.call_args.args[2] != first_request
 
@@ -115,9 +115,9 @@ def test_existing_qa_season_plays_without_uploads_even_after_winning(focus,previ
     page=open_page(selected=None)
     assert not page.exception and not button(page,'Open Reaction Test').disabled
     button(page,'Open Reaction Test').click().run()
-    assert not page.exception and not button(page,'Start Reaction Test').disabled
+    assert not page.exception and not button(page,'Start').disabled
     assert not page.get('progress')
-    button(page,'Start Reaction Test').click().run()
+    button(page,'Start').click().run()
     assert not page.exception and start.call_count==1 and button(page,'Back to games')
 
 
@@ -128,10 +128,10 @@ def test_qa_can_play_outside_weekly_window_but_not_after_season_ends(focus,monke
     state.update(count=0,threshold=0,unlimited=True)
     monkeypatch.setattr(focus_ui,'current_time',lambda:START+timedelta(days=4))
     page=open_page(selected='focus')
-    assert not page.exception and not button(page,'Start Reaction Test').disabled
+    assert not page.exception and not button(page,'Start').disabled
     monkeypatch.setattr(focus_ui,'current_time',lambda:game.ends_at)
     page.run()
-    assert not page.exception and button(page,'Start Reaction Test').disabled
+    assert not page.exception and button(page,'Start').disabled
     assert not start.called
 
 
@@ -152,8 +152,8 @@ def test_server_qa_status_handles_a_stale_season_snapshot_without_dividing_by_ze
     page=open_page(selected='focus')
     assert not page.exception
     assert not page.get('progress')
-    assert not button(page,'Start Reaction Test').disabled
-    button(page,'Start Reaction Test').click().run()
+    assert not button(page,'Start').disabled
+    button(page,'Start').click().run()
     assert not page.exception and start.call_count==1
 
 
@@ -164,5 +164,5 @@ def test_invalid_normal_unlock_threshold_shows_reload_message_without_crashing_o
     page=open_page(selected='focus')
     assert not page.exception
     assert any('Reload' in e.value for e in page.error)
-    assert not any(b.label=='Start Reaction Test' for b in page.button)
+    assert not any(b.label=='Start' for b in page.button)
     assert not start.called and not action.called
