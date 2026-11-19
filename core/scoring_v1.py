@@ -198,21 +198,30 @@ class Replay:
         return [(m, totals[m]) for m in sorted(totals, key=lambda m: (-totals[m], reached[m], m))]
 
 
-def replay_season(entries: list[DrinkEntry]) -> Replay:
+def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
     """Rebuild from corrected source entries; never compound stored income.
 
     In a same-event season tie the previous higher-ranked recipient wins.
     With a 25% bonus, that recipient is necessarily the owner, whose prior
     total was higher; crediting income before the drinker implements this.
     """
-    if len({entry.season_id for entry in entries}) > 1:
+    if len({entry.season_id for entry in entries} | {t.season_id for t in transfers}) > 1:
         raise ValueError("Replay one season at a time.")
     state = Replay()
-    events = [(entry_order(entry), False, entry) for entry in entries]
-    events += [((0, entry.duel_transfer_order, entry.id), True, entry) for entry in entries
+    events = [(entry_order(entry), 0, entry) for entry in entries]
+    events += [((0, entry.duel_transfer_order, entry.id), 1, entry) for entry in entries
                if entry.duel_transfer_to and entry.duel_transfer_order is not None]
-    for index, (_, is_transfer, entry) in enumerate(sorted(events, key=lambda event: (event[0], event[1]))):
-        if is_transfer:
+    events += [((0, transfer.event_order, transfer.id), 2, transfer) for transfer in transfers]
+    for index, (_, kind, entry) in enumerate(sorted(events, key=lambda event: (event[0], event[1]))):
+        if kind == 2:
+            if type(entry.points) is not int or not 3 <= entry.points <= 10 or entry.source_id == entry.target_id:
+                raise ValueError('Invalid quiz stake transfer.')
+            prior_order = {account: rank for rank, (account, _) in enumerate(state.season_rows())}
+            for account, delta in ((entry.source_id, -entry.points * 4), (entry.target_id, entry.points * 4)):
+                state.season_quarters[account] = state.season_quarters.get(account, 0) + delta
+                state.reached[account] = (index, prior_order.get(account, len(prior_order)))
+            continue
+        if kind == 1:
             # Move only the loser's base award at the result's own event position.
             # Territory ownership and prior-owner income keep their original history.
             prior_order = {account: rank for rank, (account, _) in enumerate(state.season_rows())}

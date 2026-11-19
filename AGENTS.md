@@ -55,6 +55,9 @@ weighted as shown below.
    Focus Challenge is also team-approved (19 November 2026): see R-M06–R-M09.
    It has separate personal attempts, three randomized skill tests and one
    automatic 60-minute x1.5 ordinary-check-in boost per lobby evening.
+   Explicit test seasons also allow Focus without uploads and unlimited
+   sequential replays, including pre-Focus QA snapshots (migration 015).
+   QA games can run throughout an active season; drink scoring keeps its window.
 3. Once the core is stable, prioritize additions that make the game
    better and can be demonstrated and tested. The territory owner
    advantage, team events, and special effects depend on rules agreed by

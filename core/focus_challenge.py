@@ -31,7 +31,14 @@ def new_focus_rules():
 
 def enabled(season):
     return (season.scoring_version == 'v1'
-            and (season.scoring_rules or {}).get('focus_challenge', {}).get('version') == 1)
+            and (test_mode(season)
+                 or (season.scoring_rules or {}).get('focus_challenge', {}).get('version') == 1))
+
+
+def test_mode(season):
+    """Only an explicit frozen JSON boolean enables QA, never a lobby name."""
+    return (season.scoring_version == 'v1'
+            and (season.scoring_rules or {}).get('test_mode') is True)
 
 
 def component_action(value, attempt):

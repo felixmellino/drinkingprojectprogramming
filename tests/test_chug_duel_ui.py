@@ -94,8 +94,9 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     assert not page.exception
     tiles = '\n'.join(m.value for m in page.markdown if 'class="game-tile' in m.value)
     assert '<strong>Chug Duel</strong>' in tiles and '<strong>Reaction Test</strong>' in tiles
-    assert tiles.count('class="game-tile ') == 6 and tiles.count('Coming soon') == 4
-    assert not any(b.label in {'Open Knowledge Quiz', 'Open New game'} for b in page.button)
+    assert '<strong>Quiz Duel</strong>' in tiles and not button(page, 'Open Quiz Duel').disabled
+    assert tiles.count('class="game-tile ') == 6 and tiles.count('Coming soon') == 3
+    assert not any(b.label == 'Open New game' for b in page.button)
     assert not button(page, 'Open Reaction Test').disabled
     assert not any(b.label == 'Send challenge' for b in page.button)
     assert not page.metric and service['duels'] == []

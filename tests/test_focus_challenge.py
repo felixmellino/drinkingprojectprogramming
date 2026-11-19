@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 from postgrest.exceptions import APIError
-from core.focus_challenge import component_action, enabled, new_focus_rules
+from core.focus_challenge import component_action, enabled, new_focus_rules, test_mode as is_test_mode
 from core.scoring_v1 import corrected_entry, format_points, new_rules, replay_season
 from tests.test_scoring_v1 import START, entry, season
 import data.db as db
@@ -22,6 +22,26 @@ def test_focus_configuration_is_frozen_and_not_added_to_old_snapshots():
     old.scoring_rules.pop('focus_challenge')
     assert not enabled(old)
     assert not enabled(replace(old, scoring_version='legacy'))
+
+
+@pytest.mark.parametrize('flag,expected', [(True,True),(False,False),('true',False),(1,False),(None,False)])
+def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot(flag,expected):
+    game=season()
+    game.scoring_rules.pop('focus_challenge')
+    game.scoring_rules['test_mode']=flag
+    before=deepcopy(game.scoring_rules)
+    assert is_test_mode(game) is expected
+    assert enabled(game) is expected
+    assert game.scoring_rules==before
+    assert not enabled(replace(game,scoring_version='legacy'))
+
+
+def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
+    import json
+    from pathlib import Path
+    sql=Path('migrations/015_focus_test_replays.sql').read_text(encoding='utf-8')
+    fallback=sql.split("when public._focus_is_test(s) then '",1)[1].split("'::jsonb",1)[0]
+    assert json.loads(fallback)==new_focus_rules()
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},

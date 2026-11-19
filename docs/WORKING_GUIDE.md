@@ -395,6 +395,10 @@ Shared fonts, spacing, borders and shadows live in `assets/theme.css`.
 The second Minigames card opens the saved three-stage Focus game in new seasons
 whose frozen rules enable it. `core/focus_challenge.py` owns configuration and
 message validation; `focus_challenge_ui.py` plus the component handle presentation.
+Migration 015 also enables existing explicitly marked v1 QA seasons without
+rewriting snapshots: zero uploads, unlimited sequential attempts after failure
+or success, and play throughout the active season. Each win refreshes a single
+x1.5 hour, never stacks it. Normal seasons retain their existing gates.
 Migration 014 owns accepted-entry gates, persisted challenge/progress, deadlines
 and exactly-once rewards. `DrinkEntry.focus_attempt_id` preserves each boosted
 award through corrections and replay, and owner income now supports exact eighths.

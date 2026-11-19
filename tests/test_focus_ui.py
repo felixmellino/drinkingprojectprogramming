@@ -100,3 +100,69 @@ def test_lost_start_reply_recovers_and_does_not_reuse_its_request_for_a_later_at
     button(page,'Start Reaction Test').click().run()
     assert not page.exception and start.call_count==2
     assert start.call_args.args[2] != first_request
+
+
+@pytest.mark.parametrize('previous', [None,'failed','passed'])
+def test_existing_qa_season_plays_without_uploads_even_after_winning(focus,previous):
+    state,start,action,service=focus
+    service['game'].scoring_rules.pop('focus_challenge')
+    service['game'].scoring_rules['test_mode']=True
+    state.update(count=0,threshold=0,unlimited=True,won=previous=='passed')
+    if previous:
+        state['attempt']={'id':'previous','status':previous}
+    if previous=='passed':
+        state['boost_ends_at']=(START+timedelta(minutes=30)).isoformat()
+    page=open_page(selected=None)
+    assert not page.exception and not button(page,'Open Reaction Test').disabled
+    button(page,'Open Reaction Test').click().run()
+    assert not page.exception and not button(page,'Start Reaction Test').disabled
+    assert not page.get('progress')
+    button(page,'Start Reaction Test').click().run()
+    assert not page.exception and start.call_count==1 and button(page,'Back to games')
+
+
+def test_qa_can_play_outside_weekly_window_but_not_after_season_ends(focus,monkeypatch):
+    state,start,action,service=focus
+    game=service['game']
+    game.scoring_rules['test_mode']=True
+    state.update(count=0,threshold=0,unlimited=True)
+    monkeypatch.setattr(focus_ui,'current_time',lambda:START+timedelta(days=4))
+    page=open_page(selected='focus')
+    assert not page.exception and not button(page,'Start Reaction Test').disabled
+    monkeypatch.setattr(focus_ui,'current_time',lambda:game.ends_at)
+    page.run()
+    assert not page.exception and button(page,'Start Reaction Test').disabled
+    assert not start.called
+
+
+def test_qa_with_only_migration_014_shows_the_required_upgrade(focus):
+    state,start,action,service=focus
+    service['game'].scoring_rules['test_mode']=True
+    page=open_page(selected='focus')
+    assert not page.exception and any('migration 015' in e.value for e in page.error)
+    assert not start.called
+
+
+def test_server_qa_status_handles_a_stale_season_snapshot_without_dividing_by_zero(focus):
+    state,start,action,service=focus
+    # The page still has a normal-looking snapshot while the authoritative RPC
+    # reports QA. Only the server can permit an actual start or grant an award.
+    assert 'test_mode' not in service['game'].scoring_rules
+    state.update(count=0,threshold=0,unlimited=True)
+    page=open_page(selected='focus')
+    assert not page.exception
+    assert not page.get('progress')
+    assert not button(page,'Start Reaction Test').disabled
+    button(page,'Start Reaction Test').click().run()
+    assert not page.exception and start.call_count==1
+
+
+@pytest.mark.parametrize('threshold',[0,-1,None,True])
+def test_invalid_normal_unlock_threshold_shows_reload_message_without_crashing_or_starting(focus,threshold):
+    state,start,action,_=focus
+    state.update(count=0,threshold=threshold,unlimited=False)
+    page=open_page(selected='focus')
+    assert not page.exception
+    assert any('Reload' in e.value for e in page.error)
+    assert not any(b.label=='Start Reaction Test' for b in page.button)
+    assert not start.called and not action.called

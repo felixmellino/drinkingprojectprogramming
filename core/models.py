@@ -101,6 +101,20 @@ class Arena:
     map_point: dict  # GeoJSON Point
 
 
+@dataclass(frozen=True)
+class SeasonTransfer:
+    """A quiz stake transfer, separate from photos, drinks and territory income."""
+    id: str
+    season_id: str
+    source_id: str
+    target_id: str
+    source_membership_id: str
+    target_membership_id: str
+    points: int
+    event_order: int
+    created_at: datetime
+
+
 @dataclass
 class MinigameAttempt:
     id: str

@@ -19,8 +19,9 @@ from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time
 from drink_entry_ui import page_header
 from theme import button_icons, page_subtitle
 from phone_location import current_location, track_location
-from core.focus_challenge import enabled as focus_enabled
+from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
+from quiz_duel_ui import render_quiz
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
@@ -67,13 +68,14 @@ def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
         return real and st.button(f"Open {title}", key=f"open_game_{key}", width="stretch", disabled=not playable)
 
 
-# Tiles after the playable games; each becomes a real game later.
-COMING_SOON = [("quiz", "quiz", "Knowledge Quiz")] + [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
+# Placeholder tiles after the playable games; each becomes a real game later.
+COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
 
 
-def _game_cards(member, duels, *, service_available=True, focus_available=False):
+def _game_cards(member, duels, *, service_available=True, focus_available=False, focus_qa=False):
     """Six colourful tiles (3 rows of 2): the playable games first, then what is coming.
-    Frozen season rules decide whether the Reaction Test (Focus Challenge) is open."""
+    Frozen season rules decide whether the Reaction Test (Focus Challenge) is open;
+    test seasons allow unlimited Reaction Test plays (focus_qa)."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
     if not service_available:
@@ -90,9 +92,13 @@ def _game_cards(member, duels, *, service_available=True, focus_available=False)
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
         if _game_tile('focus', 'reaction-test', 'Reaction Test',
-                      'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
+                      'Test mode · Unlimited plays' if focus_qa
+                      else 'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
                       playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
+            st.rerun()
+        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points'):
+            st.session_state['minigame_selected'] = 'quiz'
             st.rerun()
         for key, art, title in COMING_SOON:
             _game_tile(key, art, title, 'Coming soon', playable=False, real=False)
@@ -186,6 +192,8 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('chug_focused_duel', None)
         st.session_state.pop('focus_focused_id', None)
         st.session_state.pop('focus_start_request', None)
+        st.session_state.pop('quiz_focused_id', None)
+        st.session_state.pop('quiz_invitation_id', None)
     st.session_state['minigames_context'] = context
     try:
         members = db.list_memberships_for_lobby(lobby.id)
@@ -198,16 +206,19 @@ def render_minigames(player, member, lobby, season):
         return
     labels = {m.id: names.get(m.player_id, "Lobby member") for m in members}
 
-    @st.fragment(run_every="3s")
+    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') == 'quiz' else "3s")
     def live_duels():
         now = current_time()
+        if st.session_state.get('minigame_selected') == 'quiz':
+            render_quiz(player, member, lobby, season, members, labels)
+            return
         if st.session_state.get('minigame_selected') == 'focus' and focus_enabled(season):
             render_focus(player, season)
             return
         try:
             duels = db.list_chug_duels(player, season.id)
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-            _game_cards(member, [], service_available=False, focus_available=focus_enabled(season))
+            _game_cards(member, [], service_available=False, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
             _error(error)
             return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
@@ -222,7 +233,7 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop("chug_focused_duel", None)
         if st.session_state.get('minigame_selected') != 'chug_duel':
             # The game list; an opened game replaces it, like a page on a phone.
-            _game_cards(member, duels, focus_available=focus_enabled(season))
+            _game_cards(member, duels, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
             st.caption('Invitations update automatically.')
             return
         button_icons({'minigames_home': 'caret-left'})

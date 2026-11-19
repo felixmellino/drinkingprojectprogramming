@@ -30,6 +30,7 @@ def radio(page, label):
 
 @pytest.fixture
 def ui(monkeypatch):
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     game = season()
     state = {"now": START, "entries": [], "lose_reply": False, "calls": 0, "photo": None, "location": None}
     camera = BytesIO()

@@ -42,6 +42,15 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .stApp [class*="st-key-game_tile_"] button:focus-visible { opacity:1; background:transparent; outline:3px solid var(--accent-ink); outline-offset:2px; }
 .stApp [class*="st-key-game_tile_"]:has(button:active) .game-tile { transform:scale(.96); }
 @media (prefers-reduced-motion:reduce) { .game-tile { transition:none; } }
+/* Quiz Duel full-screen stage (from main). */
+.st-key-quiz_stage {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
+ max-width:none!important;height:100dvh!important;margin:0!important;padding:0!important;background:var(--bg);overflow:hidden;}
+.st-key-quiz_stage iframe {display:block;width:100vw!important;height:100dvh!important;border:0;}
+html:has(.st-key-quiz_stage),body:has(.st-key-quiz_stage),
+body:has(.st-key-quiz_stage) [data-testid="stMain"] {overflow:hidden!important;overscroll-behavior:none;}
+body:has(.st-key-quiz_stage) [data-testid="stHeader"],body:has(.st-key-quiz_stage) [data-testid="stSidebar"],
+body:has(.st-key-quiz_stage) .st-key-wego_bottom_nav {display:none!important;}
+.st-key-quiz_stage [data-testid="stAlert"] {position:fixed;bottom:60px;left:16px;right:16px;z-index:100002;}
 .st-key-chug_camera_stage { position:fixed!important; inset:0; z-index:100000;
   width:100vw!important; max-width:none!important; background:var(--bg); overflow:hidden; }
 .st-key-chug_camera_stage iframe { width:100vw!important; height:100dvh!important; border:0; }
@@ -64,7 +73,10 @@ body:has(.st-key-chug_duel_stage) .st-key-wego_bottom_nav { display:none!importa
 .st-key-chug_duel_controls button:has([data-testid="stIconMaterial"]) [data-testid="stMarkdownContainer"] {
   position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 .st-key-chug_duel_stage [data-testid="stAlert"] { position:fixed; bottom:64px; left:16px; right:16px; z-index:100002; }
-.stApp .st-key-chug_refresh button, .stApp .st-key-minigames_home button { color: var(--text-muted); min-height: 36px; }
+/* Every way back to the game tiles looks the same: a quiet text link. */
+.stApp .st-key-chug_refresh button, .stApp .st-key-minigames_home button,
+.stApp .st-key-focus_home button, .stApp .st-key-quiz_back button, .stApp .st-key-quiz_error_back button {
+  color: var(--text-muted); min-height: 36px; background: transparent; border: 0; box-shadow: none; padding-left: 0; }
 /* Today's allowance: two quiet tiles side by side, not heavy cards. */
 .stApp:has(.st-key-chug_refresh) [data-testid="stMetric"] { background:var(--surface); box-shadow:none;
   border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; }

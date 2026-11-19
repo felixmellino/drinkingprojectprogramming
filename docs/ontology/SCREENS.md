@@ -291,8 +291,14 @@ four opens a separate view with **Back to Profile**. Logout is immediate.
   team owner income. Wins count only completed seasons, with leaderboard
   tie-breaking. No history shows zero totals; failed loading shows an error
   rather than partial totals. R-P01 defines the calculation.
-- Account & security shows private name and read-only email, then a password
-  change form requiring current password, new password and confirmation.
+- Account & security shows private name and read-only email above two buttons:
+  **Photo privacy** and **Change password**. Each opens one dismissible popup
+  over the security overview; forms are hidden until their button is pressed.
+  Closing with Close, the cross or outside the popup discards unsaved inputs.
+  Photo privacy keeps the existing account-wide sharing setting and explanation;
+  successful saves keep the popup open and show confirmation. Load/save failures
+  show an error inside the popup. Change password requires current password,
+  new password and confirmation; validation errors stay inside its popup.
   Existing password length rules and login throttling apply. A successful
   change signs out this device; all other active/remembered sign-ins become
   invalid on their next check. Logged-out password recovery is described above.

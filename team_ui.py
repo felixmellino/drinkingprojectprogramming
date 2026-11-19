@@ -37,6 +37,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
         me = next((m for m in members if m.player_id == player_id), None)
         names = {p['id']: p['display_name'] for p in db.list_public_usernames()}
         entries = db.list_drink_entries(season.id) if season else []
+        transfers = db.list_season_transfers(season.id) if season else []
     except ERRORS:
         st.error('Teams could not be loaded. Close and reopen the lobby to try again.')
         return
@@ -47,7 +48,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     st.text(lobby.name)
     st.code(lobby.invite_code, language=None)
     locked = any(e.membership_id == me.id for e in entries)
-    totals = dict(season_leaderboard(entries))
+    totals = dict(season_leaderboard(entries, transfers))
     st.caption(f'{lobby.team_count} teams · {lobby.team_capacity} players per team · ' +
                ('Random assignment' if lobby.team_assignment == 'random' else 'Choose your team'))
     if not me.team_id:

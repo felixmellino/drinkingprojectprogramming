@@ -9,8 +9,15 @@ Players see this game as **Reaction Test** (renamed on screen 19 November
 
 Team approval reported by the contributor on 19 November 2026. New v1 seasons
 whose frozen snapshot contains `focus_challenge.version = 1` enable this game.
-Existing snapshots are not edited. Normal and QA seasons use these rules;
-Chug Duel's unlimited QA exception does not bypass Focus unlocks or rewards.
+Existing snapshots are not edited. The following gates apply to normal seasons.
+Contributor-approved QA exception, 19 November 2026: the frozen JSON boolean
+`scoring_rules.test_mode=true` enables Focus immediately, including existing v1
+test seasons without a Focus snapshot. No uploads are required; failed and
+successful attempts can be replayed sequentially without a nightly limit.
+Names, string values and normal seasons never enable the exception. Migration
+015 supplies the fixed v1 configuration for older QA snapshots without editing
+them. QA games may run any time during an active season, including outside the
+weekly scoring window; drink submissions still require their normal window.
 
 Count the member's accepted v1 drink entries in this lobby/season and the same
 06:00-based evening, irrespective of type/size. Their shared Chug Duel entry
@@ -41,23 +48,27 @@ movement; no colour-only matching is required.
 Resume the same persisted attempt and progress; its clock keeps running.
 Ready screens have thirty seconds. Reaction signals allow two seconds for a
 response; slower median results still fail R-M07. The whole attempt has a
-three-minute maximum and ends sooner at 06:00, scoring closure or season end.
-A miss or timeout requires the next unlock count. Leaving the screen itself
+three-minute maximum and ends sooner at 06:00, scoring closure (normal seasons)
+or season end. A miss or timeout requires the next unlock count in normal
+seasons; QA may retry immediately. Leaving the screen itself
 does not create or refund an attempt.
 
 The server allows two seconds for delivery of stage evidence, while browser
 timers enforce the actual task budget. This does not extend the overall,
-06:00, scoring or season cutoff. Timers use a monotonic browser clock anchored
+06:00, normal scoring or season cutoff. Timers use a monotonic browser clock anchored
 to server timestamps. Replayed/stale messages recover the recorded result.
 Precision checkpoints save full tap prefixes without blocking the next local tap.
 
 ### R-M09 Focus boost and scoring
 
-One successful attempt per member/lobby evening automatically grants x1.5 on
+In normal seasons one successful attempt per member/lobby evening grants x1.5 on
 future ordinary drink season and matched-territory points for sixty minutes,
 ending earlier at scoring closure or season end. It can continue past 06:00.
 Boosts never exceed x1.5; an unexpired prior-evening boost blocks a new Focus
-attempt until it ends. Chug Duel entries/transfers keep their normal scoring.
+attempt until it ends. QA may replay while a boost is active; a further win
+refreshes the hour rather than multiplying or adding the durations. QA boosts
+end at the earlier of sixty minutes or season end, and never change when drink
+submissions are accepted. Chug Duel entries/transfers keep their normal scoring.
 The owner earns 25% of the boosted award as additional season income, using
 the owner immediately before the entry as usual. No self/team-self income.
 
@@ -557,6 +568,11 @@ Supabase authenticated roles have no access to the team table or write RPCs.
 Source: contributor's explicit team-mode choices, 18 November 2026.
 
 ## Profile statistics
+
+Quiz Duel's contributor-approved point-stake exception, separate nightly roles,
+team-purse rules and twenty-second rounds are defined in [QUIZ_DUEL.md](QUIZ_DUEL.md).
+Individual quiz transfers adjust personal lifetime points; team quiz transfers
+adjust team season scores and season wins without becoming personal drink points.
 
 ### R-P01 Lifetime statistics across active and finished lobbies
 

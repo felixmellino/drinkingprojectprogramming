@@ -12,9 +12,9 @@ const status=async(p,s)=>(await rpc('select focus_status($1,$2) data',[uid(p),s]
 const start=async(p,s,id)=>(await rpc('select start_focus_attempt($1,$2,$3) data',[uid(p),s,uid(id)])).rows[0].data;
 const act=async(p,a,action,evidence={})=>(await rpc('select focus_attempt_action($1,$2,$3,$4,$5) data',[uid(p),a.id,a.revision,action,evidence])).rows[0].data;
 async function advance(ms){await clock(new Date(Date.parse(now)+ms).toISOString());}
-async function add(p,mid,s,id,kind='beer',size='small',territory='shortys'){
+async function add(p,mid,s,id,kind='beer',size='small',territory='shortys',lobby=100){
  return (await q('select * from accept_scoring_checkin($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
- [uid(p),uid(id),uid(mid),s,kind,size,territory,territory?'matched':'outside',`${uid(100)}/${uid(id)}.jpg`,now])).rows[0];
+ [uid(p),uid(id),uid(mid),s,kind,size,territory,territory?'matched':'outside',`${uid(lobby)}/${uid(id)}.jpg`,now])).rows[0];
 }
 async function win(p,a){
  a=await act(p,a,'ready');
@@ -37,9 +37,9 @@ async function win(p,a){
  create table test_clock(at_time timestamptz);insert into test_clock values('${now}');
  grant select on test_clock to service_role;grant usage on schema public to anon,authenticated,service_role;`);
  await pg.exec(fs.readFileSync('schema.sql','utf8').replace('create extension if not exists pgcrypto;',''));
- for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql']){
+ for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql']){
   const sql=fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)');
-  await pg.exec(sql);if(file==='014_focus_challenge.sql')await pg.exec(sql);
+  await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql')await pg.exec(sql);
  }
  // Deterministic entropy only in this isolated fixture; production uses UUID entropy.
  const source=(await q("select prosrc from pg_proc where proname='_focus_int'")).rows[0].prosrc;
@@ -141,12 +141,51 @@ async function win(p,a){
  await q('insert into lobby_memberships(id,player_id,lobby_id) values($1,$2,$3)',[uid(41),uid(1),uid(103)]);
  const oldSid=(await q('select * from start_scoring_season($1,$2,$3,$4,$5)',[uid(1),uid(103),'1_month','Europe/Lisbon',oldRules])).rows[0].id;
  await assert.rejects(status(1,oldSid),/focus_disabled/);
+ // Explicit QA bypasses unlocks even on a pre-Focus snapshot. Names/strings cannot enable it.
+ await q("insert into lobbies(id,name,invite_code) values($1,'Existing QA','QAFOCUS')",[uid(104)]);
+ await q('insert into lobby_memberships(id,player_id,lobby_id) values($1,$2,$3)',[uid(51),uid(1),uid(104)]);
+ const qaRules={...oldRules,test_mode:true,start_weekday:2,start_hour:8};
+ const qaSid=(await q('select * from start_scoring_season($1,$2,$3,$4,$5)',[uid(1),uid(104),'1_month','Europe/Lisbon',qaRules])).rows[0].id;
+ assert.equal((await status(1,qaSid)).count,0);assert.equal((await status(1,qaSid)).threshold,0);
+ assert.equal((await status(1,qaSid)).unlimited,true);
+ await assert.rejects(start(4,qaSid,900),/permission_denied/);
+ let qa=await start(1,qaSid,900);
+ assert.equal(qa.test_mode,true,'The result screen receives authoritative QA mode');
+ assert.deepEqual(qa.config,rules.focus_challenge);
+ assert.equal((await start(1,qaSid,901)).id,qa.id,'QA still permits only one running attempt');
+ qa=await act(1,qa,'fail');
+ qa=await win(1,await start(1,qaSid,901));
+ const firstQaWin=qa;
+ qa=await win(1,await start(1,qaSid,902));
+ assert(Date.parse(qa.boost_ends_at)>Date.parse(firstQaWin.boost_ends_at),'New QA wins refresh, rather than stack, the boost');
+ assert.equal((await q("select count(*)::int n from focus_attempts where season_id=$1 and status='passed' and test_mode",[qaSid])).rows[0].n,2);
+ const qaAward=await add(1,51,qaSid,903,'beer','small','shortys',104);
+ assert.equal(Number(qaAward.points_awarded),1.5,'Multiple QA wins never compound the multiplier');
+ assert.equal(qaAward.focus_attempt_id,qa.id,'Old QA snapshots also record the boost provenance');
+ assert.deepEqual((await q('select scoring_rules from seasons where id=$1',[qaSid])).rows[0].scoring_rules,qaRules,'Frozen QA snapshot is unchanged');
+ await pg.exec(fs.readFileSync('migrations/015_focus_test_replays.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
+ assert.equal((await status(1,qaSid)).unlimited,true,'Repeat migration preserves multiple QA wins');
+ await pg.close();pg=new PGlite(disk);
+ assert.equal((await status(1,qaSid)).attempt.id,qa.id,'QA replay state survives restart');
+ for(const flag of [false,'true',1]){
+  const n=flag===false?105:flag==='true'?106:107;
+  await q("insert into lobbies(id,name,invite_code) values($1,'Test QA lobby',$2)",[uid(n),'FAKEQA'+n]);
+  await q('insert into lobby_memberships(id,player_id,lobby_id) values($1,$2,$3)',[uid(n+1000),uid(1),uid(n)]);
+  const s=(await q('select * from start_scoring_season($1,$2,$3,$4,$5)',[uid(1),uid(n),'1_month','Europe/Lisbon',{...rules,test_mode:flag}])).rows[0].id;
+  assert.equal((await status(1,s)).unlimited,false);
+  await assert.rejects(start(1,s,n+2000),/focus_locked/);
+ }
  await clock('2026-11-22T18:00:00Z');await assert.rejects(start(2,sid,800),/scoring_closed/);
+ let outsideQa=await win(1,await start(1,qaSid,904));
+ assert(Date.parse(outsideQa.boost_ends_at)>Date.parse('2026-11-22T18:00:00Z'),'QA games run outside the weekly drink window');
+ await assert.rejects(add(1,51,qaSid,905,'beer','small','shortys',104),/scoring_closed/,'Drink scoring still obeys its window');
+ const qaEnd=(await q('select ends_at from seasons where id=$1',[qaSid])).rows[0].ends_at;
+ await clock(qaEnd);await assert.rejects(start(1,qaSid,906),/scoring_closed/,'QA still requires an active season');
  await q('set role anon');await assert.rejects(q('select * from focus_attempts'),/permission denied/);
  await assert.rejects(q('select focus_status($1,$2)',[uid(1),sid]),/permission denied/);await q('reset role');
  await pg.close();pg=new PGlite(disk);
  assert.equal((await q('select status from focus_attempts where id=$1',[uid(401)])).rows[0].status,'passed','Win and challenges survive database restart');
  assert.equal((await q('select challenge from focus_attempts where id=$1',[uid(401)])).rows[0].challenge.memory.length,7);
- console.log('Focus PostgreSQL checks passed: migration repeat, access, unlocks, resume, failure/retry, random material, stages, one reward, multiplier/expiry and restart.');
+ console.log('Focus PostgreSQL checks passed: migration repeat, access, normal unlocks/one win, QA zero-upload replays on old snapshots, multiple wins without stacking, scoring windows, resume and database restart.');
  await pg.close();
 })().catch(async e=>{console.error(e);if(pg)await pg.close();process.exitCode=1;});
