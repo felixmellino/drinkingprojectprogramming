@@ -4,6 +4,47 @@ Implemented locally on `minigametimestopper`, 19 November 2026. Rules are in
 [ontology/TIME_DUEL.md](ontology/TIME_DUEL.md), referenced by R-M10. Migration 017 was applied to the shared WeGoPub database on 19 November 2026.
 Teammate review and public app deployment remain pending.
 
+## Invitation fix — 19 November 2026
+
+On `timeduellFix`, invitations now appear above the Minigames tiles and inside
+Time Duel. The sender gets the Pending Challenge invite box, a server-based
+expiry countdown and Cancel. Multiple incoming invitations require a warning
+and Confirm acceptance before selecting one. Acceptance resolves both players'
+other Time Duel invitations atomically, then opens the normal Ready board.
+Pending and accepted/running games block further outgoing challenges on the
+server, including in QA and from separate tabs. Current pending invitations
+are never hidden by the twenty-item terminal-history limit. The existing
+ten-minute expiry and earlier scoring/night/season cutoffs remain in force.
+
+Migration `021_time_duel_invitations.sql` was applied to the shared WeGoPub
+database through the Supabase SQL Editor in Safari on 19 November 2026, with
+explicit contributor authorization. It replaces three RPCs and preserves saved
+games/rewards; it can be safely reapplied after 017. The editor reported success.
+All six read-only verification checks passed: the stored bodies of `time_status`,
+`invite_time_duel` and `time_action` match migration 021 exactly; the pending
+invitation unique index exists; all three RPCs remain restricted to the service
+role; the three-round, ten-minute-invitation and x1.25 gameplay configuration is
+unchanged. The project identifier was checked against local app configuration.
+The local full app now uses these updated database functions. Teammate review
+and deployment of the UI changes from main are still needed for the public site.
+
+Verification for this fix:
+
+- `.venv/bin/python -m pytest -q`: **944 passed**.
+- `PYTHONPATH=/private/tmp/time-duel-test-tools .venv/bin/python scripts/verify_time_duel.py`:
+  synthetic normal/QA invitation delivery, same/opposite-target duplicates,
+  retry identity, 599/600-second expiry, acceptance cleanup, active guards,
+  simultaneous sends/acceptance, RPC permissions and actual database restart;
+  existing round/scoring/reward regression checks retained.
+- Three independent local browser sessions backed by disposable PostgreSQL:
+  automatic delivery above tiles, sender pending box and disabled send, refresh
+  recovery, multiple-invite confirmation, other sender released after decline,
+  accepted duel and matching first-round target on both devices.
+
+The browser fixture supports `TIME_DUEL_FIXTURE_PORT` (default 8781) so another
+local fixture can remain running. Use the same value for the SQL bridge and
+Streamlit process. Start from the catalogue and open Time Duel to send.
+
 ## Where it lives
 
 - `core/time_duel.py`: component input validation and explainable outcome examples.

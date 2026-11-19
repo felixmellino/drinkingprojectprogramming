@@ -23,7 +23,7 @@ from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled, test_mode as focus_test_mode
 from focus_challenge_ui import render_focus
 from quiz_duel_ui import render_quiz
-from time_duel_ui import render_time
+from time_duel_ui import render_time, render_time_inbox
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
@@ -217,6 +217,8 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('quiz_invitation_id', None)
         st.session_state.pop('time_focused_id', None)
         st.session_state.pop('time_invitation_id', None)
+        st.session_state.pop('time_invitation_target', None)
+        st.session_state.pop('time_accept_confirmation', None)
     st.session_state['minigames_context'] = context
     try:
         members, usernames = run_parallel(lambda: db.list_memberships_for_lobby(lobby.id), db.list_public_usernames)
@@ -259,6 +261,7 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop("chug_focused_duel", None)
         if st.session_state.get('minigame_selected') != 'chug_duel':
             # The game list; an opened game replaces it, like a page on a phone.
+            render_time_inbox(player, member, season, labels)
             _game_cards(member, duels, focus_available=focus_enabled(season), focus_qa=focus_test_mode(season))
             st.caption('Invitations update automatically.')
             return

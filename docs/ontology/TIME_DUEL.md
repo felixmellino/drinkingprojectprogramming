@@ -41,6 +41,22 @@ snapshot, never current bonuses. Photo deletion preserves the award.
 
 ## Lifecycle defaults
 
+Invitation flow, contributor decisions 19 November 2026: incoming Time Duel
+invitations appear directly above the Minigames catalogue tiles with Accept and
+Decline. The sender sees a **Pending Challenge invite** box, the recipient,
+remaining time and Cancel. One pending outgoing invitation blocks another send
+to any player, including from another tab or after reconnecting. Multiple
+incoming invitations are allowed. When there is more than one, Accept first
+shows "If you accept this invite, the other invites for this minigame will be
+declined." and requires Confirm acceptance; Keep invitations backs out.
+Acceptance atomically declines both participants' other incoming Time Duel
+invitations and cancels their pending outgoing Time Duel invitations. Unrelated
+invitations and invitations for other games are unchanged. Neither participant
+can send or accept another Time Duel while their accepted/running duel remains
+open, including in QA seasons. Acceptance opens the existing two-phone Ready
+flow. No allowance is consumed by declined, cancelled or expired invitations.
+Migration 021 enforces these rules under the existing lobby transaction lock.
+
 Time Duel has independent one-outgoing and one-incoming allowances per member,
 lobby and 06:00-based season-timezone evening. Acceptance reserves the roles;
 the first shared round reveal consumes them. Pre-start cancellation or expiry

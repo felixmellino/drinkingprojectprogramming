@@ -1,5 +1,6 @@
 """Time Duel invitations and saved two-phone gameplay."""
 from uuid import uuid4
+from datetime import datetime
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
@@ -17,10 +18,67 @@ def _error(error):
 
 def _act(player, duel, action):
     try:
-        db.time_action(player, duel['id'], action)
-        st.rerun(scope='fragment')
+        saved = db.time_action(player, duel['id'], action)
+        st.session_state.pop('time_accept_confirmation', None)
+        if action == 'accept' and saved['status'] in ACTIVE:
+            st.session_state['minigame_selected'] = 'time'
+        st.rerun()
     except SERVICE_ERRORS as error:
         _error(error)
+
+
+def render_invitations(player, member, state, labels):
+    """Shared inbox on the catalogue and game screen; always use saved status."""
+    pending = [d for d in state['duels'] if d['status'] == 'invited']
+    incoming = [d for d in pending if d['opponent_id'] == member]
+    confirmation = st.session_state.get('time_accept_confirmation')
+    if confirmation not in {d['id'] for d in incoming}:
+        st.session_state.pop('time_accept_confirmation', None)
+    for duel in pending:
+        with st.container(border=True, key='time_invite_' + duel['id']):
+            if member == duel['challenger_id']:
+                st.markdown('**Pending Challenge invite**')
+                st.write('Time Duel · Waiting for ' + labels.get(duel['opponent_id'], 'Lobby member'))
+                if st.button('Cancel invitation', key='time_cancel_' + duel['id']):
+                    _act(player, duel, 'cancel')
+            else:
+                st.markdown('**Time Duel invitation**')
+                st.write(labels.get(duel['challenger_id'], 'Lobby member') + ' challenged you.')
+                if len(incoming) > 1 and confirmation == duel['id']:
+                    st.warning('If you accept this invite, the other invites for this minigame will be declined.')
+                    if st.button('Confirm acceptance', key='time_confirm_' + duel['id'],
+                                 type='primary', disabled=not state['incoming']):
+                        _act(player, duel, 'accept')
+                    if st.button('Keep invitations', key='time_keep_' + duel['id']):
+                        st.session_state.pop('time_accept_confirmation', None)
+                        st.rerun()
+                elif st.button('Accept Time Duel', key='time_accept_' + duel['id'],
+                               type='primary', disabled=not state['incoming']):
+                    if len(incoming) > 1:
+                        st.session_state['time_accept_confirmation'] = duel['id']
+                        st.rerun()
+                    else:
+                        _act(player, duel, 'accept')
+                if st.button('Decline', key='time_decline_' + duel['id']):
+                    _act(player, duel, 'decline')
+            # Compare server timestamps so a phone's clock cannot change expiry.
+            remaining = max(0, int((datetime.fromisoformat(duel['expires_at']) -
+                                   datetime.fromisoformat(duel['server_now'])).total_seconds()))
+            st.caption(f'Expires in {remaining // 60}:{remaining % 60:02d}')
+    return pending
+
+
+def render_time_inbox(player, member, season, labels):
+    try:
+        state = db.time_status(player, season.id)
+    except SERVICE_ERRORS as error:
+        _error(error)
+        return
+    render_invitations(player, member, state, labels)
+    if any(d['status'] in ACTIVE for d in state['duels']):
+        if st.button('Resume Time Duel', key='time_resume', type='primary'):
+            st.session_state['minigame_selected'] = 'time'
+            st.rerun()
 
 
 def render_time(player, member, lobby, season, members, labels):
@@ -72,17 +130,7 @@ def render_time(player, member, lobby, season, members, labels):
     cols = st.columns(2)
     cols[0].caption('Challenge: ' + ('Available' if state['outgoing'] else 'Used / reserved'))
     cols[1].caption('Accept: ' + ('Available' if state['incoming'] else 'Used / reserved'))
-    pending = [d for d in duels if d['status'] == 'invited']
-    for duel in pending:
-        with st.container(border=True):
-            st.write(f"{labels.get(duel['challenger_id'], 'Player')} vs {labels.get(duel['opponent_id'], 'Player')}")
-            if member == duel['opponent_id']:
-                if st.button('Accept Time Duel', key='time_accept_' + duel['id'], type='primary', disabled=not state['incoming']):
-                    _act(player, duel, 'accept')
-                if st.button('Decline', key='time_decline_' + duel['id']):
-                    _act(player, duel, 'decline')
-            elif st.button('Cancel invitation', key='time_cancel_' + duel['id']):
-                _act(player, duel, 'cancel')
+    pending = render_invitations(player, member, state, labels)
     own = next(m for m in members if m.id == member)
     opponents = []
     for other in members:
@@ -99,11 +147,14 @@ def render_time(player, member, lobby, season, members, labels):
             sent = st.form_submit_button('Send Time Duel challenge', type='primary',
                 disabled=not state['outgoing'] or any(d['challenger_id'] == member for d in pending))
         if sent:
+            if st.session_state.get('time_invitation_target') != opponent:
+                st.session_state.pop('time_invitation_id', None)
+            st.session_state['time_invitation_target'] = opponent
             request = st.session_state.setdefault('time_invitation_id', str(uuid4()))
             try:
                 db.invite_time_duel(player, season.id, request, opponent)
                 st.session_state.pop('time_invitation_id', None)
-                st.rerun(scope='fragment')
+                st.rerun()
             except SERVICE_ERRORS as error:
                 _error(error)
     else:

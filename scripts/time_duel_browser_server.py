@@ -26,7 +26,7 @@ def serve(f):
             except Exception as error:result={'error':str(error)}
             data=json.dumps(result,default=str).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(data)
     print('Time Duel local fixture ready',flush=True)
-    HTTPServer(('127.0.0.1',8781),Handler).serve_forever()
+    HTTPServer(('127.0.0.1',int(os.environ.get('TIME_DUEL_FIXTURE_PORT', '8781'))),Handler).serve_forever()
 
 
 if __name__=='__main__':

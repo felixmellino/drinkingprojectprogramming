@@ -22,7 +22,81 @@ def rejected(call,reason):
     else:raise AssertionError('Expected '+reason)
 
 
+def verify_invitations(f):
+    for qa in (False, True):
+        l = f.lobby(qa=qa)
+        first = f.invite(l)
+        assert f.status(l, 1)['duels'][0]['id'] == first['id']
+        assert not f.status(l)['outgoing']
+        assert f.invite(l, id=first['id'])['id'] == first['id']
+        rejected(lambda: f.invite(l, 0, 2), 'time_pending')
+        rejected(lambda: f.invite(l), 'time_pending')
+        rejected(lambda: f.invite(l, 0, 2, first['id']), 'permission_denied')
+        assert f.act(first, 1, 'decline')['status'] == 'declined'
+        assert f.status(l)['outgoing']
+        first = f.invite(l)
+        assert f.act(first, 0, 'cancel')['status'] == 'cancelled'
+        first = f.invite(l)
+        f.advance(599)
+        assert f.status(l)['duels'][0]['status'] == 'invited'
+        f.advance(1)
+        assert next(d for d in f.status(l)['duels'] if d['id'] == first['id'])['status'] == 'expired'
+        assert f.act(first, 1, 'accept')['status'] == 'expired'
+        assert f.status(l)['outgoing']
+        # Both players' pending invites are resolved in the acceptance transaction.
+        first = f.invite(l)
+        other = f.invite(l, 2, 1)
+        outgoing = f.invite(l, 1, 3)
+        host_incoming = f.invite(l, 4, 0)
+        unrelated = f.invite(l, 3, 5)
+        assert f.act(first, 1, 'accept')['status'] == 'accepted'
+        states = {str(r['id']): r['status'] for r in f.conn.execute(
+            'select id,status from time_duels where season_id=%s', (l['sid'],))}
+        assert states[other['id']] == states[host_incoming['id']] == 'declined'
+        assert states[outgoing['id']] == 'cancelled' and states[unrelated['id']] == 'invited'
+        for player in (0, 1):
+            assert not f.status(l, player)['outgoing'] and not f.status(l, player)['incoming']
+            rejected(lambda: f.invite(l, player, 5), 'time_busy' if qa or player == 1 else 'time_limit')
+        rejected(lambda: f.invite(l, 2, 0), 'time_busy')
+        assert f.act(first, 1, 'accept')['status'] == 'accepted'
+        f.act(first, 0, 'cancel')
+        assert f.status(l)['outgoing'] and f.status(l, 1)['outgoing']
+        # History must never displace an open invitation from the inbox.
+        for _ in range(22):
+            d = f.invite(l)
+            f.act(d, 1, 'decline')
+        d = f.invite(l)
+        assert any(x['id'] == d['id'] for x in f.status(l, 1)['duels'])
+        f.act(d, 0, 'cancel')
+        assert f.conn.execute('select count(*) n from drink_entries where season_id=%s',
+                              (l['sid'],)).fetchone()['n'] == 0
+        assert not f.status(l)['boost_ends_at'] and not f.status(l, 1)['boost_ends_at']
+    # Simultaneous sends from separate tabs must create exactly one invitation.
+    l = f.lobby(qa=True)
+    barrier = Barrier(2)
+    def send(opponent):
+        with psycopg.connect(f.server.get_uri(), autocommit=True) as connection:
+            connection.execute('set role service_role')
+            barrier.wait()
+            try:
+                return connection.execute('select invite_time_duel(%s,%s,%s,%s)',
+                    (f.players[0], l['sid'], uuid4(), l['mids'][opponent])).fetchone()[0]['status']
+            except psycopg.Error as error:
+                return str(error).splitlines()[0]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(send, [1, 2])) == ['invited', 'time_pending']
+    # A pending invite survives a real server restart and still blocks another send.
+    pending = f.status(l)['duels'][0]
+    f.conn.close(); f.server.stop(); f.server.ensure_postgres_running()
+    from psycopg.rows import dict_row
+    f.conn = psycopg.connect(f.server.get_uri(), autocommit=True, row_factory=dict_row)
+    assert f.status(l)['duels'][0] == pending
+    rejected(lambda: f.invite(l, 0, 3), 'time_pending')
+    print('PASS: Time Duel invitation delivery, duplicates, expiry, atomic cleanup, busy guards and restart')
+
+
 def verify(f):
+    verify_invitations(f)
     c=f.conn;l=f.lobby();qa=f.lobby(qa=True)
     assert c.execute('select _time_rules() data').fetchone()['data']==CONFIG
     rejected(lambda:f.status(l,6),'permission_denied')
@@ -40,9 +114,9 @@ def verify(f):
     rejected(lambda:f.rpc('select chug_duel_action(%s,%s,%s,%s)',(f.players[2],chug,'accept',None)),'time_busy')
     f.act(d,0,'cancel');assert f.status(l)['outgoing']
     f.rpc('select chug_duel_action(%s,%s,%s,%s)',(f.players[2],chug,'accept',None))
-    d=f.invite(l);rejected(lambda:f.act(d,1,'accept'),'quiz_busy')
+    rejected(lambda:f.invite(l),'quiz_busy')
     f.rpc('select chug_duel_action(%s,%s,%s,%s)',(f.players[0],chug,'cancel',None))
-    d=f.act(d,1,'accept');d=f.act(d,0,'ready');assert d['target_ms'] is None
+    d=f.invite(l);d=f.act(d,1,'accept');d=f.act(d,0,'ready');assert d['target_ms'] is None
     d=f.act(d,1,'ready');assert 5000<=d['target_ms']<=12000 and d['target_ms']%1000==0
     assert all(r['target_ms'] is None for r in d['rounds']), 'Future targets stay private'
     target=d['target_ms'];f.act(d,0,'start');f.advance(15);d=f.act(d,0,'stop',target+50)
@@ -110,7 +184,7 @@ def verify(f):
                 (f.players[1],duel['id'],'accept',None,None)).fetchone()[0]['status']
             except psycopg.Error as error:return str(error).splitlines()[0]
     with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(race_accept,[first,second]))
-    assert sorted(results)==['accepted','time_busy'],results
+    assert sorted(results)==['accepted','declined'],results
     # Departed members cannot read or submit. No public-role access.
     f.rpc('select leave_lobby(%s,%s)',(f.players[3],l['lid']));rejected(lambda:f.status(l,3),'permission_denied')
     for role in ('anon','authenticated'):

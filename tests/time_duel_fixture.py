@@ -10,7 +10,8 @@ from core.scoring_v1 import new_rules
 ROOT=Path(__file__).resolve().parents[1]
 MIGRATIONS=['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql',
  '010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','012_player_lobby_choices.sql',
- '014_focus_challenge.sql','015_focus_test_replays.sql','016_quiz_duel.sql','016_leave_lobby.sql','017_time_duel.sql']
+ '014_focus_challenge.sql','015_focus_test_replays.sql','016_quiz_duel.sql','016_leave_lobby.sql','017_time_duel.sql',
+ '021_time_duel_invitations.sql']
 
 
 class Fixture:
@@ -24,7 +25,7 @@ class Fixture:
         c.execute('grant select on test_clock to service_role')
         c.execute('create function test_now() returns timestamptz language sql as $$ select at_time from test_clock $$')
         for name in MIGRATIONS:c.execute((ROOT/'migrations'/name).read_text().replace('statement_timestamp()','public.test_now()'))
-        c.execute((ROOT/'migrations/017_time_duel.sql').read_text().replace('statement_timestamp()','public.test_now()'))
+        c.execute((ROOT/'migrations/021_time_duel_invitations.sql').read_text().replace('statement_timestamp()','public.test_now()'))
         self.players=[uuid4() for _ in range(7)]
         for n,p in enumerate(self.players):c.execute("insert into players(id,display_name,first_name,last_name,pin_hash) values(%s,%s,'Test','Only','fake')",(p,'Player '+str(n+1)))
         c.execute("insert into territories values('time-test','Time test','{}')")
