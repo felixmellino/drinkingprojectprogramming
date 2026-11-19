@@ -6,21 +6,41 @@ from postgrest.exceptions import APIError
 
 import data.db as db
 from core.leaderboard import season_leaderboard
+from core.lobby_overview import lobby_status
+from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
-from core.scoring_v1 import replay_season
 from drink_entry_ui import context_line, page_header, section_heading
+from lobby_selection import leaderboard_fallback
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
-membership_id, lobby_id, season_id = require_active_membership()
 
 page_header("Leaderboard", "Your place in the season. Every point and territory, together.", standings=True)
 standings_ui.load_styles()
 
 st.button("Refresh standings")
 try:
+    if st.session_state.get("current_membership_id") and st.session_state.get("current_season_id"):
+        membership_id, lobby_id, season_id = require_active_membership()
+        lobby_name = st.session_state.get("current_lobby_name", "Your lobby")
+        lobby_mode = st.session_state.get("current_lobby_mode")
+        season = st.session_state.get("_validated_season")
+    else:
+        fallback = leaderboard_fallback(player_id)
+        if fallback is None:
+            st.info("There are no standings to show yet. Join a lobby with a season to see its leaderboard.")
+            if st.button("Open Lobby"):
+                st.switch_page("pages/2_Lobby.py")
+            st.stop()
+        lobby, member, season = fallback
+        membership_id, lobby_id, season_id = member.id, lobby.id, season.id
+        member, season = db.membership_context(player_id, membership_id, lobby_id, season_id)
+        if member is None or season is None:
+            st.warning("That lobby or season is no longer available. Use Refresh standings to try again.")
+            st.stop()
+        lobby_name, lobby_mode = lobby.name, lobby.game_mode
     entries = db.list_drink_entries(season_id)
     memberships = db.list_memberships_for_lobby(lobby_id)
     players_by_id = {p.id: p.display_name for p in db.list_players()}
@@ -29,7 +49,7 @@ except (APIError, RequestError, RuntimeError):
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
-team_mode = st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries)
+team_mode = lobby_mode == "team" or any(e.team_id for e in entries)
 if team_mode:
     try:
         teams = db.list_lobby_teams(player_id, lobby_id)
@@ -42,7 +62,12 @@ if team_mode:
         st.info("Open this lobby on the Lobby page and join a team before checking in.")
 snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
-context_line(st.session_state.get("current_lobby_name", "Your lobby"),
+status = lobby_status(season, current_time()) if season else "active"
+if status == "past":
+    st.caption("Finished season · Final standings")
+elif status == "upcoming":
+    st.caption("Upcoming season")
+context_line(lobby_name,
              f"{len(memberships)} members · {len(leaderboard)} ranked this season")
 
 # Reuse the same territory accounts for the summary and cards. A territory
