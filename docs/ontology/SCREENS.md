@@ -124,6 +124,9 @@ a phone still needs the configured app; mocked tests do not grant permissions.
   to the Map; on the Map itself it only appears once you came from another
   page. On the phone Map it is a round button left of the top bar. Views
   inside a page (such as Edit profile) keep their own back links.
+- Every lobby card has a trash icon (top right). After a second click it removes
+  the lobby from that player's own list only (the same departure as Leave
+  lobby: points and history stay, rejoin with the invite code, R-LB01–R-LB03).
 - Deleting a lobby: the lobby's creator sees **Delete lobby** in the lobby
   dialog (below Leave lobby) and must confirm once more. See R-LB04.
 

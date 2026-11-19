@@ -618,3 +618,42 @@ def test_delete_failure_keeps_the_lobby(ui, monkeypatch, error):
     assert not at.exception and at.error
     assert at.session_state['current_lobby_id'] == 'new'
     assert len(ui['members']) == 3
+
+
+def test_every_lobby_card_has_a_trash_button(ui):
+    at = page()
+    assert not at.exception
+    for lobby_id in ('old', 'new', 'past'):
+        assert at.button(key=f'remove_{lobby_id}').label == 'Remove from my lobbies'
+    assert not any(b.key == 'remove_secret' for b in at.button)       # not joined: no card
+
+
+def test_trash_removes_the_lobby_for_me_after_a_second_click(ui, monkeypatch):
+    leave = Mock()
+    def depart(pid, lid):
+        assert (pid, lid) == ('me', 'new')
+        ui['members'] = [m for m in ui['members'] if m.lobby_id != lid]
+    leave.side_effect = depart
+    monkeypatch.setattr(db, 'leave_lobby', leave)
+    at = page()
+    at.button(key='remove_new').click().run()
+    assert any('Remove Newest lobby from your lobbies' in w.value for w in at.warning)
+    leave.assert_not_called()
+    at.button(key='confirm_remove_no_new').click().run()
+    leave.assert_not_called()
+    assert not any(b.key == 'confirm_remove_yes_new' for b in at.button)
+    at.button(key='remove_new').click().run()
+    at.button(key='confirm_remove_yes_new').click().run()
+    assert not at.exception
+    leave.assert_called_once_with('me', 'new')
+    assert all('Newest lobby' not in s for s in cards(at))
+    assert any('earned points are kept' in s.value for s in at.success)
+
+
+def test_trash_failure_keeps_the_lobby(ui, monkeypatch):
+    monkeypatch.setattr(db, 'leave_lobby', Mock(side_effect=ValueError('Finish your active duel first.')))
+    at = page()
+    at.button(key='remove_new').click().run()
+    at.button(key='confirm_remove_yes_new').click().run()
+    assert not at.exception and any('active duel' in e.value for e in at.error)
+    assert len(ui['members']) == 3
