@@ -1,46 +1,45 @@
-/* Leaderboard: one clean list, iPhone style. No blocks, no heavy shadows,
-   normal font weights. All names and scores are escaped by the renderer. */
+/* Standings presentation only. All names and scores are escaped by the renderer. */
 
-.standings-label { margin: 1.2rem 0 0.35rem 4px; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+/* Podium: top 3, visually ordered 2nd-1st-3rd with the leader centered and tallest. */
+.standings-podium { list-style: none; margin: 8px 0 0; padding: 0; display: flex; align-items: flex-end; justify-content: center; gap: 8px; }
+.standings-podium-place { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.standings-podium-1 { width: 34%; }
+.standings-podium-2, .standings-podium-3 { width: 30%; }
+.standings-podium-avatar { display: grid; place-items: center; border-radius: 50%; font-weight: 800; flex-shrink: 0; }
+.standings-podium-1 .standings-podium-avatar { font-size: 15px; }
+.standings-podium-2 .standings-podium-avatar, .standings-podium-3 .standings-podium-avatar { font-size: 13px; }
+.standings-podium-name { font-weight: 700; color: var(--drink-ink); text-align: center; overflow-wrap: anywhere; }
+.standings-podium-tag { display: inline-block; margin-left: 4px; padding: 2px 5px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.56rem; font-weight: 800; letter-spacing: 0.04em; vertical-align: middle; }
+.standings-podium-points { font-weight: 800; color: var(--drink-ink); }
+.standings-podium-1 .standings-podium-points { font-size: 15px; }
+.standings-podium-2 .standings-podium-points, .standings-podium-3 .standings-podium-points { font-size: 12px; }
+.standings-podium-block { width: 100%; border-radius: var(--radius-md) var(--radius-md) 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 8px; font-weight: 800; font-size: 20px; }
+.standings-podium-2 .standings-podium-block, .standings-podium-3 .standings-podium-block { font-size: 17px; padding-top: 6px; }
+/* Winner's block: a shadow tinted to its own accent colour instead of the
+   flat navy shadow the other two get -- same trick as the login card's
+   shadow tinted to its sky backdrop. */
+.standings-podium-1 .standings-podium-block { box-shadow: 0 14px 28px -6px rgba(44, 153, 214, .55), 0 2px 6px rgba(44, 153, 214, .3); }
 
-/* The ranking: one white card, hairlines between rows. */
-.standings-list { list-style: none; margin: 0; padding: 0; background: var(--surface);
-  border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
-/* .stApp prefix: Streamlit indents list items; these rows run edge to edge. */
-.stApp .standings-list .standings-row { display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 16px; min-height: 52px; }
-.stApp .standings-list .standings-row + .standings-row { border-top: 1px solid var(--border); }
-.standings-row-rank { width: 18px; text-align: center; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.standings-medal-1 { color: #C9962B; }
-.standings-medal-2 { color: #8C9AA5; }
-.standings-medal-3 { color: #B8743F; }
-.standings-row-avatar { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%;
-  background: var(--accent-soft); color: var(--text-muted); font-size: 0.7rem; font-weight: 600; }
-.standings-row-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
-.standings-you-tag { margin-left: 6px; font-size: 0.8rem; font-weight: 500; color: var(--accent-ink); }
-.standings-row-points { font-size: 1rem; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
-.standings-row-you { background: var(--accent-soft); }
-.standings-row-you .standings-row-avatar { background: var(--accent); color: var(--on-accent); }
+/* Ranks 4+: a flat list. */
+.standings-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.standings-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--radius-md); padding: 10px 12px; box-shadow: var(--shadow-card); }
+.standings-row-rank { width: 20px; font-size: 0.75rem; font-weight: 700; color: var(--drink-muted); }
+.standings-row-avatar { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; font-size: 0.69rem; font-weight: 800; }
+.standings-row-name { flex: 1; min-width: 0; font-size: 0.82rem; font-weight: 700; color: var(--drink-ink); overflow-wrap: anywhere; }
+.standings-you-tag { display: inline-block; padding: 2px 5px; margin-left: 2px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.56rem; font-weight: 800; vertical-align: middle; letter-spacing: 0.04em; }
+.standings-row-points { font-size: 0.88rem; font-weight: 800; color: var(--drink-ink); }
 
-/* Territories: one row with the counts; opens the full list. */
-.standings-territories { list-style: none; margin: 0; padding: 0; }
-.stApp .standings-territories .standings-territory { display: flex; align-items: center; gap: 10px; margin: 0; padding: 9px 16px; font-size: 0.95rem; }
-.stApp .standings-territories .standings-territory + .standings-territory { border-top: 1px solid var(--border); }
-.standings-territory-name { flex: 1; min-width: 0; color: var(--text); }
-.standings-territory-owner { color: var(--text-muted); font-size: 0.85rem; }
+/* Territory pills: a compact ownership strip, not detailed cards. */
+.standings-pills { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 6px; margin-top: 8px; }
+.standings-pill { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; background: var(--surface); border-radius: var(--radius-pill); padding: 7px 12px; box-shadow: var(--shadow-card); white-space: nowrap; font-size: 0.75rem; font-weight: 700; color: var(--drink-ink); }
 .standings-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .standings-pill-dot.territory-yours { background: var(--territory-yours); }
 .standings-pill-dot.territory-theirs { background: var(--territory-theirs); }
 .standings-pill-dot.territory-free { background: var(--territory-free); }
 
-/* Expanders on this page look like grouped-list rows, not boxes. */
-.stApp:has(.standings-list, .standings-label) [data-testid="stExpander"] details {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: none; overflow: hidden; }
-.stApp:has(.standings-list, .standings-label) [data-testid="stExpander"] summary { padding: 12px 16px; }
-.stApp:has(.standings-list, .standings-label) [data-testid="stExpander"] summary p { font-size: 0.95rem; font-weight: 500; color: var(--text); }
-.stApp:has(.standings-list, .standings-label) [data-testid="stExpanderDetails"] { padding: 0; border-top: 1px solid var(--border); }
-/* The rules: a plain text link under the list. */
-.stApp .st-key-standings_rules [data-testid="stExpander"] details { background: transparent; border: 0; }
-.stApp .st-key-standings_rules [data-testid="stExpander"] summary { padding: 6px 4px; }
-.stApp .st-key-standings_rules [data-testid="stExpander"] summary p { font-size: 0.85rem; color: var(--accent-ink); }
-.stApp .st-key-standings_rules [data-testid="stExpanderDetails"] { border: 0; padding: 0 4px; }
-.stApp .st-key-standings_refresh button { color: var(--text-muted); min-height: 36px; }
+
+@media (max-width: 480px) {
+  .standings-podium-1 .standings-podium-avatar { width: 44px !important; height: 44px !important; }
+  .standings-podium-2 .standings-podium-avatar, .standings-podium-3 .standings-podium-avatar { width: 36px !important; height: 36px !important; }
+  .standings-podium-name { font-size: 11px !important; }
+}
