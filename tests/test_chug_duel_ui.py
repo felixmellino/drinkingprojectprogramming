@@ -78,11 +78,50 @@ def service(monkeypatch):
     return state
 
 
-def open_page(player="pa", member="a"):
+def open_page(player="pa", member="a", *, selected='chug_duel'):
     page = AppTest.from_file(ROOT / "pages/7_Minigames.py", default_timeout=10)
     page.session_state["player_id"] = player
     page.session_state["member"] = member
+    if selected:
+        page.session_state['minigame_selected'] = selected
     return page.run()
+
+
+def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeypatch):
+    tracking = Mock()
+    monkeypatch.setattr(ui, 'track_location', tracking)
+    page = open_page(selected=None)
+    assert not page.exception
+    assert {'Chug Duel', 'Focus Challenge'} <= {h.value for h in page.subheader}
+    assert button(page, 'Coming soon').disabled
+    assert not any(b.label == 'Send challenge' for b in page.button)
+    assert not page.metric and service['duels'] == []
+    tracking.assert_not_called()
+    button(page, 'Open Chug Duel').click().run()
+    assert not page.exception and button(page, 'Send challenge')
+    assert tracking.called
+    button(page, 'All games').click().run()
+    assert not page.exception and not page.metric and service['duels'] == []
+
+
+def test_catalogue_surfaces_invitations_and_opening_recovers_them(service):
+    host = open_page()
+    button(host, 'Send challenge').click().run()
+    guest = open_page('pb', 'b', selected=None)
+    assert any('1 incoming invitation' in c.value for c in guest.caption)
+    assert not any(b.label == 'Accept duel' for b in guest.button)
+    button(guest, 'Open Chug Duel').click().run()
+    assert not guest.exception and button(guest, 'Accept duel')
+    button(guest, 'Accept duel').click().run()
+    assert service['duels'][0]['status'] == 'accepted'
+
+
+def test_changing_lobby_context_returns_to_catalogue(service):
+    page = open_page()
+    page.session_state['minigames_context'] = ('other-member', 'other-lobby', 'other-season')
+    page.run()
+    assert not page.exception and not page.metric
+    assert 'minigame_selected' not in page.session_state
 
 
 def test_invite_accept_on_other_session_shared_capture_and_result(service):
