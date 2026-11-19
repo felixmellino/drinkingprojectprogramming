@@ -1,6 +1,5 @@
 """Show check-in photos to the members of the lobby where they were taken."""
 
-from base64 import b64encode
 from datetime import datetime, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -15,7 +14,7 @@ from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import context_line, page_header, section_heading
-from photo_history_ui import photo_card, photo_metadata
+from photo_history_ui import photo_card, photo_metadata, framed_photo
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -35,6 +34,7 @@ show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
 page_header("Photo history", "Every moment, with the player, place, drink and points together.")
+st.caption("Your photos and photos shared with you in this lobby. Manage sharing in Profile → Account & security → Photo privacy.")
 st.caption(f"Photos are available until {PHOTO_RETENTION_DAYS} days after their season ends. Deleting your photo keeps your score.")
 if st.session_state.pop("photo_deleted", False):
     st.success("Photo deleted. Your score is unchanged.")
@@ -44,7 +44,7 @@ if st.session_state.pop("checkin_corrected", False):
 try:
     entries = db.list_checkin_photos(player_id, lobby_id)
     if not entries:
-        st.info("Your lobby has no check-in photos available.")
+        st.info("No photo history is available to you in this lobby yet. Other players' photos depend on their privacy settings.")
         st.stop()
 
 except PermissionError:
@@ -67,21 +67,20 @@ if len(entries) > 1 and detail_id is None:
     first = page_number * page_size
     visible_entries = entries[first:first + page_size]
     st.caption(f"Showing {first + 1}–{first + len(visible_entries)} of {len(entries)} check-ins · newest first")
-    for offset in range(0, len(visible_entries), 2):
-        for column, item in zip(st.columns(2), visible_entries[offset:offset + 2]):
-            with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
-                try:
-                    photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
-                except PermissionError:
-                    st.error("Your lobby access could not be confirmed. Choose a lobby again.")
-                    st.stop()
-                except (APIError, RequestError, RuntimeError, StorageException):
-                    st.warning("This photo could not be loaded. Its details are still available.")
-                    photo = None
-                photo_card(item, photo)
-                if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
-                    st.session_state["history_detail_id"] = item["id"]
-                    st.rerun()
+    for column, item in zip(st.columns(len(visible_entries)), visible_entries):
+        with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
+            try:
+                photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
+            except PermissionError:
+                st.warning("Photo access changed. Refresh to load the current photo history.")
+                st.stop()
+            except (APIError, RequestError, RuntimeError, StorageException):
+                st.warning("This photo could not be loaded. Its details are still available.")
+                photo = None
+            photo_card(item, photo)
+            if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
+                st.session_state["history_detail_id"] = item["id"]
+                st.rerun()
     newer, _, older = st.columns(3)
     with newer:
         if st.button("Newer photos", disabled=page_number == 0):
@@ -108,7 +107,7 @@ entry = entries_by_id[selected_id]
 try:
     photo = db.download_checkin_photo(player_id, lobby_id, entry["id"])
 except PermissionError:
-    st.error("Choose a lobby you belong to to view its photos.")
+    st.warning("Photo access changed. Refresh to load the current photo history.")
     st.stop()
 except (APIError, RequestError, RuntimeError, StorageException):
     st.error("We couldn't load the photo. Try again.")
@@ -118,12 +117,11 @@ with st.container(key="drink_ui_panel_photo"):
     location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
     context_line(entry["username"], location or "No territory assigned")
     if photo is None:
+        framed_photo(entry, None, detail=True)
         st.info("This check-in's photo is unavailable.")
         st.caption("Removing a photo keeps the check-in and its score.")
     else:
-        # Inline authorized bytes; do not create a public Streamlit media URL.
-        encoded = b64encode(photo).decode("ascii")
-        st.html(f'<img class="drink-photo" src="data:image/jpeg;base64,{encoded}" alt="Drink check-in photo">')
+        framed_photo(entry, photo, detail=True)
     time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
     st.text(f"{time_label} · {entry_label(entry)}")
 

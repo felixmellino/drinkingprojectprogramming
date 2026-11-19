@@ -34,11 +34,16 @@ def store(monkeypatch):
         },
     }
     files = {"lobby/entry.jpg": {"bytes": b"clean photo", "updated_at": END.isoformat()}}
-    state = SimpleNamespace(rows=rows, files=files, downloads=0, removes=0, fail_remove=False, fail_update=False)
+    members = [SimpleNamespace(player_id=p, team_id=None) for p in ("author", "reader", "guest")]
+    preferences = {p: {"player_id": p, "share_checkin_photos": True} for p in ("author", "guest")}
+    state = SimpleNamespace(rows=rows, files=files, members=members, preferences=preferences,
+                            downloads=0, removes=0, fail_remove=False, fail_update=False)
 
     class Query:
-        def __init__(self):
+        def __init__(self, table):
+            self.table = table
             self.filters = {}
+            self.in_filters = {}
             self.changes = None
 
         def select(self, _):
@@ -46,6 +51,10 @@ def store(monkeypatch):
 
         def eq(self, key, value):
             self.filters[key] = value
+            return self
+
+        def in_(self, key, values):
+            self.in_filters[key] = values
             return self
 
         def range(self, *args):
@@ -60,14 +69,16 @@ def store(monkeypatch):
 
         def execute(self):
             matching = []
-            for row in rows.values():
+            source = preferences if self.table == "player_photo_preferences" else rows
+            for row in source.values():
                 def value(key):
                     parts = key.split(".")
                     result = row
                     for part in parts:
                         result = result[part]
                     return result
-                if all(value(key) == expected for key, expected in self.filters.items()):
+                if (all(value(key) == expected for key, expected in self.filters.items())
+                        and all(value(key) in values for key, values in self.in_filters.items())):
                     if self.changes:
                         if state.fail_update:
                             raise RuntimeError("Database unavailable after file removal")
@@ -103,8 +114,9 @@ def store(monkeypatch):
     bucket = Bucket()
     monkeypatch.setattr(db, "datetime", Clock)
     monkeypatch.setattr(db, "_private_photo_bucket", lambda: bucket)
-    monkeypatch.setattr(db, "get_client", lambda: SimpleNamespace(table=lambda _: Query()))
+    monkeypatch.setattr(db, "get_client", lambda: SimpleNamespace(table=Query))
     monkeypatch.setattr(db, "list_memberships_for_player", lambda player: [] if player == "outsider" else [SimpleNamespace(lobby_id="lobby")])
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: list(members))
     return state
 
 

@@ -219,4 +219,4 @@ passed 587 tests. Focused Chug Duel UI/core and legacy minigame checks passed
 opening the existing Chug Duel form and returning to the catalogue. No live
 records were changed; that catalogue-only layout required no migration.
 Focus Challenge was subsequently implemented under R-M06–R-M09; its separate
-migration 013 and activation steps are in `docs/FOCUS_CHALLENGE.md`.
+migration 014 and activation steps are in `docs/FOCUS_CHALLENGE.md`.

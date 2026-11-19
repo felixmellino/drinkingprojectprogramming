@@ -346,8 +346,35 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | R3 | New v1 seasons use the frozen category/size table in [SCORING_V1.md](SCORING_V1.md). | Four categories; sizes for beer/wine/mixed; one shot serving. Reject unsupported combinations. Large bonuses are already included. Legacy seasons keep their prior awards. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
 | R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters, or eighth-points for Focus under R-M09; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
-| R6 | All current members of a lobby can view the photos saved with that lobby's drink entries. | Before serving a photo, verify that the viewer is signed in and is a current member of the lobby that owns the entry. |
+| R6 | Current lobby members see their own unexpired photos. Sharing with other players is OFF by default for all accounts and controlled by one account-wide switch in Profile → Account & security → Photo privacy. | The switch applies to past and future photos across all lobbies. In individual mode, another member needs the uploader's consent. In team mode, current members of the entry's saved team can view its photos internally regardless of the switch; opponents need the uploader and every current member of that team to opt in. Check membership and consent again before each image download, as well as filtering the gallery. See R-PH01 below. |
 | R7 | The owner can delete their photo while keeping the drink entry and its awarded points. Photos expire 30 days after their season ends. | Only the entry's author may request deletion. Remove the stored image and mark its reference as deleted, preserving the score and standings. Deny photo access at the expiry boundary and remove expired files through scheduled cleanup. |
+
+### R-PH01 Photo sharing and attribution
+
+Contributor choices, 19 November 2026: a missing preference means OFF for
+existing and new accounts. Only the signed-in owner can save their account's
+preference. The current roster controls team consent even for old photos:
+one new member with sharing OFF hides that team's photos from opponents.
+An empty team grants no opponent access. Historical attribution uses the
+team saved on the check-in, not a later team assignment; if an uploader has
+left that team their own consent is still required for opponent access.
+Lobby membership is required for every audience, including the owner.
+
+Chug Duel's two image copies follow each entry owner's sharing setting
+independently. One participant opting out does not block the other copy.
+This can leave the same shared image visible through the other participant;
+the control does not promise consent from every person pictured.
+
+Solo photos have a stable player-coloured frame and username. Team photos
+have a stable team-coloured frame, team name and uploader's username. Names
+remain readable independently of colour. Deleted/unavailable photos keep
+their attribution on otherwise visible history cards. Scoring, check-in
+requirements, standings, corrections and R7 retention do not change.
+
+Turning sharing OFF denies subsequent gallery/download requests; images
+already delivered to a page, downloaded or screenshotted cannot be recalled.
+No public image URL is generated. Missing consent denies sharing; a failed
+consent lookup never falls back to serving the image.
 
 ## Implementation recommendations (not yet agreed rules)
 

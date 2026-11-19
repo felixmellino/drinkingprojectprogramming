@@ -8,10 +8,11 @@ still required. No shared-project records were changed during development.
 
 ## Activation
 
-1. Review this branch and migration `013_focus_challenge.sql` with a teammate.
-2. The Data owner applies 013 to the shared project after 010, 011 and
-   `012_qa_minigames.sql`. The migration is repeatable. Do not rerun `schema.sql`
-   on an existing database. Fresh databases also need these feature migrations.
+1. Review this branch and migration `014_focus_challenge.sql` with a teammate.
+2. The Data owner applies 014 after 010, 011, `012_qa_minigames.sql` and
+   `013_checkin_photo_privacy.sql`. Migration 014 is repeatable. Do not rerun
+   `schema.sql` on an existing database. Fresh databases also need these
+   feature migrations.
 3. Merge the reviewed PR and deploy/restart with the same pinned requirements.
 4. Create a **new QA lobby**, selecting the Wednesday 08:00 test-season option.
    New normal/QA seasons snapshot Focus's rules. Older snapshots remain frozen;
@@ -71,7 +72,7 @@ not receive it, even when its winner currently has a Focus effect.
   Three-second polling preserves a keyed component; it does not restart clocks.
 - `data/db.py`: thin RPC wrappers and numeric row conversion. Clients send
   action evidence and expected revision, never a trusted win or points factor.
-- `013_focus_challenge.sql`: private attempts, server random material,
+- `014_focus_challenge.sql`: private attempts, server random material,
   membership checks, lobby transaction locks, idempotent start/results, stage
   validation, deadlines, one-running/one-win indexes and immutable boost source.
 - `DrinkEntry.focus_attempt_id`: the source grant at check-in receipt time.
@@ -133,3 +134,14 @@ history/retention policy remains applicable.
 Still check after deployment: real iPhone/Android timing and target usability,
 switch-away/reconnect on mobile networks, an actual boosted check-in and its
 territory/leaderboard/history, teammate review and shared migration installation.
+
+## Integration with photo sharing — 19 November 2026
+
+The latest main adds default-OFF account photo sharing, team consent and
+attributed photo frames. This branch keeps those access checks and frames,
+while retaining Focus source labels and exact fractional award details.
+R5 keeps Focus eighth-point income; R6/R-PH01 keep the stricter photo policy.
+Privacy migration 013 is already applied to the shared project. Focus's new
+migration is numbered 014 to avoid colliding with that deployed migration.
+Its SQL behavior is unchanged; if an earlier Focus 013 script was already
+applied, 014 can still be applied safely because it is repeatable.

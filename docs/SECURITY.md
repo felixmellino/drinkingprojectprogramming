@@ -6,7 +6,30 @@ Every photo page and check-in submission requires the account login helper.
 It checks the current credential version, including after an administrator password change.
 The server looks up the viewer's current lobby membership before each photo
 download. The photo path must match the entry and lobby being opened.
-The photo view displays the username, capture time and territory label.
+It also checks the uploader's current account-wide sharing preference and
+the current team roster under R6/R-PH01. Sharing defaults OFF, including
+existing accounts. Owners retain access; current teammates can view their
+saved team's photos internally. Opponents need the uploader and all current
+members of that team to opt in. Missing consent denies sharing, and lookup
+failures never authorize a download. Listing and direct downloads use the
+same rule without caching consent. Chug Duel copies follow each owner's
+setting independently, so the shared image can remain visible via the other
+participant. Turning sharing OFF cannot recall bytes already delivered.
+The photo view displays the username, team where applicable, capture time
+and territory label, with an identity-coloured frame.
+
+Apply `migrations/013_checkin_photo_privacy.sql` before deploying these
+checks. The preference table permits only the server service role; profile
+reads/writes validate the current account credential version. Preferences
+are database-backed and apply to past and future photos across all lobbies.
+
+Migration 013 was applied to the shared WeGoPub Supabase project on
+19 November 2026 through its SQL editor. Eight checks passed: RLS enabled;
+non-null boolean default false; primary key and cascading player link; no
+PUBLIC grants; anon/authenticated denied; service-role read/write grants;
+no opt-in records for existing accounts; and unchanged game record counts.
+A fresh app-server process also read the empty table successfully via the
+existing Supabase configuration. Deployed UI verification remains pending.
 
 Storage uses the private `check-in-photos` bucket. The setup migration blocks
 direct access by anonymous and authenticated Supabase clients and protects
@@ -213,7 +236,7 @@ cleanup in dry-run mode and verify it never selects a current picture.
 
 ## Focus Challenge — 19 November 2026
 
-Migration 013 keeps attempts/private random challenges server-only. Its game
+Migration 014 keeps attempts/private random challenges server-only. Its game
 RPCs use the trusted server role and also validate current player membership,
 phase/revision, evidence shape, server deadlines, one-win limits and atomic
 reward issuance under the existing lobby transaction lock. New-season snapshots

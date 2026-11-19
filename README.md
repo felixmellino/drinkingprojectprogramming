@@ -154,6 +154,21 @@ access, upload limits, secrets, and the privacy decisions to complete before
 collecting real player photos.
 
 Owners can delete their photo in **Lobby photos** while keeping the score.
+Before deploying photo privacy, apply
+[`migrations/013_checkin_photo_privacy.sql`](migrations/013_checkin_photo_privacy.sql)
+to both new and existing databases. Applied to the shared project on
+19 November 2026; eight database checks and a fresh app-server read passed.
+It adds a server-only account preference;
+missing preferences mean OFF for everyone. Under **Profile → Account &
+security → Photo privacy**, players can share past and future check-in
+photos across all lobbies. Own photos remain visible; current teammates
+retain internal team access. Opponents need consent from the uploader and
+every current member of the photo's saved team. A new teammate with sharing
+OFF hides existing team photos from opponents. Chug Duel copies follow
+each owner's preference independently. Turning sharing OFF cannot recall
+already viewed or saved images. Photo frames identify the player, or the
+team and player in team mode. This changes gallery/image access, not scores.
+
 Photo access ends 30 days after its season ends. The Data owner must schedule
 `python -m data.cleanup_checkin_photos --apply` on the server at least daily
 and monitor failures. Without `--apply`, the command only reports counts.
@@ -288,7 +303,7 @@ four building blocks, and the team's workflow rules.
   the QA replay UI update requires deployment with the new Python code.
   Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
   [CHUG_DUEL.md](docs/CHUG_DUEL.md).
-  Focus Challenge is implemented on its feature branch; migration 013 and a new season activate it. Other minigames remain future work. See the build order in
+  Focus Challenge is implemented on its feature branch; migration 014 and a new season activate it. Other minigames remain future work. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season
@@ -458,7 +473,8 @@ precision tests. Accepted entries unlock attempts at five, then seven/nine/etc.
 after failures. One win per evening grants a personal 60-minute x1.5 ordinary
 season/territory effect, including 25% owner income on boosted awards.
 Chug Duel scoring is unchanged. Before activation, the Data owner applies
-`migrations/013_focus_challenge.sql` after 011 and `012_qa_minigames.sql`.
+`migrations/014_focus_challenge.sql` after 011, `012_qa_minigames.sql` and
+`013_checkin_photo_privacy.sql`.
 Create a new QA/normal lobby to snapshot its rules; existing seasons stay frozen.
 See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
 Shared-project migration and real-phone difficulty calibration are pending.

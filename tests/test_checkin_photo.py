@@ -87,6 +87,7 @@ def test_database_client_rejects_unencrypted_remote_connection(monkeypatch):
 
 
 def test_photo_download_rechecks_membership_after_it_is_removed(monkeypatch):
+    monkeypatch.setattr(db, "_photo_audience", lambda *args: lambda row: True)
     membership = SimpleNamespace(lobby_id="photo-lobby")
     memberships = [membership]
     monkeypatch.setattr(db, "list_memberships_for_player", lambda _: list(memberships))
@@ -119,6 +120,7 @@ def test_photo_download_rejects_outsider_before_requesting_image(monkeypatch):
 
 
 def test_photo_download_rejects_public_bucket(monkeypatch):
+    monkeypatch.setattr(db, "_photo_audience", lambda *args: lambda row: True)
     monkeypatch.setattr(db, "list_memberships_for_player", lambda _: [SimpleNamespace(lobby_id="photo-lobby")])
     client = Mock()
     query = client.table.return_value.select.return_value

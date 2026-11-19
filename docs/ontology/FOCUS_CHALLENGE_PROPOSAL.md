@@ -2,7 +2,7 @@
 
 The contributor confirmed teammate approval and requested full implementation
 on 19 November 2026. Implemented rules are R-M06–R-M09 in RULES.md; setup and
-verification live in [FOCUS_CHALLENGE.md](../FOCUS_CHALLENGE.md). Migration 013
+verification live in [FOCUS_CHALLENGE.md](../FOCUS_CHALLENGE.md). Migration 014
 is prepared and isolated tests pass; shared-project application and real-phone
 calibration remain pending. The discussion record below preserves the choices
 and earlier open points; implemented defaults supersede its open-point list.

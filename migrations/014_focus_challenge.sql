@@ -1,4 +1,4 @@
--- Focus Challenge. Apply after 012_qa_minigames.sql. No existing snapshot is changed.
+-- Focus Challenge. Apply after 013_checkin_photo_privacy.sql (and 011/012 QA minigames). No existing snapshot is changed.
 begin;
 alter table public.drink_entries alter column points_awarded type numeric(14,3);
 alter table public.drink_entries alter column owner_bonus_quarters type numeric(14,3);

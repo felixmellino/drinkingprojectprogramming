@@ -114,10 +114,29 @@
 }
 .st-key-drink_ui_panel_details [data-testid="stText"] { color: var(--drink-ink); }
 .history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--surface-raised); border-radius: 14px; }
+.history-photo-frame { margin: .7rem 0; padding: .35rem; border: 3px solid var(--photo-identity); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.history-photo-identity { padding: .2rem .4rem .55rem; color: var(--text); font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+.history-photo-frame .drink-photo { margin: 0; width: 100%; }
 .history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
 .history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
+
+/* Memories grid tiles: 20px card radius, 10px padding -> the photo's own
+   radius is the remainder (10px), so its corners read as cut from the same
+   rounded shape as the card instead of two unrelated curves. */
+[class*="st-key-drink_ui_panel_history_"] { padding: 10px; border-radius: 20px; }
+[class*="st-key-drink_ui_panel_history_"] .history-photo {
+  aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px;
+}
+[class*="st-key-drink_ui_panel_history_"] .history-card-details { padding: 0 2px; }
+[class*="st-key-drink_ui_panel_history_"] .history-card-details h3 { font-size: 0.84rem; margin: 8px 0 4px; }
+[class*="st-key-drink_ui_panel_history_"] .history-award { font-size: 0.7rem; padding: 6px 8px; }
+[class*="st-key-drink_ui_panel_history_"] .history-time { font-size: 0.66rem; }
+@media (max-width: 640px) {
+  [class*="st-key-drink_ui_panel_history_"] { padding: 8px; border-radius: 16px; }
+  [class*="st-key-drink_ui_panel_history_"] .history-photo { border-radius: 8px; }
+}
 @media (max-width: 640px) {
   .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] { padding: 1rem 1rem 3rem; }
   .drink-page-hero { padding-top: 0.5rem; }
