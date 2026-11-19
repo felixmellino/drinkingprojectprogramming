@@ -6,7 +6,30 @@ Every photo page and check-in submission requires the account login helper.
 It checks the current credential version, including after an administrator password change.
 The server looks up the viewer's current lobby membership before each photo
 download. The photo path must match the entry and lobby being opened.
-The photo view displays the username, capture time and territory label.
+It also checks the uploader's current account-wide sharing preference and
+the current team roster under R6/R-PH01. Sharing defaults OFF, including
+existing accounts. Owners retain access; current teammates can view their
+saved team's photos internally. Opponents need the uploader and all current
+members of that team to opt in. Missing consent denies sharing, and lookup
+failures never authorize a download. Listing and direct downloads use the
+same rule without caching consent. Chug Duel copies follow each owner's
+setting independently, so the shared image can remain visible via the other
+participant. Turning sharing OFF cannot recall bytes already delivered.
+The photo view displays the username, team where applicable, capture time
+and territory label, with an identity-coloured frame.
+
+Apply `migrations/013_checkin_photo_privacy.sql` before deploying these
+checks. The preference table permits only the server service role; profile
+reads/writes validate the current account credential version. Preferences
+are database-backed and apply to past and future photos across all lobbies.
+
+Migration 013 was applied to the shared WeGoPub Supabase project on
+19 November 2026 through its SQL editor. Eight checks passed: RLS enabled;
+non-null boolean default false; primary key and cascading player link; no
+PUBLIC grants; anon/authenticated denied; service-role read/write grants;
+no opt-in records for existing accounts; and unchanged game record counts.
+A fresh app-server process also read the empty table successfully via the
+existing Supabase configuration. Deployed UI verification remains pending.
 
 Storage uses the private `check-in-photos` bucket. The setup migration blocks
 direct access by anonymous and authenticated Supabase clients and protects
@@ -18,8 +41,16 @@ For existing projects, `migrations/004_server_game_tables.sql` also protects
 lobby invite codes, territory definitions, arenas and minigame attempts.
 Public clients cannot bypass the app to read invites or change game state.
 Fresh databases get the same restrictions from `schema.sql`. The account
-migrations protect credentials and remembered sessions. Password recovery is currently
-unavailable; historical reset-code database objects are unused by the app.
+migrations protect credentials, remembered sessions and reset codes. Password
+recovery uses the existing server-only reset RPCs: hashed random 64-bit codes,
+15-minute expiry, atomic single-use consumption, a one-minute issuance cooldown,
+and the persisted login throttle shared by request/reset operations. Email is sent
+through Brevo's HTTPS API using a server-only restricted key. The app sends HTML
+and plain text without embedding remote images. Provider errors and recipient
+information are not shown to players. Request response wording is identical for
+unknown accounts, throttling and delivery failures; this does not guarantee equal
+network timing. Changing a password invalidates active and remembered sign-ins
+through the existing credential-version checks. Recovery never changes game data.
 
 ## Image handling
 
@@ -202,3 +233,19 @@ another device; replace/remove; check owner, accepted friend, both directions
 of a pending request and unrelated accounts; cancel/decline/remove and verify
 further access ends. Confirm public-client table/object requests fail. Run
 cleanup in dry-run mode and verify it never selects a current picture.
+
+## Focus Challenge — 19 November 2026
+
+Migration 014 keeps attempts/private random challenges server-only. Its game
+RPCs use the trusted server role and also validate current player membership,
+phase/revision, evidence shape, server deadlines, one-win limits and atomic
+reward issuance under the existing lobby transaction lock. New-season snapshots
+enable the feature; existing snapshots are unchanged. Source grants on entries
+are immutable, so correction/replay cannot reapply an expired reward or compound
+it. Exact eighth-point income is retained. No new package, credential, public
+RPC access, photo, exact GPS or health classification is introduced.
+
+Browser timing/tap evidence remains trust-based and can be manipulated by a
+modified client. This is not a verified human/anti-cheat or sobriety assessment.
+See [the implementation record](FOCUS_CHALLENGE.md) for tested access controls,
+private challenge generation, restart recovery and outstanding activation checks.

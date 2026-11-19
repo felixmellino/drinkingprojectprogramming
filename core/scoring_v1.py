@@ -1,7 +1,8 @@
 """Frozen scoring rules and deterministic replay. No database or UI imports.
 
-An owner-income quarter is exactly 0.25 season points. Replay uses integer
-quarters throughout; only presentation converts them to decimal points.
+An owner-income quarter is exactly 0.25 season points. Focus awards can be
+half-points, hence half a quarter (0.125 points). These binary-exact values
+are also stored as exact PostgreSQL numeric values, never rounded income.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from core.checkins import CheckinRejected
 from core.location import evaluate_location
 from core.models import DrinkEntry, Season, Territory
 from core.teams import competitor
+from core.focus_challenge import new_focus_rules
 
 VERSION = "v1"
 DRINK_LABELS = {"beer": "Beer", "wine": "Wine", "shot": "Shot", "mixed": "Mixed drink"}
@@ -44,6 +46,7 @@ def current_time() -> datetime:
 def new_rules(*, test_mode: bool = False) -> dict:
     """A new season gets its own snapshot, never the mutable module object."""
     rules = deepcopy(_RULES)
+    rules['focus_challenge'] = new_focus_rules()
     if test_mode:
         rules.update(test_mode=True, start_weekday=2, start_hour=8)
     return rules
@@ -113,7 +116,7 @@ def cooldown_remaining(membership_id: str, now: datetime, entries: list[DrinkEnt
 
 
 def can_correct(entry: DrinkEntry, season: Season, now: datetime) -> bool:
-    if entry.rule_version != VERSION or entry.season_id != season.id:
+    if entry.rule_version != VERSION or entry.season_id != season.id or entry.duel_id:
         return False
     at = utc(now)
     return (utc(entry.submitted_at) <= at < utc(entry.submitted_at) + timedelta(seconds=rules_for(season)["correction_seconds"])
@@ -166,7 +169,8 @@ def corrected_entry(entry: DrinkEntry, season: Season, drink_type: str, size: st
     except ValueError:
         raise CheckinRejected("invalid_selection") from None
     return replace(entry, drink_type=drink_type, size=size, amount=volume_for(drink_type, size, rules_for(season)),
-                   points_awarded=points, corrected_at=utc(now), revision=entry.revision + 1)
+                   points_awarded=points * (1.5 if entry.focus_attempt_id else 1),
+                   corrected_at=utc(now), revision=entry.revision + 1)
 
 
 def entry_order(entry: DrinkEntry):
@@ -177,10 +181,10 @@ def entry_order(entry: DrinkEntry):
 
 @dataclass
 class Replay:
-    season_quarters: dict[str, int] = field(default_factory=dict)
-    territory_totals: dict[str, dict[str, int]] = field(default_factory=dict)
+    season_quarters: dict[str, int | float] = field(default_factory=dict)
+    territory_totals: dict[str, dict[str, int | float]] = field(default_factory=dict)
     owners: dict[str, str] = field(default_factory=dict)
-    awards: dict[str, tuple[str | None, int]] = field(default_factory=dict)
+    awards: dict[str, tuple[str | None, int | float]] = field(default_factory=dict)
     reached: dict[str, tuple[int, int]] = field(default_factory=dict)
     territory_reached: dict[str, dict[str, int]] = field(default_factory=dict)
 
@@ -188,7 +192,7 @@ class Replay:
         order = sorted(self.season_quarters, key=lambda m: (-self.season_quarters[m], self.reached[m], m))
         return [(m, Decimal(self.season_quarters[m]) / 4) for m in order]
 
-    def territory_rows(self, territory_id: str) -> list[tuple[str, int]]:
+    def territory_rows(self, territory_id: str) -> list[tuple[str, int | float]]:
         totals = self.territory_totals.get(territory_id, {})
         reached = self.territory_reached.get(territory_id, {})
         return [(m, totals[m]) for m in sorted(totals, key=lambda m: (-totals[m], reached[m], m))]
@@ -204,7 +208,19 @@ def replay_season(entries: list[DrinkEntry]) -> Replay:
     if len({entry.season_id for entry in entries}) > 1:
         raise ValueError("Replay one season at a time.")
     state = Replay()
-    for index, entry in enumerate(sorted(entries, key=entry_order)):
+    events = [(entry_order(entry), False, entry) for entry in entries]
+    events += [((0, entry.duel_transfer_order, entry.id), True, entry) for entry in entries
+               if entry.duel_transfer_to and entry.duel_transfer_order is not None]
+    for index, (_, is_transfer, entry) in enumerate(sorted(events, key=lambda event: (event[0], event[1]))):
+        if is_transfer:
+            # Move only the loser's base award at the result's own event position.
+            # Territory ownership and prior-owner income keep their original history.
+            prior_order = {account: rank for rank, (account, _) in enumerate(state.season_rows())}
+            for account, delta in ((competitor(entry), -entry.points_awarded * 4),
+                                   (entry.duel_transfer_to, entry.points_awarded * 4)):
+                state.season_quarters[account] = state.season_quarters.get(account, 0) + delta
+                state.reached[account] = (index, prior_order.get(account, len(prior_order)))
+            continue
         points = entry.points_awarded
         if points <= 0 or entry.location_check_result not in ("matched", "outside"):
             continue
@@ -229,4 +245,4 @@ def replay_season(entries: list[DrinkEntry]) -> Replay:
 
 
 def format_points(points) -> str:
-    return format(Decimal(str(points)), ".2f").rstrip("0").rstrip(".")
+    return format(Decimal(str(points)), ".3f").rstrip("0").rstrip(".")

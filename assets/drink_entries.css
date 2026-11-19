@@ -10,28 +10,16 @@
   padding-bottom: 4rem;
 }
 .drink-page-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
   padding: 1rem 0 1.2rem;
 }
 .drink-page-hero h1 {
   color: var(--drink-ink);
   font-family: var(--font-display);
-  font-size: clamp(2.1rem, 5vw, 3.25rem);
-  letter-spacing: 0;
+  font-size: clamp(1.9rem, 5vw, 2.7rem);
   line-height: 1.1;
   padding: 0;
   margin: 0.7rem 0;
-  font-weight: 400;
-}
-.drink-eyebrow {
-  color: var(--drink-green);
-  font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.2em;
-  margin: 0;
+  font-weight: 700;
 }
 .drink-intro {
   color: var(--drink-muted);
@@ -40,29 +28,17 @@
   margin: 0;
   max-width: 31rem;
 }
-.drink-hero-art {
-  flex: 0 0 112px;
-  height: 112px;
-  border-radius: 30px;
-  background: var(--accent-soft);
-  color: var(--drink-green);
-  transform: rotate(5deg);
-  padding: 12px;
-}
-.drink-hero-art svg { width: 100%; height: 100%; }
 .drink-camera-hero { padding: .2rem 0 .7rem; }
 .drink-camera-hero h1 { font-size: clamp(1.8rem, 4vw, 2.3rem); margin: .3rem 0; }
-.drink-camera-hero .drink-hero-art { flex-basis: 64px; height:64px; border-radius:20px; padding:8px; }
 .drink-context {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.35rem 1rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--drink-line);
-  border-radius: var(--radius-md);
-  background: var(--surface-raised);
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--drink-line);
+  background: transparent;
   font-size: 0.8rem;
   color: var(--drink-muted);
   overflow-wrap: anywhere;
@@ -70,28 +46,15 @@
 .drink-context > span:first-child { color: var(--drink-ink); font-weight: 700; }
 .stApp:has(.drink-page-hero) [class*="st-key-drink_ui_panel"] {
   background: var(--surface);
-  border: var(--border-width) solid var(--drink-line);
   border-radius: var(--radius-lg);
-  padding: 1.4rem;
+  padding: 1.1rem;
   box-shadow: var(--shadow-card);
 }
-.drink-section-heading { display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.4rem; }
-.drink-step {
-  display: grid;
-  place-items: center;
-  flex: 0 0 34px;
-  height: 34px;
-  background: var(--accent-soft);
-  border-radius: var(--radius-sm);
-  color: var(--drink-green);
-  font-weight: 750;
-  font-size: 0.75rem;
-}
+.drink-section-heading { margin-bottom: 0.4rem; }
 .drink-section-heading h2 {
   color: var(--drink-ink);
   font-size: 1.1rem;
   font-weight: 700;
-  letter-spacing: -0.025em;
   padding: 0;
   margin: 0.1rem 0 0.2rem;
 }
@@ -151,17 +114,82 @@
 }
 .st-key-drink_ui_panel_details [data-testid="stText"] { color: var(--drink-ink); }
 .history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--surface-raised); border-radius: 14px; }
+.history-photo-frame { margin: .7rem 0; padding: .35rem; border: 3px solid var(--photo-identity); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.history-photo-identity { padding: .2rem .4rem .55rem; color: var(--text); font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+.history-photo-frame .drink-photo { margin: 0; width: 100%; }
 .history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
 .history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
+
+/* Photo memories: tap-to-open tiles grouped by game night. Each night is a
+   native st.columns() row, widened into a horizontal scroller so a busy
+   night swipes sideways instead of squeezing or wrapping. */
+.memory-night-label { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 10px; }
+.memory-night-label:first-of-type { margin-top: 6px; }
+.memory-night-label strong { font-size: 0.92rem; font-weight: 700; color: var(--drink-ink); }
+.memory-night-label span { font-size: 0.76rem; color: var(--drink-muted); }
+
+[class*="st-key-memory_row_"] [data-testid="stHorizontalBlock"] {
+  flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding-bottom: 6px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+[class*="st-key-memory_row_"] [data-testid="stColumn"] {
+  flex: 0 0 132px; min-width: 132px; width: 132px; scroll-snap-align: start;
+}
+[class*="st-key-memory_tile_"] { position: relative; }
+
+/* 20px tile radius, 10px padding -> the photo's own radius is the 10px
+   remainder, so its corners read as cut from the same shape as the tile. */
+.memory-tile-visual {
+  position: relative; background: var(--surface); border-radius: 20px; padding: 10px;
+  box-shadow: var(--shadow-card);
+}
+.memory-photo {
+  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px;
+  background: var(--surface-raised);
+}
+.memory-points {
+  position: absolute; top: 16px; left: 16px; background: rgba(20, 43, 61, .6); color: #fff;
+  font-size: 0.68rem; font-weight: 700; padding: 3px 7px; border-radius: var(--radius-pill);
+}
+.memory-dot {
+  position: absolute; top: 18px; right: 18px; width: 9px; height: 9px; border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85);
+}
+.memory-dot-matched { background: var(--success); }
+.memory-dot-outside { background: var(--drink-muted); }
+.memory-meta { padding: 7px 2px 0; }
+.memory-meta strong { display: block; font-size: 0.78rem; color: var(--drink-ink); overflow-wrap: anywhere; }
+.memory-meta span { display: block; font-size: 0.7rem; color: var(--drink-muted); overflow-wrap: anywhere; }
+
+/* A transparent button, the exact size of the tile, makes the whole tile
+   tappable; its label stays in the accessibility tree while hidden visually.
+   Streamlit's own stElementContainer wrapper collapses to 0 height as a
+   flex item once its only child is taken out of flow, so every level down
+   to the button itself is pinned absolute/inset to escape that collapse. */
+[class*="st-key-memory_tile_"] .stElementContainer:has([data-testid="stButton"]),
+[class*="st-key-memory_tile_"] [data-testid="stButton"] {
+  position: absolute !important; inset: 0 !important; margin: 0 !important;
+  width: 100% !important; height: 100% !important;
+}
+[class*="st-key-memory_tile_"] [data-testid="stButton"] button {
+  position: absolute !important; inset: 0 !important;
+  width: 100% !important; height: 100% !important; padding: 0; border: 0; border-radius: 20px;
+  background: transparent; opacity: 0; cursor: pointer; font-size: 0;
+}
+[class*="st-key-memory_tile_"] [data-testid="stButton"] button:focus-visible {
+  opacity: 1; background: rgba(44, 153, 214, .12); outline: 3px solid var(--accent-ink); outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  [class*="st-key-memory_row_"] [data-testid="stColumn"] { flex-basis: 112px; width: 112px; }
+  .memory-tile-visual { padding: 8px; border-radius: 16px; }
+  .memory-photo { border-radius: 8px; }
+}
 @media (max-width: 640px) {
   .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] { padding: 1rem 1rem 3rem; }
   .drink-page-hero { padding-top: 0.5rem; }
-  .drink-hero-art { flex-basis: 72px; height: 72px; border-radius: 22px; padding: 8px; }
-  .drink-eyebrow { font-size: 0.62rem; letter-spacing: 0.1em; }
   .drink-intro { font-size: 0.9rem; }
-  .drink-camera-hero .drink-hero-art { flex-basis:48px; height:48px; padding:6px; }
   .stApp:has(.drink-page-hero) [class*="st-key-drink_ui_panel"] { padding: 1rem; border-radius: 18px; }
   .st-key-drink_ui_drinks label p,
   .st-key-drink_ui_sizes label p { font-size: 0.77rem; }

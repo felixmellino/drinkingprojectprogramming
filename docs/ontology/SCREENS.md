@@ -1,5 +1,27 @@
 # Screens
 
+## Minigames catalogue (19 November 2026)
+
+The Minigames page lists game cards together in two columns on larger
+screens and a single column on phones. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+rules enable it; older seasons show a disabled action and retain their rules.
+Focus shows check-in progress, its next unlock, the tasks and reward. A saved
+running attempt resumes full screen. Its timer continues on navigation; Close
+returns to the catalogue without resetting it. A terminal board shows the saved
+result. Check-in previews and photo history identify the earned multiplier.
+
+Open Chug Duel shows the existing invitation, acceptance, shared capture,
+allowance and history controls below the cards. All games closes these
+controls without cancelling invitations or changing any allowance. The hub
+polls invitations and labels the Chug Duel card when a response is waiting.
+A host's running duel still takes priority and resumes its full-screen
+board, retaining its saved result until explicit dismissal. Membership is
+checked before cards are shown. The catalogue does not mount a continuous
+GPS watcher; the existing duel workflow does. Shared login's initial
+location-permission request remains unchanged.
+
+See [Focus Challenge's discussion draft](FOCUS_CHALLENGE_PROPOSAL.md).
+
 > Scoring v1 implementation was authorised on 17 November 2026. See
 > [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
 > Earlier scoring drafts below are historical where they differ. Legacy seasons
@@ -24,10 +46,15 @@ These presentation choices introduce no new scoring or database rules.
   preview. Closed-window/cooldown messages appear before the form, and Submit
   spans the available width. Camera permission remains controlled by the browser.
 - Follow-up, 18 November 2026: tapping the central + mounts the camera
-  automatically with a compact heading. There is one shutter action after
-  browser permission; no separate Enable camera button or gallery picker.
-  The captured image stays in a rounded frame above the drink/size controls;
-  Retake clears that capture and opens the camera again. The camera stops
+  into a full-viewport stage, hiding page navigation while taking the photo.
+  The camera has a bottom-centre circular shutter, a front/back switch and
+  Close (returns to Lobby without saving). Browser chrome/permission prompts
+  remain browser-controlled; there is no separate Enable camera or gallery step.
+  Taking the photo automatically opens the form: rounded photo preview,
+  Retake, then drink/size controls and location. Retake discards the pending
+  capture and returns to the full-screen camera. Success shows the receipt;
+  New check-in or + starts the next photo. Pending photos are session-only,
+  bound to player/membership/season, and are not saved until Submit. The camera stops
   after capture, when backgrounded and when leaving the page. A blocked or
   unavailable camera has a clear message and Retry control.
 - Location tracking starts as soon as Check-in opens, while the player is
@@ -109,9 +136,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 - Required fields: real first name, real surname, unique username, unique
   login email, password of at least 8 characters and password confirmation.
 - Returning users log in with email and password; registration does not
-  require email verification. Password recovery is currently unavailable.
+  require email verification. Log in offers **Forgot password?** (18 November 2026).
 - A single Create account / Log in selector shows one form at a time.
-- No password-recovery or upgrade option is shown.
+- Forgot password shows a registered-email request form and a reset form for
+  account email, emailed code, new password and confirmation. Request responses
+  do not disclose whether an email is registered. Show success/error clearly and
+  offer Back to log in; a reset does not automatically authenticate. Codes expire
+  after 15 minutes. No upgrade option is shown.
 - Login includes an optional Remember password checkbox, keeping the device
   signed in for 30 days. Logout cancels remembered access on that device.
 - All game pages require authentication. Account rules are in `RULES.md` (A1–A7).
@@ -169,6 +200,33 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
+Map owner badge update (19 November 2026, contributor request):
+
+- Claimed areas show a circular, blurred owner picture with crisp public-name
+  initials. Individual photos use the existing profile-photo audience checks;
+  missing, inaccessible or unreadable photos use a plain initials badge.
+  Team pictures retain lobby-only visibility. No photo permissions change.
+- Territories sharing a border and the same owner id have one badge per
+  connected group. Corner contact alone does not group areas; hand-drawn
+  border differences up to 0.5 m are tolerated. Separate areas retain separate
+  badges. Each territory keeps its own outline, name, colour and account.
+- Badge diameter scales with area and available interior space, capped at
+  120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
+  Green remains yours/your team's, red others', grey unclaimed.
+- Clicking a badge opens a small territory-points dialog. Shared badges list
+  every territory separately: current owner, owner's territory points, your
+  territory points. A single-territory popup also shows the capture-gap
+  explanation; shared popups use a compact, scrollable score table. In team lobbies
+  "your points" means your team's combined territory points, as requested;
+  personal contributions and season owner income are excluded.
+- Clicking an individual territory also opens its own detail dialog. Existing
+  hover details, GPS tracking/accuracy, quick zoom, check-in action, HUD,
+  bottom location card and territory list remain available. The current base
+  map is Carto Dark Matter with a floating HUD and location card.
+- Closing the dialog clears Streamlit's read-only selection via a fresh chart
+  key so the same icon can be clicked again. This returns the viewport to the
+  selected quick-zoom focus; a manually panned viewport is not retained.
+
 ## Memories
 
 - Implemented as Photo history: retained lobby photos arranged chronologically,
@@ -196,18 +254,30 @@ four opens a separate view with **Back to Profile**. Logout is immediate.
   required/100-character limits as registration. Usernames remain unique,
   ignoring case and surrounding whitespace. Player ID, email, credentials,
   friendships, memberships and scores are retained. Profile pictures are described below.
-- Friends contains the existing search, incoming/outgoing requests,
-  accept/decline, cancellation, removal and refresh controls.
-- My stats shows only the selected lobby's currently active season: points,
-  rank and number of territories owned. It reuses the Leaderboard calculations,
-  including owner income and ties. No score means zero points and Unranked;
-  missing lobby/current season has an explicit instruction. Unavailable
-  territory data is marked unavailable rather than shown as zero.
+- Friends shows four fully clickable cards in two rows: **Find players** next
+  to **Current Friends**, then **Incoming requests** next to **Outgoing requests**.
+  On phones they stack in that order. The three lists show counts; failed
+  loading shows Unavailable rather than a misleading zero. Each opens a native,
+  dismissible popup. Find players focuses the username search on opening.
+  Current Friends lists accepted relationships from either direction, sorted
+  by username. Remove friend requires confirmation inside the same popup;
+  Keep friend cancels it. Incoming requests offers Accept/Decline and Outgoing
+  requests offers Cancel for pending sent requests only. Successful actions
+  keep the popup open, reload its list and update the card counts, and show a
+  success message. Refresh friends reloads other players' changes. Closing or
+  dismissing a popup clears its open state. Existing F1–F5 rules still apply.
+- My stats shows Total points, Drinks, Lobbies played and Total Wins across
+  all retained active and finished lobbies, independently of lobby selection.
+  Accepted scoring check-ins count immediately. Personal points include own
+  drink awards and individual owner income, excluding teammates' points and
+  team owner income. Wins count only completed seasons, with leaderboard
+  tie-breaking. No history shows zero totals; failed loading shows an error
+  rather than partial totals. R-P01 defines the calculation.
 - Account & security shows private name and read-only email, then a password
   change form requiring current password, new password and confirmation.
   Existing password length rules and login throttling apply. A successful
   change signs out this device; all other active/remembered sign-ins become
-  invalid on their next check. No password recovery is introduced.
+  invalid on their next check. Logged-out password recovery is described above.
 
 Authorized by the contributor's Profile choices on 18 November 2026. Account
 updates use existing columns and unique indexes, so no new migration is needed.
@@ -273,8 +343,9 @@ Open lobby on a team card opens a dialog showing the numbered teams, member
 identities, occupancy and combined points. Available teams have Join buttons
 in manual mode. Clicking one's own team name opens its name/picture editor;
 other teams have no editing controls. A View leaderboard action opens the
-combined team standings. Map, leaderboard and My stats show team totals and
-ownership; Check-in blocks unassigned members and previews team ownership.
+combined team standings. Map and leaderboard show team totals and
+ownership; My stats retains personal totals and counts completed team wins
+under R-P01. Check-in blocks unassigned members and previews team ownership.
 The lobby card's Leader/Winner also names the leading team. Individual lobby
 navigation remains as described above. R-TEAM01–R-TEAM05 govern these flows.
 
@@ -283,3 +354,15 @@ full-width buttons in two columns directly below the page title. Forms are
 shown only in their respective popups. Successful joining closes the popup
 and refreshes the lobby cards; an invalid code keeps the popup open with its
 error. Creation settings and team rules remain unchanged.
+
+## Chug Duel playing view (18 November 2026)
+
+After the shared check-in is saved, the host sees two named tap targets that
+fill the app viewport. Both tap once to get ready, then the same board shows
+3, 2, 1 and GO. Early finish taps are ignored. Navigation and page scrolling
+stay disabled; server updates do not move or remount the board. The first
+finish tap locks the result locally, which is then confirmed by the server.
+The winner remains visible on this board until Back to Minigames restores
+the normal page. A small × preserves End without winner. The recipient's
+device continues to show the running game's status and then its result.
+Rules, limits and awards remain R-M01–R-M05.

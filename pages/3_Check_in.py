@@ -5,6 +5,7 @@ The location is followed automatically while the page is open
 60 s old and accurate to 50 m (R-L01, R-L02, R-L04). Photo GPS is not used.
 """
 
+from base64 import b64encode
 from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -17,7 +18,8 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
-from camera_capture import camera_photo
+from camera_capture import CameraCancelled, camera_photo
+from core.focus_challenge import enabled as focus_enabled
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
@@ -27,14 +29,13 @@ from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from drink_entry_ui import context_line, page_header, section_heading
 from phone_location import current_location, track_location
-from shared import get_territories, require_active_membership, require_login, show_logged_in_as
+from shared import get_territories, require_active_membership, require_login, selected_season, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 
-seasons = db.list_seasons_for_lobby(lobby_id)
-season = next((item for item in seasons if item.id == season_id), None)
+season = selected_season(lobby_id, season_id)
 if season is None:
     st.info("Choose a season on the Lobby page first.")
     st.stop()
@@ -51,6 +52,61 @@ now = current_time()
 recent_entries = db.list_drink_entries_for_membership(membership_id)
 track_location()
 
+
+def reset_camera():
+    """Forget an unsaved capture; a new component key opens a fresh stream."""
+    for key in ('checkin_pending_photo', 'checkin_capture', 'checkin_posted', 'checkin_saved_result'):
+        st.session_state.pop(key, None)
+    st.session_state['checkin_photo_number'] = st.session_state.get('checkin_photo_number', -1) + 1
+
+
+def finish_checkin(entry):
+    reset_camera()
+    st.session_state['checkin_posted'] = True
+    st.session_state['checkin_saved_result'] = (entry.points_awarded, entry.location_check_result,
+                                               entry.owner_bonus_quarters, entry.id)
+    st.rerun()
+
+
+context = (player_id, membership_id, season_id)
+if st.session_state.get('checkin_context') != context:
+    reset_camera()
+    st.session_state['checkin_context'] = context
+if st.session_state.pop('checkin_open_camera', False):
+    reset_camera()
+photo_number = st.session_state.get('checkin_photo_number', 0)
+photo = st.session_state.get('checkin_pending_photo')
+if photo is None and not st.session_state.get('checkin_posted'):
+    # Only the camera occupies the viewport. GPS continues in its hidden component.
+    st.markdown("""<style>
+      .st-key-checkin_camera_stage {position:fixed!important;inset:0;z-index:100000;
+        width:100vw!important;max-width:none!important;background:var(--bg,#1A2841);overflow:hidden;}
+      .st-key-checkin_camera_stage iframe {width:100vw!important;height:100dvh!important;border:0;}
+      body:has(.st-key-checkin_camera_stage) [data-testid="stHeader"],
+      body:has(.st-key-checkin_camera_stage) [data-testid="stSidebar"],
+      body:has(.st-key-checkin_camera_stage) .st-key-wego_bottom_nav {display:none!important;}
+      .st-key-checkin_camera_error {position:fixed;top:90px;left:20px;right:20px;z-index:100001;}
+    </style>""", unsafe_allow_html=True)
+    with st.container(key='checkin_camera_stage'):
+        try:
+            photo = camera_photo(key=f'checkin_photo_{photo_number}')
+        except CameraCancelled:
+            reset_camera()
+            st.switch_page('pages/2_Lobby.py')
+            st.stop()
+        except InvalidCheckinPhoto as error:
+            with st.container(key='checkin_camera_error'):
+                st.error(str(error))
+                if st.button('Try camera again'):
+                    reset_camera()
+                    st.rerun()
+            st.stop()
+    if photo is not None:
+        st.session_state['checkin_pending_photo'] = photo
+        st.session_state['checkin_capture'] = ((membership_id, season_id, photo.file_id), str(uuid4()), current_time())
+        st.rerun()
+    st.stop()
+
 page_header("Check in", "Take a photo. Choose your drink. Post.", compact=True)
 if modern:
     lobby_time = now.astimezone(ZoneInfo(season.timezone_name))
@@ -65,9 +121,9 @@ if saved_result is not None:
     if points == 0:
         st.warning("Saved in your history with zero points.")
     elif location == "outside":
-        st.success(f"Logged! +{points} season points. Your location is outside the game territories.")
+        st.success(f"Logged! +{format_points(points)} season points. Your location is outside the game territories.")
     else:
-        st.success(f"Logged! +{points} points.")
+        st.success(f"Logged! +{format_points(points)} points.")
     if owner_income:
         st.info(f"The territory's previous owner also earned {format_points(Decimal(owner_income) / 4)} season points. You kept all your points.")
     if saved_ids:
@@ -81,6 +137,13 @@ if saved_result is not None:
                 st.caption("Ownership change caused by this check-in. The Map shows the latest standings.")
         except (APIError, RequestError, RuntimeError, ValueError):
             st.caption("Your check-in was saved. The ownership update is unavailable; check the Map or Leaderboard.")
+
+if st.session_state.get('checkin_posted'):
+    st.info('Your drink is posted. Find it in Photo history or check the Leaderboard.')
+    if st.button('New check-in', type='primary', width='stretch'):
+        reset_camera()
+        st.rerun()
+    st.stop()
 
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
 closed = period_closed or (modern and not scoring_open(now, season))
@@ -97,30 +160,31 @@ if waiting:
     st.warning(f"Wait {waiting // 60}:{waiting % 60:02d} before your next check-in. Your photo and selections stay here.")
     st.button("Refresh remaining wait")
 
-with st.container(key="drink_ui_panel_camera"):
-    section_heading("01", "Take a photo", "Start with a fresh photo of your drink.")
-    photo_number = st.session_state.get("checkin_photo_number", 0)
-    try:
-        photo = camera_photo(key=f"checkin_photo_{photo_number}")
-    except InvalidCheckinPhoto as error:
-        st.error(str(error))
-        st.stop()
-    st.caption("Shared only with your lobby, alongside your username, photo receipt time and territory.")
-    capture = st.session_state.get("checkin_capture")
-    if photo is not None:
-        capture_key = (membership_id, season_id, photo.file_id)
-        if capture is None or capture[0] != capture_key:
-            capture = (capture_key, str(uuid4()), current_time())
-            st.session_state["checkin_capture"] = capture
-    else:
-        st.session_state.pop("checkin_capture", None)
 
-if photo is None:
-    st.info("Take a photo to choose the drink and size.")
-    st.stop()
+capture = st.session_state.get('checkin_capture')
+with st.container(key='drink_ui_panel_camera'):
+    section_heading('01', 'Your photo', 'Looking good? Choose your drink below.')
+    # Keep the preview inside the authenticated session, not a public media URL.
+    encoded = b64encode(photo.getvalue()).decode('ascii')
+    st.html(f'<img src="data:image/jpeg;base64,{encoded}" alt="Your drink photo" '
+            'style="display:block;width:100%;max-height:320px;object-fit:contain;border-radius:var(--radius-lg,16px);background:var(--surface,#22334F)">')
+    if st.button('Retake photo', icon=':material/photo_camera:', width='stretch'):
+        reset_camera()
+        st.rerun()
+    st.caption('Shared only with your lobby, alongside your username, photo receipt time and territory.')
 
 size = None
 amount = None
+focus_multiplier = 1
+if focus_enabled(season):
+    try:
+        focus_info = db.focus_status(player_id, season_id)
+        if focus_info.get('boost_ends_at'):
+            focus_multiplier = 1.5
+            boost_end = datetime.fromisoformat(focus_info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
+            st.success(f'Focus boost ×1.5 active until {boost_end:%H:%M:%S %Z}.')
+    except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
+        st.caption('Focus preview unavailable. Any earned multiplier is checked by the server on submission.')
 with st.container(key="drink_ui_panel_selection"):
     section_heading("02", "Choose your drink", "One drink, one size. Your points update as you choose.")
     if modern:
@@ -134,10 +198,10 @@ with st.container(key="drink_ui_panel_selection"):
                                 horizontal=True, width="stretch")
         else:
             st.caption("One shot serving. No size selection needed.")
-        preview = base_points(drink_type, size, rules)
+        preview = base_points(drink_type, size, rules) * focus_multiplier
         point_word = "point" if preview == 1 else "points"
         with st.container(key="drink_ui_points"):
-            st.info(f"**+{preview} season {point_word}**  \n+{preview} territory {point_word} if your location matches a territory.")
+            st.info(f"**+{format_points(preview)} season {point_word}**  \n+{format_points(preview)} territory {point_word} if your location matches a territory.")
         st.caption("Another territory owner's 25% season income is additional; your points stay the same.")
     else:
         st.caption("This existing season keeps its original scoring rules. New seasons use the new scoring system.")
@@ -195,10 +259,7 @@ with st.container(key="drink_ui_panel_location"):
 # Recover a lost successful reply even after the scoring window closes.
 recovered = next((item for item in recent_entries if capture and item.id == capture[1]), None)
 if recovered is not None:
-    st.session_state["checkin_saved_result"] = (recovered.points_awarded, recovered.location_check_result, recovered.owner_bonus_quarters, recovered.id)
-    st.session_state["checkin_photo_number"] = photo_number + 1
-    st.session_state.pop("checkin_capture", None)
-    st.rerun()
+    finish_checkin(recovered)
 
 if st.button("Submit", type="primary", width="stretch", disabled=photo is None or device_gps is None or closed or bool(waiting)) and photo is not None and capture is not None:
     submitted_at = current_time() if modern else datetime.now().astimezone()
@@ -255,6 +316,4 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
     except (APIError, RequestError, StorageException):
         st.error("We couldn't confirm the check-in was saved. Try submitting again.")
     else:
-        st.session_state["checkin_saved_result"] = (entry.points_awarded, entry.location_check_result, entry.owner_bonus_quarters, entry.id)
-        st.session_state["checkin_photo_number"] = photo_number + 1
-        st.rerun()
+        finish_checkin(entry)

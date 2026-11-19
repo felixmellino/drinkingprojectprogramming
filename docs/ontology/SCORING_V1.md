@@ -1,5 +1,13 @@
 # Scoring v1: implemented working rules
 
+Focus Challenge extension, team-approved 19 November 2026: R-M06–R-M09 add
+frozen rules to new seasons and an automatic x1.5 ordinary-check-in effect.
+Owner income uses the boosted award. Numeric awards support half-points and
+half-quarter income units (exact eighth-points); display up to three decimals.
+A saved `focus_attempt_id` preserves the multiplier through expiry/corrections.
+Existing seasons and Chug Duel scoring are unchanged. See
+[the implementation](../FOCUS_CHALLENGE.md) and migration 014.
+
 Status: implementation authorised by the Drink Entries & Scoring contributor
 on 17 November 2026. Implemented locally on `Scoring`; teammate PR review,
 shared migration and live verification are pending. The [implementation and

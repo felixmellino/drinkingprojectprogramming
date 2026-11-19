@@ -12,11 +12,17 @@ from core.checkin_photo import InvalidCheckinPhoto, MAX_PHOTO_BYTES, prepare_che
 _camera_capture = declare_component('drink_camera', path=str(Path(__file__).parent / 'components' / 'drink_camera'))
 
 
+class CameraCancelled(Exception):
+    """The player closed the camera without taking a photo."""
+
+
 def camera_photo(*, key: str) -> BytesIO | None:
     """Return one validated camera JPEG, retaining its identity across reruns."""
     value = _camera_capture(key=key, default=None)
     if value is None:
         return None
+    if value == {'cancelled': True}:
+        raise CameraCancelled
     try:
         if not isinstance(value, dict):
             raise ValueError

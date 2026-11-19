@@ -32,6 +32,12 @@ def test_waiting_and_retake_return_no_photo(monkeypatch):
     assert camera.camera_photo(key='new-photo') is None
 
 
+def test_closing_camera_is_distinct_from_waiting(monkeypatch):
+    monkeypatch.setattr(camera, '_camera_capture', lambda **kwargs: {'cancelled': True})
+    with pytest.raises(camera.CameraCancelled):
+        camera.camera_photo(key='cancel')
+
+
 @pytest.mark.parametrize('value', [[], {}, {'capture_id':'bad', 'image':'data:image/jpeg;base64,AAAA'},
     {'capture_id':str(uuid4()), 'image':'data:image/png;base64,AAAA'},
     {'capture_id':str(uuid4()), 'image':'data:image/jpeg;base64,@@@'},

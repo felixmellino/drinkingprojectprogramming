@@ -49,7 +49,8 @@ connection.
 | `checkins.py` | The main gatekeeper: pulls together the window check, the location check, and the scoring to decide if a submitted drink is valid, and builds the record of it. |
 | `territories.py` | Works out who currently owns each territory, replaying every drink in time order so that a tie always favors whoever got there first. |
 | `leaderboard.py` | The same tie-breaking idea as territories, but for the whole season's ranking instead of one territory. |
-| `minigames.py` | Makes sure a player can only play one minigame per lobby per week — no actual minigame logic yet, just the limit. |
+| `minigames.py` | Legacy weekly-limit placeholder; Chug Duel does not use it. |
+| `chug_duel.py` | Chug Duel's nightly outgoing/incoming allowances, eligible opponents and component messages; SQL enforces mutations atomically. |
 
 ## `data/db.py` — the fridge
 
@@ -64,7 +65,7 @@ contains no rules of its own — if you want to know whether something is
 | File | What it means |
 | --- | --- |
 | `app.py` | The very first screen. On purpose, it does almost nothing — just a welcome message — so it never becomes a file everyone has to edit at once. |
-| `shared.py` | A handful of tiny helpers every screen reuses: "stop and ask the player to log in if they haven't", "stop and ask them to pick a lobby if they haven't". No rules, no database calls — just plumbing. |
+| `shared.py` | Helpers every screen reuses to verify the current account, lobby membership and season, or ask the player to sign in/pick a lobby. Page plumbing and fresh access checks; no game rules. |
 | `pages/1_Profile.py` | Create an account (real name stays private, username is public) or log in with a username + PIN. |
 | `pages/2_Lobby.py` | Create a new lobby (and pick how long the season runs), join an existing lobby with its invite code, or switch between lobbies you've already joined. |
 | `pages/3_Check_in.py` | Camera opens automatically; take a photo, pick drink/size, review live location and submit. |
@@ -111,7 +112,7 @@ the docs — if they disagree, that's a bug to fix, not a detail to shrug off.
 | `GAME.md` → Territories, Ownership | `core/location.py`, `core/territories.py` |
 | `RULES.md` R-R01 (tie rule) | `core/territories.py`'s `replay_leader` |
 | `RULES.md` R-T01, R-T02 (territory set, no overlap) | `data/territories.geojson`, read by `data/territory_file.py` and checked by `core/territories.py`'s `parse_territories`; copied into the database by `shared.get_territories()`; overlap checked in `tests/test_territory_data.py` |
-| `GAME.md` → Minigames | `core/minigames.py` |
+| `RULES.md` R-M01–R-M05 → Chug Duel | `core/chug_duel.py`, `core/scoring_v1.py`, migration 011, `minigames_ui.py` / `pages/7_Minigames.py` |
 | `SCREENS.md` | `pages/*.py` |
 | `OPEN_DECISIONS.md` items not yet decided (like D-01) | A placeholder that does nothing yet, e.g. `core/scoring.py`'s `apply_owner_modifier` — already wired in, waiting for the real rule |
 
@@ -132,9 +133,9 @@ explain all of it.
 | **C. Drink Entries & Scoring** | `core/scoring.py`, `core/checkins.py`, `pages/3_Check_in.py` | The biggest rulebook: how many points a drink is worth, and all the reasons a check-in can be accepted or rejected. |
 | **D. Standings & Data layer** | `core/leaderboard.py`, `data/db.py`, `schema.sql`, the real Supabase project, `pages/4_Standings.py` | The season ranking, the one file that talks to the database, and actually setting up the live database. |
 
-**Not assigned yet, on purpose:** `core/minigames.py` and the
-Map/Memories/Minigame pages — these come after the four blocks above are
-working together.
+Chug Duel is now implemented across the shared scoring/data boundary; its
+rules, ownership and verification handoff are in [CHUG_DUEL.md](CHUG_DUEL.md).
+Other minigames remain future work after the core workflows are stable.
 
 Everyone should still read `core/models.py` first, since it's the short
 file that defines the "things" every other block works with.
@@ -244,10 +245,11 @@ Data-block changes in the existing core/repository helpers; use the UI module
 for layout only. `tests/test_standings_ui.py` checks displayed totals, ties,
 unranked/empty states, service failures and escaped public display text.
 
-Authenticated pages now get the shared five-button bottom bar from
-`app_navigation.py`, called only after `shared.require_login` verifies the
-account. The plus opens Check-in; Leaderboard and Photo history are to its
-right. Use native `st.switch_page` to keep login/session state; do not replace
+Authenticated pages now get the shared seven-button bottom bar from
+`app_navigation.py`. For an existing session, `shared.require_login` handles
+this generic bar before network reads; every destination verifies the account
+before showing private data. The plus opens Check-in; Leaderboard and Photo history are to its
+right. Minigames sits immediately right of the plus, before Map. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
@@ -271,7 +273,13 @@ Wednesday 08:00–Sunday 18:00 window. Normal seasons keep Thursday 18:00–Sund
 
 ## Profile friends (Identity block)
 
-`pages/1_Profile.py` calls `friends_ui.py` after login. `core/friends.py`
+`pages/1_Profile.py` reaches `friends_ui.py` through `profile_ui.py` after login.
+The Friends view has four native card buttons styled by `assets/friends.css`.
+Each opens one dismissible dialog; Profile actions keep it open after saving,
+with a success notice and fresh data. Removal uses an inline confirmation.
+The optional success notice in `friendship_action` is used only by Profile;
+Lobby controls keep their existing behavior. No migration is needed for this
+layout change. `core/friends.py`
 contains search and request rules and needs no database. `data/db.py`
 fetches only public usernames for search, loads the current player's
 relationships, validates an action, then calls `save_friendship` to save
@@ -353,3 +361,40 @@ Both use `_opened_lobby_id` and clear it on dismissal; `_lobby_dialog` is
 reserved for Create/Join. Opening Create/Join closes either detail popup,
 and successful creation/join selects the saved lobby and opens its matching
 popup. This preserves the member UI from main and the team competition rules.
+
+
+## Remembered lobby context (18 November 2026)
+
+`lobby_selection.py` owns session context and restoration. `shared.require_login`
+restores after authentication, before any page uses the context. The Lobby
+page saves explicit choices through `data/db.py`; closing a dialog keeps the
+context. Migration 012 stores one preference per account behind service-role
+access. Do not treat a saved lobby ID as authorization; existing membership
+checks still run on every protected workflow. See the remembered-selection
+workflow in `docs/ontology/WORKFLOWS.md` and the migration/verification steps
+in README. Automated fresh-session tests mock the persistent data service;
+migration 012 was applied on 18 November 2026, with seven SQL checks passing
+and fresh-process persistence verified against the configured Supabase project.
+Temporary verification records were removed. A deployed browser restart check
+remains a release step.
+
+## Page responsiveness and shared styling
+
+See [PAGE_PERFORMANCE.md](PAGE_PERFORMANCE.md) for the 18 November cleanup,
+query/replay changes, reproducible benchmarks and verification. Reuse each
+page's fresh validated account/season context instead of loading it twice.
+Map and Leaderboard share one score replay within their page render. Keep
+authorization fresh on every full page run; do not add a global account cache.
+Shared fonts, spacing, borders and shadows live in `assets/theme.css`.
+
+## Focus Challenge handoff — 19 November 2026
+
+The second Minigames card opens the saved three-stage Focus game in new seasons
+whose frozen rules enable it. `core/focus_challenge.py` owns configuration and
+message validation; `focus_challenge_ui.py` plus the component handle presentation.
+Migration 014 owns accepted-entry gates, persisted challenge/progress, deadlines
+and exactly-once rewards. `DrinkEntry.focus_attempt_id` preserves each boosted
+award through corrections and replay, and owner income now supports exact eighths.
+See [FOCUS_CHALLENGE.md](FOCUS_CHALLENGE.md) for commands, Data activation and
+security limits. Both building-block owners should review the shared data/scoring
+change before merge. The contributor reported teammate agreement on the design.

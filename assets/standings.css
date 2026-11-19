@@ -1,66 +1,45 @@
 /* Standings presentation only. All names and scores are escaped by the renderer. */
-.standings-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 22px; }
-.standings-stat { display: flex; flex-direction: column; gap: 5px; padding: 20px 22px; border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); background: var(--surface); min-width: 0; }
-.standings-stat:first-child { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.standings-stat > span { font-size: 0.8rem; font-weight: 650; color: var(--drink-muted); }
-.standings-stat > strong { font-family: var(--font-display); font-weight: 400; font-size: 2.15rem; line-height: 1.15; letter-spacing: 0; overflow-wrap: anywhere; }
-.standings-stat > small { font-size: 0.75rem; color: var(--drink-muted); }
-.standings-stat:first-child > span, .standings-stat:first-child > small { color: var(--on-accent); opacity: .75; }
-.standings-stat:first-child > strong { color: var(--on-accent); }
-.standings-board { background: var(--surface); border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); overflow: hidden; margin-top: 8px; }
-.standings-table { width: 100%; border-collapse: collapse; table-layout: fixed; color: var(--drink-ink); }
-.standings-table th, .standings-table td { text-align: left; padding: 17px 20px; vertical-align: middle; border: 0; }
-.standings-table thead { background: var(--surface-raised); }
-.standings-table thead th { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--drink-muted); }
-.standings-table thead th:first-child { width: 85px; }
-.standings-table thead th:last-child { width: 150px; text-align: right; }
-.standings-table tbody tr + tr { border-top: 1px solid var(--border); }
-.standings-table tbody tr.standings-you { background: var(--accent-soft); }
-.standings-table .standings-score { text-align: right; font-family: var(--font-display); font-size: 1.45rem; font-weight: 400; letter-spacing: 0; white-space: nowrap; }
-.standings-score > span { color: var(--drink-muted); font-size: 0.75rem; font-weight: 500; letter-spacing: 0; }
-.standings-rank { display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--radius-md); background: var(--surface-raised); font-size: 1rem; font-weight: 750; }
-.standings-rank.medal-1 { background: var(--brand); color: var(--text); }
-.standings-rank.medal-2 { background: var(--medal-2); color: var(--bg); }
-.standings-rank.medal-3 { background: var(--medal-3); color: var(--bg); }
-.standings-player { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.standings-avatar { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 50%; background: var(--surface-raised); color: var(--text); font-size: 1.05rem; font-weight: 700; }
-.standings-player-text { min-width: 0; }
-.standings-name { font-size: 1rem; font-weight: 700; overflow-wrap: anywhere; }
-.standings-player-text small { display: block; margin-top: 3px; font-size: 0.75rem; font-weight: 400; color: var(--drink-muted); }
-.standings-you-tag { display: inline-block; padding: 3px 6px; margin-left: 5px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.59rem; font-weight: 800; vertical-align: middle; letter-spacing: 0.04em; }
-.standings-territories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-top: 10px; }
-.standings-territory { padding: 21px; border: var(--border-width) solid var(--drink-line); border-radius: var(--radius-lg); background: var(--surface); min-width: 0; }
-.standings-territory.territory-yours { border-color: var(--territory-yours); }
-.standings-territory header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.standings-territory h3 { color: var(--drink-ink); font-size: 1.08rem; font-weight: 700; letter-spacing: -0.025em; padding: 0; margin: 0; overflow-wrap: anywhere; }
-.territory-state { padding: 4px 8px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text-muted); font-size: 0.66rem; font-weight: 700; }
-.territory-yours .territory-state { background: color-mix(in srgb, var(--territory-yours) 18%, var(--surface)); color: var(--territory-yours); }
-.territory-owner { color: var(--drink-muted); font-size: 0.8rem; margin: 11px 0 18px; overflow-wrap: anywhere; }
-.territory-owner strong { color: var(--drink-ink); font-weight: 700; margin-left: 5px; }
-.territory-empty { color: var(--drink-muted); font-size: 0.82rem; line-height: 1.5; margin: 18px 0 0; }
-.territory-players { list-style: none; padding: 0; margin: 0; }
-.territory-players li + li { margin-top: 14px; }
-.territory-players li > div:first-child { display: flex; justify-content: space-between; gap: 12px; color: var(--drink-ink); font-size: 0.82rem; }
-.territory-players li > div:first-child > span { min-width: 0; overflow-wrap: anywhere; }
-.territory-players strong { white-space: nowrap; font-weight: 700; }
-.territory-you { color: var(--drink-muted); font-size: 0.72rem; }
-.territory-track { height: 4px; margin-top: 7px; border-radius: 4px; background: var(--surface-raised); overflow: hidden; }
-.territory-track > span { display: block; height: 100%; border-radius: 4px; background: var(--accent-ink); }
-.standings-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 640px) {
-  .standings-summary { gap: 8px; }
-  .standings-stat { padding: 14px 10px; border-radius: 16px; }
-  .standings-stat > span { font-size: 0.7rem; }
-  .standings-stat > strong { font-size: 1.8rem; }
-  .standings-stat > small { font-size: 0.64rem; line-height: 1.35; }
-  .standings-table th, .standings-table td { padding: 14px 10px; }
-  .standings-table thead th { font-size: 0.62rem; letter-spacing: 0.02em; }
-  .standings-table thead th:first-child { width: 52px; }
-  .standings-table thead th:last-child { width: 105px; }
-  .standings-table .standings-score { font-size: 1.22rem; }
-  .standings-rank { width: 32px; height: 34px; border-radius: 10px; }
-  .standings-avatar { display: none; }
-  .standings-name { font-size: 0.87rem; }
-  .standings-player-text small { font-size: 0.67rem; }
-  .standings-territories { grid-template-columns: 1fr; }
+
+/* Podium: top 3, visually ordered 2nd-1st-3rd with the leader centered and tallest. */
+.standings-podium { list-style: none; margin: 8px 0 0; padding: 0; display: flex; align-items: flex-end; justify-content: center; gap: 8px; }
+.standings-podium-place { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.standings-podium-1 { width: 34%; }
+.standings-podium-2, .standings-podium-3 { width: 30%; }
+.standings-podium-avatar { display: grid; place-items: center; border-radius: 50%; font-weight: 800; flex-shrink: 0; }
+.standings-podium-1 .standings-podium-avatar { font-size: 15px; }
+.standings-podium-2 .standings-podium-avatar, .standings-podium-3 .standings-podium-avatar { font-size: 13px; }
+.standings-podium-name { font-weight: 700; color: var(--drink-ink); text-align: center; overflow-wrap: anywhere; }
+.standings-podium-tag { display: inline-block; margin-left: 4px; padding: 2px 5px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.56rem; font-weight: 800; letter-spacing: 0.04em; vertical-align: middle; }
+.standings-podium-points { font-weight: 800; color: var(--drink-ink); }
+.standings-podium-1 .standings-podium-points { font-size: 15px; }
+.standings-podium-2 .standings-podium-points, .standings-podium-3 .standings-podium-points { font-size: 12px; }
+.standings-podium-block { width: 100%; border-radius: var(--radius-md) var(--radius-md) 0 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 8px; font-weight: 800; font-size: 20px; }
+.standings-podium-2 .standings-podium-block, .standings-podium-3 .standings-podium-block { font-size: 17px; padding-top: 6px; }
+/* Winner's block: a shadow tinted to its own accent colour instead of the
+   flat navy shadow the other two get -- same trick as the login card's
+   shadow tinted to its sky backdrop. */
+.standings-podium-1 .standings-podium-block { box-shadow: 0 14px 28px -6px rgba(44, 153, 214, .55), 0 2px 6px rgba(44, 153, 214, .3); }
+
+/* Ranks 4+: a flat list. */
+.standings-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.standings-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--radius-md); padding: 10px 12px; box-shadow: var(--shadow-card); }
+.standings-row-rank { width: 20px; font-size: 0.75rem; font-weight: 700; color: var(--drink-muted); }
+.standings-row-avatar { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; font-size: 0.69rem; font-weight: 800; }
+.standings-row-name { flex: 1; min-width: 0; font-size: 0.82rem; font-weight: 700; color: var(--drink-ink); overflow-wrap: anywhere; }
+.standings-you-tag { display: inline-block; padding: 2px 5px; margin-left: 2px; border-radius: var(--radius-sm); background: var(--accent); color: var(--on-accent); font-size: 0.56rem; font-weight: 800; vertical-align: middle; letter-spacing: 0.04em; }
+.standings-row-points { font-size: 0.88rem; font-weight: 800; color: var(--drink-ink); }
+
+/* Territory pills: a compact ownership strip, not detailed cards. */
+.standings-pills { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 6px; margin-top: 8px; }
+.standings-pill { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; background: var(--surface); border-radius: var(--radius-pill); padding: 7px 12px; box-shadow: var(--shadow-card); white-space: nowrap; font-size: 0.75rem; font-weight: 700; color: var(--drink-ink); }
+.standings-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.standings-pill-dot.territory-yours { background: var(--territory-yours); }
+.standings-pill-dot.territory-theirs { background: var(--territory-theirs); }
+.standings-pill-dot.territory-free { background: var(--territory-free); }
+
+
+@media (max-width: 480px) {
+  .standings-podium-1 .standings-podium-avatar { width: 44px !important; height: 44px !important; }
+  .standings-podium-2 .standings-podium-avatar, .standings-podium-3 .standings-podium-avatar { width: 36px !important; height: 36px !important; }
+  .standings-podium-name { font-size: 11px !important; }
 }

@@ -3,11 +3,13 @@ one, and where you are right now (followed automatically, R-L01/R-L04).
 Only the current lobby's season counts."""
 
 import streamlit as st
+import base64
 from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
 import map_ui
+from profile_picture_ui import load_picture, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from phone_location import current_location, track_location
@@ -30,15 +32,37 @@ except (APIError, RequestError, RuntimeError):
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
+team_mode = False
+teams = []
 if st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries):
+    team_mode = True
     try:
-        names = {t.id: t.name for t in db.list_lobby_teams(player_id, lobby_id)}
+        teams = db.list_lobby_teams(player_id, lobby_id)
+        names = {t.id: t.name for t in teams}
     except (APIError, RequestError, RuntimeError, PermissionError):
         st.error("Teams could not be loaded. Reload to try again.")
         st.stop()
     membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
     st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
 rows = map_ui.territory_rows(territories, entries, membership_id, names)
+
+# Load only owners' pictures, using the existing audience checks on every render.
+owner_ids = {row["owner_id"] for row in rows if row["owner_id"]}
+pictures = {}
+if team_mode:
+    for team in teams:
+        if team.id in owner_ids and team.photo_base64:
+            try:
+                pictures[team.id] = base64.b64decode(team.photo_base64, validate=True)
+            except ValueError:
+                pass  # A missing/unreadable photo still has an initials badge.
+else:
+    for member in memberships:
+        if member.id in owner_ids and st.session_state.get("credential_version"):
+            try:
+                pictures[member.id] = load_picture(player_id, member.player_id)
+            except (*PICTURE_ERRORS, PermissionError):
+                pass
 
 # Where am I? Decides the bottom card and whether "Me" is offered.
 location, accuracy_m, problem = current_location()
@@ -63,7 +87,9 @@ with st.container(key="game_hud"):
         focus = options[0]
 
 with st.container(key="game_map"):
-    map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus)
+    map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
+                      pictures=pictures, team_mode=team_mode,
+                      context=f"{lobby_id}:{season_id}:{membership_id}")
 
 # Card floating over the bottom of the map: where you are, and check in.
 with st.container(key="game_card"):

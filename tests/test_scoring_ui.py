@@ -42,6 +42,7 @@ def ui(monkeypatch):
     monkeypatch.setattr("shared.get_territories", lambda: [TERRITORY])
     monkeypatch.setattr(rules, "current_time", lambda: state["now"])
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
+    monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': None})
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
@@ -102,6 +103,15 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
 
 
+def test_active_focus_boost_is_in_checkin_preview(ui, monkeypatch):
+    monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': (START + timedelta(hours=1)).isoformat()})
+    page = open_checkin()
+    radio(page, 'Size').set_value('large').run()
+    assert not page.exception
+    assert any('Focus boost ×1.5 active' in item.value for item in page.success)
+    assert any('+4.5 season' in item.value for item in page.info)
+
+
 def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     state, _ = ui
     captured = state["photo"]
@@ -109,10 +119,62 @@ def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     page = open_checkin()
     assert not page.exception
     assert not page.radio and not any(item.label == "Submit" for item in page.button)
-    assert any("Take a photo to choose" in item.value for item in page.info)
+    assert 'checkin_pending_photo' not in page.session_state
     state["photo"] = captured
     page.run()
     assert not page.exception and radio(page, "Drink") and radio(page, "Size")
+
+
+def test_capture_unmounts_camera_and_retake_opens_fresh_camera(ui, monkeypatch):
+    state, _ = ui
+    camera = Mock(side_effect=lambda key: state['photo'] if key.endswith('_0') else None)
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
+    page = open_checkin()
+    assert camera.call_count == 1 and len(page.get('html')) == 1
+    capture = page.session_state['checkin_capture'][1]
+    radio(page, 'Drink').set_value('wine').run()
+    assert camera.call_count == 1, 'Details reruns must not remount a stopped camera'
+    assert page.session_state['checkin_capture'][1] == capture
+    button(page, 'Retake photo').click().run()
+    assert camera.call_count == 2
+    assert camera.call_args.kwargs['key'] == 'checkin_photo_1'
+    assert 'checkin_capture' not in page.session_state and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and not page.get('html') and state['calls'] == 0
+
+
+def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypatch):
+    state, _ = ui
+    camera = Mock(side_effect=lambda key: state['photo'] if key.endswith('_0') else None)
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
+    page = open_checkin()
+    set_location(page, state)
+    button(page, 'Submit').click().run()
+    assert not page.exception and any('Logged!' in item.value for item in page.success)
+    assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and button(page, 'New check-in')
+    page.session_state['checkin_open_camera'] = True
+    page.run()
+    assert not page.exception and camera.call_count == 2 and not page.radio
+
+
+def test_changing_context_discards_pending_photo(ui, monkeypatch):
+    state, _ = ui
+    page = open_checkin()
+    monkeypatch.setattr('shared.require_active_membership', lambda: ('another-member', 'lobby', 'season'))
+    page.run()
+    assert not page.exception and 'checkin_pending_photo' not in page.session_state
+    assert not page.radio and state['calls'] == 0
+
+
+def test_closing_camera_saves_nothing(ui, monkeypatch):
+    from camera_capture import CameraCancelled
+    state, _ = ui
+    monkeypatch.setattr('camera_capture.camera_photo', Mock(side_effect=CameraCancelled))
+    switch = Mock()
+    monkeypatch.setattr(st, 'switch_page', switch)
+    page = open_checkin()
+    assert not page.exception and state['calls'] == 0 and not page.radio
+    switch.assert_called_once_with('pages/2_Lobby.py')
 
 
 def test_location_starts_before_camera_capture(ui, monkeypatch):
@@ -308,7 +370,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
 def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     monkeypatch.setattr("shared.require_login",lambda:"player")
     monkeypatch.setattr("shared.show_logged_in_as",lambda:None)
-    monkeypatch.setattr(db,"list_memberships_for_player",lambda _:[])
+    monkeypatch.setattr(db,"membership_context",lambda *args:(None, None))
     records=Mock()
     monkeypatch.setattr(db,"list_drink_entries",records)
     page=AppTest.from_file(ROOT/"pages/4_Standings.py", default_timeout=10)
@@ -319,14 +381,19 @@ def test_removed_membership_stops_before_game_records_are_loaded(monkeypatch):
     records.assert_not_called()
 
 
-def test_history_gallery_paginates_authorized_photos_and_opens_the_chosen_entry(ui, monkeypatch):
+def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monkeypatch):
     state, game = ui
-    models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(5)]
+    # Three game nights: the newest two hold one photo each, the oldest holds
+    # two -- newest-first, matching db.list_checkin_photos's own order.
+    models = [entry("photo-3", "member", "beer", "small", 14 * 24 * 60),
+              entry("photo-2", "member", "beer", "small", 7 * 24 * 60),
+              entry("photo-1", "member", "beer", "small", 5),
+              entry("photo-0", "member", "beer", "small", 0)]
     photos = [{"id": model.id, "username": "Mia", "captured_at": None,
                "submitted_at": model.submitted_at.isoformat(), "is_owner": True,
                "has_photo": True, "timezone_name": game.timezone_name, "rule_version": "v1",
                "entry": model, "season": game, "corrected_at": None, "income_recipient": None,
-               "location": "matched", "territory": TERRITORY.name} for model in reversed(models)]
+               "location": "matched", "territory": TERRITORY.name} for model in models]
     photos[0]["username"] = '<img src=x onerror="alert(1)">'
     downloads = []
     monkeypatch.setattr(db, "list_checkin_photos", lambda *args: photos)
@@ -337,31 +404,48 @@ def test_history_gallery_paginates_authorized_photos_and_opens_the_chosen_entry(
     monkeypatch.setattr(db, "download_checkin_photo", download)
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
     assert not page.exception
-    assert downloads == ["photo-4", "photo-3", "photo-2", "photo-1"]
-    assert len(page.get("html")) == 4
+
+    # Page 1: the two newest game nights, one photo each. The oldest night
+    # (two photos) isn't downloaded until its page is opened.
+    assert downloads == ["photo-3", "photo-2"]
     markup = "\n".join(item.value for item in page.markdown)
-    assert "&lt;img" in markup and photos[0]["username"] not in markup
-    assert "+1 season pts" in markup and "Small" in markup
-    button(page, "Older photos").click().run()
-    assert not page.exception and len(page.get("html")) == 1
-    assert button(page, "Older photos").disabled
-    button(page, "View details").click().run()
+    assert markup.count("Game night") == 2
+    tiles = "\n".join(item.value for item in page.get("html"))
+    assert "&lt;img" in tiles and photos[0]["username"] not in tiles
+    assert button(page, "Newer nights").disabled
+    assert not button(page, "Older nights").disabled
+
+    button(page, "Older nights").click().run()
     assert not page.exception
-    assert page.selectbox[0].value == "photo-0"
-    assert any("+1 season" in item.value for item in page.text)
-    button(page, "All photos").click().run()
-    assert not page.exception and button(page, "View details")
+    # A button-triggered rerun re-renders the page once before the session
+    # state update takes effect, so only the tail (the newly visible night)
+    # is asserted here -- see the identical pattern this replaced.
+    assert downloads[-2:] == ["photo-1", "photo-0"]
+    assert not button(page, "Newer nights").disabled
+    assert button(page, "Older nights").disabled
+
+    next(b for b in page.button if b.key == "memory_tile_photo-0_open").click().run()
+    assert not page.exception
+    assert page.session_state["history_detail_id"] == "photo-0"
+    assert any("Mia" in item.value for item in page.text)
+
+    button(page, "Back to photos").click().run()
+    assert not page.exception
+    assert "history_detail_id" not in page.session_state
+    assert any(b.key == "memory_tile_photo-0_open" for b in page.button)
 
 
 def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
     _, game = ui
     models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(2)]
-    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: [{"id": model.id} for model in models])
+    stubs = [{"id": model.id, "submitted_at": model.submitted_at.isoformat(), "captured_at": None,
+              "timezone_name": game.timezone_name, "season": game} for model in models]
+    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: stubs)
     def denied(*args):
         raise PermissionError("Membership revoked")
     monkeypatch.setattr(db, "download_checkin_photo", denied)
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
-    assert not page.exception and page.error
+    assert not page.exception and page.warning
     assert not page.get("html")
 
 

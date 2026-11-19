@@ -75,7 +75,26 @@ Friend confirmation remains a separate proposal, not an active v1 fallback.
 
 ## Minigames
 
-Each player may play one minigame per agreed game night across all minigames.
-Minigames give special items, not direct points. Their night boundaries,
-interruptions, items and multiplier stacking are separate open team decisions
-(D-04/D-07). The continuous drink-scoring window does not decide them.
+Chug Duel is the first playable minigame, authorised by the contributor on
+18 November 2026. In normal seasons each player can challenge once and accept
+once per lobby and night, with a 06:00 rollover in the season timezone. Explicit QA/test seasons
+instead allow unlimited sequential replays, with all normal check-in evidence,
+cooldown and scoring rules still enforced (R-M02). An opponent accepts
+the selected drink and size on their own device. The challenger takes one
+shared photo and provides the shared verified location, then hosts a
+split-screen board. Both players press Ready; after a countdown the first
+finish tap wins. Physical completion remains trust-based.
+
+The winner receives both drinks' base season points; the loser receives zero
+base season points from that duel. Both retain normal territory base points,
+and owner income remains normal. Before a result, or after a started abort,
+each keeps their normal drink award. Team duels require different teams.
+This explicitly supersedes the items-only/shared-one-play rule for Chug Duel;
+future games, items and stacking remain separate decisions. See
+[R-M01–R-M05](RULES.md#minigames) and [the handoff](../CHUG_DUEL.md).
+
+[MINIGAMES_PROPOSAL.md](MINIGAMES_PROPOSAL.md) records the 18 November request
+for duels, a delayed reaction game and real-life/app challenges, with suggested
+flows and rewards. It is a historical discussion draft; Chug Duel's later
+decisions above supersede its recommendations. Other proposed games remain
+unimplemented.

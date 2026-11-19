@@ -40,6 +40,13 @@ One record per person who plays WeGoPub. The same player can participate in many
 | `email` | Text | Unique private login email, normalized to lowercase. Null only for legacy records awaiting administrator migration. |
 | `pin_hash` | Text | Salted password hash. The old column name is retained to preserve existing data; legacy records are retained but have no self-service upgrade screen. |
 
+Photo sharing is an account preference stored separately from `Player` in
+`player_photo_preferences`: one `player_id` primary key and a non-null
+`share_checkin_photos` boolean, default false. A missing row also means
+false. The server validates the current sign-in before reading or saving
+one's preference; only the server role can access the table. R6/R-PH01
+defines audiences independently of the photo's score or retention.
+
 ### Lobby
 
 A group of players who compete together. The draft assumes a private lobby with invitation-based joining.
@@ -115,7 +122,7 @@ A fresh phone reading taken at submission is the player's location (R-L01). GPS 
 | `owner_team_id` | Team ID, optional | Prior owner receiving team income; individual entries retain `owner_membership_id`. |
 | `season_id` | Season ID | Competition to which the submission belongs. |
 | `submitted_at` | Timestamp | Server-recorded submission time. |
-| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos under R6. Photo removal preserves the scored entry. |
+| `photo_ref` | File reference | Private storage path, or `deleted` / `expired` after removal under R7. Current members of the entry's lobby can view unexpired photos only when R6/R-PH01 sharing permits. Photo removal preserves the scored entry. |
 | `photo_captured_at` | Timestamp, optional | When Check-in received the camera photo. Older entries may only have a submission time. |
 | `territory_id` | Territory ID, optional | Territory assigned to this entry. Empty while a match is unknown or when the entry has no assigned territory. |
 | `location_check_result` | Status | Outcome of the device check. Examples include `matched`, `uncertain`, `outside`, and `unavailable`. |
@@ -124,6 +131,33 @@ A fresh phone reading taken at submission is the player's location (R-L01). GPS 
 The submitter's membership and the Season belong to the same lobby. If the location is unavailable or uncertain, the player can retry from the same form. A saved entry with a verified location outside every territory has an empty `territory_id` and can earn Season points.
 
 ## Minigames
+
+### ChugDuel
+
+Implemented on 18 November 2026, separately from the legacy MinigameAttempt
+placeholder below. One challenge links `season_id`, `challenger_id` and
+`opponent_id` (membership IDs), agreed `drink_type`/`size` and a `game_night`
+date using a 06:00 cutoff in the season timezone. State is invited, accepted,
+started, completed, aborted, declined, cancelled or expired. Server timestamps
+track creation, acceptance, start, countdown (`play_at`), finish and expiry.
+`winner_id` is a participating membership. Two preallocated entry IDs identify
+the normal drink entries created atomically on start.
+
+The linked DrinkEntries carry `duel_id`. Only the losing entry after completion
+carries `duel_transfer_to` (saved winner competitor: team or membership) and
+`duel_transfer_order` (result position in the shared scoring sequence). These
+fields change season replay without changing original territory base awards
+or owner income. Both entries keep their own private image copy and frozen
+team identity. See RULES.md R-M01–R-M05 and [the handoff](../CHUG_DUEL.md).
+
+Normal-season outgoing/incoming allowances are unique by membership and
+game-night date, so they are per lobby and cannot be bypassed by selecting a
+different opponent. Migration 012 adds a server-derived `test_mode` flag,
+copied from the frozen season's boolean QA setting on every insert/update.
+QA rows are exempt from the nightly unique indexes; a caller cannot opt a
+normal duel into this exception. Active/pending game restrictions still apply
+and finished attempts remain saved for history. Other proposed games/items
+remain unimplemented.
 
 ### Arena
 
@@ -242,3 +276,19 @@ One row per unordered player pair stores `sender_id`, `recipient_id`,
 No fields on Player change. Declined rows retain their timestamp so the
 10-minute wait survives restarts. Only each participant's own Profile
 reads their relationships; public search selects just player ID and username.
+
+## FocusAttempt and boosted entries (19 November 2026)
+
+`focus_attempts` is separate from the legacy `MinigameAttempt` and Chug Duel.
+It links membership, season and 06:00-based night; stores attempt number,
+private random challenge, status/phase/step/revision, reaction results,
+precision checkpoints and authoritative start/signal/deadline/expiry times.
+A passed row stores completion and boost expiry. Partial unique indexes allow
+one running attempt per member/season and one win per night. Public clients
+cannot read the table or call its RPCs. No health label, photo or GPS is stored.
+
+`DrinkEntry.focus_attempt_id` is immutable reward provenance on ordinary entries.
+`points_awarded` is the actual accepted award including that effect. SQL numeric
+half-points and half-quarter owner-income units preserve exact eighth-points;
+whole values remain integers in Python presentation. Timely corrections retain
+the source multiplier; historical replay does not need today's boost status.

@@ -112,23 +112,29 @@ def test_team_standings_use_team_identity(ui,monkeypatch):
     monkeypatch.setattr(db,'list_players',lambda:[Obj(id='me',display_name='Myself')])
     from tests.test_checkins import TERRITORY
     monkeypatch.setattr('shared.get_territories',lambda:[replace(TERRITORY,id='territory-a')])
-    at=AppTest.from_file(ROOT/'pages/4_Standings.py').run()
+    at=AppTest.from_file(ROOT/'pages/4_Standings.py')
+    at.session_state['current_membership_id']='m1'
+    at.session_state['current_season_id']='season'
+    at.run()
     assert not at.exception
     board=''.join(m.value for m in at.markdown)
     assert 'Team 1' in board and 'Team 2' in board and 'YOUR TEAM' in board
-    assert '13.5' in board and '11 pts' in board
+    assert '13.5' in board and '10' in board
     assert 'Myself' not in board
 
 
-def test_team_profile_stats_show_combined_account(ui,monkeypatch):
+@pytest.mark.parametrize('finished', [False, True])
+def test_team_profile_stats_show_personal_points_and_completed_team_win(ui,monkeypatch,finished):
     ui['me'].team_id='t1'
+    end = datetime.now(timezone.utc) + timedelta(days=-1 if finished else 1)
+    ui['season'] = replace(ui['season'], id='season', ends_at=end)
     ui['entries']=[drink('d1','m1','t1',5,1),drink('d2','m2','t1',6,2),drink('d3','m3','t2',10,3)]
-    from tests.test_checkins import TERRITORY
-    monkeypatch.setattr('profile_ui.get_territories',lambda:[replace(TERRITORY,id='territory-a')])
-    at=AppTest.from_string("import streamlit as st\nfrom profile_ui import show_stats\nst.session_state['current_lobby_id']='lobby'\nshow_stats('me')").run()
+    at=AppTest.from_string("from profile_ui import show_stats\nshow_stats('me')").run()
     assert not at.exception
-    values={metric.label:metric.value for metric in at.metric}
-    assert values=={'Team season points':'13.5','Rank':'#1','Territories owned':'1'}
+    from tests.test_profile_ui import stats_text
+    text=stats_text(at)
+    assert 'Total points 5' in text and 'Drinks 1' in text
+    assert f'Total Wins {int(finished)}' in text
 
 
 def test_team_map_shows_combined_capture_gap(ui,monkeypatch):

@@ -1,5 +1,182 @@
 # Rules
 
+## Minigames
+
+### R-M06 Focus Challenge unlocks and attempts
+
+Team approval reported by the contributor on 19 November 2026. New v1 seasons
+whose frozen snapshot contains `focus_challenge.version = 1` enable this game.
+Existing snapshots are not edited. Normal and QA seasons use these rules;
+Chug Duel's unlimited QA exception does not bypass Focus unlocks or rewards.
+
+Count the member's accepted v1 drink entries in this lobby/season and the same
+06:00-based evening, irrespective of type/size. Their shared Chug Duel entry
+counts once. Retakes, rejected submissions and duplicate retries do not count;
+deleting an image preserves its accepted entry and this count under R7.
+The first attempt unlocks at five entries, then at seven, nine, eleven, etc.
+after failures. Starting atomically consumes that attempt; simultaneous starts
+recover the same saved attempt. Focus and Chug Duel allowances are separate.
+Only one game may be actively running for a member at a time.
+
+### R-M07 Focus Challenge tasks and variation
+
+Pass reaction, memory and precision consecutively. Reaction has five trials,
+with median at most 350 ms and no early taps. Memory requires reproducing seven
+positions exactly. Precision requires twelve correct taps within twelve seconds;
+a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
+calibration, not a health benchmark. Passing is not a sobriety assessment.
+
+Each new attempt receives private server-generated random material: independent
+1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
+and new valid precision positions. Refreshing cannot reroll it. Memory flashes
+650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
+Precision targets are 52 px with consistent normalized margins and minimum
+movement; no colour-only matching is required.
+
+### R-M08 Focus Challenge interruptions and deadlines
+
+Resume the same persisted attempt and progress; its clock keeps running.
+Ready screens have thirty seconds. Reaction signals allow two seconds for a
+response; slower median results still fail R-M07. The whole attempt has a
+three-minute maximum and ends sooner at 06:00, scoring closure or season end.
+A miss or timeout requires the next unlock count. Leaving the screen itself
+does not create or refund an attempt.
+
+The server allows two seconds for delivery of stage evidence, while browser
+timers enforce the actual task budget. This does not extend the overall,
+06:00, scoring or season cutoff. Timers use a monotonic browser clock anchored
+to server timestamps. Replayed/stale messages recover the recorded result.
+Precision checkpoints save full tap prefixes without blocking the next local tap.
+
+### R-M09 Focus boost and scoring
+
+One successful attempt per member/lobby evening automatically grants x1.5 on
+future ordinary drink season and matched-territory points for sixty minutes,
+ending earlier at scoring closure or season end. It can continue past 06:00.
+Boosts never exceed x1.5; an unexpired prior-evening boost blocks a new Focus
+attempt until it ends. Chug Duel entries/transfers keep their normal scoring.
+The owner earns 25% of the boosted award as additional season income, using
+the owner immediately before the entry as usual. No self/team-self income.
+
+In team mode only the successful member's ordinary entries are boosted; their
+awards add to the team totals. Teammates' other entries are unchanged. Eligibility
+uses authoritative receipt time: boost start <= check-in receipt < expiry.
+The entry stores its source Focus attempt. Corrections retain that original
+multiplier and replay ownership/income without compounding or depending on
+whether the boost is still active. Photo deletion does not remove awards.
+
+Store awards as exact PostgreSQL numeric half-points. Existing
+`owner_bonus_quarters` remains compatible but can contain half a quarter,
+representing exact eighth-points: boosted 1 -> 1.5; owner income -> 0.375.
+Display up to three decimals without rounding this income away. The server
+determines rewards and awards; browser timing/tap evidence is trust-based and
+does not establish automated anti-cheat or sobriety verification.
+
+See [implementation and activation](../FOCUS_CHALLENGE.md).
+
+
+### R-M01 Chug Duel invitation and opponents
+
+In a v1 season with scoring open, challenge another member of the same lobby.
+The challenger selects a drink and size from the frozen scoring table; the
+recipient must accept these terms on their own account/device. Both drinks
+have that selection. Self-challenges and cross-lobby opponents are rejected.
+In a team lobby both players need different teams. Recheck teams before start.
+One pending outgoing invitation and one accepted/started duel per player are
+allowed at a time. Decline/cancel before start awards no points.
+
+Source: contributor's explicit answers, 18 November 2026. Operational defaults
+are explained in [CHUG_DUEL.md](../CHUG_DUEL.md).
+
+### R-M02 Two separate nightly allowances
+
+Each member can play once as challenger and once as recipient per lobby and
+game night. A night rolls over at 06:00 in the season timezone: 23:59 and the
+following 00:01 share the allowance; exactly 06:00 starts the next one.
+Other lobbies have independent allowances. Acceptance reserves both respective
+roles atomically; starting consumes them. A rejected, declined, expired or
+cancelled pre-start invitation consumes neither. A second acceptance cannot
+reserve an already used role, including concurrent requests. The opposite
+role remains available after a finished game.
+
+Source: contributor's explicit answers, 18 November 2026. This is an explicit
+exception to the earlier shared-one-minigame-per-night design for Chug Duel.
+
+QA exception, contributor decision 18 November 2026: when the season's frozen
+`scoring_rules.test_mode` is the JSON boolean `true`, players may challenge and
+accept repeatedly without a daily/nightly count limit, including after a
+started abort. Show Unlimited in both allowance indicators. A lobby name or
+a caller-supplied flag cannot enable this. Existing QA seasons also qualify.
+One pending outgoing invitation and one accepted/started duel per member still
+apply, as do the scoring window, season end, photo/GPS rules, countdown,
+two-minute check-in cooldown and exactly-once point transfer. A player may
+repeat only after the previous game has ended. Normal seasons retain the two
+separate nightly allowances. This is enforced in Python and migration 012.
+
+### R-M03 Shared check-in and base-point transfer
+
+After acceptance the host takes one shared fresh photo and supplies their
+current accepted phone GPS for both players. Apply normal photo sanitation,
+location, territory, season/window and per-member cooldown checks. Store two
+linked normal drink entries in one transaction, each with its own private
+copy of the shared image. Invalid evidence or either member's cooldown
+rejects the entire start: neither gets a new entry or points. Exact GPS is
+discarded after validation. Each image copy follows its owner's existing R7
+deletion/retention policy. Duel drink/size selections cannot be corrected
+individually after start; delete images without changing points as usual.
+
+At start both get normal base season/territory awards and normal owner income.
+At a recorded win transfer only the loser's drink's base season points to the
+winner's saved member/team account. Two 3-point drinks yield 6/0 base season
+points. Territory base points and all owner income stay unchanged. Result
+retries award nothing extra. The transfer gets its own ordered scoring event
+so earliest-reaching ties use result time. Within an exact same-event tie,
+preserve the previously higher-ranked account. Replaying corrected unrelated
+entries preserves the transfer and recalculates normal owner income.
+
+Source: contributor's explicit answers, 18 November 2026. Supersedes the
+items-only reward rule for Chug Duel. Earlier source entries are unchanged.
+
+### R-M04 Shared-phone finish
+
+The challenger hosts a split screen with one named half per participant.
+Both press Ready, then the server starts a three-second countdown. Ignore
+early taps; the first finish tap after GO wins. Only the authenticated host
+can submit one of these two participants as winner. A nonparticipant,
+recipient-device result, invalid winner or pre-countdown result is rejected.
+First tap wins even when browser events arrive close together. Completed
+results are immutable, including retries with a different winner. Physical
+completion is trust-based; the app only records the tap.
+
+Host presentation, contributor request 18 November 2026: once started, show
+the two named halves in a fixed full-viewport board. Hide app navigation and
+disable page scrolling through Ready, countdown, GO and the outcome. Keep
+the same board mounted while the server arms the game; show all three
+countdown seconds without restarting them on refresh polling. A compact
+exit retains the existing no-winner abort action. Keep the confirmed outcome
+visible until the host chooses Back to Minigames, then restore navigation.
+
+Source: contributor's explicit shared-device decision, 18 November 2026;
+three seconds and first-browser-event handling are operational defaults.
+
+### R-M05 Expiry, interruption and navigation
+
+Invitations expire at ten minutes (inclusive). Accepted setup and started
+play each also have ten minutes, capped by the next 06:00 rollover, scoring
+close and season end. An accepted pre-start cancellation/expiry releases
+reservations. After start, either participant can end without a winner;
+expiry does the same. Both retain their normal drink awards, no base-point
+transfer happens and the used role allowances remain consumed. A connection
+loss can resume the saved started game until expiry. A lost successful reply
+recovers its existing start/result instead of creating another one.
+
+Minigames is immediately right of the check-in plus in the bottom navigation.
+Receiving accounts see incoming invitations and outcomes on that page through
+automatic refresh. New games are blocked outside normal scoring availability.
+
+Source: contributor's explicit interruption and navigation answers,
+18 November 2026; accepted/start phase deadlines are operational defaults.
+
 ## QA season exception (18 November 2026)
 
 For explicitly selected **test seasons only**, posting opens Wednesday at
@@ -10,6 +187,8 @@ and hour 8. Normal seasons retain Thursday 18:00–Sunday 18:00. All other rules
 and server validation still apply, including GPS, photos, cooldown, points
 and corrections. The snapshot stays frozen; existing seasons are not changed.
 This exception does not change minigame night boundaries.
+R-M02 additionally allows unlimited sequential minigame replays in these QA
+seasons; it does not remove cooldowns or permit overlapping games.
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 
@@ -171,9 +350,36 @@ boundary behavior listed in `OPEN_DECISIONS.md` are not yet agreed.
 | R2 | Check-in requires a drink type, a size, a fresh photo taken in the app, and automatic location verification. | If location is missing or uncertain, keep the photo and drink selection on the form so the player can retry. Save the entry and award points only after verification. Only the phone's GPS reading counts (R-L01, R-L02). Discard raw coordinates after verification. |
 | R3 | New v1 seasons use the frozen category/size table in [SCORING_V1.md](SCORING_V1.md). | Four categories; sizes for beer/wine/mixed; one shot serving. Reject unsupported combinations. Large bonuses are already included. Legacy seasons keep their prior awards. |
 | R4 | The player with the most points in a territory owns it. | A unique leader owns the territory. Ties follow R-R01. Initial ownership, scoring window and resets remain open. |
-| R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
-| R6 | All current members of a lobby can view the photos saved with that lobby's drink entries. | Before serving a photo, verify that the viewer is signed in and is a current member of the lobby that owns the entry. |
+| R5 | In v1, the previous territory owner earns an additional 25% of another player's base award in season points only. | The visitor keeps full base points. No self-income, territory income or income cap. Use exact quarters, or eighth-points for Focus under R-M09; replay affected ownership/income after a timely correction. See [SCORING_V1.md](SCORING_V1.md). |
+| R6 | Current lobby members see their own unexpired photos. Sharing with other players is OFF by default for all accounts and controlled by one account-wide switch in Profile → Account & security → Photo privacy. | The switch applies to past and future photos across all lobbies. In individual mode, another member needs the uploader's consent. In team mode, current members of the entry's saved team can view its photos internally regardless of the switch; opponents need the uploader and every current member of that team to opt in. Check membership and consent again before each image download, as well as filtering the gallery. See R-PH01 below. |
 | R7 | The owner can delete their photo while keeping the drink entry and its awarded points. Photos expire 30 days after their season ends. | Only the entry's author may request deletion. Remove the stored image and mark its reference as deleted, preserving the score and standings. Deny photo access at the expiry boundary and remove expired files through scheduled cleanup. |
+
+### R-PH01 Photo sharing and attribution
+
+Contributor choices, 19 November 2026: a missing preference means OFF for
+existing and new accounts. Only the signed-in owner can save their account's
+preference. The current roster controls team consent even for old photos:
+one new member with sharing OFF hides that team's photos from opponents.
+An empty team grants no opponent access. Historical attribution uses the
+team saved on the check-in, not a later team assignment; if an uploader has
+left that team their own consent is still required for opponent access.
+Lobby membership is required for every audience, including the owner.
+
+Chug Duel's two image copies follow each entry owner's sharing setting
+independently. One participant opting out does not block the other copy.
+This can leave the same shared image visible through the other participant;
+the control does not promise consent from every person pictured.
+
+Solo photos have a stable player-coloured frame and username. Team photos
+have a stable team-coloured frame, team name and uploader's username. Names
+remain readable independently of colour. Deleted/unavailable photos keep
+their attribution on otherwise visible history cards. Scoring, check-in
+requirements, standings, corrections and R7 retention do not change.
+
+Turning sharing OFF denies subsequent gallery/download requests; images
+already delivered to a page, downloaded or screenshotted cannot be recalled.
+No public image URL is generated. Missing consent denies sharing; a failed
+consent lookup never falls back to serving the image.
 
 ## Implementation recommendations (not yet agreed rules)
 
@@ -197,13 +403,28 @@ verify that the selected drink type/size is accurate or that it was consumed.
 | A1 | Game pages require authentication; first visit offers registration and login. | A returning player logs in without recreating an account. Logged-out access stops before any game content or actions. |
 | A2 | Registration requires first name, surname, username, email and a personally chosen password entered twice. | Reject empty names, malformed email, mismatched passwords and passwords shorter than 8 characters. Eight characters are accepted; implementation also rejects whitespace-only passwords and bounds input length. |
 | A3 | Username and email must each be unique, ignoring case and surrounding whitespace. | Duplicate submissions cannot create another account, including concurrent submissions. Only username is public; name and email stay private. |
-| A4 | Login uses email and password, without registration email verification. Password recovery is currently unavailable (removed 17 November 2026). | Incorrect credentials leave credentials and game points unchanged. No reset-code request or password-reset form is offered. |
+| A4 | Login uses email and password, without registration email verification. Password recovery is available through the registered email (authorised 18 November 2026). | Incorrect credentials leave credentials and game points unchanged. The login screen offers Forgot password and a code-based reset form. |
 | A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
-| A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade or password-recovery controls. |
+| A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade controls; Log in offers Forgot password. |
 | A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
 
 Login throttling (ten attempts per account per 15 minutes) is a security
-implementation setting, not a scoring rule. SMTP is not required.
+implementation setting, not a scoring rule. Recovery requests and reset attempts
+share this throttle. Brevo's HTTPS API sends recovery emails; SMTP is not required.
+
+- A11 (authorised 18 November 2026): Forgot password sends a random 16-character
+  hexadecimal code, grouped with hyphens for readability, to the registered email.
+  The database stores only a hash bound to the current password hash. Codes expire
+  at 15 minutes (the exact expiry is rejected) and can be consumed once, atomically
+  with the password update. A new request replaces the prior code, with at least
+  one minute between requests. Changing the password invalidates outstanding codes
+  on their next credential lookup. Invalid input, missing/expired/used codes and
+  throttled resets leave passwords and points unchanged. The new password follows
+  A2 and must differ from the old one. Reset does not automatically sign in;
+  existing active and remembered sign-ins fail their next credential check.
+  Requests give the same public message for unknown accounts, throttling and email
+  delivery failures. Delivery failures remove only their own pending code.
+  Names, game records, player ID and email remain unchanged.
 
 ## Friends (agreed 17 November 2026)
 
@@ -331,3 +552,34 @@ the same lobby lock; accepted entry identity is immutable. Team writes and
 reads require the authenticated app's existing member checks; anonymous and
 Supabase authenticated roles have no access to the team table or write RPCs.
 Source: contributor's explicit team-mode choices, 18 November 2026.
+
+## Profile statistics
+
+### R-P01 Lifetime statistics across active and finished lobbies
+
+Profile → My stats shows four cards: Total points, Drinks, Lobbies played,
+and Total Wins. Include all retained active and finished lobbies; do not
+depend on the selected lobby. Include every season in multi-season lobbies.
+Accepted scoring check-ins count immediately, including existing history.
+
+Points sum the player's own accepted drink awards across those seasons, plus
+personal territory-owner income in individual seasons. Replay each season
+separately so corrections and owner income agree with standings. Team scores,
+teammates' drinks and team owner income are excluded from personal points.
+Drinks counts accepted positive-point check-ins, including verified outside
+locations and entries whose photo has since expired or been deleted.
+Lobbies played counts distinct lobbies with at least one such drink.
+Total Wins counts completed seasons (`now >= ends_at`) won individually or
+by the player's team, using existing leaderboard tie-breaking. An active
+season's current leader is not a winner. A completed season counts even if
+another season in that lobby is active. Empty seasons have no winner.
+
+Allowed: five finished lobbies plus one active lobby with 11 personal points
+each show 66 points and six lobbies played; leading the active season adds no win.
+Rejected: counting a teammate's drink as one's own, a duplicate entry twice,
+or an active season as a win. Boundary: a win counts at the season's end
+instant; no history shows zero on all four cards. A history-load failure
+shows an error rather than a partial total. No scores or entities are changed.
+
+Source: contributor request and clarified answers, 18 November 2026;
+active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.

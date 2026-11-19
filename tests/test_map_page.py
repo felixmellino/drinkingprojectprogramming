@@ -46,6 +46,16 @@ def open_map():
     return AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10).run()
 
 
+def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
+    from unittest.mock import Mock
+    from core.scoring_v1 import replay_season
+    replay = Mock(wraps=replay_season)
+    monkeypatch.setattr('map_ui.replay_season', replay)
+    page = open_map()
+    assert not page.exception and len(page.get('deck_gl_json_chart')) == 1
+    replay.assert_called_once()
+
+
 def card(page):
     """The floating location card over the map (HTML in a markdown block)."""
     return next(m.value for m in page.markdown if 'class="game-card"' in m.value)
@@ -143,3 +153,54 @@ def test_zoom_fits_an_area_and_centres_on_it():
     assert 14 <= view.zoom <= 17
     me = map_ui.view_for(rows, map_ui.ME, (38.7, -9.1))
     assert (me.latitude, me.longitude) == (38.7, -9.1)
+
+
+def test_popup_uses_territory_totals_not_season_owner_income(phone):
+    import map_ui
+    rows = map_ui.territory_rows([TERRITORY, SECOND, FREE], phone["entries"], "me",
+                                 {"me": "felix", "rival": "**rival**"})
+    assert [(r["owner_id"], r["owner_points"], r["my_points"]) for r in rows] == [
+        ("rival", 4, 3), ("me", 5, 5), (None, 0, 0)]
+
+
+def test_team_popup_uses_combined_territory_points(phone):
+    from dataclasses import replace
+    import map_ui
+    entries = [replace(e, team_id="our-team" if e.membership_id == "me" else "other-team")
+               for e in phone["entries"]]
+    entries.append(replace(entry("4", "teammate", "beer", "large", 3), team_id="our-team"))
+    rows = map_ui.territory_rows([TERRITORY], entries, "our-team",
+                                 {"our-team": "Our team", "other-team": "Other team"})
+    assert rows[0]["owner_id"] == "our-team"
+    assert rows[0]["owner_points"] == rows[0]["my_points"] == 6
+
+
+def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypatch):
+    from unittest.mock import Mock
+    from httpx import RequestError
+    loader = Mock(side_effect=RequestError("offline"))
+    monkeypatch.setattr("profile_picture_ui.load_picture", loader)
+    page = AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10)
+    page.session_state["credential_version"] = "test-credential"
+    page.run()
+    assert not page.exception
+    assert sorted(call.args for call in loader.call_args_list) == [("player", "p-me"), ("player", "p-rival")]
+
+
+def test_selected_badge_opens_popup_with_escaped_name_and_both_scores(phone, monkeypatch):
+    import streamlit as st
+    original = st.pydeck_chart
+    def selected(*args, **kwargs):
+        original(*args, **kwargs)
+        st.session_state["_map_open_popup"] = True
+        return SimpleNamespace(selection={"indices": {"territories": [0]}})
+    monkeypatch.setattr(st, "pydeck_chart", selected)
+    monkeypatch.setattr(db, "list_players", lambda: [
+        SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="<b>rival</b>")])
+    page = open_map()
+    assert not page.exception
+    markup = "".join(item.value for item in page.markdown)
+    assert "&lt;b&gt;rival&lt;/b&gt;" in markup
+    assert '<th scope="col">Owner points</th>' in markup
+    assert '<th scope="col">Your points</th>' in markup
+    assert '<td>4</td><td>3</td>' in markup

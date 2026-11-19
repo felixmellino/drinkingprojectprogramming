@@ -10,12 +10,15 @@
 
 Updated direction: automatic location verification replaces buddy confirmation.
 
-1. Player taps the central +. Check-in opens the camera automatically and
-   starts live phone-location tracking. Browser camera/location permission
+1. Player taps the central +. Check-in opens a full-viewport camera stage
+   with bottom-centre shutter, front/back switch and Close, while starting
+   live phone-location tracking. Browser camera/location permission
    remains necessary; a previously granted permission avoids an extra app step.
-2. Player takes a fresh photo with the shutter, reviews it in its rounded
-   frame, and chooses drink type and size underneath. Retake replaces the
-   capture; there is no gallery upload. The location is the phone's
+2. Player takes a fresh photo with the shutter. The camera stops and the
+   app automatically opens the form with the photo in a rounded frame and
+   drink type/size underneath. Retake clears the pending capture and returns
+   to full-screen camera; Close returns to Lobby without saving. There is
+   no upload until Submit and no gallery upload. The location is the phone's
    GPS reading at submission (R-L01), accepted if it is off by at most
    50 m (R-L02).
 3. App shows the detected territory and scoring preview: base points,
@@ -50,9 +53,21 @@ Photo/location failures must never be represented as a successful check-in.
 The photo storage integration should save the file in a private Supabase
 bucket and record its storage path on the drink entry. When someone opens
 the photo, the server checks that their signed-in account currently belongs
-to the lobby where the entry was logged before serving the image. For older
+to the lobby where the entry was logged and satisfies R6/R-PH01 consent
+before serving the image. The gallery applies the same rule. For older
 entries with placeholder references, the app shows that the photo is
 unavailable.
+
+In Profile → Account & security → Photo privacy, the player saves one
+account-wide sharing toggle, initially OFF even for existing accounts.
+It affects existing and future photos. Own photos remain available under
+R7; other players' cards appear only when sharing permits it. In team mode,
+current teammates can view their saved team's photos internally even with
+sharing OFF. Opponents need consent from the uploader and all current
+members of that saved team. A new member with OFF withdraws opponent
+access to historical photos too. Chug Duel copies follow their respective
+owners independently. Each card and detail image has an identity-coloured
+frame and username, plus the saved team's name in team mode.
 
 Check-in records when the app receives the camera photo separately from
 when the player submits the entry. The photo view shows this capture time,
@@ -107,3 +122,38 @@ the points count from the moment the other player confirms.
 ## Proposed scoring workflow - review pending
 
 The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.
+
+
+## Remember the selected lobby (18 November 2026)
+
+Contributor decision: the last lobby explicitly chosen as the context for
+lobby-specific pages is saved per player in the database, across devices,
+logouts and app restarts. Opening a joined lobby card or successfully
+creating/joining a lobby selects it. Closing its popup and refreshing the
+Lobby page keep that selection. Automatic selection never overwrites the
+player's explicit saved choice, and restoration never reopens a popup.
+
+After authentication, restore the saved lobby before rendering Leaderboard,
+Map, Check-in, Minigames or Photo history. Recheck current membership and load
+current lobby mode, team and season from the database. A preference grants
+no access. If membership has been removed, require a choice on the Lobby page.
+If the saved competition has finished, select the newest active competition
+(by start timestamp, then lobby ID). With no active alternative, require a
+choice; finished results remain available by opening their lobby explicitly.
+A player without a saved choice also defaults to their newest active lobby.
+Upcoming/incomplete saved lobbies stay selected; existing workflow checks
+explain when a season or team is still needed.
+
+Leaderboard can display standings even when the shared selection has no usable
+season. It shows the newest active competition the player belongs to if one
+exists. Otherwise it shows the saved lobby's season if the player still belongs
+to it, or the season of the most recently joined lobby with a season. It labels
+finished standings and links to Lobby if there is nothing to show. This
+display-only fallback checks membership and leaves the gameplay lobby and
+the saved choice unchanged.
+
+The same running session keeps its own context when another device changes
+the account preference. Reopening restores the latest successfully saved
+explicit choice. A failed preference write leaves the lobby usable for the
+current visit and shows a retry message. A failed restoration is retried on
+the next page load; existing access checks still apply.

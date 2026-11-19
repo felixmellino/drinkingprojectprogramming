@@ -18,6 +18,7 @@ def dismiss_dialog():
 def open_created_lobby(lobby_id, message):
     dismiss_dialog()
     st.session_state['_opened_lobby_id'] = lobby_id
+    st.session_state['_lobby_choice_pending'] = lobby_id
     st.session_state['_lobby_notice'] = message
     st.rerun()
 
@@ -25,7 +26,8 @@ def open_created_lobby(lobby_id, message):
 @st.dialog('Create a lobby', dismissible=True, on_dismiss=dismiss_dialog)
 def create_dialog(player_id):
     zones = sorted(available_timezones())
-    mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True)
+    mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True,
+                    key='pill_radio_competition_mode')
     count = capacity = assignment = None
     if mode == "team":
         count = st.number_input("Number of teams", min_value=2, max_value=16, value=2)

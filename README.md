@@ -7,8 +7,15 @@ leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
-**Team:** TODO — add all four members' names and student numbers here
-before submission.
+**Team:**
+- Niklas Peter — 78399
+- Felix Mellino — TODO (student number)
+- Ben Schittkowski — TODO (student number)
+- Nils Cuypers — TODO (student number)
+
+Names above are inferred from git history and may be wrong — each member
+should confirm their own name and fill in their student number before
+submission.
 
 ## Hosting (deployed app)
 
@@ -93,9 +100,36 @@ Migration 004 restricts game tables, including lobby invite codes, to the
 server's service-role key. Fresh databases get these restrictions in the
 schema. All app database access continues through `data/db.py`.
 
-Password recovery is currently unavailable; no SMTP configuration is needed.
-Existing databases need no migration for this removal. Historical account SQL
-still defines unused reset-code objects; the app no longer calls them.
+Password recovery uses Brevo's HTTPS API and the existing server-only
+`issue_password_reset` / `consume_password_reset` functions from migration 001.
+No new database migration is required if 001 is already applied. Configure these
+server-only settings locally and in Streamlit Community Cloud → Settings → Secrets:
+
+```toml
+BREVO_API_KEY = "your-restricted-transactional-email-key"
+BREVO_SENDER_EMAIL = "wegopub@outlook.com"
+BREVO_SENDER_NAME = "WeGoPub"
+```
+
+Use a verified sender and a key with Transactional email access. Keep real keys
+out of Git. With an Outlook sender, Brevo substitutes an `@brevosend.com` domain.
+The team's configured key expires 18 February 2027 (and may expire after 90 days
+of inactivity); replace it in Secrets before expiry. No Brevo dashboard template
+is required: `password_email.py` sends HTML and plain text versions directly.
+
+On Log in, choose **Forgot password?**, request a code and enter it with a new
+password. Codes expire after 15 minutes, work once, and a new request replaces
+the previous code. Requests have a one-minute per-account cooldown; requests and
+reset attempts share the existing ten-attempt / 15-minute account throttle.
+If no email arrives, check spam, Brevo's transactional Logs, sender verification,
+API-key permissions/expiry and the daily sending quota. The public response stays
+the same for unknown addresses, throttled requests and delivery failures.
+
+Before merging, test a real reset in a test account on the branch with Brevo
+configured: restart the app between requesting and consuming the code; verify
+old-password rejection, new-password login, code reuse rejection and invalidation
+of existing/remembered sign-ins. Also check a code at its 15-minute expiry. These
+live checks must not reset a teammate's account.
 
 To enable check-in photos, run
 [`migrations/setup_checkin_photo_storage.sql`](migrations/setup_checkin_photo_storage.sql)
@@ -120,6 +154,21 @@ access, upload limits, secrets, and the privacy decisions to complete before
 collecting real player photos.
 
 Owners can delete their photo in **Lobby photos** while keeping the score.
+Before deploying photo privacy, apply
+[`migrations/013_checkin_photo_privacy.sql`](migrations/013_checkin_photo_privacy.sql)
+to both new and existing databases. Applied to the shared project on
+19 November 2026; eight database checks and a fresh app-server read passed.
+It adds a server-only account preference;
+missing preferences mean OFF for everyone. Under **Profile → Account &
+security → Photo privacy**, players can share past and future check-in
+photos across all lobbies. Own photos remain visible; current teammates
+retain internal team access. Opponents need consent from the uploader and
+every current member of the photo's saved team. A new teammate with sharing
+OFF hides existing team photos from opponents. Chug Duel copies follow
+each owner's preference independently. Turning sharing OFF cannot recall
+already viewed or saved images. Photo frames identify the player, or the
+team and player in team mode. This changes gallery/image access, not scores.
+
 Photo access ends 30 days after its season ends. The Data owner must schedule
 `python -m data.cleanup_checkin_photos --apply` on the server at least daily
 and monitor failures. Without `--apply`, the command only reports counts.
@@ -247,7 +296,14 @@ four building blocks, and the team's workflow rules.
   location, followed automatically. To test or demo a territory you're not
   standing in, open Chrome DevTools → More tools → Sensors → Location and set
   the coordinates (e.g. 38.7133, -9.1456 lands in Shortys).
-- **The Minigames page isn't built yet.** See the build order in
+- **Chug Duel is implemented and merged.** Migration 011 was applied to the
+  shared database on 18 November 2026; live setup checks passed. New databases
+  need 011 after 010, then 012 for unlimited QA-lobby minigame replays.
+  Migration 012 was also applied to the shared project on 18 November 2026;
+  the QA replay UI update requires deployment with the new Python code.
+  Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
+  [CHUG_DUEL.md](docs/CHUG_DUEL.md).
+  Focus Challenge is implemented on its feature branch; migration 014 and a new season activate it. Other minigames remain future work. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season
@@ -282,8 +338,13 @@ still need `005_scoring_v1.sql` after photo setup as described above.
 Profile opens Edit profile, Friends, My stats and Account & security as
 separate views with Back to Profile. Log out signs out immediately. Players
 can edit username/first name/surname; email stays read-only. Password changes
-require the current password and sign out all devices. My stats uses the
-selected lobby's current season (points, rank and territories owned).
+require the current password and sign out all devices. My stats shows Total points, Drinks, Lobbies played and Total Wins across
+active and finished lobbies, independently of the selected lobby. Accepted
+scoring check-ins count immediately, including existing history.
+Points include the player's own drinks and individual
+territory-owner income; team scores and team owner income are excluded.
+Total Wins includes both individual and team victories in completed seasons
+only; currently leading an active season does not count as a win.
 Name/password changes need no new migration beyond the account indexes/access
 rules already described above. Profile pictures need migration 008 below.
 
@@ -373,3 +434,47 @@ leaderboard and territory ownership. Existing lobbies remain individual.
 Before using team mode, the Data owner must review/apply
 [`migrations/010_team_lobbies.sql`](migrations/010_team_lobbies.sql) after 005
 and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).
+
+
+### Remembered lobby selection
+
+Apply [`migrations/012_player_lobby_choices.sql`](migrations/012_player_lobby_choices.sql)
+once before deploying this version (also required for new databases).
+It adds a server-only account preference; existing Player/Lobby models and
+scoring records are unchanged. The last explicitly selected lobby follows the
+player across devices. Reopening switches a finished selection to the newest
+active lobby. Removed membership requires selecting a lobby again.
+
+Verify locally with `python -m pytest tests/test_lobby_selection.py tests/test_lobby_ui.py -q`.
+These tests exercise fresh Streamlit sessions, real Leaderboard initialization,
+account isolation, expiry fallback, access rejection and save failures with a
+mock data service. Migration 012 was applied to the configured Supabase project on 18 November
+2026: all seven SQL checks passed, and a saved preference survived a fresh
+Python process/database client. Nonmember writes were rejected without
+changing the preference; all temporary test records were removed.
+
+Browser verification on 18 November 2026 passed in a freshly started local
+app against the shared database: choose the older of two active QA lobbies,
+close its popup, open Leaderboard, fully reload the page and sign in again
+without opening Lobby. Leaderboard restored the older chosen lobby correctly.
+The temporary QA account and both lobbies were removed after verification.
+
+The public app still showed the old lobby-selection prompt on direct
+Leaderboard access during the same check. Deploy this branch's app changes,
+then repeat the browser check at the public URL. Finished-lobby fallback and
+revoked membership are covered by automated tests; deployed browser checks
+remain. The automated suite uses mocks and does not apply migrations or
+require database credentials.
+
+### Focus Challenge (19 November 2026)
+
+The second playable minigame adds randomized reaction, seven-step memory and
+precision tests. Accepted entries unlock attempts at five, then seven/nine/etc.
+after failures. One win per evening grants a personal 60-minute x1.5 ordinary
+season/territory effect, including 25% owner income on boosted awards.
+Chug Duel scoring is unchanged. Before activation, the Data owner applies
+`migrations/014_focus_challenge.sql` after 011, `012_qa_minigames.sql` and
+`013_checkin_photo_privacy.sql`.
+Create a new QA/normal lobby to snapshot its rules; existing seasons stay frozen.
+See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
+Shared-project migration and real-phone difficulty calibration are pending.
