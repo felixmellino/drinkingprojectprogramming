@@ -39,10 +39,15 @@
 /* Each pill's shadow tints toward its own ownership colour, same trick as
    the podium winner's block, instead of every status sharing one flat
    navy shadow. */
-.standings-pill.territory-yours { box-shadow: 0 6px 16px -4px rgb(76 195 138 / .45); }
-.standings-pill.territory-theirs { box-shadow: 0 6px 16px -4px rgb(255 93 82 / .35); }
-.standings-pill.territory-free { box-shadow: 0 6px 16px -4px rgb(126 136 156 / .3); }
+.standings-pill.territory-yours { box-shadow: 0 6px 16px -4px rgb(44 153 214 / .45); }
+.standings-pill.territory-theirs { box-shadow: 0 6px 16px -4px rgb(235 47 51 / .35); }
+.standings-pill.territory-free { box-shadow: 0 6px 16px -4px rgb(138 151 166 / .3); }
 
+/* Under the current player's name: distance to the next place. */
+.standings-gap { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+/* On the upper of two tied rows: makes the earliest-reached tie rule visible. */
+.standings-first-tag { display: inline-block; margin-left: 4px; padding: 1px 5px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-ink); font-size: 0.6rem; font-weight: 700; vertical-align: middle; }
+.standings-row-you { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-card); }
 
 @media (max-width: 480px) {
   .standings-podium-1 .standings-podium-avatar { width: 44px !important; height: 44px !important; }
