@@ -25,14 +25,10 @@ COLOURS = {
     "theirs": [255, 93, 82],    # #FF5D52 red
     "free": [126, 136, 156],    # #7E889C grey
 }
-FILL_ALPHA = {"yours": 125, "theirs": 120, "free": 70}
-# Outlines: unclaimed areas get a light, neutral cream edge so every border
-# stays clearly visible on the dark map without looking like a colour status.
-LINE_COLOURS = {
-    "yours": COLOURS["yours"] + [240],
-    "theirs": COLOURS["theirs"] + [240],
-    "free": [240, 225, 206, 215],   # --text cream
-}
+FILL_ALPHA = {"yours": 150, "theirs": 150, "free": 55}
+# Every border is plain white, so each area stands out clearly on the dark
+# map; the fill colour alone says who owns it.
+LINE_COLOUR = [255, 255, 255, 255]
 LEGEND = {"yours": "Yours", "theirs": "Someone else's", "free": "Unclaimed"}
 HOVER_COLOUR = [255, 255, 255, 70]  # lightens the area under the pointer
 
@@ -216,7 +212,6 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                 "points": f"Owner: {escape(row['owner'])} · {row['owner_points']} points · "
                           f"{'Your team’s' if team_mode else 'Your'} points here: {row['my_points']}",
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
-                "line": LINE_COLOURS[row["status"]],
             },
         }
         for row in rows
@@ -232,7 +227,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             stroked=True,
             filled=True,
             get_fill_color="properties.fill",
-            get_line_color="properties.line",
+            get_line_color=LINE_COLOUR,
             line_width_min_pixels=2.5,
         )
     ]
@@ -264,7 +259,9 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
             map_provider="carto",
-            map_style="dark",  # Carto "Dark Matter": game-like night map
+            # Carto "Dark Matter" without place names: the basemap's district
+            # names clashed with ours. Territory names show on hover.
+            map_style="dark_no_labels",
             tooltip={"html": "<b>{name}</b><br/>{detail}<br/>{points}"},
         ),
         height=600,

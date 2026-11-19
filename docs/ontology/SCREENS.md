@@ -222,7 +222,9 @@ Map owner badge update (19 November 2026, contributor request):
 - Clicking an individual territory also opens its own detail dialog. Existing
   hover details, GPS tracking/accuracy, quick zoom, check-in action, HUD,
   bottom location card and territory list remain available. The current base
-  map is Carto Dark Matter with a floating HUD and location card.
+  map is Carto Dark Matter without place names (they clashed with territory
+  names) with a floating HUD and location card. Every territory border is
+  white; the fill colour shows the owner. Territory names show on hover only.
 - Closing the dialog clears Streamlit's read-only selection via a fresh chart
   key so the same icon can be clicked again. This returns the viewport to the
   selected quick-zoom focus; a manually panned viewport is not retained.
