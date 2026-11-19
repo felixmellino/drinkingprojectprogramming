@@ -90,9 +90,6 @@ if not leaderboard:
     st.info("No points logged yet this season.")
 else:
     standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
-    st.caption("Equal points? The team who reached the score first ranks higher." if team_mode else "Equal points? The player who reached the score first ranks higher.")
-if any(entry.rule_version == "v1" for entry in entries):
-    st.caption("Team season points combine all members’ drinks and 25% income from rival teams. Territory points combine members’ base drink points." if team_mode else "Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")
 
 if not territories_available:
     st.warning("Territory standings are unavailable. Use Refresh standings to try again.")
