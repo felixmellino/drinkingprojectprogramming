@@ -215,7 +215,12 @@ lead-in, seven memory answers, then Start precision and twelve targets.
 The reward is granted only after all three stages. QA/normal unlocks, score
 correction provenance, owner income and nonstacking boost behavior are unchanged.
 
-Migration 021 is prepared, not installed on the shared project by this resolution.
+Migration 021 was installed on the shared project on 19 November 2026, after
+PR #64 merged. Database checks confirmed the attempt config column, one reaction,
+the 220 ms threshold and flow version 2. Live status RPC checks confirmed all
+nine populated explicit test seasons still permit zero-upload unlimited play.
+Refresh the app and start a new attempt to use the three-stage rules; an attempt
+already running before installation intentionally retains its previous rules.
 Earlier reaction-only descriptions in this handoff are historical; R-M07/R-M08
 and this section define the selected final behavior after migration 021.
 
@@ -225,4 +230,6 @@ the full migration order and verifies 220/221 ms, every stage, rewards, QA/norma
 gates, migration repeat, restart and preservation of an already-running 020 game.
 A real browser completed one fast reaction, reloaded at Start memory, observed
 and repeated all seven flashes, tapped twelve precision targets and received
-the saved boost against isolated PostgreSQL. Shared Supabase was not used.
+the saved boost against isolated PostgreSQL. That complete browser playthrough
+used isolated PostgreSQL; the later shared-project installation and status checks
+above do not replace a full deployed phone playthrough.
