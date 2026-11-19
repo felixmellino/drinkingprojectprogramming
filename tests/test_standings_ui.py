@@ -157,3 +157,22 @@ def test_whole_season_is_replayed_once_for_all_territory_pills(ui, monkeypatch):
     assert not at.exception
     assert rank_of(all_markup(at), "Mia") == 1
     replay.assert_called_once()
+
+
+def test_territories_show_counts_claimed_chips_and_fold_away_free_ones(ui):
+    ui["territories"] = [TERRITORY, replace(TERRITORY, id="quiet-area", name="Quiet Area")]
+    at = page()
+    assert not at.exception
+    markup = all_markup(at)
+    summary = text(next(m for m in re.findall(r'<div class="standings-section">.*?</div>', markup, re.S)))
+    assert "1 yours" in summary and "0 rivals" in summary and "1 free" in summary
+    free = next(e for e in at.expander if e.label == "Free territories (1)")
+    assert "Quiet Area" in "\n".join(m.value for m in free.markdown)
+    claimed = markup.split('<div class="standings-section">')[1]
+    assert 'title="Yours"' in claimed
+
+
+def test_refresh_and_rules_stay_available_but_quiet(ui):
+    at = page()
+    assert any(b.label == "Refresh standings" for b in at.button)
+    assert any(e.label == "How points work" for e in at.expander)

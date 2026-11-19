@@ -17,7 +17,7 @@ def load_styles() -> None:
 def _podium_place(rank: int, member: str, points, names: dict, current_member: str, *, team_mode: bool) -> str:
     name = names.get(member, "Unknown player")
     you = member == current_member
-    size = {1: ("48px", "124px", "15px"), 2: ("40px", "92px", "12.5px"), 3: ("40px", "68px", "12.5px")}[rank]
+    size = {1: ("52px", "92px", "15px"), 2: ("42px", "66px", "13px"), 3: ("42px", "48px", "13px")}[rank]
     avatar_size, block_height, name_size = size
     avatar_ring = "box-shadow:0 0 0 3px var(--brand-ink);" if rank == 1 else ""
     avatar_fill = "background:var(--accent);color:var(--on-accent);" if you else "background:var(--accent-soft);color:var(--text);"
@@ -28,7 +28,7 @@ def _podium_place(rank: int, member: str, points, names: dict, current_member: s
         f'<li class="standings-podium-place standings-podium-{rank}">'
         f'<span class="standings-podium-avatar" style="width:{avatar_size};height:{avatar_size};{avatar_fill}{avatar_ring}" aria-hidden="true">{escape(initials(name))}</span>'
         f'<span class="standings-podium-name" style="font-size:{name_size}">{escape(name)}{tag}</span>'
-        f'<span class="standings-podium-points">{escape(format_points(points))}</span>'
+        f'<span class="standings-podium-points">{escape(format_points(points))}<small> pts</small></span>'
         f'<span class="standings-podium-block" style="height:{block_height};{block_fill}">'
         f'<span style="color:{numeral_color}">{rank}</span></span></li>'
     )
@@ -66,17 +66,36 @@ def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = Fal
         st.markdown(markup + "</ol>", unsafe_allow_html=True)
 
 
-def territory_pills(territories, names: dict, current_member: str) -> None:
+def _pills(items) -> str:
     markup = '<div class="standings-pills" role="list" aria-label="Territory ownership">'
-    for territory, owner, _rows in territories:
-        if owner == current_member:
-            status, title = "territory-yours", "Yours"
-        elif owner:
-            status, title = "territory-theirs", f"Owned by {names.get(owner, 'another player')}"
-        else:
-            status, title = "territory-free", "Unclaimed"
+    for name, status, title in items:
         markup += (
             f'<div class="standings-pill" role="listitem" title="{escape(title)}">'
-            f'<span class="standings-pill-dot {status}"></span><span>{escape(territory.name)}</span></div>'
+            f'<span class="standings-pill-dot {status}"></span><span>{escape(name)}</span></div>'
         )
-    st.markdown(markup + "</div>", unsafe_allow_html=True)
+    return markup + "</div>"
+
+
+def territory_pills(territories, names: dict, current_member: str) -> None:
+    """Territories section: counts, the claimed areas as chips (yours first),
+    and the unclaimed ones folded away."""
+    claimed, free = [], []
+    for territory, owner, _rows in territories:
+        if owner == current_member:
+            claimed.append((0, territory.name, "territory-yours", "Yours"))
+        elif owner:
+            claimed.append((1, territory.name, "territory-theirs", f"Owned by {names.get(owner, 'another player')}"))
+        else:
+            free.append((territory.name, "territory-free", "Unclaimed"))
+    yours = sum(1 for item in claimed if item[0] == 0)
+    st.markdown(
+        '<div class="standings-section"><h2>Territories</h2>'
+        f'<p><b class="territory-yours-text">{yours}</b> yours · <b class="territory-theirs-text">{len(claimed) - yours}</b> rivals · '
+        f'<b>{len(free)}</b> free</p></div>',
+        unsafe_allow_html=True,
+    )
+    if claimed:
+        st.markdown(_pills(item[1:] for item in sorted(claimed)), unsafe_allow_html=True)
+    if free:
+        with st.expander(f"Free territories ({len(free)})"):
+            st.markdown(_pills(sorted(free)), unsafe_allow_html=True)

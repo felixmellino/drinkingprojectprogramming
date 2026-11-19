@@ -86,20 +86,23 @@ The shared navigation and Standings refresh below were explicitly requested
 as follow-ups. Account/lobby behavior and the map remain separate blocks. The
 broader screen proposal below remains a future design outline.
 
-## Standings interface (implemented 17 November 2026)
+## Standings interface (implemented 17 November 2026, phone redesign 19 November 2026)
 
-- Personal summary: current rank, exact season total and territories owned.
-  Unranked members have no invented position. An unavailable territory service
-  shows an unknown count, rather than zero.
-- Season leaderboard: numbered top-three badges, username initials, a YOU
-  marker and highlighted current-player row. Exact quarter-points remain
-  visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
+- Header: Leaderboard, one short line, then the lobby with member and ranked
+  counts.
+- Season leaderboard: a podium for the top three (2nd, 1st, 3rd; points with
+  "pts"), then ranks 4+ as one grouped list with hairlines, initials, a YOU
+  marker and the current player's row highlighted. Exact quarter-points stay
+  visible. Rows keep the order from `core.leaderboard.season_leaderboard`;
   the UI never re-sorts or changes the tie rule.
-- Territory cards show each owner, explicit unclaimed states, every recorded
-  player total and relative bars based only on base territory points. Cards
-  stack on narrow screens. These bars do not represent a capture threshold.
-- Refresh standings reloads the current season. Service failures show a retry
-  message, without writing entries or replacing unavailable scores with zero.
+- How points work (folded): the tie rule and what season and territory points
+  include.
+- Territories: counts (yours · rivals · free), the claimed territories as
+  chips (yours first, then rivals'), and the unclaimed ones folded away under
+  "Free territories (n)".
+- Refresh standings (quiet button at the end) reloads the current season.
+  Service failures show a retry message, without writing entries or replacing
+  unavailable scores with zero.
 - `standings_ui.py` escapes public usernames and territory names. It reuses
   the page header and adds `assets/standings.css`; core rules, database APIs,
   membership checks and season scope are unchanged.

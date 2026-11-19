@@ -12,15 +12,15 @@ from core.territories import territory_owner, territory_standings
 from drink_entry_ui import context_line, page_header
 from leaderboard_context import leaderboard_fallback
 import standings_ui
+from theme import button_icons
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Leaderboard", "Your place in the season. Every point and territory, together.")
+page_header("Leaderboard", "Who leads the season, and who holds which territory.")
 standings_ui.load_styles()
 
-st.button("Refresh standings")
 try:
     if st.session_state.get("current_membership_id") and st.session_state.get("current_season_id"):
         membership_id, lobby_id, season_id = require_active_membership()
@@ -86,9 +86,11 @@ if not leaderboard:
     st.info("No points logged yet this season.")
 else:
     standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+# The rules behind the numbers, folded away so the ranking stays the focus.
+with st.expander("How points work"):
     st.caption("Equal points? The team who reached the score first ranks higher." if team_mode else "Equal points? The player who reached the score first ranks higher.")
-if any(entry.rule_version == "v1" for entry in entries):
-    st.caption("Team season points combine all members’ drinks and 25% income from rival teams. Territory points combine members’ base drink points." if team_mode else "Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")
+    if any(entry.rule_version == "v1" for entry in entries):
+        st.caption("Team season points combine all members’ drinks and 25% income from rival teams. Territory points combine members’ base drink points." if team_mode else "Season points include your drinks and 25% income from other players in your territories. Territory points include only your drinks.")
 
 if not territories_available:
     st.warning("Territory standings are unavailable. Use Refresh standings to try again.")
@@ -96,3 +98,6 @@ elif not territory_data:
     st.info("No territories have been set up yet.")
 else:
     standings_ui.territory_pills(territory_data, names, membership_id)
+
+st.button("Refresh standings", key="standings_refresh", type="tertiary")
+button_icons({"standings_refresh": "arrow-clockwise"})
