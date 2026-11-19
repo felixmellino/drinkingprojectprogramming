@@ -18,10 +18,12 @@ async function add(p,mid,s,id,kind='beer',size='small',territory='shortys',lobby
 }
 async function win(p,a){
  a=await act(p,a,'ready');
- for(let i=0;i<5;i++){
+ for(let i=0;i<a.config.reaction_trials;i++){
   await clock(new Date(Date.parse(a.signal_at)+200).toISOString());
   a=await act(p,a,'reaction',{elapsed_ms:200});
  }
+ assert.equal(a.phase,'memory_ready');
+ a=await act(p,a,'ready');
  assert.equal(a.phase,'memory');
  const memory=[...a.memory];
  await clock(a.signal_at);
@@ -37,9 +39,9 @@ async function win(p,a){
  create table test_clock(at_time timestamptz);insert into test_clock values('${now}');
  grant select on test_clock to service_role;grant usage on schema public to anon,authenticated,service_role;`);
  await pg.exec(fs.readFileSync('schema.sql','utf8').replace('create extension if not exists pgcrypto;',''));
- for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql']){
+ for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql','017_focus_reaction_flow.sql']){
   const sql=fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)');
-  await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql')await pg.exec(sql);
+  await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql'||file==='017_focus_reaction_flow.sql')await pg.exec(sql);
  }
  // Deterministic entropy only in this isolated fixture; production uses UUID entropy.
  const source=(await q("select prosrc from pg_proc where proname='_focus_int'")).rows[0].prosrc;
@@ -163,10 +165,24 @@ async function win(p,a){
  assert.equal(Number(qaAward.points_awarded),1.5,'Multiple QA wins never compound the multiplier');
  assert.equal(qaAward.focus_attempt_id,qa.id,'Old QA snapshots also record the boost provenance');
  assert.deepEqual((await q('select scoring_rules from seasons where id=$1',[qaSid])).rows[0].scoring_rules,qaRules,'Frozen QA snapshot is unchanged');
+ for(const ms of [221,220]){
+  let edge=await start(1,qaSid,940+ms);edge=await act(1,edge,'ready');
+  await clock(new Date(Date.parse(edge.signal_at)+ms).toISOString());
+  edge=await act(1,edge,'reaction',{elapsed_ms:ms});
+  assert.equal(edge.status,ms===221?'failed':'running');
+  if(ms===220){
+   assert.equal(edge.phase,'memory_ready');assert.equal(edge.memory,undefined);
+   await assert.rejects(act(1,edge,'memory',{cell:0}),/focus_invalid_action/);
+   edge=await act(1,edge,'ready');assert.equal(edge.phase,'memory');assert.equal(edge.memory.length,7);
+   await act(1,edge,'fail');
+  }
+ }
+ const latestQa=(await status(1,qaSid)).attempt.id;
  await pg.exec(fs.readFileSync('migrations/015_focus_test_replays.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
+ await pg.exec(fs.readFileSync('migrations/017_focus_reaction_flow.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
  assert.equal((await status(1,qaSid)).unlimited,true,'Repeat migration preserves multiple QA wins');
  await pg.close();pg=new PGlite(disk);
- assert.equal((await status(1,qaSid)).attempt.id,qa.id,'QA replay state survives restart');
+ assert.equal((await status(1,qaSid)).attempt.id,latestQa,'QA replay state survives restart');
  for(const flag of [false,'true',1]){
   const n=flag===false?105:flag==='true'?106:107;
   await q("insert into lobbies(id,name,invite_code) values($1,'Test QA lobby',$2)",[uid(n),'FAKEQA'+n]);

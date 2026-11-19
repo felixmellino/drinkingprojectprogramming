@@ -41,7 +41,8 @@ def render_focus(player, season):
             if action and attempt['status'] == 'running':
                 try:
                     db.focus_attempt_action(player, attempt['id'], attempt['revision'], *action)
-                    st.rerun()
+                    # The one-second fragment poll reads the saved next phase.
+                    # A full page rerun can remount the board mid-transition.
                 except (ValueError, PermissionError) + SERVICE_ERRORS as error:
                     _error(error)
         return
@@ -51,7 +52,7 @@ def render_focus(player, season):
     st.subheader('Focus Challenge')
     st.write('Reaction → memory → precision. Pass all three in one attempt.')
     st.caption('A skill game for fun. Passing does not establish sobriety or fitness to ride or drive.')
-    st.markdown('- **Reaction:** 5 trials, median ≤350 ms; no early taps.\n'
+    st.markdown('- **Reaction:** one signal, tap within 220 ms; no early taps.\n'
                 '- **Memory:** repeat a fresh 7-position sequence.\n'
                 '- **Precision:** 12 correct targets in 12 seconds; no wrong taps.')
     qa = test_mode(season)

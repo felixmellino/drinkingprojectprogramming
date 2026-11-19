@@ -26,6 +26,14 @@ const early=setup();early.render(attempt('reaction'));early.pressReaction();asse
 const reaction=setup();reaction.render(attempt('reaction'));reaction.advance(1500);
 assert.equal(reaction.elements.react.textContent,'TAP NOW');reaction.advance(250);reaction.pressReaction();
 assert.equal(reaction.last().payload.elapsed_ms,250);
+const handoff=setup();handoff.render(attempt('reaction'));handoff.advance(1700);handoff.pressReaction();
+handoff.render(attempt('memory_ready',{revision:2,signal_at:null,deadline:iso(31700),server_now:iso(1700)}));
+assert.equal(handoff.elements.ready.hidden,false);
+assert.equal(handoff.elements.start.textContent,'Start memory');
+assert.equal(handoff.elements.saving.textContent,'','Reaction event acknowledged by next phase');
+handoff.elements.start.onclick();assert.equal(handoff.last().action,'ready');
+handoff.render(attempt('memory',{revision:3,memory:[0,2,4,6,8,1,3],signal_at:iso(9000),deadline:iso(24000),server_now:iso(3050)}));
+assert.equal(handoff.elements.memory.hidden,false);
 const before=JSON.stringify(reaction.last());reaction.render(attempt('reaction',{server_now:iso(1750)}));
 assert.equal(JSON.stringify(reaction.last()),before,'Rerenders retain pending evidence');
 const resumed=setup(reaction.cache);resumed.render(attempt('reaction',{server_now:iso(1900)}));

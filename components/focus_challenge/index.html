@@ -35,14 +35,14 @@ function render(){
  if(!game)return;
  const at=now(),c=game.config,ended=game.status!=='running';
  $('hint').textContent=ended?'Your result is saved. Use × to return to games.':'The clock keeps running if you leave. Pass all three tests consecutively.';
- const index=game.phase.startsWith('reaction')?0:game.phase==='memory'?1:2;
+ const index=game.phase.startsWith('reaction')?0:game.phase.startsWith('memory')?1:2;
  document.querySelectorAll('.progress span').forEach((el,i)=>el.classList.toggle('done',i<index||game.status==='passed'));
  $('saving').textContent=pending?'Saving progress…':'';
  $('timer').textContent=ended?'':Math.max(0,(Math.min(Date.parse(game.deadline),Date.parse(game.expires_at))-at)/1000).toFixed(1)+' s';
  if(ended){
   selectView('result');$('title').textContent='Challenge complete';
   $('resultTitle').textContent=game.status==='passed'?'Focus boost earned!':'Attempt finished';
-  const messages={timeout:'Time ran out. Your next attempt unlocks after two more accepted check-ins.',memory_wrong:'That was not the sequence. Your next attempt unlocks after two more accepted check-ins.',reaction_slow:'Your median reaction time was above 350 ms. Your next attempt unlocks after two more accepted check-ins.',miss:'A target was missed or a reaction tap was early. Your next attempt unlocks after two more accepted check-ins.'};
+  const messages={timeout:'Time ran out. Your next attempt unlocks after two more accepted check-ins.',memory_wrong:'That was not the sequence. Your next attempt unlocks after two more accepted check-ins.',reaction_slow:'Reaction was too slow. Required: '+c.reaction_median_ms+' ms or faster. Your next attempt unlocks after two more accepted check-ins.',miss:'A target was missed or a reaction tap was early. Your next attempt unlocks after two more accepted check-ins.'};
   $('resultText').textContent=game.status==='passed'
    ?'×1.5 on your ordinary season and territory check-ins for the next hour, while scoring is open.'+(game.test_mode?' Test mode: you can play again; wins refresh the boost without stacking.':'')
    :game.test_mode?'Test mode: return to games and retry immediately. No uploads are required.'
@@ -53,9 +53,11 @@ function render(){
   if(!pending)emit('fail');return;
  }
  if(game.phase.endsWith('_ready')){
-  selectView('ready');$('title').textContent=game.phase==='reaction_ready'?'01 · Reaction':'03 · Precision';
-  $('readyTitle').textContent=game.phase==='reaction_ready'?'Wait. React. Repeat.':'Twelve targets. Twelve seconds.';
-  $('instructions').textContent=game.phase==='reaction_ready'?'Five unpredictable signals. Tap only when TAP NOW appears. Your median must be 350 ms or faster.':'Tap twelve numbered targets in order. Their positions change. One wrong tap ends the attempt.';
+  selectView('ready');const reaction=game.phase==='reaction_ready',memory=game.phase==='memory_ready';
+  $('title').textContent=reaction?'01 · Reaction':memory?'02 · Memory':'03 · Precision';
+  $('readyTitle').textContent=reaction?'One signal. React fast.':memory?'Reaction passed. Next: memory.':'Memory passed. Next: precision.';
+  $('instructions').textContent=reaction?(c.reaction_trials===1?'One unpredictable signal. Tap within '+c.reaction_median_ms+' ms. No early taps.':c.reaction_trials+' signals. Median must be '+c.reaction_median_ms+' ms or faster.'):memory?'Watch seven highlighted positions, then repeat their order. Press Start memory when you are ready.':'Tap twelve numbered targets in order. Their positions change. One wrong tap ends the attempt.';
+  $('start').textContent=reaction?'Start reaction':memory?'Start memory':'Start precision';
   $('start').disabled=!!pending;return;
  }
  if(game.phase==='reaction'){

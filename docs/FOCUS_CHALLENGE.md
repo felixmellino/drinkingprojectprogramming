@@ -2,9 +2,27 @@
 
 The contributor confirmed teammate approval and requested the complete game.
 R-M06–R-M09 in `docs/ontology/RULES.md` are the active implementation contract.
+Reaction/transition revision: apply migration 017 after 015. New attempts in
+existing eligible seasons use one tap within 220 ms; already-started attempts
+retain their saved configuration. Reaction success opens Start memory with a
+one-second preview lead-in; memory success opens Start precision. Stage events
+no longer force full-page reruns: the board updates through a one-second poll.
 This branch includes the game, authoritative persistence and the scoring effect.
 Shared Supabase migration/activation and human phone difficulty calibration are
 still required. No shared-project records were changed during development.
+
+## Reaction revision verification
+
+19 November 2026: `python -m pytest -q` passed all 854 tests (332 existing
+Streamlit/NumPy deprecation warnings). The optional Node checks
+`tests/focus_component.cjs` and `tests/focus_postgres.cjs` passed, including
+220 ms acceptance, 221 ms failure, explicit memory readiness, migration repeat
+and database restart. `tests/focus_browser.cjs <path-to-playwright>` passed
+against real disposable PostgreSQL and a mobile Streamlit session: single
+reaction → memory-ready reload → seven memory answers → twelve precision taps
+→ saved boost. Set `SCORING_PYTHON` and `PGLITE_MODULE` to local installations
+for the integration tests. Production needs no new dependencies.
+Shared-project migration 017 and deployed-phone verification remain pending.
 
 ## Activation
 
@@ -40,13 +58,14 @@ or a nightly win block. Finish the result screen with Back to games, then reopen
 Focus to replay. A missing migration 015 shows an explicit setup message.
 
 Start opens a full-screen board. Each trial has a new private server-generated
-challenge. Reaction uses five independent waits of 1.5–4.5 seconds and a median
-of at most 350 ms, without early taps. Memory shows seven positions on a 3x3
+challenge. Reaction uses one unpredictable wait of 1.5–4.5 seconds and a tap
+within 220 ms, without early taps. Press Start memory after passing it.
+Memory shows seven positions on a 3x3
 grid, flashing 650 ms with 200 ms gaps, then allows fifteen seconds for input.
 Precision requires twelve correct targets in twelve seconds. Targets move with
 consistent margins/minimum distance; tapping the play area elsewhere fails.
 
-Ready screens time out after thirty seconds; reaction responses after two.
+Ready screens time out after thirty seconds; reaction responses after 500 ms.
 The entire attempt lasts at most three minutes, and ends sooner at 06:00,
 scoring closure (normal seasons) or season end. Closing/reloading does not reset it or generate
 new content. Memory/reaction steps and precision checkpoints are persisted.

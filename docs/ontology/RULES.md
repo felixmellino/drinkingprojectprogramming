@@ -27,8 +27,11 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-Pass reaction, memory and precision consecutively. Reaction has five trials,
-with median at most 350 ms and no early taps. Memory requires reproducing seven
+Pass reaction, memory and precision consecutively. Contributor revision,
+19 November 2026: new attempts use one signal and a tap within 220 ms; no early
+taps. Migration 017 applies this to new attempts in existing eligible seasons
+without editing season snapshots. Attempt-level configuration preserves rules
+for games already started before this revision. Memory requires reproducing seven
 positions exactly. Precision requires twelve correct taps within twelve seconds;
 a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
@@ -37,14 +40,17 @@ Each new attempt receives private server-generated random material: independent
 1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
 and new valid precision positions. Refreshing cannot reroll it. Memory flashes
 650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
+After passing reaction, press Start memory to begin its one-second lead-in
+and preview. Passing memory opens Start precision. These ready screens keep
+the next stage from starting unexpectedly during a page update.
 Precision targets are 52 px with consistent normalized margins and minimum
 movement; no colour-only matching is required.
 
 ### R-M08 Focus Challenge interruptions and deadlines
 
 Resume the same persisted attempt and progress; its clock keeps running.
-Ready screens have thirty seconds. Reaction signals allow two seconds for a
-response; slower median results still fail R-M07. The whole attempt has a
+Ready screens have thirty seconds. New reaction signals allow 500 ms for a
+response, but anything above 220 ms still fails R-M07. The whole attempt has a
 three-minute maximum and ends sooner at 06:00, scoring closure (normal seasons)
 or season end. A miss or timeout requires the next unlock count in normal
 seasons; QA may retry immediately. Leaving the screen itself

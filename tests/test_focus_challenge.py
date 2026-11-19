@@ -41,7 +41,13 @@ def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
     from pathlib import Path
     sql=Path('migrations/015_focus_test_replays.sql').read_text(encoding='utf-8')
     fallback=sql.split("when public._focus_is_test(s) then '",1)[1].split("'::jsonb",1)[0]
-    assert json.loads(fallback)==new_focus_rules()
+    historical=json.loads(fallback)
+    assert historical['reaction_trials']==5 and historical['reaction_median_ms']==350
+    current=new_focus_rules()
+    assert current['reaction_trials']==1 and current['reaction_median_ms']==220
+    assert current['reaction_response_ms']==500 and current['flow_version']==2
+    assert {k:v for k,v in historical.items() if not k.startswith('reaction_')} == {
+        k:v for k,v in current.items() if not k.startswith('reaction_') and k!='flow_version'}
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},
