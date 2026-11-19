@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 import string
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core.auth import hash_password, validate_account
 from core.constants import SEASON_LENGTH_DAYS
@@ -40,6 +40,16 @@ def create_lobby(name: str, game_mode: str = "individual", *, team_count: int | 
     return Lobby(id=str(uuid.uuid4()), name=name, invite_code=generate_invite_code(),
                  game_mode=game_mode, team_count=team_count, team_capacity=team_capacity,
                  team_assignment=team_assignment)
+
+
+def lobby_creator(memberships: list[LobbyMembership]) -> str | None:
+    """The player who created a lobby: its earliest membership (departed members included).
+    Only the creator may delete the lobby (R-LB04)."""
+    if not memberships:
+        return None
+    def joined(m):  # rows come from the database as aware datetimes; stay safe with naive ones
+        return m.joined_at if m.joined_at.tzinfo else m.joined_at.replace(tzinfo=timezone.utc)
+    return min(memberships, key=lambda m: (joined(m), m.id)).player_id
 
 
 def join_lobby(

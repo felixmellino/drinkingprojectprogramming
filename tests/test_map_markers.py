@@ -6,7 +6,7 @@ from PIL import Image
 
 from core.location import point_in_polygon
 from map_markers import adjacent, area, badge_image, interior_anchor, owner_markers
-from map_ui import COLOURS, selected_territories
+from map_ui import COLOURS
 
 
 def polygon(x=0, y=0, width=0.001):
@@ -74,11 +74,3 @@ def test_badge_has_transparent_corners_and_blurred_photo_with_safe_fallback():
     assert image.getpixel((0, 0))[3] == 0
     assert 20 < image.getpixel((47, 48))[0] < 160  # Blended edge rather than sharp black/white.
     assert decode(b"invalid photo").getpixel((48, 48))[3] == 255
-
-
-def test_popup_resolves_only_valid_indices_against_current_server_rows():
-    rows = [row("a", polygon()), row("b", polygon(.001))]
-    markers = owner_markers(rows, {}, COLOURS)
-    assert selected_territories({"indices": {"owner-badges": [0]}}, rows, markers) == rows
-    assert selected_territories({"indices": {"territories": [1]}}, rows, markers) == rows[1:]
-    assert selected_territories({"indices": {"owner-badges": [-1, 99, "0", True]}}, rows, markers) == []

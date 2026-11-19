@@ -91,7 +91,7 @@ def join_dialog(player_id):
 
     if join_submitted:
         try:
-            memberships = db.list_memberships_for_player(player_id)
+            memberships = db.list_memberships_for_player(player_id, include_left=True)
             membership = join_lobby(player_id, invite_code, db.list_lobbies(), memberships)
         except (APIError, RequestError, RuntimeError):
             st.error("Could not load lobbies. Please try again.")
@@ -102,9 +102,11 @@ def join_dialog(player_id):
             try:
                 if is_new:
                     db.insert_membership(membership)
+                elif membership.left_at is not None:
+                    db.rejoin_lobby(player_id, membership.lobby_id)
                 lobby = next(l for l in db.list_lobbies() if l.id == membership.lobby_id)
                 seasons = db.list_seasons_for_lobby(lobby.id)
-            except (APIError, RequestError, RuntimeError):
+            except (APIError, RequestError, RuntimeError, PermissionError, ValueError):
                 st.error("Could not finish joining the lobby. Refresh your lobbies before trying again.")
                 return
 

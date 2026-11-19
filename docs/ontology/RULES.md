@@ -4,6 +4,9 @@
 
 ### R-M06 Focus Challenge unlocks and attempts
 
+Players see this game as **Reaction Test** (renamed on screen 19 November
+2026); the rules, code and saved data keep the name Focus Challenge.
+
 Team approval reported by the contributor on 19 November 2026. New v1 seasons
 whose frozen snapshot contains `focus_challenge.version = 1` enable this game.
 Existing snapshots are not edited. The following gates apply to normal seasons.
@@ -181,7 +184,7 @@ transfer happens and the used role allowances remain consumed. A connection
 loss can resume the saved started game until expiry. A lost successful reply
 recovers its existing start/result instead of creating another one.
 
-Minigames is immediately right of the check-in plus in the bottom navigation.
+Minigames is the Games tab, immediately right of the check-in plus in the bottom navigation.
 Receiving accounts see incoming invitations and outcomes on that page through
 automatic refresh. New games are blocked outside normal scoring availability.
 
@@ -599,3 +602,77 @@ shows an error rather than a partial total. No scores or entities are changed.
 
 Source: contributor request and clarified answers, 18 November 2026;
 active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.
+
+## Leaving and rejoining a lobby
+
+### R-LB01 Departure preserves history
+
+A signed-in member can choose Leave lobby inside the individual or team lobby
+popup, review the consequences and confirm, or choose Stay in lobby. This works
+before, during and after the competition. Departure sets `LobbyMembership.left_at`;
+it does not delete the membership, entries, earned points, team assignment or
+minigame history. The lobby disappears from the departing player's joined list.
+Fresh membership checks deny further check-ins, corrections, games, team edits
+and lobby photo viewing, including from an already-open page. Retained scores
+remain in lobby/territory standings and personal lifetime statistics; existing
+win and tie rules remain unchanged. Thus a departed player can still win.
+
+### R-LB02 Owner income while absent
+
+Previously earned personal territory-owner income is kept. Individual territory
+ownership and territory points remain unchanged, but visitors' accepted drinks
+pay no personal owner income to a member who is absent at their acceptance.
+Rejoining resumes eligibility for future income; no missed income is backfilled.
+Team ownership and income belong to the team and continue normally.
+
+Each accepted entry records the absent membership IDs under the lobby lock.
+Replay and corrections use this immutable roster snapshot, including when a
+correction changes who owned a territory. This prevents a later departure or
+return from changing previously earned income. Existing entries start with an
+empty absent roster because departure was not available before migration 016.
+
+### R-LB03 Return and interruptions
+
+Joining again with the invite code restores the same membership, original
+joining time, scores, team assignment, cooldown and minigame allowances. A team
+slot remains reserved while absent and is shown as Left (slot reserved); leaving
+does not let another player occupy it. Returning to a finished lobby restores
+history access but does not restart its competition or reopen scoring.
+
+Leaving is rejected while the member has an accepted/started Chug Duel or a
+running Focus Challenge. Finish the game or wait for its existing timeout;
+expired games are settled by the normal expiry rules when departure is retried.
+Unaccepted duel invitations are cancelled on departure. A retry of an already
+completed departure is harmless. The player's saved selection of that lobby is
+cleared, and the UI can select another active lobby.
+
+Allowed: leave after scoring, keep points in both statistics and standings,
+return with the same identity. Rejected: leaving during an active game, acting
+for another player, scoring while absent, editing an absence snapshot, claiming
+a departed member's reserved team slot. Boundaries: scoring and departure share
+the lobby lock; whichever is accepted first determines the absent roster.
+Corrections never rewrite that roster. Saved departure and score history survive
+a database restart.
+
+Source: contributor request and explicit answers, 19 November 2026. Migration
+016 was applied to shared Supabase with contributor authorization on
+19 November 2026. All 19 schema/access/history checks and a fresh app-process
+read/RPC check passed. Frontend review, merge, deployment and deployed browser
+verification remain pending.
+
+### R-LB04 Deleting a lobby
+
+Only the player who created a lobby (its earliest membership, even if they have
+since left) can delete it. Deleting hides the lobby for everyone: it leaves
+every lobby list, nobody can open it, check in, or play minigames in it, and
+saved lobby choices pointing at it are cleared. Nothing is erased: scores,
+photos and history stay in the database, in the same spirit as R-LB01. Open
+duel invitations and running duels are cancelled. There is no undo in the app.
+Allowed: creator deletes after a second, deliberate click. Rejected: any other
+player, even a current member, gets "Only the person who created this lobby can
+delete it." Boundary: a retry of an already completed deletion is harmless.
+Needs migration `017_delete_lobby.sql` (the app keeps working without it, but
+Delete lobby fails until it is applied).
+
+Source: contributor request, 19 November 2026 (who may delete and "hide, keep
+history" are the implementer's decisions; the team should confirm).
