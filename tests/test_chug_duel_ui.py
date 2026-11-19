@@ -38,6 +38,7 @@ def service(monkeypatch):
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: members)
     monkeypatch.setattr(db, "list_public_usernames", lambda: [{"id": "pa", "display_name": "Alice"}, {"id": "pb", "display_name": "Bob"}])
     monkeypatch.setattr(db, "list_chug_duels", lambda *args: deepcopy(state["duels"]))
+    monkeypatch.setattr(db, "time_status", lambda *args: dict(duels=[], incoming=True))
     monkeypatch.setattr("shared.require_login", lambda: __import__("streamlit").session_state["player_id"])
     monkeypatch.setattr("shared.require_active_membership", lambda: (__import__("streamlit").session_state["member"], "lobby", "season"))
     monkeypatch.setattr(ui, "current_time", lambda: START)
@@ -124,6 +125,27 @@ def test_catalogue_surfaces_invitations_and_opening_recovers_them(service):
     assert not guest.exception and button(guest, 'Accept')
     button(guest, 'Accept').click().run()
     assert service['duels'][0]['status'] == 'accepted'
+
+
+def test_catalogue_shows_time_inbox_above_tiles_and_accept_opens_time(service, monkeypatch):
+    from tests.test_time_duel_ui import invitation
+    time_state = dict(duels=[invitation('time-one', 'a', 'b')], incoming=True)
+    monkeypatch.setattr(db, 'time_status', lambda *args: deepcopy(time_state))
+    def accept(*args):
+        assert args == ('pb', 'time-one', 'accept')
+        time_state['duels'] = []
+        return dict(status='accepted')
+    monkeypatch.setattr(db, 'time_action', accept)
+    render = Mock()
+    monkeypatch.setattr(ui, 'render_time', render)
+    guest = open_page('pb', 'b', selected=None)
+    assert not guest.exception
+    texts = [m.value for m in guest.markdown]
+    assert next(i for i, t in enumerate(texts) if 'Time Duel invitation' in t) < next(
+        i for i, t in enumerate(texts) if 'class="game-tile' in t)
+    button(guest, 'Accept Time Duel').click().run()
+    assert not guest.exception and guest.session_state['minigame_selected'] == 'time'
+    render.assert_called()
 
 
 def test_changing_lobby_context_returns_to_catalogue(service):

@@ -1,5 +1,5 @@
 """Synthetic local Time Duel app. Never uses Supabase credentials."""
-import json,sys
+import json,sys,os
 from pathlib import Path
 from urllib.request import Request,urlopen
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
@@ -7,7 +7,7 @@ import streamlit as st
 import data.db as db
 from core.models import Lobby,LobbyMembership
 from tests.test_scoring_v1 import START,season
-from time_duel_ui import render_time
+from minigames_ui import render_minigames
 
 st.set_page_config(page_title='Time Duel local test',layout='centered')
 root=Path(__file__).resolve().parents[2]
@@ -15,7 +15,7 @@ st.markdown('<style>'+(root/'assets/theme.css').read_text()+(root/'assets/miniga
 
 
 def request(payload):
-    with urlopen(Request('http://127.0.0.1:8781',json.dumps(payload).encode(),{'Content-Type':'application/json'}),timeout=15) as response:
+    with urlopen(Request('http://127.0.0.1:' + os.environ.get('TIME_DUEL_FIXTURE_PORT', '8781'),json.dumps(payload).encode(),{'Content-Type':'application/json'}),timeout=15) as response:
         result=json.load(response)
     if 'error' in result:raise ValueError(result['error'])
     return result
@@ -29,8 +29,9 @@ game=season();game.id=info['sid'];game.lobby_id=info['lid']
 lobby=Lobby(info['lid'],'Synthetic Time Duel','LOCAL')
 
 
-@st.fragment(run_every='1s')
-def app():render_time(info['players'][p],info['mids'][p],lobby,game,members,labels)
+db.list_memberships_for_lobby=lambda _:members
+db.list_public_usernames=lambda:[dict(id=m.player_id,display_name=labels[m.id]) for m in members]
+db.list_chug_duels=lambda *args:[]
 
 
-app()
+render_minigames(info['players'][p],info['mids'][p],lobby,game)
