@@ -24,6 +24,13 @@ def test_focus_configuration_is_frozen_and_not_added_to_old_snapshots():
     assert not enabled(replace(old, scoring_version='legacy'))
 
 
+def test_selected_single_reaction_keeps_mains_longer_random_wait():
+    rules=new_focus_rules()
+    assert rules['reaction_trials']==1 and rules['reaction_median_ms']==220
+    assert rules['reaction_wait_min_ms']==3500 and rules['reaction_wait_max_ms']==6500
+    assert rules['flow_version']==2
+
+
 @pytest.mark.parametrize('flag,expected', [(True,True),(False,False),('true',False),(1,False),(None,False)])
 def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot(flag,expected):
     game=season()
@@ -36,20 +43,18 @@ def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot
     assert not enabled(replace(game,scoring_version='legacy'))
 
 
-def test_new_seasons_play_three_reaction_tries_with_a_calm_wait():
-    rules = new_focus_rules()
-    assert rules['reaction_trials'] == 3
-    # The result of a try is shown for 1.4 s; at least 2 s must remain before the next signal.
-    assert rules['reaction_wait_min_ms'] >= 1400 + 2000
-
-
 def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
     import json
     from pathlib import Path
     sql=Path('migrations/015_focus_test_replays.sql').read_text(encoding='utf-8')
     fallback=sql.split("when public._focus_is_test(s) then '",1)[1].split("'::jsonb",1)[0]
-    # Old QA snapshots without frozen Focus rules keep the original five reaction tries.
-    assert json.loads(fallback)=={**new_focus_rules(),'reaction_trials':5,'reaction_wait_min_ms':1500,'reaction_wait_max_ms':4500}
+    historical=json.loads(fallback)
+    assert historical['reaction_trials']==5 and historical['reaction_median_ms']==350
+    current=new_focus_rules()
+    assert current['reaction_trials']==1 and current['reaction_median_ms']==220
+    assert current['reaction_response_ms']==500 and current['flow_version']==2
+    assert {k:v for k,v in historical.items() if not k.startswith('reaction_')} == {
+        k:v for k,v in current.items() if not k.startswith('reaction_') and k!='flow_version'}
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},
@@ -71,17 +76,11 @@ def test_untrusted_component_messages_cannot_supply_a_win_or_invalid_evidence(va
     assert component_action(value, {'id':'a','revision':2}) is None
 
 
-@pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('false_start',{}),('reaction',{'elapsed_ms':350}),
- ])
+@pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('reaction',{'elapsed_ms':350}),
+ ('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
 def test_current_attempt_accepts_only_bounded_stage_evidence(action,payload):
     value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
     assert component_action(value, {'id':'a','revision':2}) == (action,payload)
-
-
-@pytest.mark.parametrize('action,payload', [('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
-def test_removed_memory_and_precision_stages_are_no_longer_accepted(action,payload):
-    value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
-    assert component_action(value, {'id':'a','revision':2}) is None
 
 
 def test_saved_focus_award_replays_exact_income_ownership_and_corrections():

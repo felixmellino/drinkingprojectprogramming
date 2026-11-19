@@ -481,7 +481,11 @@ require database credentials.
 ### Focus Challenge (19 November 2026)
 
 The second playable minigame adds randomized reaction, seven-step memory and
-precision tests. Accepted entries unlock attempts at five, then seven/nine/etc.
+precision tests. The selected flow uses one reaction within 220 ms, Start memory,
+then Start precision. Apply [`migrations/021_focus_three_stage_flow.sql`](migrations/021_focus_three_stage_flow.sql)
+last, after 015 and any already-installed 018/019/020 changes; it includes the optional
+017 Focus setup and preserves running games. This migration is prepared, not yet
+installed on the shared project. Accepted entries unlock attempts at five, then seven/nine/etc.
 after failures. One win per evening grants a personal 60-minute x1.5 ordinary
 season/territory effect, including 25% owner income on boosted awards.
 Chug Duel scoring is unchanged. Before activation, the Data owner applies
@@ -503,20 +507,6 @@ income pauses while absent. Rejoin using the original invite code to restore
 the same membership, history, team and game limits. Team slots stay reserved;
 accepted/running duels and running Focus attempts block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
-
-Reaction Test: apply [`migrations/020_focus_wait_time.sql`](migrations/020_focus_wait_time.sql)
-**after 017**. It contains everything from 018 and 019, so this one file is enough:
-passing the tries wins at once, false starts repeat the try, every season plays three
-tries, and the wait before each signal is 3.5–6.5 s. Without it the server keeps the old
-rules (for example five tries). Quick check in the SQL editor:
-`select public._focus_rules(s)->>'reaction_trials' from public.seasons s limit 3;` shows 3.
-
-Reaction Test is now only the reaction tries (three in new seasons; Memory and
-Precision are gone). This needs
-[`migrations/018_focus_reaction_only.sql`](migrations/018_focus_reaction_only.sql)
-**after 017**: passing the tries wins at once, and the middle time decides for any
-number of tries. Without it the old server would still wait for Memory and
-Precision. Not applied yet; passes the local Postgres test.
 
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
 [`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.

@@ -44,7 +44,7 @@ def render_focus(player, season):
             if action and attempt['status'] == 'running':
                 try:
                     db.focus_attempt_action(player, attempt['id'], attempt['revision'], *action)
-                    st.rerun()
+                    # The fragment poll recovers the next phase without remounting the board.
                 except (ValueError, PermissionError) + SERVICE_ERRORS as error:
                     _error(error)
         return

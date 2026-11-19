@@ -46,12 +46,13 @@ by two. QA instead shows a test-mode label and immediate Start, without progress
 or a nightly win block. Finish the result screen with Back to games, then reopen
 Focus to replay. A missing migration 015 shows an explicit setup message.
 
-Start opens a full-screen board and the first try begins at once. Each attempt has
-private server-generated waits of 3.5–6.5 seconds before each signal (at least two quiet seconds after a result); there are three
-tries (five in older seasons) and the middle time must be at most 350 ms. Each try
-shows its time, an early tap is a red false start (tap to dismiss; the try repeats), and the result lists all times
-with their average. Memory and Precision were removed on 19 November 2026; passing
-the reaction tries wins the boost.
+Start opens a full-screen board. Start reaction begins one unpredictable signal
+after a 3.5–6.5 second wait; pass within 220 ms. Start memory begins a one-second
+lead-in and seven highlighted positions on a 3x3 grid, followed by fifteen seconds
+for input. Start precision opens twelve targets to tap within twelve seconds.
+New attempts must pass all three stages before earning the boost. An early tap,
+wrong memory answer or wrong precision target ends the attempt. Running games
+from the older reaction-only release retain their previous rules.
 
 Ready screens time out after thirty seconds; reaction responses after two.
 The entire attempt lasts at most three minutes, and ends sooner at 06:00,
@@ -195,3 +196,33 @@ Privacy migration 013 is already applied to the shared project. Focus's new
 migration is numbered 014 to avoid colliding with that deployed migration.
 Its SQL behavior is unchanged; if an earlier Focus 013 script was already
 applied, 014 can still be applied safely because it is repeatable.
+
+
+## PR #64 conflict resolution: three-stage flow restored
+
+The contributor explicitly selected one reaction within 220 ms, followed by
+Memory and Precision, instead of main's reaction-only three-try game. The full
+three-stage component and its DOM are restored together; the compact main page,
+QA zero-upload fix, latest navigation and other teammates' work stay intact.
+
+Apply `021_focus_three_stage_flow.sql` after 015, and after 018/019/020 if those
+older changes are installed. It includes the optional 017 attempt-config setup,
+so new installations do not need to apply 017 separately. Always apply 021 last.
+No season snapshot, saved result or existing point award is rewritten.
+Already-running reaction-only games retain their rules and false-start retry;
+new games use one 220 ms reaction, a Start memory handoff with a one-second
+lead-in, seven memory answers, then Start precision and twelve targets.
+The reward is granted only after all three stages. QA/normal unlocks, score
+correction provenance, owner income and nonstacking boost behavior are unchanged.
+
+Migration 021 is prepared, not installed on the shared project by this resolution.
+Earlier reaction-only descriptions in this handoff are historical; R-M07/R-M08
+and this section define the selected final behavior after migration 021.
+
+Resolution verification: all 938 Python tests passed. The component checks now
+also assert that every referenced DOM node exists. The PostgreSQL suite applies
+the full migration order and verifies 220/221 ms, every stage, rewards, QA/normal
+gates, migration repeat, restart and preservation of an already-running 020 game.
+A real browser completed one fast reaction, reloaded at Start memory, observed
+and repeated all seven flashes, tapped twelve precision targets and received
+the saved boost against isolated PostgreSQL. Shared Supabase was not used.

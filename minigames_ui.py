@@ -231,7 +231,7 @@ def render_minigames(player, member, lobby, season):
         return
     labels = {m.id: names.get(m.player_id, "Lobby member") for m in members}
 
-    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') in {'quiz', 'time'} else "3s")
+    @st.fragment(run_every="1s" if st.session_state.get('minigame_selected') in {'quiz', 'time', 'focus'} else "3s")
     def live_duels():
         now = current_time()
         if st.session_state.get('minigame_selected') == 'time':

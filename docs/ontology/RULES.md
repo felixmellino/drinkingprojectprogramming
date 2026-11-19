@@ -30,26 +30,35 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-The game is only the reaction tries (changed 19 November 2026, contributor
-request; Memory and Precision were removed). Passing wins the boost at once.
-There are three tries (five in seasons created earlier, which keep their frozen
-count) and the middle time must be at most 350 ms. Every try shows its reaction
-time. A tap before the signal is a false start: red screen the player taps away;
-that try does not count and repeats with a new wait (the attempt goes on). Every
-season plays three tries, including seasons that had frozen five. The result screen lists all times and their average. There is no countdown clock and
-no second start button. Difficulty is a pilot setting needing human phone
+Pass reaction, memory and precision consecutively. Contributor revision,
+19 November 2026: new attempts use one signal and a tap within 220 ms; no early
+taps. Migration 021 supersedes reaction-only migrations 018/019/020 and applies this
+to new attempts in existing eligible seasons
+without editing season snapshots. Attempt-level configuration preserves rules
+for games already started before this revision. Memory requires reproducing seven
+positions exactly. Precision requires twelve correct taps within twelve seconds;
+a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
-Each new attempt receives private server-generated random waits of 3500–6500 ms
-before each signal, so after a try's result is shown there are always at least two
-seconds before the next TAP NOW. Refreshing cannot reroll them. Attempts that were waiting in the
-removed stages when this changed simply expire; saved history is untouched.
+Each new attempt receives private server-generated random material: independent
+3500–6500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
+and new valid precision positions. Refreshing cannot reroll it. Memory flashes
+650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
+New attempts again require all three stages (contributor choice resolving PR #64).
+Already-running reaction-only attempts retain their previous rules and
+repeatable false starts.
+For new three-stage attempts, an early reaction tap ends the attempt.
+After passing reaction, press Start memory to begin its one-second lead-in
+and preview. Passing memory opens Start precision. These ready screens keep
+the next stage from starting unexpectedly during a page update.
+Precision targets are 52 px with consistent normalized margins and minimum
+movement; no colour-only matching is required.
 
 ### R-M08 Focus Challenge interruptions and deadlines
 
 Resume the same persisted attempt and progress; its clock keeps running.
-Ready screens have thirty seconds. Reaction signals allow two seconds for a
-response; slower median results still fail R-M07. The whole attempt has a
+Ready screens have thirty seconds. New reaction signals allow 500 ms for a
+response, but anything above 220 ms still fails R-M07. The whole attempt has a
 three-minute maximum and ends sooner at 06:00, scoring closure (normal seasons)
 or season end. A miss or timeout requires the next unlock count in normal
 seasons; QA may retry immediately. Leaving the screen itself

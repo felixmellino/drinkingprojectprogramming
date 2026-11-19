@@ -30,7 +30,7 @@ async function fixture({modulePath, disk, realtime=false}={}){
   async function add(p,id,kind='mixed',size='large',territory=null){return (await rpc('select * from accept_scoring_checkin($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[uid(p),uid(id),mid(p),sid,kind,size,territory,territory?'matched':'outside',`${lid}/${uid(id)}.jpg`,now])).rows[0];}
   return {lid,sid,mid,teams,add};
  }
- return {q,rpc,clock,advance:async ms=>clock(new Date(Date.parse(now)+ms).toISOString()),lobby,deck:generated.deck,config:generated.config,
+ return {q,rpc,exec:sql=>pg.exec(sql),clock,advance:async ms=>clock(new Date(Date.parse(now)+ms).toISOString()),lobby,deck:generated.deck,config:generated.config,
  status:async(p,sid)=>(await rpc('select quiz_status($1,$2) data',[uid(p),sid])).rows[0].data,
  invite:async(p,l,id,opponent=2,stake=3,deck=generated.deck)=>(await rpc('select invite_quiz_duel($1,$2,$3,$4,$5,$6) data',[uid(p),l.sid,uid(id),l.mid(opponent),stake,deck])).rows[0].data,
  act:async(p,id,action,round=null,choice=null)=>(await rpc('select quiz_action($1,$2,$3,$4,$5) data',[uid(p),typeof id==='number'?uid(id):id,action,round,choice])).rows[0].data,
