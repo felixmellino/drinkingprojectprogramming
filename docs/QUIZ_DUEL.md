@@ -1,8 +1,11 @@
 # Quiz Duel implementation
 
-19 November 2026. Local feature branch: `codex/quiz-duel`.
-The code and disposable-database/browser tests work. The shared database and
-deployed app have not been changed by this implementation.
+19 November 2026. Feature branch `codex/quiz-duel` was merged by PR #60.
+Migration 016 is now installed in the shared WeGoPub Supabase project. All
+four installation checks passed, and a fresh app-server client successfully
+called Quiz status for all 13 v1 seasons. The nine explicit QA seasons were
+open and retained Focus's zero-upload/unlimited configuration. No live quiz
+invitations, answers or point transfers were created during these checks.
 
 ## Flow and ownership
 
@@ -34,6 +37,8 @@ It is transactional and repeatable, leaves existing seasons/drinks intact and
 does not require migration 015 (it is compatible with that QA Focus migration).
 Deploy the reviewed branch via a PR and teammate review; do not push to main.
 Quiz setup failures show a clear message until migration 016 is installed.
+The shared project was activated on 19 November 2026; it does not need another
+installation to remove the missing-migration message. Reload the deployed app.
 
 No new production dependencies, question uploads or browser credentials are
 needed. Existing service-key/session architecture is retained: all tables and
@@ -68,4 +73,10 @@ answer after reload, 2:0 and one transfer, at mobile/desktop sizes.
 
 Local verification: 832 pytest tests passed (315 existing Streamlit/NumPy
 deprecation warnings); PostgreSQL and the two-player browser suite passed.
-Real phone/network calibration and shared-project/deployed verification remain.
+Activation verification: `python -m pytest tests/test_quiz_db.py
+tests/test_quiz_duel.py -q --tb=short` passed all 56 tests. The isolated
+PostgreSQL suite also passed permissions, timing, reservations, teams, retries,
+limits, deciders and database restart. Shared tables/RPCs passed the live checks
+above. A complete two-player game on the public URL and real phone/network
+calibration remain to verify. Both players/teams need at least three available
+season points, including in QA seasons; activation does not give free stakes.

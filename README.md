@@ -7,7 +7,9 @@ leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 
 Quiz Duel (100 English questions, generated multiplication/logic, reserved
 3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
-Apply migration 016 after 014 to activate its database service; no question import is needed.
+Migration 016 was applied to the shared project on 19 November 2026; no question
+import is needed. New databases still apply 016 after 014. See the
+[activation verification](docs/QUIZ_DUEL.md).
 
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
@@ -487,7 +489,8 @@ including unlimited sequential retries/wins throughout the active season.
 Repeated wins refresh the single x1.5 hour. Normal seasons retain 5/7/9 unlocks,
 one win per evening and their scoring window; older normal snapshots stay frozen.
 See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
-Shared-project migration and real-phone difficulty calibration are pending.
+Shared Focus migrations 014/015 are installed. Real-phone difficulty calibration
+and complete deployed gameplay still need verification.
 
 ### Leaving and rejoining lobbies
 
