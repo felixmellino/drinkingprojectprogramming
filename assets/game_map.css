@@ -74,18 +74,10 @@
     max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 
-/* Tap a territory: a small ranking (rendered in a dialog, so no .stApp prefix). */
-.rank-scroll { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-.rank-card h4 { margin: 0 0 6px; padding: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; line-height: 1.15; }
-.rank-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
-.rank-list .rank-row { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; min-height: 40px; }
-.rank-list .rank-row + .rank-row { border-top: 1px solid var(--border); }
-.rank-row-you { background: var(--accent-soft); }
-.rank-pos { width: 16px; text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.rank-row:first-child .rank-pos { color: #C9962B; }
-.rank-name { flex: 1; min-width: 0; font-size: 0.95rem; font-weight: 500; overflow-wrap: anywhere; }
-.rank-tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 1px; }
-.rank-owner { background: var(--accent-soft); color: var(--accent-ink); border: 1px solid var(--border); }
-.rank-you { background: var(--accent); color: var(--on-accent); }
-.rank-pts { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.rank-detail, .rank-empty { margin: 6px 2px 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.35; }
+/* Tap or hover a territory: a tiny tooltip next to it, drawn by the map itself (name + points). */
+.tt-name { font-weight: 700; margin-bottom: 2px; }
+.tt-row { display: flex; justify-content: space-between; gap: 14px; }
+.tt-row:has(> span:empty) { display: none; }
+.tt-row b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tt-none { color: #8A99A6; font-size: 11px; }
+.tt-none:empty { display: none; }
