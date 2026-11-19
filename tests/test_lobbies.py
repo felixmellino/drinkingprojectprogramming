@@ -33,3 +33,14 @@ def test_create_season_rejects_unknown_length():
 def test_create_season_computes_end_date():
     season = create_season("lobby-1", "1_week", datetime(2026, 11, 17))
     assert (season.ends_at - season.starts_at).days == 7
+
+
+def test_lobby_creator_is_the_earliest_membership_even_after_leaving():
+    from datetime import timedelta, timezone
+    from types import SimpleNamespace as M
+    from core.lobbies import lobby_creator
+    t = datetime(2026, 11, 19, 12, tzinfo=timezone.utc)
+    members = [M(id="b", player_id="guest", joined_at=t + timedelta(minutes=5)),
+               M(id="a", player_id="creator", joined_at=t, left_at=t + timedelta(hours=1))]
+    assert lobby_creator(members) == "creator"
+    assert lobby_creator([]) is None

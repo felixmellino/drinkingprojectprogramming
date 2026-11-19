@@ -122,7 +122,7 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert not at.exception
         assert at.session_state['current_lobby_id'] == 'old'
         assert not any('Choose a lobby' in i.value for i in at.info)
-        assert any(b.label == 'Refresh standings' for b in at.button)
+        assert any('<h1 class="sr-only">Leaderboard</h1>' in m.value for m in at.markdown)
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
 
 

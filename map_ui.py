@@ -19,11 +19,11 @@ from core.scoring_v1 import replay_season, format_points
 from map_markers import owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
-# --territory-* tokens in assets/theme.css (design system "Rush").
+# --territory-* tokens in assets/theme.css (design system "Tennis").
 COLOURS = {
-    "yours": [76, 195, 138],    # #4CC38A green
-    "theirs": [255, 93, 82],    # #FF5D52 red
-    "free": [126, 136, 156],    # #7E889C grey
+    "yours": [44, 153, 214],    # #2C99D6 Sky Blue
+    "theirs": [235, 47, 51],    # #EB2F33 Scarlet Red
+    "free": [138, 151, 166],    # #8A97A6 grey
 }
 FILL_ALPHA = {"yours": 150, "theirs": 150, "free": 55}
 # Every border is plain white, so each area stands out clearly on the dark
@@ -43,6 +43,7 @@ AREAS = {
         "praca-das-flores", "sao-bento", "madragoa", "calcada-do-combro", "bica",
         "sao-paulo", "time-out-market", "pink-street", "chiado", "sao-pedro-de-alcantara"],
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
+    "Jamor Golf": ["jamor-golf"],
 }
 ME = ":material/my_location: Me"
 ALL = "All"
@@ -54,20 +55,16 @@ def load_styles() -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-def hud(lobby_name: str, rows: list[dict], team_mode: bool = False) -> None:
-    """Top bar floating over the map: lobby, how many territories you hold,
-    and the colour legend."""
+def hud(lobby_name: str, rows: list[dict]) -> None:
+    """Slim bar floating over the map: the lobby, and how many territories
+    are yours, a rival's and free. The coloured numbers double as the legend."""
     numbers = summary(rows)
-    label = "Team lobby" if team_mode else "Lobby"
-    mine = "Your team's" if team_mode else "Yours"
-    dots = "".join(f'<span><i style="background:rgb{tuple(COLOURS[status])}"></i>{text}</span>'
-                   for status, text in (("yours", mine), ("theirs", "Rivals"), ("free", "Free")))
+    rivals = numbers["total"] - numbers["yours"] - numbers["free"]
     st.markdown(
-        f'<div class="game-hud"><div class="game-hud-row"><div><small>{label}</small>'
-        f'<strong>{escape(lobby_name)}</strong></div>'
-        f'<div class="game-score"><small>Yours</small><strong>{numbers["yours"]}</strong>'
-        f' / {numbers["total"]} · {numbers["free"]} free</div></div>'
-        f'<div class="game-legend">{dots}</div></div>',
+        f'<div class="game-hud"><strong class="game-hud-lobby">{escape(lobby_name)}</strong>'
+        f'<span class="game-hud-counts"><b class="game-yours">{numbers["yours"]}</b> yours'
+        f'<b class="game-theirs">{rivals}</b> rivals'
+        f'<b class="game-free">{numbers["free"]}</b> free</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -108,6 +105,9 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
         needed = number if status == "theirs" else None
         my_points = dict(standings).get(me, 0)
         owner_name = names.get(owner, "Unknown player") if owner else "Nobody"
+        # The standings are already in ranking order (ties: who reached the score first).
+        ranking = [{"id": who, "name": names.get(who, "Unknown player"), "points": points, "you": who == me}
+                   for who, points in standings]
         if status == "free":
             detail = "Unclaimed: your next drink here claims it."
         elif status == "yours":
@@ -123,6 +123,7 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
             "owner_points": dict(standings).get(owner, 0),
             "my_points": my_points,
             "needed": needed,
+            "ranking": ranking,
             "detail": detail,
             "boundary": territory.boundary,
         })
@@ -161,53 +162,41 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
                          zoom=max(9.0, min(zoom, 17.0)))
 
 
-def _map_selection_changed():
-    st.session_state["_map_open_popup"] = True
+TOP_N = 5  # the tooltip stays tiny: only the best few players
+TOOLTIP_STYLE = {"backgroundColor": "rgba(255,255,255,.96)", "color": "#142B3D", "padding": "6px 10px",
+                 "borderRadius": "10px", "fontSize": "12px", "lineHeight": "1.35", "minWidth": "110px",
+                 "maxWidth": "170px", "boxShadow": "0 4px 14px rgba(20,43,61,.25)"}
 
 
-def selected_territories(selection, rows, markers):
-    """Resolve browser selection by index against fresh server-side data only."""
-    indices = selection.get("indices", {})
-    ids = set()
-    for layer, data in (("owner-badges", markers), ("territories", rows)):
-        for index in indices.get(layer, []):
-            if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(data):
-                ids.update(data[index]["territory_ids"] if layer == "owner-badges" else [data[index]["id"]])
-    return [row for row in rows if row["id"] in ids]
+def tooltip_rows(row: dict) -> dict:
+    """The tooltip's little list as plain text properties (name1/points1 ...).
+    No HTML: the map's tooltip escapes every value, so usernames are safe."""
+    props = {}
+    shown = row["ranking"][:TOP_N]
+    for place in range(TOP_N):
+        entry = shown[place] if place < len(shown) else None
+        props[f"n{place + 1}"] = (entry["name"] + (" (you)" if entry["you"] else "")) if entry else ""
+        props[f"p{place + 1}"] = format_points(entry["points"]) if entry else ""
+    props["more"] = "…" if len(row["ranking"]) > TOP_N else ""
+    props["none"] = "" if row["ranking"] else "no points yet"
+    return props
 
 
-def _clear_map_selection():
-    # Streamlit selections are read-only. A fresh widget key clears the old
-    # selection so the same badge can be opened again after closing its dialog.
-    st.session_state["_map_selection_version"] = st.session_state.get("_map_selection_version", 0) + 1
-
-
-@st.dialog("Territory points", on_dismiss=_clear_map_selection)
-def territory_popup(rows, team_mode=False):
-    st.markdown(f'<p>Current owner: <strong>{escape(rows[0]["owner"])}</strong></p>', unsafe_allow_html=True)
-    body = "".join(f'<tr><th scope="row">{escape(row["name"])}</th>'
-                   f'<td>{row["owner_points"]}</td><td>{row["my_points"]}</td></tr>' for row in rows)
-    st.markdown('<div class="map-points-scroll"><table class="map-points-table">'
-                '<thead><tr><th scope="col">Territory</th><th scope="col">Owner points</th>'
-                f'<th scope="col">{"Your team’s points" if team_mode else "Your points"}</th></tr></thead>'
-                f'<tbody>{body}</tbody></table></div>', unsafe_allow_html=True)
-    if len(rows) == 1:
-        st.caption(rows[0]["detail"])
-    st.caption("Only territory points count here; season owner income is excluded.")
+TOOLTIP_HTML = ('<div class="tt-name">{name}</div>'
+                + "".join(f'<div class="tt-row"><span>{{n{i}}}</span><b>{{p{i}}}</b></div>' for i in range(1, TOP_N + 1))
+                + '<div class="tt-none">{more}{none}</div>')
 
 
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
-               focus: str = "Bairro Alto", *, pictures=None, team_mode=False, context="map") -> None:
+               focus: str = "Bairro Alto", *, pictures=None, context="map") -> None:
     features = [
         {
             "type": "Feature",
             "geometry": row["boundary"],
             "properties": {
-                # The tooltip is HTML, and usernames are free text: escape them.
-                "name": escape(row["name"]),
-                "detail": escape(row["detail"]),
-                "points": f"Owner: {escape(row['owner'])} · {row['owner_points']} points · "
-                          f"{'Your team’s' if team_mode else 'Your'} points here: {row['my_points']}",
+                # Plain text only: the tooltip escapes values, so usernames can't inject HTML.
+                "name": row["name"],
+                **tooltip_rows(row),
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
             },
         }
@@ -235,7 +224,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
     layers += [
         pdk.Layer("IconLayer", markers, id="owner-badges", get_position="position", get_icon="icon",
                   get_size="size", size_units="meters", size_min_pixels=12, size_max_pixels=52,
-                  pickable=True, billboard=True),
+                  pickable=False, billboard=True),
         pdk.Layer("TextLayer", markers, id="owner-initials", get_position="position", get_text="initials",
                   get_size="text_size", size_units="meters", size_min_pixels=6, size_max_pixels=16,
                   get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
@@ -246,12 +235,12 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
             pdk.Layer("ScatterplotLayer", here, id="gps-accuracy", get_position="[lng, lat]", get_radius="radius",
-                      get_fill_color=[90, 168, 255, 45], stroked=False),
+                      get_fill_color=[255, 255, 255, 40], stroked=False),
             pdk.Layer("ScatterplotLayer", here, id="gps-position", get_position="[lng, lat]", get_radius=1,
-                      radius_min_pixels=8, get_fill_color=[90, 168, 255, 255],
-                      get_line_color=[255, 255, 255, 255], stroked=True, line_width_min_pixels=3),
+                      radius_min_pixels=8, get_fill_color=[255, 255, 255, 255],  # --you-dot
+                      get_line_color=[20, 43, 61, 255], stroked=True, line_width_min_pixels=3),
         ]
-    event = st.pydeck_chart(
+    st.pydeck_chart(
         pdk.Deck(
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
@@ -259,17 +248,12 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             # Carto "Dark Matter" without place names: the basemap's district
             # names clashed with ours. Territory names show on hover.
             map_style="dark_no_labels",
-            tooltip={"html": "<b>{name}</b><br/>{detail}<br/>{points}"},
+            # Shown by the browser itself (no server round trip): name + points.
+            tooltip={"html": TOOLTIP_HTML, "style": TOOLTIP_STYLE},
         ),
         height=600,
-        key=f"territory_map:{context}:{st.session_state.get('_map_selection_version', 0)}",
-        on_select=_map_selection_changed,
-        selection_mode="single-object",
+        key=f"territory_map:{context}",
     )
-    if st.session_state.pop("_map_open_popup", False):
-        selected = selected_territories(event.selection, rows, markers)
-        if selected:
-            territory_popup(selected, team_mode)
 
 
 def territory_list(rows: list[dict]) -> None:

@@ -7,7 +7,9 @@ leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 
 Quiz Duel (100 English questions, generated multiplication/logic, reserved
 3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
-Apply migration 016 after 014 to activate its database service; no question import is needed.
+Migration 016 was applied to the shared project on 19 November 2026; no question
+import is needed. New databases still apply 016 after 014. See the
+[activation verification](docs/QUIZ_DUEL.md).
 
 Time Duel (three hidden-timer rounds on two phones, one-hour ×1.25 season bonus):
 [implementation, local verification and migration 017](docs/TIME_DUEL.md).
@@ -490,7 +492,8 @@ including unlimited sequential retries/wins throughout the active season.
 Repeated wins refresh the single x1.5 hour. Normal seasons retain 5/7/9 unlocks,
 one win per evening and their scoring window; older normal snapshots stay frozen.
 See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
-Shared-project migration and real-phone difficulty calibration are pending.
+Shared Focus migrations 014/015 are installed. Real-phone difficulty calibration
+and complete deployed gameplay still need verification.
 
 ### Leaving and rejoining lobbies
 
@@ -500,6 +503,22 @@ income pauses while absent. Rejoin using the original invite code to restore
 the same membership, history, team and game limits. Team slots stay reserved;
 accepted/running duels and running Focus attempts block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
+
+Reaction Test false starts repeat the try (tap the red screen away) and every
+season plays three tries: [`migrations/019_focus_false_start_three_tries.sql`](migrations/019_focus_false_start_three_tries.sql)
+**after 018**, not applied yet.
+
+Reaction Test is now only the reaction tries (three in new seasons; Memory and
+Precision are gone). This needs
+[`migrations/018_focus_reaction_only.sql`](migrations/018_focus_reaction_only.sql)
+**after 017**: passing the tries wins at once, and the middle time decides for any
+number of tries. Without it the old server would still wait for Memory and
+Precision. Not applied yet; passes the local Postgres test.
+
+Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
+[`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
+It is **not applied** to Supabase yet. It passed a local in-memory Postgres
+check (creator/other/retry, history kept); apply it before deploying this code.
 
 Before using this feature, the Data owner applies
 [`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**

@@ -1,7 +1,7 @@
-/* WeGoPub design system, direction "Tennis": sky blue + cloud white,
-   scarlet red kept as a subtle third colour (lobby countdowns) -- never
-   the primary action colour, so it never collides with the fixed
-   "theirs" territory colour. Loaded once on every page by theme.py.
+/* WeGoPub design system, direction "Tennis": Sky Blue #2C99D6, Cloud
+   White #F8FAFC and Scarlet Red #EB2F33. Sky is the primary action colour
+   and also "your" territory; Scarlet is the wordmark and "a rival's"
+   territory, never a button fill. Loaded once on every page by theme.py.
    Page styles (assets/*.css) use these variables instead of their own
    colours. */
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700;800&display=swap');
@@ -9,11 +9,11 @@
 :root {
   color-scheme: light;
   /* colours */
-  --bg: #F4F9FC;
+  --bg: #F8FAFC;               /* Cloud White */
   --surface: #FFFFFF;
   --surface-raised: #FFFFFF;
   --text: #142B3D;
-  --text-muted: #5B7A90;
+  --text-muted: #52708A;       /* 4.9:1 on --bg, passes AA for small text */
   --accent: #2C99D6;
   --accent-hover: #1F86BE;
   --accent-ink: #156A96;      /* sky blue fails AA for small text/links -- use this darker shade */
@@ -23,13 +23,18 @@
   --hud-bg: rgba(255, 255, 255, .92);
   --brand: #EB2F33;            /* wordmark only, large text */
   --brand-ink: #C0242A;        /* subtle red: lobby countdowns -- never a fill */
-  /* territory colours: fixed meaning in every direction */
-  --territory-yours: #4CC38A;
-  --territory-theirs: #FF5D52;
-  --territory-free: #7E889C;
-  --you-dot: #5AA8FF;
+  /* territory colours: yours = Sky, theirs = Scarlet, free = grey. Blue vs
+     red stays distinct for red-green colour-blind players. Use the -ink
+     shades whenever the colour is small text. */
+  --territory-yours: #2C99D6;
+  --territory-theirs: #EB2F33;
+  --territory-free: #8A97A6;
+  --territory-yours-ink: var(--accent-ink);
+  --territory-theirs-ink: var(--brand-ink);
+  --you-dot: #FFFFFF;          /* white dot, navy ring: never confused with a territory fill */
   /* status */
   --success: #2E9E5B;
+  --success-ink: #1F7A45;      /* --success fails AA as small text; use this for text */
   --warning: #F4C04E;
   --error: #FF7A70;
   --info: #7DB8FF;
@@ -55,6 +60,9 @@
 }
 
 /* Base */
+/* Present for screen readers, invisible on screen. */
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .stApp { background: var(--bg); color: var(--text); }
 [data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
 /* Invisible helpers (style blocks, the fixed tab bar, background location and

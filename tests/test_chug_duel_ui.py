@@ -18,6 +18,11 @@ from tests.test_scoring_v1 import START, season
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def notes(page):
+    """The small grey lines of a game screen."""
+    return " ".join(m.value for m in page.markdown if 'class="game-note"' in m.value)
+
+
 def button(page, label):
     return next(b for b in page.button if b.label == label)
 
@@ -99,11 +104,11 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
     assert tiles.count('class="game-tile ') == 6 and tiles.count('Coming soon') == 2
     assert not any(b.label == 'Open New game' for b in page.button)
     assert not button(page, 'Open Reaction Test').disabled
-    assert not any(b.label == 'Send challenge' for b in page.button)
+    assert not any(b.label == 'Challenge' for b in page.button)
     assert not page.metric and service['duels'] == []
     tracking.assert_not_called()
     button(page, 'Open Chug Duel').click().run()
-    assert not page.exception and button(page, 'Send challenge')
+    assert not page.exception and button(page, 'Challenge')
     assert tracking.called
     button(page, 'All games').click().run()
     assert not page.exception and not page.metric and service['duels'] == []
@@ -111,13 +116,13 @@ def test_catalogue_lists_multiple_games_without_starting_a_duel(service, monkeyp
 
 def test_catalogue_surfaces_invitations_and_opening_recovers_them(service):
     host = open_page()
-    button(host, 'Send challenge').click().run()
+    button(host, 'Challenge').click().run()
     guest = open_page('pb', 'b', selected=None)
     assert any('1 incoming invitation' in m.value for m in guest.markdown if 'class="game-tile' in m.value)
-    assert not any(b.label == 'Accept duel' for b in guest.button)
+    assert not any(b.label == 'Accept' for b in guest.button)
     button(guest, 'Open Chug Duel').click().run()
-    assert not guest.exception and button(guest, 'Accept duel')
-    button(guest, 'Accept duel').click().run()
+    assert not guest.exception and button(guest, 'Accept')
+    button(guest, 'Accept').click().run()
     assert service['duels'][0]['status'] == 'accepted'
 
 
@@ -132,28 +137,28 @@ def test_changing_lobby_context_returns_to_catalogue(service):
 def test_invite_accept_on_other_session_shared_capture_and_result(service):
     host, guest = open_page(), open_page("pb", "b")
     assert not host.exception and not guest.exception
-    button(host, "Send challenge").click().run()
+    button(host, "Challenge").click().run()
     guest.run()
-    assert not guest.exception and button(guest, "Accept duel")
-    button(guest, "Accept duel").click().run()
+    assert not guest.exception and button(guest, "Accept")
+    button(guest, "Accept").click().run()
     host.run()
-    assert not any(b.label == "Save shared check-in & open duel" for b in host.button)
+    assert not any(b.label == "Start duel" for b in host.button)
     photo = BytesIO()
     Image.new("RGB", (4, 4)).save(photo, "JPEG")
     service["photo"] = photo
     host.run()
-    assert not host.exception and button(host, "Save shared check-in & open duel")
+    assert not host.exception and button(host, "Start duel")
     service["location"] = (None, None, "denied")
     host.run()
-    assert button(host, "Save shared check-in & open duel").disabled
+    assert button(host, "Start duel").disabled
     assert service["starts"] == 0
     service["location"] = ((38.7, -9.1), 10, None)
     host.run()
-    button(host, "Save shared check-in & open duel").click().run()
+    button(host, "Start duel").click().run()
     assert not host.exception and service["starts"] == 1
     assert not host.metric and not any(b.label == "Refresh duels" for b in host.button)
     guest.run()
-    assert any("challenger's phone" in item.value for item in guest.info)
+    assert "phone" in notes(guest)
     did = service["duels"][0]["id"]
     service["board"] = {"duel_id": did, "phase": "ready"}
     host.run()
@@ -178,12 +183,12 @@ def test_invite_accept_on_other_session_shared_capture_and_result(service):
 
 def test_decline_releases_allowance_and_host_can_invite_again(service):
     host = open_page()
-    button(host, "Send challenge").click().run()
+    button(host, "Challenge").click().run()
     guest = open_page("pb", "b")
     button(guest, "Decline").click().run()
     host.run()
-    assert button(host, "Send challenge")
-    button(host, "Send challenge").click().run()
+    assert button(host, "Challenge")
+    button(host, "Challenge").click().run()
     assert len(service["duels"]) == 2
     assert service["duels"][0]["status"] == "declined"
 
@@ -192,7 +197,7 @@ def test_outage_and_membership_denial_show_actionable_errors(service, monkeypatc
     monkeypatch.setattr(db, "list_chug_duels", Mock(side_effect=RuntimeError("Chug Duel setup is not complete. Please contact the app organizer.")))
     page = open_page()
     assert not page.exception and any("setup" in item.value for item in page.error)
-    assert not any(b.label == "Send challenge" for b in page.button)
+    assert not any(b.label == "Challenge" for b in page.button)
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: [])
     page.run()
     assert not page.exception and any("membership" in item.value for item in page.error)
@@ -203,13 +208,13 @@ def test_team_opponent_choices_exclude_own_team(service):
     for member in service["members"]:
         member.team_id = "red"
     page = open_page()
-    assert not page.exception and not any(b.label == "Send challenge" for b in page.button)
-    assert any("rival team" in item.value for item in page.info)
+    assert not page.exception and not any(b.label == "Challenge" for b in page.button)
+    assert "rival team" in notes(page)
 
 
 def test_arm_failure_keeps_focused_board_and_abort_restores_the_lobby(service, monkeypatch):
     host = open_page()
-    button(host, "Send challenge").click().run()
+    button(host, "Challenge").click().run()
     duel = service["duels"][0]
     duel["status"] = "started"
     host.run()
@@ -230,8 +235,7 @@ def test_arm_failure_keeps_focused_board_and_abort_restores_the_lobby(service, m
     assert not host.exception and duel["status"] == "aborted"
     assert button(host, "Back to Minigames")
     button(host, "Back to Minigames").click().run()
-    assert not host.exception and host.metric
-    assert any("normal drink points" in item.value for item in host.caption)
+    assert not host.exception and "already challenged" in notes(host)
 
 
 def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(service):
@@ -239,11 +243,11 @@ def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(
     service["game"].scoring_rules = new_rules(test_mode=True)
     host = open_page()
     for status in ("completed", "aborted", "completed"):
-        assert not host.exception and [m.value for m in host.metric] == ["Unlimited", "Unlimited"]
-        button(host, "Send challenge").click().run()
+        assert not host.exception and button(host, "Challenge")
+        button(host, "Challenge").click().run()
         guest = open_page("pb", "b")
-        assert not button(guest, "Accept duel").disabled
-        button(guest, "Accept duel").click().run()
+        assert not button(guest, "Accept").disabled
+        button(guest, "Accept").click().run()
         duel = service["duels"][-1]
         duel["status"] = "started"
         host.run()
@@ -252,18 +256,61 @@ def test_test_season_allows_repeated_challenges_and_acceptances_in_new_sessions(
         button(host, "Back to Minigames").click().run()
     assert len(service["duels"]) == 3
     reopened = open_page()
-    assert not reopened.exception and button(reopened, "Send challenge")
-    assert [m.value for m in reopened.metric] == ["Unlimited", "Unlimited"]
-    assert any("cooldown still applies" in item.value for item in reopened.caption)
+    assert not reopened.exception and button(reopened, "Challenge")
+    assert "already challenged" not in notes(reopened)
 
 
 def test_normal_season_still_blocks_used_challenge_even_with_test_in_lobby_name(service):
     service["lobby"].name = "Test lobby"
     host = open_page()
-    button(host, "Send challenge").click().run()
+    button(host, "Challenge").click().run()
     duel = service["duels"][0]
     duel.update(status="completed", winner_id="a")
     host.run()
     assert not host.exception
-    assert not any(b.label == "Send challenge" for b in host.button)
-    assert host.metric[0].value == "Used / reserved"
+    assert not any(b.label == "Challenge" for b in host.button)
+    assert "already challenged" in notes(host)
+
+
+# -- Quiz Duel: one short screen, challenge in as few taps as possible --------
+
+def quiz_state(**overrides):
+    return {"duels": [], "available_points": 20, "outgoing": True, "incoming": True, "open": True,
+            "test_mode": False, **overrides}
+
+
+def open_quiz(service, monkeypatch, **overrides):
+    monkeypatch.setattr(db, "quiz_status", lambda *args: quiz_state(**overrides))
+    invite = Mock()
+    monkeypatch.setattr(db, "invite_quiz_duel", invite)
+    return open_page(selected="quiz"), invite
+
+
+def test_quiz_screen_challenges_the_only_opponent_in_one_tap(service, monkeypatch):
+    page, invite = open_quiz(service, monkeypatch)
+    assert not page.exception
+    assert not button(page, "Challenge").disabled           # one opponent: already chosen, stake 3
+    button(page, "Challenge").click().run()
+    invite.assert_called_once()
+    assert invite.call_args.args[0] == "pa" and invite.call_args.args[3:] == ("b", 3)
+
+
+def test_quiz_stake_is_one_tap_and_too_little_points_disable_the_button(service, monkeypatch):
+    page, invite = open_quiz(service, monkeypatch, available_points=4)
+    assert not button(page, "Challenge").disabled
+    page.radio(key="pill_radio_quiz_stake").set_value(7).run()
+    assert button(page, "Challenge").disabled
+    assert not invite.called
+
+
+def test_quiz_screen_is_short(service, monkeypatch):
+    page, _ = open_quiz(service, monkeypatch)
+    import re
+    visible = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown if "<style>" not in m.value).split()
+    assert len(visible) < 25, visible and not page.metric and not page.caption and not page.info
+
+
+def test_quiz_used_tonight_hides_the_form(service, monkeypatch):
+    page, _ = open_quiz(service, monkeypatch, outgoing=False)
+    assert not any(b.label == "Challenge" for b in page.button)
+    assert "already challenged" in notes(page)

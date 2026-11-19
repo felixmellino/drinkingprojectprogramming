@@ -94,9 +94,11 @@ def insert_player(player: Player) -> None:
 
 def list_lobbies() -> list[Lobby]:
     rows = get_client().table("lobbies").select("*").execute().data
+    # Deleted lobbies are hidden for everyone (r.get: works before migration 017 too).
     return [Lobby(id=r["id"], name=r["name"], invite_code=r["invite_code"],
                   game_mode=r.get("game_mode", "individual"), team_count=r.get("team_count"),
-                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment")) for r in rows]
+                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment"))
+            for r in rows if not r.get("deleted_at")]
 
 
 def insert_lobby(lobby: Lobby) -> None:
@@ -169,6 +171,16 @@ def leave_lobby(player_id: str, lobby_id: str) -> None:
 
 def rejoin_lobby(player_id: str, lobby_id: str) -> None:
     _membership_rpc("rejoin_lobby", player_id, lobby_id)
+
+
+def delete_lobby(player_id: str, lobby_id: str) -> None:
+    """Hide the lobby for everyone; history stays. The database allows only its creator."""
+    try:
+        get_client().rpc("delete_lobby", {"actor_player": player_id, "target_lobby": lobby_id}).execute()
+    except APIError as error:
+        if getattr(error, "message", "") == "permission_denied":
+            raise PermissionError("Only the person who created this lobby can delete it.") from None
+        raise
 
 
 def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:

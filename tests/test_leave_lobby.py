@@ -61,3 +61,22 @@ def test_departure_errors_are_actionable(monkeypatch, reason, expected):
     with pytest.raises(expected):
         db.leave_lobby('player', 'lobby')
     client.rpc.assert_called_once_with('leave_lobby', {'actor_player': 'player', 'target_lobby': 'lobby'})
+
+
+def test_deleted_lobbies_are_hidden_everywhere(monkeypatch):
+    client = Mock()
+    client.table.return_value.select.return_value.execute.return_value.data = [
+        dict(id='a', name='Live', invite_code='LIVE'),
+        dict(id='b', name='Gone', invite_code='GONE', deleted_at='2026-11-19T20:00:00+00:00')]
+    monkeypatch.setattr(db, 'get_client', lambda: client)
+    assert [l.id for l in db.list_lobbies()] == ['a']
+
+
+@pytest.mark.parametrize('reason,expected', [('permission_denied', PermissionError), ('other', APIError)])
+def test_delete_lobby_errors_are_actionable(monkeypatch, reason, expected):
+    client = Mock()
+    client.rpc.return_value.execute.side_effect = APIError(dict(message=reason, code='P0001', details=None, hint=None))
+    monkeypatch.setattr(db, 'get_client', lambda: client)
+    with pytest.raises(expected):
+        db.delete_lobby('player', 'lobby')
+    client.rpc.assert_called_once_with('delete_lobby', {'actor_player': 'player', 'target_lobby': 'lobby'})

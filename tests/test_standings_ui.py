@@ -74,7 +74,8 @@ def all_markup(at):
 
 def rank_of(markup, name):
     """The rank a player/team is actually labelled with, regardless of the
-    podium's visual DOM order (2nd, 1st, 3rd left-to-right)."""
+    podium's visual DOM order (2nd, 1st, 3rd left-to-right). The current
+    """
     for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
@@ -182,3 +183,26 @@ def test_departed_player_keeps_rank_and_quiz_transfers(ui, monkeypatch):
     assert rank_of(markup, 'Mia') == 2
     assert '<span class="standings-podium-points">8</span>' in markup
     assert '<span class="standings-podium-points">2</span>' in markup
+
+
+# Tie tag: rows arrive ranked, ties earliest-first.
+import standings_ui  # noqa: E402
+from standings_ui import reached_first  # noqa: E402
+
+TIE_NAMES = {"a": "Ana", "b": "Tomás", "c": "Ben", "d": "Dana"}
+
+
+def test_reached_first_only_on_upper_of_equal_neighbours():
+    rows = [("a", 9), ("b", 8), ("c", 8)]
+    assert [reached_first(rows, i) for i in range(3)] == [False, True, False]
+
+
+def test_leaderboard_renders_tie_tag_and_medal_podium(monkeypatch):
+    shown = []
+    monkeypatch.setattr(standings_ui.st, "markdown", lambda markup, **_: shown.append(markup))
+    standings_ui.leaderboard([("a", 9), ("b", 8), ("c", 8), ("d", 5)], TIE_NAMES, "d")
+    markup = "".join(shown)
+    assert markup.count("standings-first-tag") == 1
+    assert "pts behind" not in markup and "standings-gap" not in markup
+    for colour in ("var(--accent)", "var(--medal-2)", "var(--medal-3)"):
+        assert f"background:{colour};" in markup

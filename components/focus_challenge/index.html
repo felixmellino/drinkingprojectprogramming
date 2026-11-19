@@ -2,23 +2,26 @@
 <style id="tokens"></style><style>
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:16px var(--font-body);height:100%;overflow:hidden}
 [hidden]{display:none!important}main{height:100dvh;overflow:auto;padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px}
-.eyebrow{color:var(--accent-ink);font-size:12px;letter-spacing:.12em;font-weight:700;margin:0}h1{font:32px var(--font-display);margin:0}h2{font-size:24px;margin:8px 0}p{line-height:1.5;margin:8px 0}.muted{color:var(--text-muted)}#timer{font-size:20px;font-variant-numeric:tabular-nums;min-height:28px}section{width:100%;max-width:440px;margin:auto 0}.panel{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);padding:24px}
-button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);min-height:48px;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}button:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}button:disabled{cursor:wait}button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);padding:16px 28px;width:100%;margin-top:16px}#react{height:min(48vh,330px);width:100%;font-size:32px;background:var(--surface);border:3px solid var(--border)}#react.go{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-#grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}#grid button{aspect-ratio:1/1;font-size:24px}#grid button.flash{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-#arena{position:relative;width:100%;aspect-ratio:1/1;border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);touch-action:manipulation;overflow:hidden}#target{position:absolute;transform:translate(-50%,-50%);width:52px;height:52px;min-height:52px;border-radius:50%;border:2px solid var(--accent-ink);background:var(--accent);color:var(--on-accent);font-size:22px}
-.progress{display:flex;gap:6px;width:100%;max-width:440px}.progress span{height:5px;flex:1;background:var(--border);border-radius:9px}.progress span.done{background:var(--accent)}#hint{font-size:13px;color:var(--text-muted);max-width:420px;margin-top:auto}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
+h1{font:32px var(--font-display);margin:0}h2{font-size:24px;margin:8px 0}p{line-height:1.5;margin:8px 0}.muted{color:var(--text-muted)}
+section{width:100%;max-width:440px;margin:auto 0}.panel{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);padding:24px}
+button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);min-height:48px;touch-action:manipulation;cursor:pointer;user-select:none;-webkit-user-select:none}button:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}button:disabled{cursor:wait}
+#react{height:min(48vh,330px);width:100%;font-size:32px;background:var(--surface);border:3px solid var(--border)}#react.go{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+#flash .big{font:700 64px var(--font-body);font-variant-numeric:tabular-nums;color:var(--accent-ink);margin:12px 0}#flash .try{font-size:18px;color:var(--text-muted);margin:0}
+#overview{white-space:pre-line;font-size:18px;line-height:1.7;font-variant-numeric:tabular-nums;margin:12px 0}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
+#falsestart{position:fixed;inset:0;z-index:5;background:#D92D20;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
+#falsestart h1{font:700 44px var(--font-body);letter-spacing:.02em;margin:0}#falsestart p{font-size:20px;margin:0}#falsestart .small{font-size:15px;opacity:.85;margin-top:18px}
 </style></head><body><main>
-<p class="eyebrow">WEGOPUB · FOCUS CHALLENGE</p><div class="progress" aria-label="Three tests"><span></span><span></span><span></span></div>
-<h1 id="title">Reaction Test</h1><div id="timer" role="timer"></div>
-<section id="ready" class="panel" hidden><h2 id="readyTitle"></h2><p id="instructions"></p><button id="start" class="primary">I’m ready</button></section>
-<section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button><p class="muted">Wait for TAP NOW. An early tap ends this attempt.</p></section>
-<section id="memory" hidden><p id="memoryHint"></p><div id="grid" aria-label="Memory grid"></div></section>
-<section id="precision" hidden><p id="precisionHint"></p><div id="arena" aria-label="Precision play area"><button id="target" aria-label="Precision target">1</button></div><p class="muted">Tap each numbered target. Tapping elsewhere ends the attempt.</p></section>
-<section id="result" class="panel" hidden><h2 id="resultTitle"></h2><p id="resultText"></p></section>
-<div id="saving" role="status" aria-live="polite"></div><p id="hint">The clock keeps running if you leave. Pass all three tests consecutively.</p>
-</main><script src="logic.js"></script><script>
-let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,taps=[],memorySequence=[],sentKey='';
-const $=id=>document.getElementById(id),views=['ready','reaction','memory','precision','result'];
+<h1 id="title">Reaction Test</h1>
+<section id="ready" class="panel" hidden><h2>Get ready</h2></section>
+<section id="reaction" hidden><p id="trial"></p><button id="react" aria-label="Reaction target">WAIT…</button></section>
+<section id="flash" class="panel" hidden role="status" aria-live="polite"><p id="flashTry" class="try"></p><div id="flashTime" class="big"></div></section>
+<section id="result" class="panel" hidden><h2 id="resultTitle"></h2><div id="overview" aria-label="Reaction times"></div><p id="resultText"></p></section>
+<div id="saving" role="status" aria-live="polite"></div>
+</main>
+<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p class="small">Tap to continue</p></div>
+<script>
+let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,showRed=false;
+const $=id=>document.getElementById(id),views=['ready','reaction','flash','result'];
 const send=(type,extra)=>window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*');
 function now(){return anchorEpoch+performance.now()-anchorMono;}
 function load(key,fallback){try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}}
@@ -29,91 +32,73 @@ function emit(action,payload={}){
  store('focus-event-'+game.id,pending);publish();render();
 }
 function publish(){if(!pending)return;sentKey=JSON.stringify(pending);send('streamlit:setComponentValue',{value:pending,dataType:'json'});}
-function cacheTaps(){store('focus-taps-'+game.id,{revision:game.revision,taps});}
 function selectView(name){views.forEach(v=>$(v).hidden=v!==name);}
+// Reaction times of this attempt: what the server saved, plus the tap still being saved.
+function times(){
+ const list=[...(game.reaction_ms||[])];
+ if(pending?.action==='reaction'&&game.phase==='reaction'&&list.length===game.step)list.push(pending.payload.elapsed_ms);
+ return list;
+}
+const average=list=>Math.round(list.reduce((a,b)=>a+b,0)/list.length);
 function render(){
  if(!game)return;
  const at=now(),c=game.config,ended=game.status!=='running';
- $('hint').textContent=ended?'Your result is saved. Use × to return to games.':'The clock keeps running if you leave. Pass all three tests consecutively.';
- const index=game.phase.startsWith('reaction')?0:game.phase==='memory'?1:2;
- document.querySelectorAll('.progress span').forEach((el,i)=>el.classList.toggle('done',i<index||game.status==='passed'));
- $('saving').textContent=pending?'Saving progress…':'';
- $('timer').textContent=ended?'':Math.max(0,(Math.min(Date.parse(game.deadline),Date.parse(game.expires_at))-at)/1000).toFixed(1)+' s';
+ $('falsestart').hidden=!showRed;
+ $('saving').textContent=pending?'Saving…':'';
  if(ended){
-  selectView('result');$('title').textContent='Challenge complete';
-  $('resultTitle').textContent=game.status==='passed'?'Focus boost earned!':'Attempt finished';
-  const messages={timeout:'Time ran out. Your next attempt unlocks after two more accepted check-ins.',memory_wrong:'That was not the sequence. Your next attempt unlocks after two more accepted check-ins.',reaction_slow:'Your median reaction time was above 350 ms. Your next attempt unlocks after two more accepted check-ins.',miss:'A target was missed or a reaction tap was early. Your next attempt unlocks after two more accepted check-ins.'};
-  $('resultText').textContent=game.status==='passed'
-   ?'×1.5 on your ordinary season and territory check-ins for the next hour, while scoring is open.'+(game.test_mode?' Test mode: you can play again; wins refresh the boost without stacking.':'')
-   :game.test_mode?'Test mode: return to games and retry immediately. No uploads are required.'
-   :messages[game.reason]||'Your next attempt unlocks after two more accepted check-ins.';
+  selectView('result');
+  $('resultTitle').textContent=game.status==='passed'?'×1.5 earned':'Attempt over';
+  const done=times();
+  $('overview').textContent=done.length?done.map((t,i)=>'Try '+(i+1)+'   '+t+' ms').join('\n')+'\nAverage   '+average(done)+' ms':'';
+  const messages={reaction_slow:'Too slow. The middle time must be '+c.reaction_median_ms+' ms or less.',timeout:'Time ran out.'};
+  $('resultText').textContent=game.status==='passed'?(game.test_mode?'Test mode: play again any time.':''):messages[game.reason]||'';
   return;
  }
  if(at>=Date.parse(game.expires_at)||(at>Date.parse(game.deadline)&&!pending)){
   if(!pending)emit('fail');return;
  }
- if(game.phase.endsWith('_ready')){
-  selectView('ready');$('title').textContent=game.phase==='reaction_ready'?'01 · Reaction':'03 · Precision';
-  $('readyTitle').textContent=game.phase==='reaction_ready'?'Wait. React. Repeat.':'Twelve targets. Twelve seconds.';
-  $('instructions').textContent=game.phase==='reaction_ready'?'Five unpredictable signals. Tap only when TAP NOW appears. Your median must be 350 ms or faster.':'Tap twelve numbered targets in order. Their positions change. One wrong tap ends the attempt.';
-  $('start').disabled=!!pending;return;
+ if(game.phase==='reaction_ready'){
+  selectView('ready');                       // no second button: the first try starts at once
+  if(!pending)emit('ready');return;
  }
  if(game.phase==='reaction'){
-  selectView('reaction');$('title').textContent='01 · Reaction';$('trial').textContent='Trial '+(game.step+1)+' of '+c.reaction_trials;
+  if(flash&&performance.now()<flash.until){
+   selectView('flash');
+   $('flashTry').textContent='Try '+flash.no+' of '+c.reaction_trials;$('flashTime').textContent=flash.ms+' ms';return;
+  }
+  selectView('reaction');$('trial').textContent='Try '+(game.step+1)+' of '+c.reaction_trials;
   const go=at>=Date.parse(game.signal_at);$('react').classList.toggle('go',go);
-  $('react').textContent=pending?'SAVING…':go?'TAP NOW':'WAIT…';$('react').disabled=!!pending;return;
+  $('react').textContent=pending?'…':go?'TAP NOW':'WAIT…';$('react').disabled=!!pending;return;
  }
- if(game.phase==='memory'){
-  selectView('memory');$('title').textContent='02 · Memory';
-  const preview=at<Date.parse(game.signal_at),frame=FocusLogic.memoryFrame({...game,memory:memorySequence},at);
-  $('memoryHint').textContent=preview?'Watch the seven highlighted positions.':'Repeat the sequence · '+game.step+' of '+c.memory_length+' correct';
-  [...$('grid').children].forEach((b,i)=>{b.disabled=preview||!!pending;b.classList.toggle('flash',preview&&frame===i);});return;
- }
- if(game.phase==='precision'){
-  selectView('precision');$('title').textContent='03 · Precision';
-  $('precisionHint').textContent=taps.length+' of '+c.precision_targets+' targets';
-  const pos=game.positions?.[taps.length];
-  $('target').hidden=!pos||at>=Date.parse(game.deadline);
-  if(pos){$('target').style.left=(pos.x/10)+'%';$('target').style.top=(pos.y/10)+'%';$('target').textContent=String(taps.length+1);}
- }
+ // An attempt from an older version (memory/precision): end it, those stages no longer exist.
+ selectView('result');$('resultTitle').textContent='Attempt over';$('overview').textContent='';
+ $('resultText').textContent='This attempt is from an older version. Start a new one.';
+ if(!pending)emit('fail');
 }
-$('start').onclick=()=>{if(!pending)emit('ready');};
 function reactionPress(){
- if(pending||!game)return;
+ if(pending||!game||game.status!=='running'||game.phase!=='reaction')return;
  const elapsed=Math.floor(now()-Date.parse(game.signal_at));
- if(elapsed<0||elapsed>game.config.reaction_response_ms)emit('fail');else emit('reaction',{elapsed_ms:elapsed});
+ if(elapsed<0){showRed=true;emit('false_start');return;}   // red screen at once; the try does not count and repeats
+ if(elapsed>game.config.reaction_response_ms){emit('fail');return;}
+ flash={ms:elapsed,no:game.step+1,until:performance.now()+1400};
+ emit('reaction',{elapsed_ms:elapsed});
 }
 $('react').addEventListener('pointerdown',event=>{event.preventDefault();reactionPress();});
+const dismiss=()=>{showRed=false;render();};
+$('falsestart').addEventListener('pointerdown',event=>{event.preventDefault();dismiss();});
+$('falsestart').addEventListener('keydown',event=>{if(['Enter',' ','Escape'].includes(event.key)){event.preventDefault();dismiss();}});
 $('react').addEventListener('keydown',event=>{if(!event.repeat&&['Enter',' '].includes(event.key)){event.preventDefault();reactionPress();}});
-for(let i=0;i<9;i++){
- const b=document.createElement('button');b.textContent=String(i+1);b.setAttribute('aria-label','Memory cell '+(i+1));
- b.onclick=()=>{if(!pending&&now()>=Date.parse(game.signal_at))emit('memory',{cell:i});};$('grid').appendChild(b);
-}
-$('target').onclick=event=>{
- event.stopPropagation();if(!game||game.status!=='running'||taps.length>=game.config.precision_targets)return;
- const elapsed=Math.floor(now()-Date.parse(game.signal_at));
- if(elapsed<0||elapsed>game.config.precision_ms){emit('fail');return;}
- taps.push(Math.max(elapsed,(taps.at(-1)??-1)+1));cacheTaps();
- // Send full prefixes. Clicks remain local and responsive while requests travel.
- emit('precision',{taps:[...taps]});render();
-};
-$('arena').onclick=event=>{if(event.target!==$('target')&&game?.status==='running'&&game?.phase==='precision')emit('fail');};
 window.addEventListener('message',event=>{
  if(event.source!==window.parent||event.data?.type!=='streamlit:render')return;
  const args=event.data.args,a=args?.attempt;if(!a?.id||!Number.isInteger(a.revision))return;
  $('tokens').textContent=args.tokens||'';
  const next=a.id+':'+a.revision;
- if(next!==signature){signature=next;anchorEpoch=Date.parse(a.server_now);anchorMono=performance.now();pending=null;sentKey='';memorySequence=[];}
+ if(next!==signature){signature=next;anchorEpoch=Date.parse(a.server_now);anchorMono=performance.now();pending=null;sentKey='';}
  game=a;
- if(a.memory)memorySequence=[...a.memory];
- const cached=load('focus-taps-'+a.id,{});
- taps=a.phase==='precision'?FocusLogic.mergeTaps(a.precision_taps||[],cached.revision===a.revision?cached.taps:[],a.config):[];
  const saved=load('focus-event-'+a.id,null);
- if(saved&&saved.revision===a.revision&&a.status==='running'){
-  const ack=saved.action==='precision'&&(a.precision_taps||[]).length>=saved.payload.taps.length;
-  if(!ack){pending=saved;if(JSON.stringify(saved)!==sentKey)publish();}else{pending=null;store('focus-event-'+a.id,null);}
- }else{store('focus-event-'+a.id,null);}
- if(a.status!=='running'){pending=null;store('focus-event-'+a.id,null);store('focus-taps-'+a.id,null);}
+ if(saved&&saved.revision===a.revision&&a.status==='running'){pending=saved;if(JSON.stringify(saved)!==sentKey)publish();}
+ else{store('focus-event-'+a.id,null);}
+ if(a.status!=='running'){pending=null;store('focus-event-'+a.id,null);}
  render();send('streamlit:setFrameHeight',{height:window.innerHeight});
 });
 setInterval(render,16);

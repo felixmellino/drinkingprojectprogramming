@@ -32,3 +32,16 @@
 
 /* Keep long member lists scrollable while the leaderboard action stays below. */
 [data-testid="stDialog"] .st-key-lobby_members {max-height:45vh;overflow-y:auto;overflow-x:hidden;padding-right:8px;}
+
+/* Trash icon in the top-right corner of a lobby card: removes the lobby for this player only.
+   Icon-only; the label stays for screen readers. Overrides the card-covering button rules above. */
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] { position:absolute; top:10px; right:10px; z-index:3; width:44px; height:44px; }
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stElementContainer"]:has(> [data-testid="stButton"]),
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stButton"] { position:static; width:44px; height:44px; }
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stButton"] button {
+  position:static; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--border);
+  border-radius:12px; background:var(--surface); color:var(--text-muted); align-items:center; justify-content:center; }
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stButton"] button:hover { color:var(--brand-ink); border-color:var(--brand-ink); background:var(--surface); }
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stButton"] button > div {
+  position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+[class*="st-key-lobby_card_"] [class*="st-key-trash_"] [data-testid="stButton"] button::before { margin-right:0 !important; width:20px !important; height:20px !important; flex-basis:20px !important; }

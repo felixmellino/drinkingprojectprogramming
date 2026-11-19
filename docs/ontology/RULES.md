@@ -30,18 +30,19 @@ Only one game may be actively running for a member at a time.
 
 ### R-M07 Focus Challenge tasks and variation
 
-Pass reaction, memory and precision consecutively. Reaction has five trials,
-with median at most 350 ms and no early taps. Memory requires reproducing seven
-positions exactly. Precision requires twelve correct taps within twelve seconds;
-a wrong tap ends the attempt. Difficulty is a pilot setting needing human phone
+The game is only the reaction tries (changed 19 November 2026, contributor
+request; Memory and Precision were removed). Passing wins the boost at once.
+There are three tries (five in seasons created earlier, which keep their frozen
+count) and the middle time must be at most 350 ms. Every try shows its reaction
+time. A tap before the signal is a false start: red screen the player taps away;
+that try does not count and repeats with a new wait (the attempt goes on). Every
+season plays three tries, including seasons that had frozen five. The result screen lists all times and their average. There is no countdown clock and
+no second start button. Difficulty is a pilot setting needing human phone
 calibration, not a health benchmark. Passing is not a sobriety assessment.
 
-Each new attempt receives private server-generated random material: independent
-1500–4500 ms reaction waits, a fresh 3x3 memory sequence with no adjacent repeats,
-and new valid precision positions. Refreshing cannot reroll it. Memory flashes
-650 ms per position with 200 ms gaps, followed by fifteen seconds for input.
-Precision targets are 52 px with consistent normalized margins and minimum
-movement; no colour-only matching is required.
+Each new attempt receives private server-generated random waits of 1500–4500 ms
+between tries. Refreshing cannot reroll them. Attempts that were waiting in the
+removed stages when this changed simply expire; saved history is untouched.
 
 ### R-M08 Focus Challenge interruptions and deadlines
 
@@ -670,3 +671,20 @@ Source: contributor request and explicit answers, 19 November 2026. Migration
 19 November 2026. All 19 schema/access/history checks and a fresh app-process
 read/RPC check passed. Frontend review, merge, deployment and deployed browser
 verification remain pending.
+
+### R-LB04 Deleting a lobby
+
+Only the player who created a lobby (its earliest membership, even if they have
+since left) can delete it. Deleting hides the lobby for everyone: it leaves
+every lobby list, nobody can open it, check in, or play minigames in it, and
+saved lobby choices pointing at it are cleared. Nothing is erased: scores,
+photos and history stay in the database, in the same spirit as R-LB01. Open
+duel invitations and running duels are cancelled. There is no undo in the app.
+Allowed: creator deletes after a second, deliberate click. Rejected: any other
+player, even a current member, gets "Only the person who created this lobby can
+delete it." Boundary: a retry of an already completed deletion is harmless.
+Needs migration `017_delete_lobby.sql` (the app keeps working without it, but
+Delete lobby fails until it is applied).
+
+Source: contributor request, 19 November 2026 (who may delete and "hide, keep
+history" are the implementer's decisions; the team should confirm).

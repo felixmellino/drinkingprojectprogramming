@@ -1,6 +1,7 @@
 """Joined lobby cards. Existing ranking and picture access remain authoritative."""
 import base64
 from datetime import datetime, timezone
+from functools import partial
 from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -17,6 +18,9 @@ from core.profile_photo import initials
 from core.scoring_v1 import utc
 from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
+from parallel import run_parallel
+from core.lobbies import lobby_creator
+from theme import button_icons
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
 
@@ -129,8 +133,9 @@ def show_summary(player_id, lobby, season, status, now):
     entries = []
     if season:
         try:
-            entries = db.list_drink_entries(season.id)
-            leader = season_leader(entries, db.list_season_transfers(season.id))
+            entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
+                                              lambda: db.list_season_transfers(season.id))
+            leader = season_leader(entries, transfers)
             if leader:
                 if lobby.game_mode == 'team':
                     teams = db.list_lobby_teams(player_id, lobby.id)
@@ -176,6 +181,31 @@ def dismiss_members():
     st.session_state.pop('_opened_lobby_id', None)
 
 
+def depart(player_id, lobby, key):
+    """Leave a lobby for this player only (history is kept, rejoin with the invite code).
+    Shared by the Leave lobby button in the dialogs and the trash icon on the cards."""
+    try:
+        db.leave_lobby(player_id, lobby.id)
+    except (PermissionError, ValueError) as error:
+        st.error(str(error))
+    except LOAD_ERRORS:
+        st.error('Could not confirm departure. Refresh lobbies to check your membership before retrying.')
+    else:
+        dismiss_members()
+        st.session_state.pop(key, None)
+        st.session_state.pop('_lobby_choice_pending', None)
+        st.session_state.pop('_saved_lobby_choice', None)
+        if st.session_state.get('current_lobby_id') == lobby.id:
+            clear_selection()
+        st.session_state['_left_lobby_notice'] = f'You left {lobby.name}. Your earned points are kept.'
+        st.rerun()
+
+
+LEAVE_WARNING = ('Your earned points stay in this lobby and your profile. You lose lobby access '
+                 'and personal territory-owner income while away. You can rejoin with the invite code; '
+                 'your history, limits and team slot are kept.')
+
+
 def leave_lobby_controls(player_id, lobby):
     """Shared by individual and team dialogs; require a deliberate second click."""
     key = f'confirm_leave_{lobby.id}'
@@ -183,18 +213,65 @@ def leave_lobby_controls(player_id, lobby):
         st.session_state[key] = True
     if not st.session_state.get(key):
         return
-    st.warning('Your earned points stay in this lobby and your profile. You lose lobby access '
-               'and personal territory-owner income while away. You can rejoin with the invite code; '
-               'your history, limits and team slot are kept.')
+    st.warning(LEAVE_WARNING)
     confirm, cancel = st.columns(2)
     with confirm:
         if st.button('Confirm leave', key=f'confirm_{lobby.id}', width='stretch'):
+            depart(player_id, lobby, key)
+    with cancel:
+        if st.button('Stay in lobby', key=f'cancel_leave_{lobby.id}', width='stretch'):
+            st.session_state.pop(key, None)
+            st.rerun()
+
+
+def remove_lobby_button(player_id, lobby):
+    """A trash icon next to a lobby card: removes the lobby from this player's list only."""
+    key = f'confirm_remove_{lobby.id}'
+    button_icons({f'remove_{lobby.id}': 'trash'})
+    if st.button('Remove from my lobbies', key=f'remove_{lobby.id}', help='Remove from my lobbies'):
+        st.session_state[key] = True
+    return key
+
+
+def remove_lobby_confirm(player_id, lobby, key):
+    """Second click, shown under the card; the same departure as Leave lobby."""
+    if not st.session_state.get(key):
+        return
+    st.warning(f'Remove {lobby.name} from your lobbies? Your points are kept; you can rejoin with the invite code.')
+    confirm, cancel = st.columns(2)
+    with confirm:
+        if st.button('Remove', key=f'confirm_remove_yes_{lobby.id}', type='primary', width='stretch'):
+            depart(player_id, lobby, key)
+    with cancel:
+        if st.button('Keep', key=f'confirm_remove_no_{lobby.id}', width='stretch'):
+            st.session_state.pop(key, None)
+            st.rerun()
+
+
+def delete_lobby_controls(player_id, lobby):
+    """Only the creator sees this; two deliberate clicks. Shared by both lobby dialogs."""
+    try:
+        creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
+    except LOAD_ERRORS:
+        return
+    if creator != player_id:
+        return
+    key = f'confirm_delete_{lobby.id}'
+    if st.button('Delete lobby', key=f'delete_{lobby.id}', icon=':material/delete:', width='stretch'):
+        st.session_state[key] = True
+    if not st.session_state.get(key):
+        return
+    st.warning('This deletes the lobby for everyone. Nobody can open it again. '
+               'Points and history stay saved in the database.')
+    confirm, cancel = st.columns(2)
+    with confirm:
+        if st.button('Yes, delete lobby', key=f'confirm_delete_btn_{lobby.id}', type='primary', width='stretch'):
             try:
-                db.leave_lobby(player_id, lobby.id)
-            except (PermissionError, ValueError) as error:
+                db.delete_lobby(player_id, lobby.id)
+            except PermissionError as error:
                 st.error(str(error))
-            except LOAD_ERRORS:
-                st.error('Could not confirm departure. Refresh lobbies to check your membership before retrying.')
+            except (*LOAD_ERRORS, ValueError):
+                st.error('Could not delete the lobby. Refresh lobbies and try again.')
             else:
                 dismiss_members()
                 st.session_state.pop(key, None)
@@ -202,10 +279,10 @@ def leave_lobby_controls(player_id, lobby):
                 st.session_state.pop('_saved_lobby_choice', None)
                 if st.session_state.get('current_lobby_id') == lobby.id:
                     clear_selection()
-                st.session_state['_left_lobby_notice'] = f'You left {lobby.name}. Your earned points are kept.'
+                st.session_state['_left_lobby_notice'] = f'{lobby.name} was deleted.'
                 st.rerun()
     with cancel:
-        if st.button('Stay in lobby', key=f'cancel_leave_{lobby.id}', width='stretch'):
+        if st.button('Keep lobby', key=f'cancel_delete_{lobby.id}', width='stretch'):
             st.session_state.pop(key, None)
             st.rerun()
 
@@ -246,6 +323,7 @@ def show_lobby_details(player_id, lobby, membership, season):
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
     leave_lobby_controls(player_id, lobby)
+    delete_lobby_controls(player_id, lobby)
     close_members_button()
 
 
@@ -278,13 +356,15 @@ def show_lobbies(player_id):
         return
     now = datetime.now(timezone.utc)
     groups = {key: [] for key in ('active', 'past', 'upcoming', 'setup')}
-    for membership in memberships:
-        lobby = lobbies.get(membership.lobby_id)
-        if lobby is None:
-            continue
+    def fetch_season(lobby_id):
         try:
-            season = latest_season(db.list_seasons_for_lobby(lobby.id))
-        except LOAD_ERRORS:
+            return latest_season(db.list_seasons_for_lobby(lobby_id))
+        except LOAD_ERRORS as error:
+            return error
+    shown = [(membership, lobbies[membership.lobby_id]) for membership in memberships if membership.lobby_id in lobbies]
+    # One request per lobby, all at the same time.
+    for (membership, lobby), season in zip(shown, run_parallel(*[partial(fetch_season, lobby.id) for _, lobby in shown])):
+        if isinstance(season, LOAD_ERRORS):
             st.warning(f'Dates for {lobby.name} are unavailable. Use Refresh lobbies to try again.')
             continue
         groups[lobby_status(season, now)].append((lobby, membership, season))
@@ -327,6 +407,9 @@ def show_lobbies(player_id):
                     st.session_state['_opened_lobby_id'] = lobby.id
                     st.session_state['_lobby_choice_pending'] = lobby.id
                     st.rerun()
+                with st.container(key=f'trash_{lobby.id}'):   # top-right corner of the card
+                    confirm_key = remove_lobby_button(player_id, lobby)
+            remove_lobby_confirm(player_id, lobby, confirm_key)
     if opened and not st.session_state.get('_lobby_dialog'):
         lobby, membership, season = opened
         if lobby.game_mode == 'team':
