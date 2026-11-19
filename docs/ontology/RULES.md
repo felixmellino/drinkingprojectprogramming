@@ -566,6 +566,11 @@ Source: contributor's explicit team-mode choices, 18 November 2026.
 
 ## Profile statistics
 
+Quiz Duel's contributor-approved point-stake exception, separate nightly roles,
+team-purse rules and twenty-second rounds are defined in [QUIZ_DUEL.md](QUIZ_DUEL.md).
+Individual quiz transfers adjust personal lifetime points; team quiz transfers
+adjust team season scores and season wins without becoming personal drink points.
+
 ### R-P01 Lifetime statistics across active and finished lobbies
 
 Profile → My stats shows four cards: Total points, Drinks, Lobbies played,

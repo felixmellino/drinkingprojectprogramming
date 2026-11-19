@@ -5,6 +5,10 @@ and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
 
+Quiz Duel (100 English questions, generated multiplication/logic, reserved
+3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
+Apply migration 016 after 014 to activate its database service; no question import is needed.
+
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**

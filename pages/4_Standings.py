@@ -42,6 +42,7 @@ try:
             st.stop()
         lobby_name, lobby_mode = lobby.name, lobby.game_mode
     entries = db.list_drink_entries(season_id)
+    transfers = db.list_season_transfers(season_id)
     memberships = db.list_memberships_for_lobby(lobby_id)
     players_by_id = {p.id: p.display_name for p in db.list_players()}
 except (APIError, RequestError, RuntimeError):
@@ -60,7 +61,7 @@ if team_mode:
     membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
     if not membership_id:
         st.info("Open this lobby on the Lobby page and join a team before checking in.")
-snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
+snapshot = replay_season(entries, transfers) if transfers or any(e.rule_version == "v1" for e in entries) else None
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 status = lobby_status(season, current_time()) if season else "active"
 if status == "past":

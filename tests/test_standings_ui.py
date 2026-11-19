@@ -39,6 +39,7 @@ def text(markup):
 
 @pytest.fixture
 def ui(monkeypatch):
+    monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     state = {
         "entries": [entry("m1", "member", "beer", "large", 0),
                     entry("l1", "other", "shot", None, 1),
