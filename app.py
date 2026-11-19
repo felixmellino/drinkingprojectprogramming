@@ -11,9 +11,9 @@ from theme import apply_theme, wordmark
 
 st.set_page_config(page_title="WeGoPub", page_icon=":material/sports_bar:")
 apply_theme()
-wordmark()
 
-require_login()
+require_login()  # shows its own wordmark on the login screen when logged out
+wordmark()
 st.success(f"Logged in as **{st.session_state['player_display_name']}**")
 if "current_lobby_name" in st.session_state:
     st.caption(f"Current lobby: **{st.session_state['current_lobby_name']}**")
