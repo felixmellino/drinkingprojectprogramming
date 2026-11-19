@@ -5,6 +5,10 @@ and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
 
+Quiz Duel content preparation (100 English questions, generated multiplication
+and logic, developer preview): [`docs/QUIZ_QUESTION_PREPARATION.md`](docs/QUIZ_QUESTION_PREPARATION.md).
+This prepares content only; Quiz Duel is not yet a playable/scoring minigame.
+
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**

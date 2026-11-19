@@ -1,5 +1,10 @@
 # Open Decisions
 
+Quiz Duel selections and remaining activation decisions (19 November 2026) are
+recorded in [QUIZ_DUEL.md](QUIZ_DUEL.md). Its question bank and generators are
+prepared; live stakes, invitation/timing/abandonment rules and team-purse behavior
+are not implemented by this content preparation.
+
 This file tracks team review and unresolved decisions. [SCORING_V1.md](SCORING_V1.md) records the working implementation authorised by the contributor; teammate review, merge, migration and live verification remain pending. The [planning record](SCORING_PROPOSAL.md) preserves earlier choices.
 
 The current check-in rules use automatic location verification. D-14 proposes a fallback for cases where that check fails.
