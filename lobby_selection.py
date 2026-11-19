@@ -5,7 +5,7 @@ import streamlit as st
 
 import data.db as db
 from core.lobby_overview import latest_season, lobby_status
-from core.scoring_v1 import utc
+from leaderboard_context import newest_active
 
 SELECTION_KEYS = ('current_membership_id', 'current_lobby_id', 'current_lobby_name',
                   'current_season_id', 'current_lobby_mode', 'current_team_id')
@@ -56,8 +56,7 @@ def restore_selection(player_id):
     chosen = next((row for row in rows if row[0].id == saved
                    and lobby_status(row[2], now) != 'past'), None)
     if chosen is None:
-        chosen = max((row for row in rows if lobby_status(row[2], now) == 'active'),
-                     key=lambda row: (utc(row[2].starts_at), row[0].id), default=None)
+        chosen = newest_active(rows, now)
     clear_selection()
     if chosen:
         select_lobby(*chosen)

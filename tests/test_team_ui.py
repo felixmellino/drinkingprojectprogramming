@@ -112,7 +112,10 @@ def test_team_standings_use_team_identity(ui,monkeypatch):
     monkeypatch.setattr(db,'list_players',lambda:[Obj(id='me',display_name='Myself')])
     from tests.test_checkins import TERRITORY
     monkeypatch.setattr('shared.get_territories',lambda:[replace(TERRITORY,id='territory-a')])
-    at=AppTest.from_file(ROOT/'pages/4_Standings.py').run()
+    at=AppTest.from_file(ROOT/'pages/4_Standings.py')
+    at.session_state['current_membership_id']='m1'
+    at.session_state['current_season_id']='season'
+    at.run()
     assert not at.exception
     board=''.join(m.value for m in at.markdown)
     assert 'Team 1' in board and 'Team 2' in board and 'YOUR TEAM' in board
