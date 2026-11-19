@@ -67,21 +67,20 @@ if len(entries) > 1 and detail_id is None:
     first = page_number * page_size
     visible_entries = entries[first:first + page_size]
     st.caption(f"Showing {first + 1}–{first + len(visible_entries)} of {len(entries)} check-ins · newest first")
-    for offset in range(0, len(visible_entries), 2):
-        for column, item in zip(st.columns(2), visible_entries[offset:offset + 2]):
-            with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
-                try:
-                    photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
-                except PermissionError:
-                    st.warning("Photo access changed. Refresh to load the current photo history.")
-                    st.stop()
-                except (APIError, RequestError, RuntimeError, StorageException):
-                    st.warning("This photo could not be loaded. Its details are still available.")
-                    photo = None
-                photo_card(item, photo)
-                if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
-                    st.session_state["history_detail_id"] = item["id"]
-                    st.rerun()
+    for column, item in zip(st.columns(len(visible_entries)), visible_entries):
+        with column, st.container(key=f"drink_ui_panel_history_{item['id']}"):
+            try:
+                photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
+            except PermissionError:
+                st.warning("Photo access changed. Refresh to load the current photo history.")
+                st.stop()
+            except (APIError, RequestError, RuntimeError, StorageException):
+                st.warning("This photo could not be loaded. Its details are still available.")
+                photo = None
+            photo_card(item, photo)
+            if st.button("View details", key=f"history_open_{item['id']}", width="stretch"):
+                st.session_state["history_detail_id"] = item["id"]
+                st.rerun()
     newer, _, older = st.columns(3)
     with newer:
         if st.button("Newer photos", disabled=page_number == 0):
