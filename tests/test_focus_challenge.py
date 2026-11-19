@@ -36,12 +36,17 @@ def test_only_explicit_qa_flag_enables_old_seasons_without_changing_the_snapshot
     assert not enabled(replace(game,scoring_version='legacy'))
 
 
+def test_new_seasons_play_three_reaction_tries():
+    assert new_focus_rules()['reaction_trials'] == 3
+
+
 def test_legacy_qa_sql_fallback_matches_the_fixed_v1_rules():
     import json
     from pathlib import Path
     sql=Path('migrations/015_focus_test_replays.sql').read_text(encoding='utf-8')
     fallback=sql.split("when public._focus_is_test(s) then '",1)[1].split("'::jsonb",1)[0]
-    assert json.loads(fallback)==new_focus_rules()
+    # Old QA snapshots without frozen Focus rules keep the original five reaction tries.
+    assert json.loads(fallback)=={**new_focus_rules(),'reaction_trials':5}
 
 
 @pytest.mark.parametrize('value', [None, [], {}, {'attempt_id':'other','revision':2,'action':'ready'},
@@ -64,10 +69,16 @@ def test_untrusted_component_messages_cannot_supply_a_win_or_invalid_evidence(va
 
 
 @pytest.mark.parametrize('action,payload', [('ready',{}),('fail',{}),('reaction',{'elapsed_ms':350}),
- ('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
+ ])
 def test_current_attempt_accepts_only_bounded_stage_evidence(action,payload):
     value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
     assert component_action(value, {'id':'a','revision':2}) == (action,payload)
+
+
+@pytest.mark.parametrize('action,payload', [('memory',{'cell':8}),('precision',{'taps':[100,200,300]})])
+def test_removed_memory_and_precision_stages_are_no_longer_accepted(action,payload):
+    value = {'attempt_id':'a','revision':2,'action':action,'payload':payload}
+    assert component_action(value, {'id':'a','revision':2}) is None
 
 
 def test_saved_focus_award_replays_exact_income_ownership_and_corrections():
