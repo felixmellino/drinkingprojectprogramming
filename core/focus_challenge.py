@@ -4,7 +4,7 @@ from copy import deepcopy
 FOCUS_RULES = {
     'version': 1, 'first_unlock': 5, 'retry_step': 2,
     'reaction_trials': 3, 'reaction_median_ms': 350,
-    'reaction_wait_min_ms': 1500, 'reaction_wait_max_ms': 4500,
+    'reaction_wait_min_ms': 3500, 'reaction_wait_max_ms': 6500,
     'reaction_response_ms': 2000, 'memory_length': 7, 'memory_cells': 9,
     'memory_flash_ms': 650, 'memory_gap_ms': 200, 'memory_input_ms': 15000,
     'precision_targets': 12, 'precision_ms': 12000,

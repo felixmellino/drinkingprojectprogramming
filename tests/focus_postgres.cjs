@@ -30,9 +30,9 @@ async function win(p,a){
  create table test_clock(at_time timestamptz);insert into test_clock values('${now}');
  grant select on test_clock to service_role;grant usage on schema public to anon,authenticated,service_role;`);
  await pg.exec(fs.readFileSync('schema.sql','utf8').replace('create extension if not exists pgcrypto;',''));
- for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql']){
+ for(const file of ['004_server_game_tables.sql','005_scoring_v1.sql','009_single_competition_lobbies.sql','010_team_lobbies.sql','011_chug_duel.sql','012_qa_minigames.sql','013_checkin_photo_privacy.sql','014_focus_challenge.sql','015_focus_test_replays.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql','020_focus_wait_time.sql']){
   const sql=fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)');
-  await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql'||file==='018_focus_reaction_only.sql'||file==='019_focus_false_start_three_tries.sql')await pg.exec(sql);
+  await pg.exec(sql);if(file==='014_focus_challenge.sql'||file==='015_focus_test_replays.sql'||file==='018_focus_reaction_only.sql'||file==='019_focus_false_start_three_tries.sql'||file==='020_focus_wait_time.sql')await pg.exec(sql);
  }
  // Deterministic entropy only in this isolated fixture; production uses UUID entropy.
  const source=(await q("select prosrc from pg_proc where proname='_focus_int'")).rows[0].prosrc;
@@ -163,11 +163,13 @@ async function win(p,a){
   const fiveSid=(await q('select * from start_scoring_season($1,$2,$3,$4,$5)',[uid(1),uid(301),'1_month','Europe/Lisbon',qaRules])).rows[0].id;
   let f=await act(1,await start(1,fiveSid,930),'ready');
   assert.equal(f.config.reaction_trials,3,'A season that froze five tries now plays three');
+  const delays=(await q("select challenge->'delays' d from focus_attempts where id=$1",[uid(930)])).rows[0].d;
+  assert(delays.length===3&&delays.every(d=>d>=3500&&d<=6500),'Three waits of 3.5 to 6.5 seconds: always a calm pause before TAP NOW');
   const firstSignal=f.signal_at;
   f=await act(1,f,'false_start');
   assert.equal(f.status,'running');assert.equal(f.phase,'reaction');assert.equal(f.step,0,'The try repeats');
   assert.notEqual(f.signal_at,firstSignal,'New wait after a false start');
-  assert(Date.parse(f.signal_at)>=Date.parse(now)+1500&&Date.parse(f.signal_at)<=Date.parse(now)+4500,'The new wait is 1.5 to 4.5 seconds');
+  assert(Date.parse(f.signal_at)>=Date.parse(now)+3500&&Date.parse(f.signal_at)<=Date.parse(now)+6500,'The new wait is 3.5 to 6.5 seconds');
   assert.deepEqual(f.reaction_ms,[]);
   const stale=await act(1,{...f,revision:f.revision-1},'false_start');
   assert.equal(stale.signal_at,f.signal_at,'A stale message recovers the saved state and never reschedules again');
@@ -193,7 +195,7 @@ async function win(p,a){
   assert.equal(t.status,outcome,'Median of '+times.join('/'));
   if(outcome==='failed')assert.equal(t.reason,'reaction_slow');else assert(t.boost_ends_at,'The win grants the boost at once');
  }
- for(const file of ['015_focus_test_replays.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql'])await pg.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
+ for(const file of ['015_focus_test_replays.sql','018_focus_reaction_only.sql','019_focus_false_start_three_tries.sql','020_focus_wait_time.sql'])await pg.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
  assert.equal((await status(1,qaSid)).unlimited,true,'Repeat migration preserves multiple QA wins');
  await pg.close();pg=new PGlite(disk);
  assert.equal((await status(1,qaSid)).attempt.id,qa.id,'QA replay state survives restart');
