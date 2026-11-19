@@ -122,7 +122,7 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert not at.exception
         assert at.session_state['current_lobby_id'] == 'old'
         assert not any('Choose a lobby' in i.value for i in at.info)
-        assert any('Season leaderboard' in m.value for m in at.markdown)
+        assert any(b.label == 'Refresh standings' for b in at.button)
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
 
 
@@ -161,7 +161,7 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
         assert any(button.label == 'Open Lobby' for button in at.button)
     else:
         records.assert_called_once_with(ui['seasons'][expected][0].id)
-        assert any('Season leaderboard' in item.value for item in at.markdown)
+        assert any('No points logged yet' in item.value for item in at.info)
     assert any('Final standings' in item.value for item in at.caption) == (expected == 'past')
     if (choice, expected) != ('past', 'old'):
         assert 'current_lobby_id' not in at.session_state

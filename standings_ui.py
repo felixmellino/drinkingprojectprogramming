@@ -5,6 +5,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from core.profile_photo import initials
 from core.scoring_v1 import format_points
 
 
@@ -13,66 +14,69 @@ def load_styles() -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-def personal_summary(rank, points, owned, ranked_count: int, *, team_mode=False) -> None:
-    cards = [
-        ("Your team rank" if team_mode else "Your rank", f"#{rank}" if rank else "—", f"of {ranked_count} ranked {'teams' if team_mode else 'players'}" if rank else "No season points yet"),
-        ("Team points" if team_mode else "Season points", format_points(points), "Your current total"),
-        ("Territories", str(owned) if owned is not None else "—", "Currently yours" if owned is not None else "Could not load"),
-    ]
-    markup = '<section class="standings-summary" aria-label="Your season summary">'
-    for label, value, detail in cards:
-        markup += (f'<div class="standings-stat"><span>{escape(label)}</span>'
-                   f'<strong>{escape(value)}</strong><small>{escape(detail)}</small></div>')
-    st.markdown(markup + "</section>", unsafe_allow_html=True)
+def _podium_place(rank: int, member: str, points, names: dict, current_member: str, *, team_mode: bool) -> str:
+    name = names.get(member, "Unknown player")
+    you = member == current_member
+    size = {1: ("48px", "124px", "15px"), 2: ("40px", "92px", "12.5px"), 3: ("40px", "68px", "12.5px")}[rank]
+    avatar_size, block_height, name_size = size
+    avatar_ring = "box-shadow:0 0 0 3px var(--brand-ink);" if rank == 1 else ""
+    avatar_fill = "background:var(--accent);color:var(--on-accent);" if you else "background:var(--accent-soft);color:var(--text);"
+    block_fill = "background:var(--accent);" if rank == 1 else "background:var(--surface);box-shadow:var(--shadow-card);"
+    numeral_color = {1: "var(--brand-ink)", 2: "var(--medal-2)", 3: "var(--medal-3)"}[rank]
+    tag = f'<span class="standings-podium-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if you else ""
+    return (
+        f'<li class="standings-podium-place standings-podium-{rank}">'
+        f'<span class="standings-podium-avatar" style="width:{avatar_size};height:{avatar_size};{avatar_fill}{avatar_ring}" aria-hidden="true">{escape(initials(name))}</span>'
+        f'<span class="standings-podium-name" style="font-size:{name_size}">{escape(name)}{tag}</span>'
+        f'<span class="standings-podium-points">{escape(format_points(points))}</span>'
+        f'<span class="standings-podium-block" style="height:{block_height};{block_fill}">'
+        f'<span style="color:{numeral_color}">{rank}</span></span></li>'
+    )
 
 
-def leaderboard(rows, names: dict, current_member: str, owner_counts: dict, *, team_mode=False) -> None:
-    """Render rows in precisely the order returned by season_leaderboard."""
-    markup = ('<div class="standings-board"><table class="standings-table">'
-              '<caption class="standings-sr-only">Season leaderboard, in ranking order</caption>'
-              f'<thead><tr><th scope="col">Rank</th><th scope="col">{"Team" if team_mode else "Player"}</th>'
-              '<th scope="col">Season points</th></tr></thead><tbody>')
-    for rank, (member, points) in enumerate(rows, start=1):
-        name = names.get(member, "Unknown player")
-        is_you = member == current_member
-        row_class = "standings-you" if is_you else ""
-        medal = f" medal-{rank}" if rank <= 3 else ""
-        badge = f'<span class="standings-you-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if is_you else ""
-        owned = owner_counts.get(member)
-        detail = "Season leader" if rank == 1 else ""
-        if owned is not None:
-            territory_label = "territory" if owned == 1 else "territories"
-            detail += (" · " if detail else "") + f"{owned} {territory_label}"
-        markup += (f'<tr class="{row_class}"><td><span class="standings-rank{medal}">{rank}</span></td>'
-                   f'<th scope="row"><div class="standings-player"><span class="standings-avatar" '
-                   f'aria-hidden="true">{escape(name[:1].upper())}</span><div class="standings-player-text">'
-                   f'<div class="standings-name">{escape(name)} {badge}</div><small>{escape(detail)}</small>'
-                   f'</div></div></th><td class="standings-score">{escape(format_points(points))}'
-                   '<span> pts</span></td></tr>')
-    st.markdown(markup + "</tbody></table></div>", unsafe_allow_html=True)
+def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = False) -> None:
+    """Render rows in precisely the order returned by season_leaderboard: a
+    podium for the top 3, then a flat ranked list for the rest."""
+    podium = rows[:3]
+    rest = rows[3:]
+
+    if podium:
+        ranked = dict(enumerate(podium, start=1))
+        places = "".join(
+            _podium_place(rank, *ranked[rank], names, current_member, team_mode=team_mode)
+            for rank in (2, 1, 3) if rank in ranked
+        )
+        st.markdown(f'<ol class="standings-podium" aria-label="Top 3 this season">{places}</ol>', unsafe_allow_html=True)
+
+    if rest:
+        markup = '<ol class="standings-list" start="4">'
+        for offset, (member, points) in enumerate(rest):
+            rank = offset + 4
+            name = names.get(member, "Unknown player")
+            you = member == current_member
+            row_class = " standings-row-you" if you else ""
+            avatar_fill = "background:var(--accent);color:var(--on-accent);" if you else "background:var(--accent-soft);color:var(--text);"
+            tag = f'<span class="standings-you-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if you else ""
+            markup += (
+                f'<li class="standings-row{row_class}"><span class="standings-row-rank">{rank}</span>'
+                f'<span class="standings-row-avatar" style="{avatar_fill}" aria-hidden="true">{escape(initials(name))}</span>'
+                f'<span class="standings-row-name">{escape(name)}{tag}</span>'
+                f'<span class="standings-row-points">{escape(format_points(points))}</span></li>'
+            )
+        st.markdown(markup + "</ol>", unsafe_allow_html=True)
 
 
-def territory_cards(territories, names: dict, current_member: str) -> None:
-    markup = '<section class="standings-territories" aria-label="Territory standings">'
-    for territory, owner, rows in territories:
-        owned_by_you = owner == current_member
-        state = "Yours" if owned_by_you else "Claimed" if owner else "Unclaimed"
-        card_class = " territory-yours" if owned_by_you else ""
-        markup += (f'<article class="standings-territory{card_class}"><header><h3>{escape(territory.name)}</h3>'
-                   f'<span class="territory-state">{state}</span></header>')
-        if owner:
-            markup += f'<p class="territory-owner">Owner <strong>{escape(names.get(owner, "Unknown player"))}</strong></p>'
+def territory_pills(territories, names: dict, current_member: str) -> None:
+    markup = '<div class="standings-pills" role="list" aria-label="Territory ownership">'
+    for territory, owner, _rows in territories:
+        if owner == current_member:
+            status, title = "territory-yours", "Yours"
+        elif owner:
+            status, title = "territory-theirs", f"Owned by {names.get(owner, 'another player')}"
         else:
-            markup += '<p class="territory-empty">No owner yet. No territory points recorded.</p>'
-        if rows:
-            largest = max(points for _, points in rows)
-            markup += '<ul class="territory-players">'
-            for member, points in rows:
-                width = max(0, min(100, points / largest * 100)) if largest > 0 else 0
-                you = ' <span class="territory-you">(you)</span>' if member == current_member else ""
-                markup += (f'<li><div><span>{escape(names.get(member, "Unknown player"))}{you}</span>'
-                           f'<strong>{escape(format_points(points))} pts</strong></div>'
-                           f'<div class="territory-track" aria-hidden="true"><span style="width:{width:.1f}%"></span></div></li>')
-            markup += "</ul>"
-        markup += "</article>"
-    st.markdown(markup + "</section>", unsafe_allow_html=True)
+            status, title = "territory-free", "Unclaimed"
+        markup += (
+            f'<div class="standings-pill" role="listitem" title="{escape(title)}">'
+            f'<span class="standings-pill-dot {status}"></span><span>{escape(territory.name)}</span></div>'
+        )
+    st.markdown(markup + "</div>", unsafe_allow_html=True)
