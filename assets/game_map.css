@@ -47,7 +47,9 @@
 .game-card .game-theirs { color: var(--brand-ink); }
 .stApp .st-key-game_card .st-key-map_checkin button { min-height: 48px; gap: 2px; border-radius: 14px; }
 .stApp .st-key-game_card .st-key-map_checkin button > div { flex: 0 0 auto; width: auto; }
-.st-key-game_card .game-card { padding-bottom: 6px; }
+.st-key-game_card .game-card { padding-bottom: 2px; }
+/* Streamlit pulls markdown blocks up by 1rem; keep the text clear of the button. */
+.st-key-game_card [data-testid="stMarkdownContainer"]:has(.game-card) { margin-bottom: 0 !important; }
 /* The territory list: a quiet row at the bottom of the sheet. */
 .stApp .st-key-game_card [data-testid="stExpander"] details { box-shadow: none; background: transparent; border: 0; }
 .stApp .st-key-game_card [data-testid="stExpander"] summary { padding: 2px 4px; min-height: 0; }

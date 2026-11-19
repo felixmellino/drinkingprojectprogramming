@@ -11,31 +11,38 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .st-key-focus_exit button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
 .st-key-focus_exit button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 .st-key-focus_stage [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
-/* Game catalogue: one grouped list (iPhone style). Each row is a markdown
-   block with the "Open …" button laid invisibly over it, so the whole row is
-   the tap target and keeps the button's accessible name. */
-.st-key-games_list { gap:0!important; background:var(--surface); border:1px solid var(--border);
-  border-radius:var(--radius-lg); overflow:hidden; }
-[class*="st-key-game_row_"] { position:relative; gap:0!important; }
-.st-key-games_list > * + * { border-top:1px solid var(--border); }
-.game-row { display:flex; align-items:center; gap:14px; padding:14px 16px 16px; }
-[class*="st-key-game_row_"] [data-testid="stMarkdown"], [class*="st-key-game_row_"] [data-testid="stElementContainer"] { margin:0!important; }
-.game-icon { flex:0 0 42px; height:42px; border-radius:12px; background:var(--accent-soft); display:grid; place-items:center; }
-.game-icon i { width:24px; height:24px; background-color:var(--accent-ink);
-  -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
-.game-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.game-text strong { font-size:1.02rem; font-weight:600; color:var(--text); }
-.game-text span { font-size:0.88rem; color:var(--text-muted); line-height:1.35; }
-.game-text small { font-size:0.8rem; color:var(--text-muted); }
-.game-text small.game-row-alert { color:var(--accent-ink); font-weight:600; }
-.game-chevron { flex:0 0 14px; height:14px; background-color:var(--text-muted);
-  -webkit-mask:var(--icon-caret-right) center/contain no-repeat; mask:var(--icon-caret-right) center/contain no-repeat; }
-.game-row-disabled { opacity:.5; }
-.stApp [class*="st-key-game_row_"] [data-testid="stButton"] { position:absolute; inset:0; z-index:2; }
-.stApp [class*="st-key-game_row_"] [data-testid="stElementContainer"]:has([data-testid="stButton"]) { position:absolute; inset:0; margin:0; }
-.stApp [class*="st-key-game_row_"] button { width:100%; height:100%; min-height:0; opacity:0; border:0; }
-.stApp [class*="st-key-game_row_"] button:focus-visible { opacity:1; background:transparent; outline:3px solid var(--accent-ink); outline-offset:-3px; }
-.stApp [class*="st-key-game_row_"]:has(button:hover:not(:disabled)) .game-row { background:var(--bg); }
+/* Game catalogue: a colourful grid of square tiles (2 per row on phones,
+   3 on wider screens). Each tile is a markdown block with the "Open …"
+   button laid invisibly over it, so the whole tile is the tap target. */
+.stApp .st-key-games_grid { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+@media (min-width:700px) { .stApp .st-key-games_grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.stApp .st-key-games_grid > * { width:auto!important; min-width:0; }
+[class*="st-key-game_tile_"] { position:relative; gap:0!important; }
+/* Streamlit pulls markdown blocks up by 1rem; tiles need their full height. */
+[class*="st-key-game_tile_"] [data-testid="stMarkdownContainer"], [class*="st-key-game_tile_"] [data-testid="stElementContainer"] { margin:0!important; }
+.game-tile { position:relative; aspect-ratio:1; border-radius:22px; overflow:hidden; padding:12px 14px;
+  display:flex; flex-direction:column; justify-content:flex-end; color:#fff;
+  box-shadow:0 8px 20px -10px rgba(20,43,61,.45); transition:transform 120ms ease; }
+.game-tile-chug { background:linear-gradient(150deg,#FFB03A 0%,#F2701E 100%); }
+.game-tile-focus { background:linear-gradient(150deg,#7B83FF 0%,#4B3FD8 100%); }
+.game-tile-quiz { background:linear-gradient(150deg,#3CCB97 0%,#13967A 100%); }
+[class*="game-tile-soon_"] { background:var(--surface); color:var(--text-muted); box-shadow:none; border:1px dashed var(--border); }
+.game-tile-art { position:absolute; top:6%; left:50%; width:66%; transform:translateX(-50%); pointer-events:none; }
+.game-tile-text { position:relative; display:flex; flex-direction:column; gap:1px; }
+.game-tile-text strong { font-size:1.02rem; font-weight:700; line-height:1.15; text-shadow:0 1px 2px rgba(0,0,0,.18); }
+.game-tile-text small { font-size:0.76rem; opacity:.92; line-height:1.25; }
+[class*="game-tile-soon_"] .game-tile-text strong { text-shadow:none; color:var(--text); }
+.game-tile-text small.game-tile-alert { opacity:1; font-weight:700; background:#fff; color:#B4520A;
+  border-radius:999px; padding:2px 8px; align-self:flex-start; margin-top:3px; }
+.game-tile-quiz.game-tile-off { filter:saturate(.85); }
+.game-tile-quiz.game-tile-off .game-tile-text small { background:rgba(255,255,255,.25); border-radius:999px; padding:2px 8px; align-self:flex-start; }
+.game-tile-focus.game-tile-off { filter:grayscale(.6); opacity:.75; }
+.stApp [class*="st-key-game_tile_"] [data-testid="stElementContainer"]:has([data-testid="stButton"]) { position:absolute; inset:0; z-index:2; }
+.stApp [class*="st-key-game_tile_"] [data-testid="stButton"], .stApp [class*="st-key-game_tile_"] button { width:100%; height:100%; min-height:0; }
+.stApp [class*="st-key-game_tile_"] button { opacity:0; border:0; border-radius:22px; }
+.stApp [class*="st-key-game_tile_"] button:focus-visible { opacity:1; background:transparent; outline:3px solid var(--accent-ink); outline-offset:2px; }
+.stApp [class*="st-key-game_tile_"]:has(button:active) .game-tile { transform:scale(.97); }
+@media (prefers-reduced-motion:reduce) { .game-tile { transition:none; } }
 .st-key-chug_camera_stage { position:fixed!important; inset:0; z-index:100000;
   width:100vw!important; max-width:none!important; background:var(--bg); overflow:hidden; }
 .st-key-chug_camera_stage iframe { width:100vw!important; height:100dvh!important; border:0; }

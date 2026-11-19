@@ -4,6 +4,9 @@
 
 ### R-M06 Focus Challenge unlocks and attempts
 
+Players see this game as **Reaction Test** (renamed on screen 19 November
+2026); the rules, code and saved data keep the name Focus Challenge.
+
 Team approval reported by the contributor on 19 November 2026. New v1 seasons
 whose frozen snapshot contains `focus_challenge.version = 1` enable this game.
 Existing snapshots are not edited. Normal and QA seasons use these rules;

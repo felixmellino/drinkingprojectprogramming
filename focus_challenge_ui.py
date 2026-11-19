@@ -1,4 +1,4 @@
-"""Focus Challenge availability and saved full-screen attempts."""
+"""Focus Challenge (shown to players as "Reaction Test"): availability and saved full-screen attempts."""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from uuid import uuid4
@@ -45,7 +45,7 @@ def render_focus(player, season):
     if st.button('All games', icon=':material/arrow_back:', key='focus_home'):
         st.session_state.pop('minigame_selected', None)
         st.rerun()
-    st.subheader('Focus Challenge')
+    st.subheader('Reaction Test')
     st.write('Reaction → memory → precision. Pass all three in one attempt.')
     st.caption('A skill game for fun. Passing does not establish sobriety or fitness to ride or drive.')
     st.markdown('- **Reaction:** 5 trials, median ≤350 ms; no early taps.\n'
@@ -65,10 +65,10 @@ def render_focus(player, season):
     elif attempt and attempt['status'] == 'failed':
         st.warning(f'Last attempt ended. The next attempt unlocks at {threshold} accepted check-ins.')
     if not scoring_open(current_time(), season):
-        st.warning('Focus Challenge opens during this season’s scoring window.')
+        st.warning('Reaction Test opens during this season’s scoring window.')
     allowed = (count >= threshold and not info['won'] and not info.get('boost_ends_at')
                and scoring_open(current_time(), season))
-    if st.button('Start Focus Challenge', type='primary', width='stretch', disabled=not allowed):
+    if st.button('Start Reaction Test', type='primary', width='stretch', disabled=not allowed):
         request = st.session_state.setdefault('focus_start_request', str(uuid4()))
         try:
             saved = db.start_focus_attempt(player, season.id, request)

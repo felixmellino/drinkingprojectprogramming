@@ -29,23 +29,23 @@ def test_hub_opens_focus_with_a_locked_start_and_no_location_access(focus, monke
     gps = Mock()
     monkeypatch.setattr(ui,'track_location',gps)
     page = open_page(selected=None)
-    button(page,'Open Focus Challenge').click().run()
-    assert not page.exception and button(page,'Start Focus Challenge').disabled
+    button(page,'Open Reaction Test').click().run()
+    assert not page.exception and button(page,'Start Reaction Test').disabled
     assert any('4 accepted' in p.text for p in page.get('progress'))
     assert not start.called and not action.called and not gps.called
     state['count']=5
     page.run()
-    assert not button(page,'Start Focus Challenge').disabled
-    button(page,'Start Focus Challenge').click().run()
+    assert not button(page,'Start Reaction Test').disabled
+    button(page,'Start Reaction Test').click().run()
     assert not page.exception and start.call_count==1 and button(page,'Back to games')
-    assert not any(b.label=='Start Focus Challenge' for b in page.button)
+    assert not any(b.label=='Start Reaction Test' for b in page.button)
 
 
 def test_saved_attempt_resumes_after_a_fresh_app_session_and_leaving_does_not_reset_it(focus):
     state,start,action,_ = focus
     state['count']=5
     page = open_page(selected='focus')
-    button(page,'Start Focus Challenge').click().run()
+    button(page,'Start Reaction Test').click().run()
     saved=deepcopy(state['attempt'])
     button(page,'Back to games').click().run()
     assert not page.exception and state['attempt']==saved
@@ -58,7 +58,7 @@ def test_component_action_uses_saved_revision_and_cannot_award_points(focus):
     state,start,action,_ = focus
     state['count']=5
     page=open_page(selected='focus')
-    button(page,'Start Focus Challenge').click().run()
+    button(page,'Start Reaction Test').click().run()
     state['board']={'attempt_id':'attempt','revision':0,'action':'ready','payload':{}}
     page.run()
     assert not page.exception and action.call_count==1
@@ -71,7 +71,7 @@ def test_old_snapshot_disables_focus_without_database_calls(focus):
     state,start,action,service = focus
     service['game'].scoring_rules.pop('focus_challenge')
     page=open_page(selected=None)
-    assert not page.exception and button(page,'Open Focus Challenge').disabled
+    assert not page.exception and button(page,'Open Reaction Test').disabled
     assert not start.called and not action.called
 
 
@@ -85,7 +85,7 @@ def test_lost_start_reply_recovers_and_does_not_reuse_its_request_for_a_later_at
         raise ReadTimeout('Reply lost after committed start')
     start.side_effect = lose_reply
     page = open_page(selected='focus')
-    button(page,'Start Focus Challenge').click().run()
+    button(page,'Start Reaction Test').click().run()
     assert not page.exception and page.error
     first_request = start.call_args.args[2]
     page.run()
@@ -95,8 +95,8 @@ def test_lost_start_reply_recovers_and_does_not_reuse_its_request_for_a_later_at
     state['threshold']=7
     page.run()
     button(page,'Back to games').click().run()
-    button(page,'Open Focus Challenge').click().run()
+    button(page,'Open Reaction Test').click().run()
     start.side_effect=save
-    button(page,'Start Focus Challenge').click().run()
+    button(page,'Start Reaction Test').click().run()
     assert not page.exception and start.call_count==2
     assert start.call_args.args[2] != first_request

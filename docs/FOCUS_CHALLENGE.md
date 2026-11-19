@@ -1,5 +1,8 @@
 # Focus Challenge — implementation handoff, 19 November 2026
 
+Shown to players as **Reaction Test** (Minigames tile, page title and start
+button). Code, database and rules keep the name Focus Challenge.
+
 The contributor confirmed teammate approval and requested the complete game.
 R-M06–R-M09 in `docs/ontology/RULES.md` are the active implementation contract.
 This branch includes the game, authoritative persistence and the scoring effect.

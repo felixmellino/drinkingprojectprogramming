@@ -17,7 +17,7 @@ from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
 from drink_entry_ui import page_header
-from theme import button_icons, icon_url, page_subtitle
+from theme import button_icons, page_subtitle
 from phone_location import current_location, track_location
 from core.focus_challenge import enabled as focus_enabled
 from focus_challenge_ui import render_focus
@@ -42,50 +42,60 @@ def _act(player, duel, action, winner=None):
         _error(error)
 
 
-def icon_mask(name):
-    url = icon_url(name)
-    return f'-webkit-mask-image:url({url});mask-image:url({url});'
+GAME_ART = Path(__file__).parent / "assets" / "games"
 
 
-def _game_row(key, icon, title, kind, description, status, *, alert=False, disabled=False):
-    """One game as a list row (icon, name, what it is, current status, chevron).
-    The whole row is the "Open …" button; it is laid over the row in CSS."""
-    state = " game-row-disabled" if disabled else ""
-    tone = " game-row-alert" if alert else ""
-    with st.container(key=f"game_row_{key}"):
+def _art(name):
+    """An animated game illustration (assets/games/*.svg) as an image data URL."""
+    return "data:image/svg+xml;base64," + b64encode((GAME_ART / f"{name}.svg").read_bytes()).decode()
+
+
+def _game_tile(key, art, title, line, *, alert=False, playable=True, real=True):
+    """One colourful square tile: animated picture, name, one status line.
+    A playable tile has its "Open …" button laid invisibly over it (CSS), so
+    the whole tile is the tap target and keeps the button's accessible name.
+    A real game that is closed right now keeps a disabled button; a
+    coming-soon tile (real=False) has none."""
+    tone = " game-tile-alert" if alert else ""
+    off = "" if playable else " game-tile-off"
+    with st.container(key=f"game_tile_{key}"):
         st.markdown(
-            f'<div class="game-row{state}"><span class="game-icon"><i style="{icon_mask(icon)}"></i></span>'
-            f'<div class="game-text"><strong>{escape(title)}</strong><span>{escape(kind)} · {escape(description)}</span>'
-            f'<small class="{tone.strip()}">{escape(status)}</small></div><span class="game-chevron"></span></div>',
+            f'<div class="game-tile game-tile-{key}{off}"><img class="game-tile-art" src="{_art(art)}" alt="">'
+            f'<div class="game-tile-text"><strong>{escape(title)}</strong>'
+            f'<small class="{tone.strip()}">{escape(line)}</small></div></div>',
             unsafe_allow_html=True)
-        return st.button(f"Open {title}", key=f"open_game_{key}", disabled=disabled, width="stretch")
+        return real and st.button(f"Open {title}", key=f"open_game_{key}", width="stretch", disabled=not playable)
+
+
+# Tiles after the playable games; each becomes a real game later.
+COMING_SOON = [("quiz", "quiz", "Knowledge Quiz")] + [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2, 3)]
 
 
 def _game_cards(member, duels, *, service_available=True, focus_available=False):
-    """All games in one list; frozen season rules determine Focus availability."""
+    """Six colourful tiles: the playable games first, then what is coming.
+    Frozen season rules decide whether the Reaction Test (Focus Challenge) is open."""
     active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
     invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
     if not service_available:
-        chug_status = 'Temporarily unavailable · Refresh to retry'
+        chug_line = 'Unavailable · Refresh to retry'
     elif invitations:
-        chug_status = f'{invitations} incoming invitation' + ('s' if invitations != 1 else '') + ' · Open to respond'
+        chug_line = f'{invitations} incoming invitation' + ('s' if invitations != 1 else '')
     elif active:
-        chug_status = 'Invitation or duel open · Open to continue'
+        chug_line = 'Duel open · Tap to continue'
     else:
-        chug_status = '1 challenge and 1 acceptance per evening'
-    with st.container(key='games_list'):
-        if _game_row('chug', 'beer-stein', 'Chug Duel', '1 vs 1',
-                     'Race on one phone', chug_status,
-                     alert=bool(invitations or active), disabled=not service_available):
+        chug_line = '1 vs 1 · Race on one phone'
+    with st.container(key='games_grid'):
+        if _game_tile('chug', 'chug-duel', 'Chug Duel', chug_line,
+                      alert=bool(invitations or active), playable=service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
-        if _game_row('focus', 'brain', 'Focus Challenge', 'Solo',
-                     'Win an hour of ×1.5 points',
-                     'Unlocks after 5 accepted check-ins · 1 win per evening' if focus_available
-                     else 'Available in new seasons with Focus rules',
-                     disabled=not focus_available):
+        if _game_tile('focus', 'reaction-test', 'Reaction Test',
+                      'Solo · Win ×1.5 for an hour' if focus_available else 'Not in this season',
+                      playable=focus_available):
             st.session_state['minigame_selected'] = 'focus'
             st.rerun()
+        for key, art, title in COMING_SOON:
+            _game_tile(key, art, title, 'Coming soon', playable=False, real=False)
 
 
 def _focused_duel(player, duel, labels):

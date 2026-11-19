@@ -2,9 +2,12 @@
 
 ## Minigames catalogue (19 November 2026)
 
-The Minigames page lists the games in one grouped list (phone redesign,
-19 November 2026): each row has an icon, the name, what kind of game it is,
-its current status and a chevron; tapping the row opens the game. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+The Minigames page is a colourful grid of six square tiles (two per row on
+phones, three on wider screens; redesign 19 November 2026). Each tile has an
+animated picture (`assets/games/*.svg`, drawn for this app), the name and one
+status line; tapping a playable tile opens the game. Order: Chug Duel
+(orange), Reaction Test = Focus Challenge (violet), Knowledge Quiz (green,
+coming soon, not playable yet) and three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
@@ -14,8 +17,8 @@ result. Check-in previews and photo history identify the earned multiplier.
 Open Chug Duel replaces the list with the existing invitation, acceptance,
 shared capture, allowance and history controls, like a page on a phone.
 ‹ All games returns to the list without cancelling invitations or changing
-any allowance. The hub polls invitations and highlights the Chug Duel row's
-status when a response is waiting.
+any allowance. The hub polls invitations and shows a white status pill on the
+Chug Duel tile when a response is waiting.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
 checked before the list is shown. The catalogue does not mount a continuous
