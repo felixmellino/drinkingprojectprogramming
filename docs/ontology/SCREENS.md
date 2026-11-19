@@ -1,5 +1,24 @@
 # Screens
 
+## Minigames catalogue (19 November 2026)
+
+The Minigames page lists game cards together in two columns on larger
+screens and a single column on phones. Chug Duel is playable; Focus Challenge
+is explicitly In design with a disabled Coming soon action. Proposed unlocks
+and multipliers are not shown as active rewards or enforced rules.
+
+Open Chug Duel shows the existing invitation, acceptance, shared capture,
+allowance and history controls below the cards. All games closes these
+controls without cancelling invitations or changing any allowance. The hub
+polls invitations and labels the Chug Duel card when a response is waiting.
+A host's running duel still takes priority and resumes its full-screen
+board, retaining its saved result until explicit dismissal. Membership is
+checked before cards are shown. The catalogue does not mount a continuous
+GPS watcher; the existing duel workflow does. Shared login's initial
+location-permission request remains unchanged.
+
+See [Focus Challenge's discussion draft](FOCUS_CHALLENGE_PROPOSAL.md).
+
 > Scoring v1 implementation was authorised on 17 November 2026. See
 > [the current contract](SCORING_V1.md) and [Data handoff](../SCORING_IMPLEMENTATION.md).
 > Earlier scoring drafts below are historical where they differ. Legacy seasons

@@ -1,4 +1,4 @@
-"""Lobby invitations, shared capture and the Chug Duel board."""
+"""Minigames catalogue, lobby invitations and the Chug Duel board."""
 from base64 import b64encode
 from pathlib import Path
 from uuid import uuid4
@@ -36,6 +36,35 @@ def _act(player, duel, action, winner=None):
         st.rerun()
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
         _error(error)
+
+
+def _game_cards(member, duels, *, service_available=True):
+    """Show every game together; proposed games cannot start or award rewards."""
+    active = [d for d in duels if d['status'] in {'invited', 'accepted', 'started'}]
+    invitations = sum(d['opponent_id'] == member and d['status'] == 'invited' for d in active)
+    columns = st.columns(2, gap='medium')
+    with columns[0], st.container(key='minigame_card_chug', border=True):
+        st.markdown(':material/sports_bar: **HEAD TO HEAD · 2 PLAYERS**')
+        st.subheader('Chug Duel')
+        st.write('Challenge a lobby member. Share a photo, then play together on one phone.')
+        if not service_available:
+            st.caption('Temporarily unavailable · Refresh to retry')
+        elif invitations:
+            st.caption(f'{invitations} incoming invitation' + ('s' if invitations != 1 else '') + ' · Open to respond')
+        elif active:
+            st.caption('Invitation or duel open · Open to continue')
+        else:
+            st.caption('View invitations and availability · Existing nightly rules apply')
+        if st.button('Open Chug Duel', key='open_game_chug', type='primary',
+                     width='stretch', disabled=not service_available):
+            st.session_state['minigame_selected'] = 'chug_duel'
+            st.rerun()
+    with columns[1], st.container(key='minigame_card_focus', border=True):
+        st.markdown(':material/psychology: **SOLO · IN DESIGN**')
+        st.subheader('Focus Challenge')
+        st.write('A proposed three-part challenge for reaction, memory and precision.')
+        st.caption('Rules and reward under discussion · No points effect yet')
+        st.button('Coming soon', key='open_game_focus', width='stretch', disabled=True)
 
 
 def _focused_duel(player, duel, labels):
@@ -118,10 +147,14 @@ def render_minigames(player, member, lobby, season):
     unlimited = unlimited_plays(season)
     css = (Path(__file__).parent / "assets" / "minigames.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    page_header("Minigames", "Chug Duel · Challenge someone in your lobby.", compact=True)
+    page_header("Minigames", "Pick a game. Play with your lobby.", compact=True)
     context_line(lobby.name, "Test season · Unlimited minigame plays" if unlimited
                  else f"Evening resets at 06:00 · {season.timezone_name}")
-    track_location()
+    context = (member, lobby.id, season.id)
+    if st.session_state.get('minigames_context', context) != context:
+        st.session_state.pop('minigame_selected', None)
+        st.session_state.pop('chug_focused_duel', None)
+    st.session_state['minigames_context'] = context
     try:
         members = db.list_memberships_for_lobby(lobby.id)
         own = next((m for m in members if m.id == member and m.player_id == player), None)
@@ -139,6 +172,7 @@ def render_minigames(player, member, lobby, season):
         try:
             duels = db.list_chug_duels(player, season.id)
         except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+            _game_cards(member, [], service_available=False)
             _error(error)
             return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
@@ -147,9 +181,19 @@ def render_minigames(player, member, lobby, season):
         focused = running or next((d for d in duels if d["id"] == st.session_state.get("chug_focused_duel")
             and d["challenger_id"] == member and d["status"] in {"completed", "aborted"}), None)
         if focused:
+            track_location()
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
+        _game_cards(member, duels)
+        if st.session_state.get('minigame_selected') != 'chug_duel':
+            st.caption('Choose a game above. Invitations update automatically.')
+            return
+        if st.button('All games', icon=':material/arrow_back:', key='minigames_home'):
+            st.session_state.pop('minigame_selected', None)
+            st.rerun()
+        st.subheader('Chug Duel', anchor=False)
+        track_location()
         outgoing, incoming = allowances(member, night_id(now, season.timezone_name), duels, season=season)
         columns = st.columns(2)
         columns[0].metric("Challenge", "Unlimited" if unlimited else "Available" if outgoing else "Used / reserved")

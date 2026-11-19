@@ -9,6 +9,11 @@ pending. The earlier minigame proposal is historical.
 ## Player workflow
 
 Minigames sits immediately right of the plus in the seven-button bottom bar.
+Its catalogue lists games together; choose Open Chug Duel to reveal the
+existing duel controls. All games returns to the catalogue without cancelling
+an invitation or spending an allowance. Focus Challenge is an In design card,
+with no playable game or score effect yet. The host's running full-screen
+board still resumes automatically before catalogue navigation.
 Select any eligible other member of the current lobby, choose the common
 drink/size, and send an invitation. The other player accepts on their own
 device. The host takes one fresh photo of both drinks; their current GPS is
@@ -205,3 +210,13 @@ after a Streamlit restart; check cancellation and a started abort, then
 confirm the separate outgoing/incoming limits in a normal lobby and repeated
 sequential replays in a QA lobby. For true concurrency, use two
 database connections to race acceptance/start/result against the same lobby.
+
+## Catalogue verification — 19 November 2026
+
+`python -m pytest -q` (through pytest.main with live client creation blocked)
+passed 587 tests. Focused Chug Duel UI/core and legacy minigame checks passed
+32 tests. Synthetic browser verification covered desktop/390px phone cards,
+opening the existing Chug Duel form and returning to the catalogue. No live
+records were changed; this layout requires no migration. The upcoming game's
+design selections live in `docs/ontology/FOCUS_CHALLENGE_PROPOSAL.md` and are
+not active scoring rules.

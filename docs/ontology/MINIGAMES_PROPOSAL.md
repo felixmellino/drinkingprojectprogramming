@@ -1,5 +1,10 @@
 # Minigames proposal
 
+19 November follow-up: the current solo-game discussion is recorded in
+[FOCUS_CHALLENGE_PROPOSAL.md](FOCUS_CHALLENGE_PROPOSAL.md), including the
+contributor's five-check-in and temporary multiplier ideas. The earlier
+recommendations below are historical; neither draft creates active rules.
+
 Superseded for Chug Duel by the contributor's explicit answers on
 18 November 2026: see RULES.md R-M01–R-M05 and [CHUG_DUEL.md](../CHUG_DUEL.md).
 The recommendations below preserve the earlier discussion, including the
