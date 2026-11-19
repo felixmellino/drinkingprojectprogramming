@@ -13,7 +13,6 @@ from profile_picture_ui import load_picture, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from phone_location import current_location, track_location
-from theme import button_icons
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -79,7 +78,7 @@ elif problem == "denied":
 
 # HUD floating over the top of the map: lobby, score, quick zoom.
 with st.container(key="game_hud"):
-    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows, team_mode)
+    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
     options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
     focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
                                  label_visibility="collapsed") or options[0]
@@ -91,14 +90,11 @@ with st.container(key="game_map"):
                       pictures=pictures, team_mode=team_mode,
                       context=f"{lobby_id}:{season_id}:{membership_id}")
 
-# Sheet floating over the bottom of the map: where you are, check in, and
-# the full territory list (opens upwards inside the sheet).
+# Slim sheet over the bottom of the map: where you are, and the full
+# territory list (opens upwards inside the sheet). Checking in is the + tab.
 with st.container(key="game_card"):
     map_ui.location_card(here, status, accuracy_m)
-    if st.button("Check in here", key="map_checkin", type="primary", width="stretch"):
-        st.switch_page("pages/3_Check_in.py")
     with st.expander("All territories"):
         if team_mode:
             st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
         map_ui.territory_list(rows)
-button_icons({"map_checkin": "map-pin-plus"})
