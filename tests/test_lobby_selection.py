@@ -126,6 +126,43 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
 
 
+@pytest.mark.parametrize(
+    'choice, joined, expected',
+    [('past', ('past',), 'past'), ('secret', ('old', 'past'), 'old'),
+     (None, (), None), ('past', ('old', 'past'), 'old')],
+)
+def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, joined, expected):
+    ui['choices']['me'] = choice
+    ui['members'] = [member for member in ui['members'] if member.lobby_id in joined]
+    monkeypatch.setattr('shared.require_login', real_require_login)
+    monkeypatch.setattr('shared.sync_storage', lambda: '')
+    monkeypatch.setattr('shared.ask_for_location', lambda: None)
+    monkeypatch.setattr('shared.bottom_navigation', lambda: None)
+    monkeypatch.setattr(db, 'get_player', lambda pid: Mock(email='me@example.com', pin_hash='credential'))
+    monkeypatch.setattr(db, 'list_players', lambda: [])
+    monkeypatch.setattr('shared.get_territories', lambda: [])
+    records = Mock(return_value=[])
+    monkeypatch.setattr(db, 'list_drink_entries', records)
+
+    at = AppTest.from_file(ROOT / 'pages/4_Standings.py')
+    at.session_state['player_id'] = 'me'
+    at.session_state['credential_version'] = 'credential'
+    at.run()
+
+    assert not at.exception
+    ui['save_choice'].assert_not_called()
+    if expected is None:
+        records.assert_not_called()
+        assert any('There are no standings' in item.value for item in at.info)
+        assert any(button.label == 'Open Lobby' for button in at.button)
+    else:
+        records.assert_called_once_with(ui['seasons'][expected][0].id)
+        assert any('Season leaderboard' in item.value for item in at.markdown)
+    assert any('Final standings' in item.value for item in at.caption) == (expected == 'past')
+    if (choice, expected) != ('past', 'old'):
+        assert 'current_lobby_id' not in at.session_state
+
+
 def test_database_preference_is_scoped_to_player_and_survives_new_client(ui, monkeypatch):
     from types import SimpleNamespace
     rows = {}

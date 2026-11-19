@@ -60,7 +60,10 @@ def ui(monkeypatch):
 
 
 def page():
-    return AppTest.from_file(ROOT / "pages/4_Standings.py", default_timeout=10).run()
+    at = AppTest.from_file(ROOT / "pages/4_Standings.py", default_timeout=10)
+    at.session_state["current_membership_id"] = "member"
+    at.session_state["current_season_id"] = "season"
+    return at.run()
 
 
 def all_markup(at):

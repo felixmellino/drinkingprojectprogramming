@@ -132,6 +132,14 @@ A player without a saved choice also defaults to their newest active lobby.
 Upcoming/incomplete saved lobbies stay selected; existing workflow checks
 explain when a season or team is still needed.
 
+Leaderboard can display standings even when the shared selection has no usable
+season. It shows the newest active competition the player belongs to if one
+exists. Otherwise it shows the saved lobby's season if the player still belongs
+to it, or the season of the most recently joined lobby with a season. It labels
+finished standings and links to Lobby if there is nothing to show. This
+display-only fallback checks membership and leaves the gameplay lobby and
+the saved choice unchanged.
+
 The same running session keeps its own context when another device changes
 the account preference. Reopening restores the latest successfully saved
 explicit choice. A failed preference write leaves the lobby usable for the
