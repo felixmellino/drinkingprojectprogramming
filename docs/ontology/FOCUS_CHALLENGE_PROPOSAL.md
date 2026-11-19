@@ -65,6 +65,50 @@ Teammates' own entries are not boosted. A boost earned before 06:00 keeps its
 full 60-minute duration across that reset. It never stacks above 1.5, and
 normal scoring/season closure still prevents check-ins from earning points.
 
+## Fresh variation on every new attempt
+
+Contributor requirement, 19 November 2026: repeated play on the same evening
+or across days/weeks must not offer a fixed sequence players can memorise.
+The three stage types and their pass thresholds stay consistent; their
+content changes. Learning the controls and improving genuine skill is fine.
+Randomisation is not a guarantee that chance repetitions can never occur.
+
+- Reaction: sample a new unpredictable waiting time independently for each
+  of the five trials. Do not use a repeating delay cycle, an increasing-delay
+  pattern, or the same timing sequence for everyone on a given date. Keep
+  the signal and tap interaction consistent so randomisation does not change
+  what the 350 ms target measures. Set bounded wait times during prototyping.
+- Memory: generate a fresh seven-position sequence for each attempt from
+  the same fixed grid. Positions may recur later in a sequence, but avoid
+  adjacent repeats that would make two flashes look like one. Do not select
+  from a small bank of predefined sequences. Grid dimensions and timing are
+  still prototype details.
+- Precision: sample fresh valid target positions and any decoy arrangement
+  for each of the twelve steps. Avoid fixed routes, predictable corner
+  rotations, clipped targets and nearly identical consecutive positions.
+  Keep the target sizes, spacing constraints and twelve-second budget
+  consistent across players and adapt the play area to the phone viewport.
+
+For the later implementation, generate one cryptographically random challenge
+seed/material on the server for each genuinely new attempt. Do not seed from
+a player's identity, the calendar date, the attempt number or the phone clock.
+Persist that attempt's generated challenge and progress with its deadlines.
+Refreshing, reconnecting or opening another tab must recover the same
+challenge, not reroll content or reset its clock. A retry at the next eligible
+check-in threshold receives new challenge material.
+
+Send only the stage content the client needs; do not unnecessarily reveal
+future sequences or expected answers up front. This reduces casual inspection
+but does not make browser-measured skill tasks tamper-proof. The server still
+validates attempt identity, permitted transitions and one-time reward issuance.
+
+Verification must use controlled random sources to test different challenges
+for different attempts, stable content/deadlines when resuming one attempt,
+valid sequence/position constraints, unchanged difficulty thresholds and
+rejection of another attempt's results. Avoid flaky tests that depend on two
+random samples happening to differ. Repeated phone play should check that
+there is no visible recurring route or timing pattern before release.
+
 ## Decisions required before implementation
 
 - Confirm whether deleting a photo leaves its original accepted-entry count

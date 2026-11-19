@@ -27,6 +27,12 @@ The current check-in rules use automatic location verification. D-14 proposes a 
 | D-19 | Nightly allowance scope and duels | **Decided for Chug Duel**, contributor 18 November 2026: normal seasons allow one outgoing plus one incoming per membership/lobby/night; reset 06:00 season timezone. Explicit QA seasons allow unlimited sequential replays under R-M02; migration 012 applied to shared Supabase and live checks passed. Atomic reservations/start, active-game restrictions, ten-minute phase expiry, shared photo/location and host split screen remain. See [handoff](../CHUG_DUEL.md). The old weekly helper is unused by Chug Duel. |
 | D-20 | Focus Challenge | **Design selections, 19 November 2026:** accepted personal entries (including Chug Duel) unlock attempts at 5, then 7/9/etc. after failures. Three consecutive tasks: reaction, memory, precision. Separate allowance from Chug Duel. One success per evening automatically grants 1.5 on future ordinary check-ins for 60 minutes, including territory points and 25% income on boosted points; Chug Duel scoring is unchanged. Harder pilot selected: five reaction trials with median at most 350 ms, seven-step memory, twelve precision targets in twelve seconds. Resume the same attempt with the clock running. Only the winner member is boosted in team mode; full boost duration crosses 06:00 without stacking above 1.5. Detailed task timing, attempt expiry, precision migration and frozen-season rollout remain open. See [the current draft](FOCUS_CHALLENGE_PROPOSAL.md). Catalogue card only; no game/effect implemented. |
 
+Focus Challenge variation requirement, contributor 19 November 2026:
+each new attempt uses unpredictable reaction delays, a fresh memory sequence
+and new precision layouts under the same difficulty constraints. Resuming
+an existing attempt preserves its content and running deadlines. See D-20's
+[design draft](FOCUS_CHALLENGE_PROPOSAL.md#fresh-variation-on-every-new-attempt).
+
 Design consideration: an ownership reduction can make leaders harder to
 catch. Test the agreed percentage with sample standings before fixing it.
 
