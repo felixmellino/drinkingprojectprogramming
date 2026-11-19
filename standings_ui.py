@@ -58,7 +58,7 @@ def _podium_place(rank: int, member: str, points, names: dict, current_member: s
                   extras: str = "") -> str:
     name = names.get(member, "Unknown player")
     you = member == current_member
-    size = {1: ("48px", "124px", "15px"), 2: ("40px", "92px", "12.5px"), 3: ("40px", "68px", "12.5px")}[rank]
+    size = {1: ("48px", "124px", "16px"), 2: ("40px", "92px", "14px"), 3: ("40px", "68px", "14px")}[rank]
     avatar_size, block_height, name_size = size
     avatar_ring = "box-shadow:0 0 0 3px var(--brand-ink);" if rank == 1 else ""
     avatar_fill = "background:var(--accent);color:var(--on-accent);" if you else "background:var(--accent-soft);color:var(--text);"
