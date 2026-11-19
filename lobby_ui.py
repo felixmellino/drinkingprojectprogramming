@@ -170,6 +170,40 @@ def dismiss_members():
     st.session_state.pop('_opened_lobby_id', None)
 
 
+def leave_lobby_controls(player_id, lobby):
+    """Shared by individual and team dialogs; require a deliberate second click."""
+    key = f'confirm_leave_{lobby.id}'
+    if st.button('Leave lobby', key=f'leave_{lobby.id}', icon=':material/logout:', width='stretch'):
+        st.session_state[key] = True
+    if not st.session_state.get(key):
+        return
+    st.warning('Your earned points stay in this lobby and your profile. You lose lobby access '
+               'and personal territory-owner income while away. You can rejoin with the invite code; '
+               'your history, limits and team slot are kept.')
+    confirm, cancel = st.columns(2)
+    with confirm:
+        if st.button('Confirm leave', key=f'confirm_{lobby.id}', width='stretch'):
+            try:
+                db.leave_lobby(player_id, lobby.id)
+            except (PermissionError, ValueError) as error:
+                st.error(str(error))
+            except LOAD_ERRORS:
+                st.error('Could not confirm departure. Refresh lobbies to check your membership before retrying.')
+            else:
+                dismiss_members()
+                st.session_state.pop(key, None)
+                st.session_state.pop('_lobby_choice_pending', None)
+                st.session_state.pop('_saved_lobby_choice', None)
+                if st.session_state.get('current_lobby_id') == lobby.id:
+                    clear_selection()
+                st.session_state['_left_lobby_notice'] = f'You left {lobby.name}. Your earned points are kept.'
+                st.rerun()
+    with cancel:
+        if st.button('Stay in lobby', key=f'cancel_leave_{lobby.id}', width='stretch'):
+            st.session_state.pop(key, None)
+            st.rerun()
+
+
 def close_members_button():
     if st.button('Close', key='close_lobby_members'):
         dismiss_members()
@@ -205,6 +239,7 @@ def show_lobby_details(player_id, lobby, membership, season):
     else:
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
+    leave_lobby_controls(player_id, lobby)
     close_members_button()
 
 
@@ -221,6 +256,9 @@ def show_lobbies(player_id):
         return
     if st.session_state.get('_opened_lobby_id') not in {m.lobby_id for m in memberships}:
         st.session_state.pop('_opened_lobby_id', None)
+    notice = st.session_state.pop('_left_lobby_notice', None)
+    if notice:
+        st.success(notice)
     show_overview_actions(player_id)
     st.button('Refresh lobbies')
     if not memberships:

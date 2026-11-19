@@ -26,10 +26,10 @@ def ui(monkeypatch):
     state = dict(lobby=lobby,me=me,members=members,teams=teams,season=season,entries=[])
     monkeypatch.setattr('shared.require_login',lambda:'me')
     monkeypatch.setattr('shared.show_logged_in_as',lambda:None)
-    monkeypatch.setattr(db,'list_memberships_for_player',lambda _: [me])
+    monkeypatch.setattr(db,'list_memberships_for_player',lambda _, **kwargs: [me])
     monkeypatch.setattr(db,'list_lobbies',lambda:[lobby])
     monkeypatch.setattr(db,'list_seasons_for_lobby',lambda _: [state['season']] if state['season'] else [])
-    monkeypatch.setattr(db,'list_memberships_for_lobby',lambda _:members)
+    monkeypatch.setattr(db,'list_memberships_for_lobby',lambda _, **kwargs:members)
     monkeypatch.setattr(db,'list_lobby_teams',lambda *_:teams)
     monkeypatch.setattr(db,'list_public_usernames',lambda:[{'id':'me','display_name':'Myself'},{'id':'other','display_name':'Someone'}])
     monkeypatch.setattr(db,'list_drink_entries',lambda _:state['entries'])
@@ -198,3 +198,14 @@ def test_incomplete_team_lobby_retains_retry_setup(ui):
     assert not at.exception
     assert any(b.label=='Start lobby' for b in at.button)
     assert any((b.key or '').startswith('join_team_') for b in at.button)
+
+
+def test_departed_teammate_slot_is_visible_and_full(ui):
+    ui['members'][1].left_at = datetime.now(timezone.utc)
+    ui['lobby'].team_capacity = 1
+    at = page()
+    open_lobby(at)
+    assert not at.exception
+    assert any('Left (slot reserved)' in text.value for text in at.text)
+    assert at.button(key='join_team_t1').disabled
+    assert any(b.label == 'Leave lobby' for b in at.button)

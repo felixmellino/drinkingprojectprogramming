@@ -34,7 +34,7 @@ def phone(monkeypatch):
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
     monkeypatch.setattr("shared.get_territories", lambda: [TERRITORY, SECOND, FREE])
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
-    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: [
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
         SimpleNamespace(id="me", player_id="p-me"), SimpleNamespace(id="rival", player_id="p-rival")])
     monkeypatch.setattr(db, "list_players", lambda: [
         SimpleNamespace(id="p-me", display_name="felix"), SimpleNamespace(id="p-rival", display_name="**rival**")])

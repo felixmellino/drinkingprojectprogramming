@@ -25,7 +25,7 @@ track_location()
 try:
     territories = get_territories()
     entries = db.list_drink_entries(season_id)
-    memberships = db.list_memberships_for_lobby(lobby_id)
+    memberships = db.list_memberships_for_lobby(lobby_id, include_left=True)
     players_by_id = {p.id: p.display_name for p in db.list_players()}
 except (APIError, RequestError, RuntimeError):
     st.error("We couldn't load the map. Reload the page to try again.")
