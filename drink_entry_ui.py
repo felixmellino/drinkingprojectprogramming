@@ -8,14 +8,18 @@ from pathlib import Path
 import streamlit as st
 
 
-def page_header(title: str, description: str = "", *, compact: bool = False) -> None:
-    """Load page-scoped styles and an accessible heading (description optional)."""
+def page_header(title: str, description: str = "", *, compact: bool = False, hide_title: bool = False) -> None:
+    """Load page-scoped styles and an accessible heading (description optional).
+
+    hide_title keeps the h1 for screen readers but not on screen, for pages
+    whose content already makes clear where you are (the Leaderboard)."""
     css = (Path(__file__).parent / "assets" / "drink_entries.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     intro = f'<p class="drink-intro">{escape(description)}</p>' if description else ""
+    hidden = ' class="sr-only"' if hide_title else ""
     st.markdown(
         f'<header class="drink-page-hero{" drink-camera-hero" if compact else ""}">'
-        f'<h1>{escape(title)}</h1>{intro}</header>',
+        f'<h1{hidden}>{escape(title)}</h1>{intro}</header>',
         unsafe_allow_html=True,
     )
 

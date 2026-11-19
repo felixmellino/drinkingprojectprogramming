@@ -10,7 +10,7 @@ from core.leaderboard import season_leaderboard
 from core.lobby_overview import lobby_status
 from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
-from drink_entry_ui import context_line, page_header
+from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
@@ -18,14 +18,12 @@ from shared import get_territories, require_active_membership, require_login, sh
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Leaderboard", "Your place in the season. Every point and territory, together.")
+page_header("Leaderboard", hide_title=True)
 standings_ui.load_styles()
 
-st.button("Refresh standings")
 try:
     if st.session_state.get("current_membership_id") and st.session_state.get("current_season_id"):
         membership_id, lobby_id, season_id = require_active_membership()
-        lobby_name = st.session_state.get("current_lobby_name", "Your lobby")
         lobby_mode = st.session_state.get("current_lobby_mode")
         season = st.session_state.get("_validated_season")
     else:
@@ -39,9 +37,9 @@ try:
         membership_id, lobby_id, season_id = member.id, lobby.id, season.id
         member, season = db.membership_context(player_id, membership_id, lobby_id, season_id)
         if member is None or season is None:
-            st.warning("That lobby or season is no longer available. Use Refresh standings to try again.")
+            st.warning("That lobby or season is no longer available. Reload the page to try again.")
             st.stop()
-        lobby_name, lobby_mode = lobby.name, lobby.game_mode
+        lobby_mode = lobby.game_mode
     entries, transfers, memberships, players = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_season_transfers(season_id),
@@ -49,7 +47,7 @@ try:
         db.list_players)
     players_by_id = {p.id: p.display_name for p in players}
 except (APIError, RequestError, RuntimeError):
-    st.error("We couldn't load the standings. Use Refresh standings to try again.")
+    st.error("We couldn't load the standings. Reload the page to try again.")
     st.stop()
 
 names = {m.id: players_by_id.get(m.player_id, "Unknown player") for m in memberships}
@@ -58,7 +56,7 @@ if team_mode:
     try:
         teams = db.list_lobby_teams(player_id, lobby_id)
     except (APIError, RequestError, RuntimeError, PermissionError):
-        st.error("Teams could not be loaded. Refresh standings to try again.")
+        st.error("Teams could not be loaded. Reload the page to try again.")
         st.stop()
     names = {t.id: t.name for t in teams}
     membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
@@ -71,7 +69,6 @@ if status == "past":
     st.caption("Finished season · Final standings")
 elif status == "upcoming":
     st.caption("Upcoming season")
-context_line(lobby_name, f"{len(memberships)} members · {len(leaderboard)} ranked this season")
 
 # Reuse the same territory accounts for the pills. A territory service
 # failure must not hide a successfully loaded season ranking.
@@ -92,7 +89,7 @@ else:
     standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
 
 if not territories_available:
-    st.warning("Territory standings are unavailable. Use Refresh standings to try again.")
+    st.warning("Territory standings are unavailable. Reload the page to try again.")
 elif not territory_data:
     st.info("No territories have been set up yet.")
 else:
