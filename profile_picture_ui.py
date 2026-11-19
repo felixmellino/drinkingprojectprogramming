@@ -48,7 +48,7 @@ def show_picture_editor(player):
     if st.session_state.pop('_picture_removed', False):
         st.success('Profile picture removed.')
     version = st.session_state.get('_picture_input_version', 0)
-    source = st.radio('Picture source', ['Upload photo', 'Take photo'], horizontal=True)
+    source = st.radio('Picture source', ['Upload photo', 'Take photo'], horizontal=True, key='pill_radio_picture_source')
     if source == 'Take photo':
         selected = st.camera_input('Take a profile picture', key=f'profile_camera_{version}')
     else:
