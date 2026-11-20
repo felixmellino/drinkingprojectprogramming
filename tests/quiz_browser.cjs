@@ -32,7 +32,8 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   for(const page of [a,b])page.on('pageerror',error=>pageErrors.push(error.message));
   await a.context().tracing.start({screenshots:true,snapshots:true,sources:true});
   await Promise.all([a.goto('http://127.0.0.1:8772/?player=1'),b.goto('http://127.0.0.1:8772/?player=2')]);
-  await a.getByRole('radio',{name:'Player 2',exact:true}).check();
+  // The pill UI hides the native radio input; click its visible text like a player.
+  await a.getByText('Player 2',{exact:true}).click();
   await a.getByRole('button',{name:'Challenge',exact:true}).click();
   await b.getByRole('button',{name:'Accept',exact:true}).click();
   const board=p=>p.frameLocator('iframe[title="quiz_duel_component.quiz_duel"]');
