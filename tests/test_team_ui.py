@@ -119,7 +119,7 @@ def test_team_standings_use_team_identity(ui,monkeypatch):
     at.run()
     assert not at.exception
     board=''.join(m.value for m in at.markdown)
-    assert 'Team 1' in board and 'Team 2' in board and 'YOUR TEAM' in board
+    assert 'Team 1' in board and 'Team 2' in board and 'Your team' in board
     assert '13.5' in board and '10' in board
     assert 'Myself' not in board
 

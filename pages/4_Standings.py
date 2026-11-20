@@ -18,7 +18,7 @@ from shared import get_territories, require_active_membership, require_login, sh
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Leaderboard", hide_title=True)
+page_header("Ranks")
 standings_ui.load_styles()
 
 try:
