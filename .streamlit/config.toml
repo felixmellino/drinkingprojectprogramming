@@ -3,6 +3,10 @@ enableXsrfProtection = true
 enableCORS = true
 maxUploadSize = 10
 
+[client]
+# Players see a short error instead of a Python stack trace.
+showErrorDetails = "none"
+
 [browser]
 gatherUsageStats = false
 

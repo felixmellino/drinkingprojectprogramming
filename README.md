@@ -26,6 +26,12 @@ Names above are inferred from git history and may be wrong — each member
 should confirm their own name and fill in their student number before
 submission.
 
+**Selected Block 2 solo project:** TODO — name the member whose Block 2 solo
+project WeGoPub builds on, link it, and list in two short bullet lists what
+that project already had and what the team added (accounts, lobbies, scoring
+v1, territories and map, photo check-ins, four duels, teams, friends,
+standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
 ## Hosting (deployed app)
 
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
@@ -253,7 +259,8 @@ for individual commands, covered cases, reports and the remaining phone checks.
 ## Accounts
 
 Profile has one Create account / Log in selector; only the chosen form is shown.
-Password recovery and account upgrades are currently unavailable.
+Password recovery works by emailed code (see Local setup); there is no
+self-service upgrade for legacy PIN accounts.
 First visit shows registration and login. Every game page requires a signed-in
 account. Registration requires first name, surname, unique username, unique
 email and a password of at least 8 characters, entered twice. Email and
