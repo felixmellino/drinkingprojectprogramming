@@ -34,6 +34,27 @@ def test_empty_history():
     assert (stats.points, stats.drinks, stats.lobbies, stats.wins) == (0, 0, 0, 0)
 
 
+def test_season_only_time_bonus_stays_excluded_from_lifetime_after_rebuild():
+    members = [SimpleNamespace(id='me', lobby_id='lobby')]
+    own = replace(entry('a','me','shot',None,0), time_bonus=1, time_duel_id='saved-duel')
+    other = entry('b','other','beer','small',1)
+    stats = all_time_stats(members,[own,other,own],finished_season_ids={'season'})
+    assert (stats.points,stats.drinks,stats.wins) == (Decimal('4.25'),1,1)
+    # New model instances represent a fresh DB/UI load, with no process cache.
+    assert all_time_stats(members,[replace(own),replace(other)],finished_season_ids={'season'}) == stats
+
+
+def test_completed_modern_season_replays_once_for_winner_and_income(monkeypatch):
+    from unittest.mock import Mock
+    import core.profile_stats as stats
+    replay = Mock(wraps=stats.replay_season)
+    monkeypatch.setattr(stats,'replay_season',replay)
+    result = stats.all_time_stats([SimpleNamespace(id='me',lobby_id='lobby')],
+                                 [entry('a','me','beer','small',0)],finished_season_ids={'season'})
+    assert result.wins==1 and result.points==1
+    replay.assert_called_once()
+
+
 def test_finish_boundary():
     from datetime import datetime, timedelta, timezone
     now = datetime.now(timezone.utc)

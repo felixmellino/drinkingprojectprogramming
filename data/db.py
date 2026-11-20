@@ -9,6 +9,7 @@ SUPABASE_KEY), which is gitignored -- see .streamlit/secrets.toml.example.
 from __future__ import annotations
 
 import os
+from threading import Lock
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
@@ -25,6 +26,7 @@ from core.checkins import CheckinRejected
 from core.models import Arena, DrinkEntry, Lobby, LobbyMembership, MinigameAttempt, Player, Season, Territory, Team
 
 _client: Client | None = None
+_client_lock = Lock()
 CHECKIN_PHOTO_BUCKET = "check-in-photos"
 
 
@@ -32,6 +34,14 @@ def get_client() -> Client:
     global _client
     if _client is not None:
         return _client
+    with _client_lock:
+        if _client is None:
+            _client = _create_client()
+        return _client
+
+
+def _create_client() -> Client:
+    """Create one pooled transport; failed initialization is safe to retry."""
 
     url = None
     key = None
@@ -56,8 +66,7 @@ def get_client() -> Client:
     if not endpoint.hostname or (endpoint.scheme != "https" and not local_http):
         raise RuntimeError("Supabase requires HTTPS or an HTTP endpoint on localhost.")
 
-    _client = create_client(url, key)
-    return _client
+    return create_client(url, key)
 
 
 # -- players -----------------------------------------------------------
@@ -452,6 +461,11 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
     if not any(member.lobby_id == lobby_id for member in list_memberships_for_player(player_id)):
         raise PermissionError("Only members of this lobby can view its check-in photos.")
 
+    return _photo_rows_query(lobby_id)
+
+
+def _photo_rows_query(lobby_id: str):
+    """Scoped query builder; callers must freshly check membership first."""
     return (
         get_client().table("drink_entries")
         .select(
@@ -463,9 +477,10 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
     )
 
 
-def _photo_audience(player_id: str, lobby_id: str, rows: list[dict]):
+def _photo_audience(player_id: str, lobby_id: str, rows: list[dict], *, members=None):
     """Uncached current roster/consent, shared by listing and direct download."""
-    members = list_memberships_for_lobby(lobby_id)
+    if members is None:
+        members = list_memberships_for_lobby(lobby_id)
     owners = {row["lobby_memberships"]["player_id"] for row in rows}
     ids = owners | {m.player_id for m in members}
     preferences = (_all_rows(lambda: get_client().table("player_photo_preferences")
@@ -476,8 +491,11 @@ def _photo_audience(player_id: str, lobby_id: str, rows: list[dict]):
 
 
 def list_checkin_photos(player_id: str, lobby_id: str) -> list[dict]:
-    rows = _all_rows(lambda: _lobby_photo_query(player_id, lobby_id).order("submitted_at", desc=True).order("id"))
-    allowed = _photo_audience(player_id, lobby_id, rows) if rows else lambda row: False
+    members = list_memberships_for_lobby(lobby_id)
+    if not any(m.player_id == player_id for m in members):
+        raise PermissionError("Only members of this lobby can view its check-in photos.")
+    rows = _all_rows(lambda: _photo_rows_query(lobby_id).order("submitted_at", desc=True).order("id"))
+    allowed = _photo_audience(player_id, lobby_id, rows, members=members) if rows else lambda row: False
     transfers = {row["duel_id"]: row for row in rows if row.get("duel_id") and row.get("duel_transfer_to")}
     names = {row.get("membership_id"): row["lobby_memberships"]["players"]["display_name"] for row in rows}
     team_names = ({team.id: team.name for team in list_lobby_teams(player_id, lobby_id)}
@@ -544,6 +562,50 @@ def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> byte
     if not _photo_audience(player_id, lobby_id, rows)(rows[0]):
         raise PermissionError("This photo is private.")
     return _private_photo_bucket().download(photo_path)
+
+
+def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[str, bytes | None]:
+    """Authorize one visible gallery batch afresh; never reuse a previous listing.
+
+    Share current roster, consent, scoped entry metadata and bucket validation
+    within this invocation only. All permissions are checked before any image
+    download, and originals are unchanged. Direct single-image access stays fresh.
+    """
+    from parallel import run_parallel
+    from httpx import RequestError
+    from storage3.utils import StorageException
+    ids = list(dict.fromkeys(entry_ids))
+    if len(ids) > 12:
+        raise ValueError('Load at most twelve check-in photos at once.')
+    if not ids:
+        return {}
+    members = list_memberships_for_lobby(lobby_id)
+    if not any(m.player_id == player_id for m in members):
+        raise PermissionError('Only members of this lobby can view its check-in photos.')
+    rows = _photo_rows_query(lobby_id).in_('id', ids).execute().data
+    allowed = _photo_audience(player_id, lobby_id, rows, members=members)
+    result = dict.fromkeys(ids)
+    paths = {}
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        if row['id'] not in result:
+            continue
+        path = _checkin_photo_path(lobby_id, row['id'])
+        if row['photo_ref'] != path or now >= photo_expires_at(datetime.fromisoformat(row['seasons']['ends_at'])):
+            continue
+        if not allowed(row):
+            raise PermissionError('This photo is private.')
+        paths[row['id']] = path
+    if not paths:
+        return result
+    bucket = _private_photo_bucket()
+    def fetch(entry_id, path):
+        try:
+            return entry_id, bucket.download(path)
+        except (APIError, StorageException, RequestError, RuntimeError, OSError):
+            return entry_id, None
+    result.update(run_parallel(*[lambda eid=eid,path=path:fetch(eid,path) for eid,path in paths.items()]))
+    return result
 
 
 def delete_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> None:

@@ -45,6 +45,10 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
     monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': None})
     monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': None})
+    # UI service double; authorization/batching itself is tested against the
+    # stateful database double in test_photo_lifecycle/test_photo_privacy.
+    monkeypatch.setattr(db, 'download_checkin_photos', lambda p,l,ids:
+                        {eid:db.download_checkin_photo(p,l,eid) for eid in ids})
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)

@@ -10,12 +10,11 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
-from parallel import run_parallel
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import page_header, section_heading
-from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata
+from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata, photo_thumbnail
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -88,20 +87,19 @@ if len(entries) > 1 and detail_id is None:
     page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
     visible_nights = pages[page_number]
 
-    def fetch_photo(item):
-        try:
-            return db.download_checkin_photo(player_id, lobby_id, item['id']), False
-        except (APIError, RequestError, RuntimeError, StorageException):
-            return None, True
-
     visible = [item for _, _, items in visible_nights for item in items]
     try:
-        # Fresh access checks for every image; only independent reads overlap.
-        photos = dict(zip((item['id'] for item in visible),
-            run_parallel(*[lambda item=item: fetch_photo(item) for item in visible])))
+        # One fresh audience snapshot for this visible batch, never a cached listing.
+        originals = db.download_checkin_photos(player_id, lobby_id, [item['id'] for item in visible])
+        # Decode one thumbnail at a time to bound memory for large camera images.
+        photos = {item['id']: photo_thumbnail(originals.get(item['id'])) for item in visible}
     except PermissionError:
         st.warning("Photo access changed. Refresh to load the current photo history.")
         st.stop()
+    except (APIError, RequestError, RuntimeError, StorageException):
+        photos = dict.fromkeys(item['id'] for item in visible)
+    if any(photos.get(item['id']) is None and item.get('has_photo',True) for item in visible):
+        st.warning('Some photos could not be loaded. Their details are still available.')
 
     for start, end, night_entries in visible_nights:
         count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
@@ -110,9 +108,7 @@ if len(entries) > 1 and detail_id is None:
         with st.container(key=f"memory_grid_{start.date().isoformat()}"):
             for item in night_entries:
                 with st.container(key=f"memory_tile_{item['id']}"):
-                    photo, failed = photos[item['id']]
-                    if failed:
-                        st.warning("This photo could not be loaded. Its details are still available.")
+                    photo = photos[item['id']]
                     memory_tile(item, photo, key=f"memory_tile_{item['id']}", on_open=open_photo)
 
     if last_page > 0:

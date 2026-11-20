@@ -68,14 +68,21 @@ def show_lobby_members(player_id, lobby_id):
         if not any(m.player_id == player_id for m in members):
             st.error('You are no longer a member of this lobby.')
             return
-        names = {p['id']: p['display_name'] for p in db.list_public_usernames()}
     except (*LOAD_ERRORS, OSError):
         st.error('Lobby members could not be loaded. Use Refresh lobbies to try again.')
         return
+    def friendships():
+        try:
+            return db.list_friendships(player_id)
+        except (*LOAD_ERRORS, OSError):
+            return None
     try:
-        relationships = db.list_friendships(player_id)
+        usernames, relationships = run_parallel(db.list_public_usernames, friendships)
+        names = {p['id']: p['display_name'] for p in usernames}
     except (*LOAD_ERRORS, OSError):
-        relationships = None
+        st.error('Lobby members could not be loaded. Use Refresh lobbies to try again.')
+        return
+    if relationships is None:
         st.warning('Friend requests are unavailable. Use Refresh lobbies to try again.')
     by_other = {r['recipient_id'] if r['sender_id'] == player_id else r['sender_id']: r
                 for r in relationships or []}
@@ -143,16 +150,18 @@ def load_summary(player_id, lobby, season, status):
                     winning = next((team for team in teams if team.id == leader), None)
                     leader_name = winning.name if winning else 'Team'
                     photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
-                else:
-                    leader_name = db.membership_display_name(leader, lobby.id)
                 if status == 'active' and lobby.game_mode == 'individual':
-                    members = db.list_memberships_for_lobby(lobby.id)
+                    leader_name, members = run_parallel(
+                        lambda: db.membership_display_name(leader, lobby.id),
+                        lambda: db.list_memberships_for_lobby(lobby.id))
                     owner = next((m.player_id for m in members if m.id == leader), None)
                     if owner:
                         try:
                             photo = load_picture(player_id, owner)
                         except PICTURE_ERRORS:
                             pass
+                elif lobby.game_mode == 'individual':
+                    leader_name = db.membership_display_name(leader, lobby.id)
         except LOAD_ERRORS:
             available = False
     return entries, available, leader_name, photo

@@ -135,6 +135,76 @@ def test_expiry_normalizes_offsets_and_legacy_naive_season_dates():
     assert photo_expires_at(END.astimezone(timezone(timedelta(hours=2)))) == NOW
 
 
+def test_batch_rechecks_membership_consent_and_reference_on_every_call(store):
+    assert db.download_checkin_photos('reader','lobby',['entry','entry']) == {'entry':b'clean photo'}
+    assert store.downloads == 1
+    store.preferences['author']['share_checkin_photos'] = False
+    with pytest.raises(PermissionError):
+        db.download_checkin_photos('reader','lobby',['entry'])
+    assert store.downloads == 1
+    store.preferences['author']['share_checkin_photos'] = True
+    store.members[:] = [m for m in store.members if m.player_id != 'reader']
+    with pytest.raises(PermissionError):
+        db.download_checkin_photos('reader','lobby',['entry'])
+    assert store.downloads == 1
+    # Owner still has access; a deleted reference is never downloaded again.
+    db.delete_checkin_photo('author','lobby','entry')
+    assert db.download_checkin_photos('author','lobby',['entry']) == {'entry':None}
+    assert store.downloads == 1 and store.rows['entry']['points_awarded'] == 5
+
+
+@pytest.mark.parametrize('change', ['expiry','foreign_season','foreign_member','wrong_path','missing_object'])
+def test_batch_unavailable_photos_are_empty_without_cross_lobby_storage_access(store,change):
+    if change == 'expiry': store.rows['entry']['seasons']['ends_at'] = END.isoformat()
+    elif change == 'foreign_season': store.rows['entry']['seasons']['lobby_id'] = 'other'
+    elif change == 'foreign_member': store.rows['entry']['lobby_memberships']['lobby_id'] = 'other'
+    elif change == 'wrong_path': store.rows['entry']['photo_ref'] = 'other/entry.jpg'
+    elif change == 'missing_object': store.files.clear()
+    assert db.download_checkin_photos('reader','lobby',['entry','unknown']) == {'entry':None,'unknown':None}
+    assert store.downloads == int(change == 'missing_object')
+
+
+def test_batch_checks_all_audiences_before_downloading_any_photo(store):
+    second = deepcopy(store.rows['entry'])
+    second.update(id='second',photo_ref='lobby/second.jpg')
+    second['lobby_memberships']['player_id'] = 'guest'
+    store.rows['second'] = second
+    store.files['lobby/second.jpg'] = {'bytes':b'second'}
+    store.preferences['guest']['share_checkin_photos'] = False
+    with pytest.raises(PermissionError):
+        db.download_checkin_photos('reader','lobby',['entry','second'])
+    assert store.downloads == 0
+
+
+def test_batch_refuses_unverified_bucket_before_any_object_read(store,monkeypatch):
+    def public_bucket():
+        raise RuntimeError('Check-in photos require a private storage bucket.')
+    monkeypatch.setattr(db,'_private_photo_bucket',public_bucket)
+    with pytest.raises(RuntimeError,match='private storage bucket'):
+        db.download_checkin_photos('reader','lobby',['entry'])
+    assert store.downloads == 0
+
+
+def test_batch_uses_fresh_roster_and_consent_once_and_keeps_available_images(store,monkeypatch):
+    from unittest.mock import Mock
+    roster = Mock(wraps=db.list_memberships_for_lobby)
+    audience = Mock(wraps=db._photo_audience)
+    bucket = Mock(wraps=db._private_photo_bucket)
+    monkeypatch.setattr(db,'list_memberships_for_lobby',roster)
+    monkeypatch.setattr(db,'_photo_audience',audience)
+    monkeypatch.setattr(db,'_private_photo_bucket',bucket)
+    second = deepcopy(store.rows['entry'])
+    second.update(id='second',photo_ref='lobby/second.jpg')
+    store.rows['second'] = second  # its object is intentionally missing
+    assert db.download_checkin_photos('reader','lobby',['entry','second']) == {'entry':b'clean photo','second':None}
+    assert roster.call_count == audience.call_count == bucket.call_count == 1
+    assert store.downloads == 2
+    assert db.download_checkin_photos('reader','lobby',[]) == {}
+    with pytest.raises(ValueError):
+        db.download_checkin_photos('reader','lobby',[str(i) for i in range(13)])
+    assert roster.call_count == 1
+
+
 def test_owner_deletes_image_and_preserves_score_on_repeated_request(store):
     assert db.list_checkin_photos("author", "lobby")[0]["is_owner"]
     before = deepcopy(store.rows["entry"])
