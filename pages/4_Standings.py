@@ -68,7 +68,7 @@ snapshot = replay_season(entries, transfers) if transfers or any(e.rule_version 
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 status = lobby_status(season, current_time()) if season else "active"
 if status == "past":
-    st.caption("Finished season · Final standings")
+    st.caption("Finished season. Final standings")
 elif status == "upcoming":
     st.caption("Upcoming season")
 

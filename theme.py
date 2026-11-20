@@ -40,8 +40,8 @@ def menu_icons(icons: dict[str, str]) -> None:
 
 
 def page_subtitle(*parts: str) -> None:
-    """One quiet line under a page title, e.g. lobby · status."""
-    st.markdown(f'<p class="page-subtitle">{escape(" · ".join(p for p in parts if p))}</p>', unsafe_allow_html=True)
+    """One quiet line under a page title, e.g. the lobby and its status."""
+    st.markdown(f'<p class="page-subtitle">{escape(", ".join(p for p in parts if p))}</p>', unsafe_allow_html=True)
 
 
 def button_icons(icons: dict[str, str]) -> None:

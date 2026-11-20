@@ -78,7 +78,7 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     shown = cards(at)
     assert 'Newest lobby' in shown[0] and 'Older lobby' in shown[1]
     assert 'lobby-past' in shown[2] and 'Finished lobby' in shown[2]
-    assert 'Finished ' in shown[2] and ' left ' in shown[0]
+    assert 'Finished ' in shown[2] and ' left, ends ' in shown[0]
     assert 'No Leader' in shown[2]
     assert all('Not joined' not in s and 'PRIVATE' not in s for s in shown)
     assert at.session_state['current_lobby_id'] == 'new'

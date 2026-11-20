@@ -131,7 +131,7 @@ def test_finished_tries_wait_for_the_opponent_then_show_rounds_and_points(reacti
     state['duels'] = [_duel('accepted') | {'run': run, 'other_step': 1}]
     page = open_page(selected='reaction')
     text = ' '.join(m.value for m in page.markdown)
-    assert 'Waiting for Bob · try 2 of 3' in text and '200 ms, 300 ms, 400 ms' in text
+    assert 'Waiting for Bob, try 2 of 3' in text and '200 ms, 300 ms, 400 ms' in text
     rounds = [dict(round_no=1, challenger_ms=200, opponent_ms=250, winner_id='a'),
               dict(round_no=2, challenger_ms=300, opponent_ms=250, winner_id='b'),
               dict(round_no=3, challenger_ms=400, opponent_ms=9999, winner_id='a')]

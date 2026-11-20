@@ -77,7 +77,7 @@ def base_points(drink_type: str, size: str | None, rules: dict) -> int:
 def size_label(drink_type: str, size: str, rules: dict | None = None) -> str:
     label = SIZE_LABELS.get(size, "One serving")
     volume = (rules.get("volumes", VOLUMES) if rules else VOLUMES).get(drink_type, {}).get(size)
-    return f"{label} · {volume} ml" if volume else label
+    return f"{label}\u2003{volume} ml" if volume else label
 
 
 def volume_for(drink_type: str, size: str | None, rules: dict | None = None) -> int | None:

@@ -119,7 +119,7 @@ def render_quiz(player, member, lobby, season, members, labels):
         with st.expander("Recent"):
             for duel in recent[:10]:
                 result = labels.get(duel.get("winner_id"), "Draw") if duel.get("winner_id") else duel["status"].title()
-                st.write(f"{duel['challenger_score']} : {duel['opponent_score']} · {result} · Stake {duel['stake']}")
+                st.write(f"{duel['challenger_score']} : {duel['opponent_score']}, {result}, stake {duel['stake']}")
                 if st.button("View result", key="quiz_result_" + duel["id"]):
                     st.session_state["quiz_focused_id"] = duel["id"]
                     st.rerun(scope="fragment")

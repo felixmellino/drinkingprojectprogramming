@@ -53,7 +53,7 @@ def test_profile_friend_workflow_and_new_sessions():
         alice = page("alice")
         assert not alice.text_input  # Search lives only in its popup.
         assert [b.label for b in alice.button if str(b.key).startswith("open_friends_")] == [
-            "Find players", "Current Friends · 0", "Incoming requests · 0", "Outgoing requests · 0"]
+            "Find players", "Current Friends 0", "Incoming requests 0", "Outgoing requests 0"]
         open_section(alice, "search")
         alice.text_input[0].input("BO").run()
         button(alice, "Send friend request").click().run()

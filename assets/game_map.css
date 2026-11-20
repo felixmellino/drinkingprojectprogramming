@@ -93,7 +93,7 @@
 @media (prefers-reduced-motion: reduce) { .game-card .status-live { animation: none; box-shadow: 0 0 0 4px rgba(44, 153, 214, .2); } }
 .stApp .st-key-game_card { padding: 6px 14px 12px !important; border-radius: 20px !important; background: var(--surface) !important;
   box-shadow: 0 8px 28px rgba(20, 43, 61, .16) !important; }
-/* "All territories · 48": one quiet full-width row, not an expander. */
+/* "All territories (48)": one quiet full-width row, not an expander. */
 .stApp .st-key-map_all_territories { margin-top: 10px; }
 .stApp .st-key-map_all_territories button { min-height: 40px; height: 40px; border: 0; border-radius: 12px;
   background: var(--bg); color: var(--text); justify-content: space-between; padding: 0 14px; box-shadow: none; }

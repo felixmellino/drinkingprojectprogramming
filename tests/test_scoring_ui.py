@@ -101,7 +101,7 @@ def test_quick_controls_preview_save_and_owner_income(ui):
     page = open_checkin()
     assert not page.exception
     assert radio(page, "Drink").options == ["Beer", "Wine", "Shot", "Mixed drink"]
-    assert radio(page, "Size").options == ["Small · 250 ml", "Medium · 330 ml", "Large · 500 ml"]
+    assert radio(page, "Size").options == ["Small 250 ml", "Medium 330 ml", "Large 500 ml"]
     radio(page, "Drink").set_value("wine").run()
     radio(page, "Size").set_value("large").run()
     assert any("+4 points" in item.value for item in page.info)
@@ -214,7 +214,7 @@ def test_checkin_form_is_one_screen_the_photo_fills_the_free_space(ui):
     assert "has(> .st-key-checkin_photo) { flex: 1 1 0" in css
     assert "height: 100dvh" in css and "flex-shrink: 0" in css
     # One location line with the territory, no separate territory row.
-    assert any("Location found · 10 m" in c.value for c in page.caption)
+    assert any("Location found, accurate to 10 m" in c.value for c in page.caption)
     assert not any("Territory" == m.value for m in page.markdown)
 
 
@@ -673,7 +673,7 @@ def test_submit_needs_the_phone_location_first(ui):
     assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
-    assert any("Location found · 10 m" in item.value for item in page.caption)
+    assert any("Location found, accurate to 10 m" in item.value for item in page.caption)
 
 
 def test_inaccurate_phone_location_warns_and_saves_nothing(ui):

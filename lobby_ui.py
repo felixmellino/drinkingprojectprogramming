@@ -47,11 +47,11 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     current = st.session_state.get('current_lobby_id') == lobby.id
     pill = '<span class="lobby-current-pill">✓ Current lobby</span>' if current else ''
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
-        meta += ' · Test season (Wed 08:00–Sun 18:00)'
+        meta += ', test season (Wed 08:00 to Sun 18:00)'
     if lobby.game_mode == 'team':
-        meta += f' · Team mode · {lobby.team_count} × {lobby.team_capacity}'
+        meta += f', team mode with {lobby.team_count} teams of {lobby.team_capacity}'
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
-              f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
+              f'{time_left(season.ends_at, now)} left, ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
     progress = ''
     if status == 'active':

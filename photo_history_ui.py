@@ -78,8 +78,8 @@ def history_pages(entries, *, max_photos=12, max_nights=2):
 def game_night_label(start: datetime, end: datetime) -> str:
     last_day = end - timedelta(days=1)  # end is exclusive Sunday 18:00
     if start.month == last_day.month:
-        return f"Game night · {start:%d}–{last_day:%d %b}"
-    return f"Game night · {start:%d %b}–{last_day:%d %b}"
+        return f"Game night {start:%d}–{last_day:%d %b}"
+    return f"Game night {start:%d %b}–{last_day:%d %b}"
 
 
 def memory_tile(entry: dict, photo: bytes | None, *, key: str, on_open=None) -> bool:
@@ -87,7 +87,7 @@ def memory_tile(entry: dict, photo: bytes | None, *, key: str, on_open=None) -> 
     The optional callback selects the detail before the next gallery load."""
     name = entry["username"]
     if entry.get("team_id"):
-        name = f"{entry.get('team_name') or 'Team'} · {name}"
+        name = f"{name} ({entry.get('team_name') or 'Team'})"
     model = entry.get("entry")
     points = model.points_awarded + model.time_bonus if model else entry.get("base_points")
     matched = entry["location"] == "matched"
@@ -117,7 +117,7 @@ def full_photo(entry: dict, photo: bytes | None, place: str) -> None:
     a soft shade at the bottom (assets/drink_entries.css, .photo-full)."""
     name = entry["username"]
     if entry.get("team_id"):
-        name = f"{entry.get('team_name') or 'Team'} · {name}"
+        name = f"{name} ({entry.get('team_name') or 'Team'})"
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
         image = (f'<img src="data:image/jpeg;base64,{encoded}" '
@@ -139,28 +139,28 @@ def photo_metadata(entry: dict) -> None:
     kind = model.drink_type if model else entry.get("drink_type")
     selection = DRINK_LABELS.get(kind, "Long drink" if kind == "longdrink" else kind or "Drink details unavailable")
     if model and model.size:
-        selection += f" · {size_label(kind, model.size, entry['season'].scoring_rules)}"
+        selection += f", {size_label(kind, model.size, entry['season'].scoring_rules)}"
     points = model.points_awarded if model else entry.get("base_points")
     if points is None:
         award = "Points unavailable"
     else:
         territory_points = points if entry["location"] == "matched" else 0
         season_points = entry.get("duel_season_points", points) if entry.get("duel_id") else points + (model.time_bonus if model else 0)
-        award = f"+{format_points(season_points)} season pts · +{format_points(territory_points)} territory pts"
+        award = f"+{format_points(season_points)} season pts and +{format_points(territory_points)} territory pts"
     timestamp = entry.get("captured_at") or entry["submitted_at"]
     zone = ZoneInfo(entry.get("timezone_name", "UTC"))
     time = utc(datetime.fromisoformat(timestamp)).astimezone(zone)
     time_label = "Photo received" if entry.get("captured_at") else "Submitted"
     st.markdown(f'<div class="history-card-details"><h3>{escape(selection)}</h3>'
                 f'<p class="history-award">{escape(award)}</p>'
-                f'<p class="history-time">{time_label} · {time:%d %b %Y · %H:%M %Z}</p></div>',
+                f'<p class="history-time">{time_label}, {time:%d %b %Y} at {time:%H:%M %Z}</p></div>',
                 unsafe_allow_html=True)
     if entry.get("duel_id"):
-        st.caption("Chug Duel · Shared capture · Drink selection agreed by both players.")
+        st.caption("Chug Duel with a shared capture. Drink selection agreed by both players.")
     if model and model.time_bonus:
-        st.caption('Time Duel ×1.25 · Included in season points only.')
+        st.caption('Time Duel ×1.25, included in season points only.')
     if model and model.focus_attempt_id:
-        st.caption(f'Focus boost ×{(model.focus_multiplier or 1.5):g} · Included in the displayed season and territory awards.')
+        st.caption(f'Focus boost ×{(model.focus_multiplier or 1.5):g}, included in the displayed season and territory awards.')
     bonus = model.owner_bonus_quarters if model else entry.get("owner_bonus_quarters", 0)
     if bonus:
         income = format_points(Decimal(bonus) / 4)

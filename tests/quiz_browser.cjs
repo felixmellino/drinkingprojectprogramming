@@ -55,7 +55,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
     const y=await a.evaluate(()=>scrollY);await a.mouse.wheel(0,500);await delay(100);assert.equal(await a.evaluate(()=>scrollY),y);
    }
    await ab.locator('#options button').nth(correct).click();
-   await ab.getByText('Answer locked · Waiting for the other player.',{exact:true}).waitFor();
+   await ab.getByText('Answer locked. Waiting for the other player.',{exact:true}).waitFor();
    if(round===0){
     await a.reload();await ab.locator('#question').waitFor({state:'visible'});
     assert(await ab.locator('#options button').nth(correct).isDisabled(),'Reload keeps first answer locked');

@@ -200,7 +200,7 @@ def _here(status, mine, *, owner="Leo", owner_points=0, needed=None, ranking=Non
 def test_tug_of_war_on_a_rivals_territory_shows_points_to_take_it():
     import map_ui
     html = map_ui.tug_of_war(_here("theirs", 4, owner_points=7, needed=4))
-    assert "You are here · owned by Leo" in html and 'tug-pill-theirs">+4 to take it</span>' in html
+    assert "Owned by Leo. You are here" in html and 'tug-pill-theirs">+4 to take it</span>' in html
     assert 'class="tug-you" style="width:36%"' in html and 'style="width:64%"' in html
     assert "You 4" in html and "Leo 7" in html
     assert '<p class="sr-only">the full sentence</p>' in html
@@ -271,7 +271,7 @@ def test_nothing_is_selected_by_default_even_where_you_stand(phone):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
     assert not page.exception and not cards(page)
-    assert any(b.label == "All territories · 3" for b in page.button)
+    assert any(b.label == "All territories 3" for b in page.button)
     assert not any(b.key and b.key.startswith("map_area_") for b in page.button)   # Lisbon / Nova pills are gone
 
 
@@ -305,11 +305,11 @@ def test_tapping_the_selected_territory_again_closes_the_card(phone, monkeypatch
 
 def test_unclaimed_and_standing_in_wording(phone, monkeypatch):
     tap(monkeypatch, FREE.id)
-    assert "your next drink here claims it" in cards(open_map())[0]
+    assert "Unclaimed. Your next drink here claims it." in cards(open_map())[0]
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     tap(monkeypatch, TERRITORY.id)
     html = cards(open_map())[0]
-    assert "You are here · owned by" in html and "to take it</span>" in html
+    assert ". You are here" in html and "Owned by" in html and "to take it</span>" in html
 
 
 def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
@@ -330,7 +330,7 @@ def test_sheet_rows_are_sorted_easiest_to_take_first():
     from core.profile_photo import initials
     # Plain data: the sheet draws it with textContent, so the raw name is safe there.
     assert sheet[0]["pill"] == "+2 to take" and sheet[0]["avatar"] == initials("<b>rival</b>")
-    assert sheet[0]["sub"].startswith("<b>rival</b>")
+    assert sheet[0]["sub"].startswith("Owned by <b>rival</b>, you")
     assert sheet[1]["pill"] == "Claim it" and sheet[2]["pill"] == "+5 lead"
     assert "you need 2 more points" in sheet[0]["detail"]          # screen-reader sentence travels along
 

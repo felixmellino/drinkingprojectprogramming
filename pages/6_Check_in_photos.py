@@ -22,12 +22,12 @@ from theme import empty_state
 def entry_label(entry: dict) -> str:
     timestamp = entry["captured_at"] or entry["submitted_at"]
     time = show_time(timestamp, entry.get("timezone_name", "UTC"))
-    return f"{entry['username']} · {time}"
+    return f"{entry['username']}, {time}"
 
 
 def show_time(timestamp: str, zone_name: str) -> str:
     time = utc(datetime.fromisoformat(timestamp)).astimezone(ZoneInfo(zone_name))
-    return f"{time:%d %b %Y at %H:%M:%S %Z (%z)} · {zone_name}"
+    return f"{time:%d %b %Y at %H:%M:%S %Z (%z)}, {zone_name}"
 
 
 STEP = 24  # photos shown at first and added by each "Load more"
@@ -148,7 +148,7 @@ full_photo(entry, photo, location or "No territory assigned")
 if photo is None:
     st.caption("This check-in's photo is unavailable. Removing a photo keeps the check-in and its score.")
 time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
-st.text(f"{time_label} · {entry_label(entry)}")
+st.text(f"{time_label}, {entry_label(entry)}")
 
 # Scores and revision history remain visible after photo deletion.
 if entry.get("rule_version") == "v1":
@@ -158,12 +158,12 @@ if entry.get("rule_version") == "v1":
         section_heading("02", "Points & details", "The current award for this check-in.")
         selection = DRINK_LABELS.get(model.drink_type, model.drink_type)
         if model.size:
-            selection += f" · {size_label(model.drink_type, model.size, season.scoring_rules)}"
+            selection += f", {size_label(model.drink_type, model.size, season.scoring_rules)}"
         st.text(selection)
         territory_points = model.points_awarded if model.location_check_result == "matched" else 0
-        st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points · +{format_points(territory_points)} territory points")
+        st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points and +{format_points(territory_points)} territory points")
         if model.focus_attempt_id:
-            st.caption('Focus boost ×1.5 · This check-in keeps its earned multiplier after the boost ends.')
+            st.caption('Focus boost ×1.5. This check-in keeps its earned multiplier after the boost ends.')
         if model.owner_bonus_quarters:
             income = format_points(Decimal(model.owner_bonus_quarters) / 4)
             st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")
@@ -171,11 +171,11 @@ if entry.get("rule_version") == "v1":
             st.text("No owner income for this check-in.")
         st.caption("Awards reflect the current corrected history. Corrections elsewhere can change the owner-income recipient.")
     with st.expander("Exact timestamps"):
-        st.text(f"Submitted · {show_time(entry['submitted_at'], zone)}")
+        st.text(f"Submitted: {show_time(entry['submitted_at'], zone)}")
         if entry["captured_at"]:
-            st.text(f"Photo received · {show_time(entry['captured_at'], zone)}")
+            st.text(f"Photo received: {show_time(entry['captured_at'], zone)}")
     if model.revision:
-        st.text(f"Corrected · {show_time(entry['corrected_at'], zone)} · revision {model.revision}")
+        st.text(f"Corrected: {show_time(entry['corrected_at'], zone)}, revision {model.revision}")
         try:
             revisions = db.list_checkin_revisions(player_id, lobby_id, model.id)
         except (APIError, RequestError, RuntimeError, PermissionError):
