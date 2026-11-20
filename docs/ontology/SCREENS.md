@@ -127,10 +127,12 @@ These presentation choices introduce no new scoring or database rules.
   Its frozen scoring window is Wednesday 08:00–Sunday 18:00 in the lobby
   timezone. Normal seasons keep Thursday 18:00–Sunday 18:00.
 - Photo history opens a newest-first gallery of the lobby's retained entries,
-  four per page, with username, territory, image, drink/size, base season and
-  territory awards, applicable owner income and photo-receipt/submission time.
-  Native Older/Newer controls make every retained entry reachable while limiting
-  image downloads. Each image download rechecks membership. Missing/removed
+  with username, territory, image, drink/size, base season and territory awards,
+  applicable owner income and photo-receipt/submission time. One continuous list shows
+  the newest 24 photos; **Load more** appends 24 more (with "24 of 57 photos" under it),
+  so every retained entry is reachable while the page stays light (20 November 2026,
+  replacing Older/Newer pages). Each image is fetched on its own and rechecks membership
+  and sharing on every load; photo bytes are never cached between loads. Missing/removed
   images retain their entry details and score.
 - View details opens that specific entry's full breakdown, exact timestamps,
   correction audit and permitted actions. A single-entry history opens its
@@ -357,8 +359,9 @@ Map owner badge update (19 November 2026, contributor request):
   2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
   grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
   2px gaps). Each tile shows the photo, the player's name and the points on a soft
-  shade at the bottom, and a dot (green = in a territory, grey = outside). Two nights
-  per page with Newer/Older nights; the night's photos download at the same time.
+  shade at the bottom, and a dot (green = in a territory, grey = outside). The list is
+  grouped by game night, newest first, 24 photos at a time with a **Load more** button;
+  the shown photos download at the same time (at most 8 in parallel).
   Retention and sharing notes sit in one quiet line at the bottom.
 - Selecting View details opens the corresponding check-in detail. Bars are not
   part of the location or scoring model.
