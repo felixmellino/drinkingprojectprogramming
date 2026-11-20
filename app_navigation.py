@@ -66,6 +66,8 @@ def back_button(page: str | None, history: list[str], navigate) -> None:
     """A Back button on every page: the previous page, or the Map when there is none."""
     if page == "minigames" and st.session_state.get("minigame_selected"):
         return  # a game screen has its own "All games" link
+    if page == "map":
+        return  # the Map is home: its territory list takes you anywhere on it
     target = history[-1] if history else ("map" if page not in (None, "map") else None)
     if target is None:
         return

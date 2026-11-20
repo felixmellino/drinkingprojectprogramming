@@ -3,6 +3,7 @@ one, and where you are right now (followed automatically, R-L01/R-L04).
 Only the current lobby's season counts."""
 
 import streamlit as st
+from streamlit.errors import StreamlitInvalidLayoutContextError
 import base64
 from httpx import RequestError
 from postgrest.exceptions import APIError
@@ -13,7 +14,7 @@ from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from parallel import run_parallel
-from phone_location import current_location, location_switch
+from phone_location import current_location, track_location
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -66,49 +67,82 @@ else:
         except (*PICTURE_ERRORS, PermissionError, ValueError):
             pass  # An unavailable picture still has the existing initials badge.
 
-# HUD floating over the top of the map: lobby and score, two area chips down the left side and
-# the small Location switch on the right (shared with Profile; it also follows the phone's
-# position, so it runs before current_location() reads the newest reading below).
+# HUD floating over the top of the map: lobby and score. Location is switched on
+# in Profile; here the phone's position is only followed (invisible tracker, the
+# same as on Check-in), before current_location() reads the newest reading.
 with st.container(key="game_hud"):
     map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-    with st.container(key="map_bar"):   # one frosted strip: area buttons left, Location switch right
-        picked = map_ui.area_buttons()
-        with st.container(key="map_location"):
-            location_switch(compact=True, follow=True)
+track_location()
 
-# Where am I? Decides the bottom card and where the map starts.
+# Where am I? Decides where the map starts and the "You are here" note.
 location, accuracy_m, problem = current_location()
 usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
-here, status = None, "waiting"
+here = None
 if usable_location:
     result, territory_id = evaluate_location(location, accuracy_m, territories)
-    here = next((row for row in rows if row["id"] == territory_id), None)
-    status = "matched" if result == "matched" and here else "outside"
-elif location is not None:
-    status = "inaccurate"
-elif problem in ("denied", "off"):
-    status = problem
+    here = next((row for row in rows if row["id"] == territory_id), None) if result == "matched" else None
 
-# No chip picked: start on you when your position is usable, otherwise on Lisbon.
-focus = picked or (map_ui.ME if usable_location else "Lisbon")
+# Selection lives in the session, so the map tap, the list and the close handle
+# all change the same thing. Nothing is selected by default.
+known = {row["id"] for row in rows}
+if st.session_state.get("map_selected") not in known:
+    st.session_state.pop("map_selected", None)
+if st.session_state.get("map_focus") not in known:
+    st.session_state.pop("map_focus", None)
 
-# Map and bottom card are one fragment: tapping a territory reruns only this
-# part (no database reads or score replay), so the card switches quickly.
-# The earlier tap dialog reran the whole page and felt slow.
+
+def rerun_map():
+    """Rerun only the map fragment when Streamlit allows it (a tap starts a
+    fragment rerun); on a full page run, rerun the page."""
+    try:
+        st.rerun(scope="fragment")
+    except StreamlitInvalidLayoutContextError:
+        st.rerun()
+
+
+def reset_map_selection():
+    """The map keeps its own tap selection (and solid highlight). A new key
+    redraws it fresh, so closing the card also clears the highlight and the
+    same area can be tapped again."""
+    st.session_state["map_reset"] = st.session_state.get("map_reset", 0) + 1
+    st.session_state["map_last_tap"] = None
+
+
+# Map and bottom card are one fragment: a tap reruns only this part (no
+# database reads or score replay), so the card switches quickly.
 @st.fragment
 def map_and_card():
+    selected_id = st.session_state.get("map_selected")
+    # The map starts on a territory picked from the list, else on you, else on Lisbon.
+    focus = st.session_state.get("map_focus") or (map_ui.ME if usable_location else "Lisbon")
     with st.container(key="game_map"):
         tapped = map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
-                                   pictures=pictures,
-                                   context=f"{lobby_id}:{season_id}:{membership_id}")
-    selected = next((row for row in rows if row["id"] == tapped), None)
+                                   pictures=pictures, selected=selected_id,
+                                   context=f"{lobby_id}:{season_id}:{membership_id}:{focus}:"
+                                           f"{st.session_state.get('map_reset', 0)}")
+    # A new tap on the map (or on empty space) changes the selection; tapping
+    # the selected area again closes it.
+    if tapped != st.session_state.get("map_last_tap"):
+        st.session_state["map_last_tap"] = tapped
+        new = None if tapped == selected_id else tapped
+        if new != selected_id:
+            st.session_state["map_selected"] = new
+            rerun_map()
 
-    # Slim sheet over the bottom of the map: the tapped territory or where you
-    # are, and the full territory list (opens upwards inside the sheet).
-    # Checking in is the + tab.
+    selected = next((row for row in rows if row["id"] == selected_id), None)
     with st.container(key="game_card"):
-        map_ui.location_card(here, status, accuracy_m, selected)
-        map_ui.territory_list(rows, team_mode=team_mode)
+        if map_ui.selection_card(selected, here):       # the grey handle closes the card
+            st.session_state.pop("map_selected", None)
+            reset_map_selection()
+            rerun_map()
+        map_ui.all_territories_button(rows)
+    picked = map_ui.territory_list(rows, lobby_name=st.session_state.get("current_lobby_name", ""),
+                                   team_mode=team_mode)
+    if picked:                                          # a name in the list: select it and fly there
+        st.session_state["map_selected"] = picked
+        st.session_state["map_focus"] = picked
+        reset_map_selection()
+        rerun_map()
 
 
 map_and_card()

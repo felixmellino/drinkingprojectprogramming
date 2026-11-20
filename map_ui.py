@@ -13,8 +13,10 @@ from pathlib import Path
 
 import pydeck as pdk
 import streamlit as st
+from streamlit.components.v1 import declare_component
+from streamlit.errors import StreamlitInvalidLayoutContextError
 
-from theme import dark_mode, icon_css
+from theme import component_tokens, dark_mode
 
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
@@ -49,8 +51,6 @@ AREAS = {
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
     "Jamor Golf": ["jamor-golf"],
 }
-# The two quick-zoom buttons on the Map: area name -> (label, icon in assets/icons).
-QUICK_AREAS = {"Lisbon": ("Lisbon", "skyline"), "Nova SBE": ("Nova", "graduation-cap")}
 ME = ":material/my_location: Me"
 ALL = "All"
 
@@ -79,34 +79,17 @@ def map_style() -> str:
     return "dark_no_labels" if dark_mode() else "light_no_labels"
 
 
-def _status(tone: str, title: str, sub: str) -> str:
-    """One row for the sheet: a coloured dot (live = pulsing), a title and one line."""
-    return (f'<div class="status-row"><span class="status-dot status-{tone}" aria-hidden="true"></span>'
-            f'<div class="tug-title"><h3>{escape(title)}</h3><p class="tug-sub">{escape(sub)}</p></div></div>')
-
-
-def location_card(here: dict | None, status: str, accuracy_m: float | None = None,
-                  selected: dict | None = None) -> None:
-    """Bottom card floating over the map. A tapped territory (`selected`) is
-    shown first; otherwise where you are and what it means.
-    status: "matched", "outside", "inaccurate", "denied", "off" or "waiting"."""
-    standing_in = status == "matched" and here is not None
-    if selected is not None:
-        body = territory_card(selected, standing_in=standing_in and here["id"] == selected["id"])
-    elif standing_in:
-        body = territory_card(here, standing_in=True)
-    elif status == "outside":
-        body = _status("grey", "Outside the map", "Drinks here count for season points only")
-    elif status == "inaccurate":
-        body = _status("amber", "Not precise enough", f"Accurate to about {accuracy_m:.0f} m, we need 50 m")
-    elif status == "denied":
-        body = _status("red", "Location is blocked", "Allow it in the browser settings, then turn it on in Profile")
-    elif status == "off":
-        body = _status("grey", "Location is off", "Turn it on in Profile → Location")
-    else:
-        body = _status("live", "Finding you…", "This takes a few seconds")
-    st.markdown(f'<div class="game-card"><div class="sheet-grab" aria-hidden="true"></div>{body}</div>',
+def selection_card(selected: dict | None, here: dict | None = None) -> bool:
+    """The bottom card: the selected territory's tug-of-war, or nothing at all
+    (nothing is selected by default). The grey handle on top closes it; returns
+    True when it was tapped. "You are here" only when you stand in that area."""
+    if selected is None:
+        return False
+    closed = st.button("Close", key="map_card_close", help="Close", width="stretch")
+    standing_in = here is not None and here["id"] == selected["id"]
+    st.markdown(f'<div class="game-card">{territory_card(selected, standing_in=standing_in)}</div>',
                 unsafe_allow_html=True)
+    return closed
 
 
 def _title(name: str, sub: str) -> str:
@@ -209,34 +192,11 @@ def summary(rows: list[dict]) -> dict:
     return {"yours": yours, "total": len(rows), "free": free, "easiest": easiest}
 
 
-def area_buttons() -> str | None:
-    """Two icon + text buttons stacked on the left side of the map (a small grouped control).
-    Returns the picked area, or None for "no choice": the map then starts on you (or Lisbon).
-    Tapping the picked button again clears the choice."""
-    picked = st.session_state.get("map_area")
-    if picked not in QUICK_AREAS:
-        picked = None
-    clicked = None
-    with st.container(key="map_areas"):
-        for area, (label, _icon) in QUICK_AREAS.items():
-            if st.button(label, key=f"map_area_{area.split()[0].lower()}", type="tertiary"):
-                clicked = area
-    if clicked:
-        picked = None if clicked == picked else clicked
-        st.session_state["map_area"] = picked
-    css = "".join(icon_css(f".stApp .st-key-map_area_{area.split()[0].lower()} button::before", icon)
-                  for area, (_label, icon) in QUICK_AREAS.items())
-    if picked:  # only a name from QUICK_AREAS reaches the selector
-        css += f".stApp .st-key-map_area_{picked.split()[0].lower()} button{{color:var(--accent-ink);font-weight:700;}}"
-    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    return picked
-
-
 def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None) -> pdk.ViewState:
     """Where the map starts: on you, or zoomed to fit one part of the city."""
     if focus == ME and location is not None:
         return pdk.ViewState(latitude=location[0], longitude=location[1], zoom=15.5)
-    ids = set(AREAS.get(focus, []))
+    ids = set(AREAS.get(focus, [])) or ({focus} if any(row["id"] == focus for row in rows) else set())
     points = [p for row in rows if row["id"] in ids for p in row["boundary"]["coordinates"][0]]
     if not points:  # "All" (or an unknown area): fit every territory
         points = [p for row in rows for p in row["boundary"]["coordinates"][0]]
@@ -247,12 +207,13 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
     span_lng = max(max(lngs) - min(lngs), 1e-4)
     span_lat = max(max(lats) - min(lats), 1e-4) / math.cos(math.radians(sum(lats) / len(lats)))
     zoom = min(math.log2(420 * 360 / (512 * span_lng)), math.log2(480 * 360 / (512 * span_lat))) - 0.2
+    single = len(ids) == 1   # one territory picked from the list: a little room around it
     return pdk.ViewState(latitude=(min(lats) + max(lats)) / 2, longitude=(min(lngs) + max(lngs)) / 2,
-                         zoom=max(9.0, min(zoom, 17.0)))
+                         zoom=max(9.0, min(zoom - (0.6 if single else 0), 16.5 if single else 17.0)))
 
 
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
-               focus: str = "Bairro Alto", *, pictures=None, context="map") -> str | None:
+               focus: str = "Bairro Alto", *, pictures=None, context="map", selected: str | None = None) -> str | None:
     """Draw the map and return the id of the territory the player tapped
     (None when nothing is selected; tapping empty map space clears it)."""
     features = [
@@ -283,6 +244,13 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             line_width_min_pixels=1.5,
         )
     ]
+    picked = [f for f in features if f["properties"]["id"] == selected]
+    if picked:   # the selected area gets a thicker outline in its own colour, drawn on top
+        layers.append(pdk.Layer(
+            "GeoJsonLayer", {"type": "FeatureCollection", "features": picked}, id="selected-outline",
+            pickable=False, stroked=True, filled=False,
+            get_line_color=COLOURS[next(r["status"] for r in rows if r["id"] == selected)] + [255],
+            line_width_min_pixels=3.5))
     markers = owner_markers(rows, pictures or {}, COLOURS)
     for marker in markers:
         marker["name"] = escape(marker["name"])  # never rendered as HTML, escaped anyway
@@ -338,29 +306,27 @@ def selected_territory(event, known_ids: set) -> str | None:
     return None
 
 
-def _list_row(row: dict) -> str:
-    """One territory in the list sheet: owner avatar, name, who vs whom, pill."""
+def _sheet_row(row: dict) -> dict:
+    """One territory in the list sheet as plain data (the sheet draws it as text,
+    so names can never become HTML)."""
     me = row["my_points"]
     rivals = [r for r in row["ranking"] if not r["you"]]
     if row["status"] == "theirs":
         badge, sub = row["owner"], f'{row["owner"]} · you {format_points(me)} vs {format_points(row["owner_points"])}'
-        pill, tone = f'+{format_points(row["needed"])} to take', "tug-pill-theirs"
+        pill = f'+{format_points(row["needed"])} to take'
     elif row["status"] == "yours":
         rival = rivals[0] if rivals else None
         badge = "You"
         sub = (f'Yours · {format_points(me)} vs {rival["name"]} {format_points(rival["points"])}' if rival
                else f"Yours · {format_points(me)}, no rival yet")
-        pill, tone = f'+{format_points(me - (rival["points"] if rival else 0))} lead', "tug-pill-yours"
+        pill = f'+{format_points(me - (rival["points"] if rival else 0))} lead'
     else:
-        badge, sub, pill, tone = "", "Unclaimed", "Claim it", "tug-pill-free"
-    initials_text = initials(badge) if badge else "–"   # same initials as the map badges
-    return (f'<li class="terr-row"><span class="terr-avatar terr-{row["status"]}" aria-hidden="true">{escape(initials_text)}</span>'
-            f'<span class="terr-text"><b>{escape(row["name"])}</b><span>{escape(sub)}</span></span>'
-            f'<span class="tug-pill {tone}">{escape(pill)}</span>'
-            f'<span class="sr-only">{escape(row["detail"])}</span></li>')
+        badge, sub, pill = "", "Unclaimed", "Claim it"
+    return {"id": row["id"], "name": row["name"], "status": row["status"], "sub": sub, "pill": pill,
+            "avatar": initials(badge) if badge else "–", "detail": row["detail"]}
 
 
-def territory_list_html(rows: list[dict]) -> str:
+def territory_sheet_rows(rows: list[dict]) -> list[dict]:
     """All territories, easiest to take first: rivals' (fewest points needed),
     then unclaimed, then yours (smallest lead first, the ones to defend)."""
     def order(row):
@@ -370,14 +336,46 @@ def territory_list_html(rows: list[dict]) -> str:
             return (1, 0, row["name"])
         rivals = [r["points"] for r in row["ranking"] if not r["you"]]
         return (2, row["my_points"] - (max(rivals) if rivals else 0), row["name"])
-    return '<ul class="terr-list">' + "".join(_list_row(row) for row in sorted(rows, key=order)) + "</ul>"
+    return [_sheet_row(row) for row in sorted(rows, key=order)]
 
 
-def territory_list(rows: list[dict], *, team_mode: bool = False) -> None:
-    """A full-width button "All territories · N" that opens the list as a sheet."""
+_territory_sheet = declare_component(
+    "territory_sheet", path=str(Path(__file__).parent / "components" / "territory_sheet"))
+
+
+def all_territories_button(rows: list[dict]) -> None:
+    """"All territories · N" in the bottom card: opens the sheet."""
     if st.button(f"All territories · {len(rows)}", key="map_all_territories", width="stretch"):
-        def body():
-            if team_mode:
-                st.caption("Team territories · points and gaps combine all team members’ drinks.")
-            st.markdown(territory_list_html(rows), unsafe_allow_html=True)
-        st.dialog("Territories", dismissible=True)(body)()
+        st.session_state["map_sheet_open"] = st.session_state.get("map_sheet_open_count", 0) + 1
+        st.session_state["map_sheet_open_count"] = st.session_state["map_sheet_open"]
+
+
+def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = False) -> str | None:
+    """The territory sheet over the map (its own component, so it can be swiped
+    down like an iPhone sheet). Call it outside the blurred bottom card: a blurred
+    parent would trap the full-screen frame inside it. Returns the territory id
+    the player tapped in the list, else None."""
+    opened = st.session_state.get("map_sheet_open")
+    if not opened:
+        return None
+    summary = summary_line(rows)
+    note = "Team territories · points and gaps combine all team members’ drinks." if team_mode else ""
+    with st.container(key="territory_sheet_stage"):
+        value = _territory_sheet(rows=territory_sheet_rows(rows), title=lobby_name, summary=summary, note=note,
+                                 tokens=component_tokens(), key=f"territory_sheet_{opened}", default=None)
+    if not isinstance(value, dict) or value.get("action") not in ("close", "select"):
+        return None
+    st.session_state.pop("map_sheet_open", None)          # swiped down, backdrop or a name: the sheet goes
+    picked = value.get("id") if value.get("action") == "select" else None
+    if picked in {row["id"] for row in rows}:           # only ids we listed
+        return picked
+    try:                                                # closed without a pick: just hide the sheet
+        st.rerun(scope="fragment")
+    except StreamlitInvalidLayoutContextError:
+        st.rerun()
+
+
+def summary_line(rows: list[dict]) -> str:
+    numbers = summary(rows)
+    rivals = numbers["total"] - numbers["yours"] - numbers["free"]
+    return f'{numbers["yours"]} yours · {rivals} rivals · {numbers["free"]} free'

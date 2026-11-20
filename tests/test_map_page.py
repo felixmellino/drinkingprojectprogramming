@@ -57,15 +57,6 @@ def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
     replay.assert_called_once()
 
 
-def test_map_has_one_compact_location_switch_that_also_follows_the_position(phone, monkeypatch):
-    calls = []
-    monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: calls.append(kwargs) or phone["location"])
-    page = open_map()
-    assert not page.exception
-    assert len(calls) == 1, "one component only: the switch itself follows, no second invisible tracker"
-    assert calls[0]["mode"] == "switch" and calls[0]["compact"] is True and calls[0]["follow"] is True
-    assert calls[0]["key"] == "location_switch_map"   # a different key than the Profile switch
-
 
 def card(page):
     """The floating location card over the map (HTML in a markdown block)."""
@@ -76,51 +67,10 @@ def hud(page):
     return next(m.value for m in page.markdown if 'class="game-hud"' in m.value)
 
 
-def territory_sheet(page):
-    """Open "All territories" and return the list sheet's HTML."""
-    next(b for b in page.button if b.label.startswith("All territories")).click().run()
-    return "".join(m.value for m in page.markdown if 'class="terr-list"' in m.value)
 
 
-def test_list_shows_owner_colour_and_capture_gap(phone):
-    page = open_map()
-    assert not page.exception and any(b.label == "All territories · 3" for b in page.button)
-    sheet = territory_sheet(page)
-    assert not page.exception
-    names = re.findall(r"<b>([^<]+)</b>", sheet)
-    assert names == ["Bairro Alto", "After8", "Le Pub"]          # easiest to take first, then free, then yours
-    assert 'terr-avatar terr-theirs' in sheet and '+2 to take' in sheet
-    assert "Owned by **rival**: you need 2 more points to take it." in sheet   # sr-only sentence
-    assert "Yours: you lead by 5 points." in sheet and "+5 lead" in sheet
-    assert "Unclaimed" in sheet and "Claim it" in sheet
-    assert len(page.get("deck_gl_json_chart")) == 1
 
 
-def test_your_position_names_the_territory_you_are_in(phone):
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    page = open_map()
-    assert not page.exception
-    message = card(page)
-    assert "Bairro Alto" in message and "you need 2 more points" in message
-    assert not any(b.label == "Check in here" for b in page.button)  # checking in is the + tab
-
-
-def test_outside_every_territory(phone):
-    phone["location"] = {"lat": OUTSIDE[0], "lng": OUTSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    page = open_map()
-    assert "Outside the map" in card(page)
-
-
-def test_no_location_yet_still_shows_the_map(phone):
-    page = open_map()
-    assert "Finding you" in card(page)
-    assert len(page.get("deck_gl_json_chart")) == 1
-
-
-def test_inaccurate_location_is_not_used(phone):
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 90, "taken_at_ms": time.time() * 1000}
-    page = open_map()
-    assert "Not precise enough" in card(page) and "about 90 m" in card(page)
 
 
 # -- Summary cards and quick zoom ---------------------------------------
@@ -133,13 +83,6 @@ def test_hud_counts_yours_rivals_and_free(phone):
     assert '<b class="game-free">1</b> free' in bar
 
 
-def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
-    monkeypatch.setattr(db, "list_public_usernames", lambda: [
-        dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="<b>x</b>")])
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    message = card(open_map())
-    assert "&lt;b&gt;x&lt;/b&gt;" in message and "<b>x</b>" not in message
-
 
 def test_quick_zoom_includes_jamor_golf_after_nova():
     import map_ui
@@ -149,31 +92,6 @@ def test_quick_zoom_includes_jamor_golf_after_nova():
     assert "jamor-golf" in {t.id for t in load_territories()}
 
 
-def test_two_icon_buttons_lisbon_and_nova_and_the_map_starts_on_me_only_with_a_location(phone, monkeypatch):
-    import map_ui
-    seen = []
-    real = map_ui.render_map
-    monkeypatch.setattr(map_ui, "render_map", lambda rows, location, accuracy, focus, **kw: seen.append(focus) or real(rows, location, accuracy, focus, **kw))
-    page = open_map()
-    labels = [b.label for b in page.button if b.key and b.key.startswith("map_area_")]
-    assert labels == ["Lisbon", "Nova"], "only two buttons, no Me / Bairro Alto / Jamor / All"
-    assert not page.get("button_group"), "no stretched chip row any more"
-    assert seen[-1] == "Lisbon", "no usable location: start on Lisbon"
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    page = open_map()
-    assert seen[-1] == map_ui.ME, "usable location, nothing picked: start on me"
-    next(b for b in page.button if b.key == "map_area_nova").click().run()
-    assert not page.exception and seen[-1] == "Nova SBE"
-    assert ".st-key-map_area_nova button{color:var(--accent-ink)" in " ".join(m.value for m in page.markdown)
-    next(b for b in page.button if b.key == "map_area_nova").click().run()   # tap the picked one again: back to me
-    assert seen[-1] == map_ui.ME
-
-
-def test_a_wrong_remembered_area_does_not_break_the_page(phone):
-    page = AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10)
-    page.session_state["map_area"] = "Bairro Alto"
-    page.run()
-    assert not page.exception
 
 
 def test_summary_helper_picks_the_cheapest_territory_to_take():
@@ -260,27 +178,7 @@ def test_selected_territory_reads_only_known_ids():
     assert map_ui.selected_territory(None, {"territory-a"}) is None
 
 
-def test_tapping_a_territory_shows_its_tug_of_war_without_standing_in_it(phone, monkeypatch):
-    import map_ui
-    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: SECOND.id)  # tapped Le Pub
-    message = card(open_map())                                       # no location yet
-    assert "Le Pub" in message and "tug-bar" in message and "lead</span>" in message
-    assert "You are here" not in message and "Finding you" not in message
 
-
-def test_tapping_an_unclaimed_territory_says_the_next_drink_claims_it(phone, monkeypatch):
-    import map_ui
-    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: FREE.id)
-    message = card(open_map())
-    assert "After8" in message and "your next drink here claims it" in message and "tug-bar" not in message
-
-
-def test_tapping_the_territory_you_stand_in_keeps_you_are_in(phone, monkeypatch):
-    import map_ui
-    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: TERRITORY.id)
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    message = card(open_map())
-    assert "You are here · owned by" in message and "to take it</span>" in message
 
 
 def test_territory_rows_carry_a_ranking_in_standings_order(phone):
@@ -329,11 +227,6 @@ def test_tug_of_war_escapes_names():
     assert "<b>x</b>" not in html and "&lt;b&gt;x&lt;/b&gt;" in html
 
 
-def test_card_uses_tug_of_war_inside_a_rivals_territory(phone):
-    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
-    message = card(open_map())
-    assert 'class="tug-bar"' in message and "to take it</span>" in message
-
 
 def test_tapped_territory_you_are_not_in_says_owned_by_without_you_are_here():
     import map_ui
@@ -357,7 +250,137 @@ def test_areas_have_a_thin_outline_in_their_own_colour(phone):
     assert layer["lineWidthMinPixels"] == 1.5
 
 
-def test_every_card_state_is_a_dot_title_and_one_line(phone):
+
+
+
+# -- Selection flow (nothing selected by default) ----------------------------
+
+def cards(page):
+    return [m.value for m in page.markdown if 'class="game-card"' in m.value]
+
+
+def tap(monkeypatch, territory_id):
+    """The map reports this tap until it is redrawn with a new key (a reset
+    clears the real map's selection too)."""
+    import map_ui
+    monkeypatch.setattr(map_ui, "render_map",
+                        lambda *args, **kwargs: territory_id if kwargs["context"].endswith(":0") else None)
+
+
+def test_nothing_is_selected_by_default_even_where_you_stand(phone):
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
-    message = card(page)
-    assert 'class="sheet-grab"' in message and "status-live" in message and "<small>" not in message
+    assert not page.exception and not cards(page)
+    assert any(b.label == "All territories · 3" for b in page.button)
+    assert not any(b.key and b.key.startswith("map_area_") for b in page.button)   # Lisbon / Nova pills are gone
+
+
+def test_location_is_followed_invisibly_not_switched_on_the_map(phone, monkeypatch):
+    calls = []
+    monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: calls.append(kwargs) or phone["location"])
+    page = open_map()
+    assert not page.exception and len(calls) == 1
+    assert calls[0]["key"] == "live_location_tracker" and "mode" not in calls[0]   # the switch lives in Profile
+
+
+def test_tapping_a_territory_opens_its_card_and_the_handle_closes_it(phone, monkeypatch):
+    tap(monkeypatch, SECOND.id)
+    page = open_map()
+    assert not page.exception and page.session_state["map_selected"] == SECOND.id
+    card_html = cards(page)[0]
+    assert "Le Pub" in card_html and "tug-bar" in card_html and "lead</span>" in card_html
+    assert "You are here" not in card_html
+    next(b for b in page.button if b.key == "map_card_close").click().run()
+    assert not page.exception and not cards(page) and "map_selected" not in page.session_state
+
+
+def test_tapping_the_selected_territory_again_closes_the_card(phone, monkeypatch):
+    tap(monkeypatch, SECOND.id)
+    page = open_map()
+    assert cards(page)
+    page.session_state["map_last_tap"] = None        # the map reports the same area as a new tap
+    page.run()
+    assert not page.exception and not cards(page)
+
+
+def test_unclaimed_and_standing_in_wording(phone, monkeypatch):
+    tap(monkeypatch, FREE.id)
+    assert "your next drink here claims it" in cards(open_map())[0]
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    tap(monkeypatch, TERRITORY.id)
+    html = cards(open_map())[0]
+    assert "You are here · owned by" in html and "to take it</span>" in html
+
+
+def test_usernames_cannot_inject_html_into_the_card(phone, monkeypatch):
+    monkeypatch.setattr(db, "list_public_usernames", lambda: [
+        dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="<b>x</b>")])
+    tap(monkeypatch, TERRITORY.id)
+    html = cards(open_map())[0]
+    assert "&lt;b&gt;x&lt;/b&gt;" in html and "<b>x</b>" not in html
+
+
+def test_sheet_rows_are_sorted_easiest_to_take_first():
+    import map_ui
+    rows = map_ui.territory_rows([TERRITORY, SECOND, FREE], [
+        entry("1", "me", "beer", "large", 0), entry("2", "rival", "shot", None, 1),
+        entry("3", "me", "mixed", "large", 2, territory="territory-b")], "me", {"me": "felix", "rival": "<b>rival</b>"})
+    sheet = map_ui.territory_sheet_rows(rows)
+    assert [r["name"] for r in sheet] == ["Bairro Alto", "After8", "Le Pub"]
+    from core.profile_photo import initials
+    # Plain data: the sheet draws it with textContent, so the raw name is safe there.
+    assert sheet[0]["pill"] == "+2 to take" and sheet[0]["avatar"] == initials("<b>rival</b>")
+    assert sheet[0]["sub"].startswith("<b>rival</b>")
+    assert sheet[1]["pill"] == "Claim it" and sheet[2]["pill"] == "+5 lead"
+    assert "you need 2 more points" in sheet[0]["detail"]          # screen-reader sentence travels along
+
+
+def test_picking_a_name_in_the_sheet_selects_it_and_zooms_there(phone, monkeypatch):
+    import map_ui
+    seen = {}
+    real = map_ui.render_map
+    def spy(rows, location, accuracy_m, focus, **kwargs):
+        seen["focus"], seen["selected"] = focus, kwargs.get("selected")
+        return None
+    monkeypatch.setattr(map_ui, "render_map", spy)
+    page = open_map()
+    assert seen["focus"] == "Lisbon" and seen["selected"] is None
+    monkeypatch.setattr(map_ui, "_territory_sheet", lambda **kwargs: {"action": "select", "id": SECOND.id})
+    next(b for b in page.button if b.label.startswith("All territories")).click().run()
+    assert not page.exception
+    assert page.session_state["map_selected"] == SECOND.id and seen == {"focus": SECOND.id, "selected": SECOND.id}
+    assert "Le Pub" in cards(page)[0] and "map_sheet_open" not in page.session_state
+
+
+def test_swiping_the_sheet_down_just_closes_it(phone, monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "_territory_sheet", lambda **kwargs: {"action": "close"})
+    page = open_map()
+    next(b for b in page.button if b.label.startswith("All territories")).click().run()
+    assert not page.exception and "map_sheet_open" not in page.session_state and not cards(page)
+
+
+def test_unknown_ids_from_the_sheet_are_ignored(phone, monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "_territory_sheet", lambda **kwargs: {"action": "select", "id": "not-a-territory"})
+    page = open_map()
+    next(b for b in page.button if b.label.startswith("All territories")).click().run()
+    assert not page.exception and "map_selected" not in page.session_state
+
+
+def test_view_zooms_to_a_single_territory():
+    import map_ui
+    rows = map_ui.territory_rows([TERRITORY, SECOND, FREE], [], "me", {})
+    one = map_ui.view_for(rows, SECOND.id, None)
+    lngs = [p[0] for p in SECOND.boundary["coordinates"][0]]
+    assert abs(one.longitude - (min(lngs) + max(lngs)) / 2) < 1e-9 and one.zoom <= 16.5
+
+
+def test_selected_area_gets_a_thicker_outline_on_top(phone):
+    page = open_map()
+    assert not any(l["id"] == "selected-outline" for l in chart_json(page)["layers"])   # nothing selected
+    page.session_state["map_selected"] = SECOND.id
+    page.run()
+    outline = next(l for l in chart_json(page)["layers"] if l["id"] == "selected-outline")
+    assert outline["lineWidthMinPixels"] == 3.5 and outline["filled"] is False
+    assert [f["properties"]["id"] for f in outline["data"]["features"]] == [SECOND.id]

@@ -99,5 +99,4 @@
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 @media (max-width: 640px) {
   .stApp:has(.st-key-wego_corner_nav):has(.st-key-game_map) .game-hud { margin-right: 46px; }
-  .stApp:has(.st-key-wego_corner_nav):has(.st-key-game_map) .st-key-map_bar { right: 46px; width: auto !important; }
 }
