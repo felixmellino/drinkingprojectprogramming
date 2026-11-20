@@ -52,7 +52,8 @@ weighted as shown below.
    unlimited sequential replays (R-M02). The winner receives both drinks' base season
    points. Territory scoring and owner income stay normal. See R-M01–R-M05
    in `docs/ontology/RULES.md`. Reuse shared rules for additional minigames.
-   Focus Challenge is also team-approved (19 November 2026): see R-M06–R-M09.
+   Focus Challenge (19 November 2026, R-M06–R-M09) was replaced on 20 November 2026 by the
+   Reaction Duel, a stake duel with best of three (R-M11); its old data stays for history.
    It has separate personal attempts, three randomized skill tests and one
    automatic 60-minute ordinary-check-in boost per lobby evening: x1.5 for
    three task passes, x1.25 for two, and no boost for zero or one. All three
