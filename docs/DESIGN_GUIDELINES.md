@@ -110,7 +110,8 @@ in the current `assets/theme.css` tokens.
   (friends), so movement is what is interesting.
 - Make the tie rule visible: when two scores are equal, show a small
   "reached first" note so ranking never looks arbitrary.
-- Ranks: one clean list for everyone, no podium (removed 20 November 2026).
+- Podium styling (sky/silver/bronze) for the top 3 only; plain rows below
+  (podium removed and brought back on 20 November 2026).
 
 ## 5. Minigames (Kahoot, quiz duels)
 

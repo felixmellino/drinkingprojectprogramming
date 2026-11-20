@@ -142,13 +142,15 @@ Minimal by design: only the ranking and territory ownership are on screen.
 The title "Ranks" is shown; there is no description, refresh button or lobby
 summary line (data reloads on every page visit).
 
-- One clean list (20 November 2026, the podium was removed): a single white
-  card, one row per player with rank, initials, name and points, hairlines
-  between rows. Exact quarter-points remain visible. Rows preserve the
-  order from `core.leaderboard.season_leaderboard`; the UI never re-sorts or
-  changes the tie rule.
-- The current player's row is softly tinted with a small "You" label. The upper of two tied rows gets a
-  "reached first" tag (R-R01).
+- Podium for the top three (2nd, 1st, 3rd left to right; steps in sky blue,
+  silver and bronze with dark numerals). Each avatar keeps the player's own
+  identity colour, ringed in their step's colour. From rank 4 one rounded
+  card per player (rank, initials, name, points). Exact quarter-points remain
+  visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
+  the UI never re-sorts or changes the tie rule. (The podium was replaced by a
+  single list and brought back on 20 November 2026.)
+- The current player gets a YOU tag and their row an outline. The upper of two
+  tied rows gets a "reached first" tag (R-R01).
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
 - A finished or upcoming season shows a one-line status caption. Service
