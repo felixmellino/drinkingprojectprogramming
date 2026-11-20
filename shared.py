@@ -60,6 +60,7 @@ def require_login() -> str:
         if not player or not player.email or player.pin_hash != st.session_state.get("credential_version"):
             st.session_state.clear()
             st.session_state["_remember_attempted"] = True
+            st.session_state["start_seen"] = True   # straight to the form, so "Please log in again" is visible
             queue_storage("clear")
             st.info("Please log in again.")
         else:
@@ -67,6 +68,7 @@ def require_login() -> str:
     if "player_id" not in st.session_state:
         notice = st.session_state.pop("_profile_notice", None)
         if notice:
+            st.session_state["start_seen"] = True   # a notice must not hide behind the start screen
             st.success(notice)
         show_accounts()
         st.stop()
