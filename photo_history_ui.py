@@ -43,30 +43,24 @@ def game_night_label(start: datetime, end: datetime) -> str:
 
 
 def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
-    """One tap-to-open grid tile: photo, points badge and a territory dot,
-    overlaid with a transparent full-tile button. Returns True once clicked."""
+    """One portrait grid tile like a phone gallery: the photo edge to edge, the
+    player and points on a soft shade at the bottom, a dot for territory (green)
+    or outside (grey). A transparent button over the tile opens the check-in."""
     name = entry["username"]
     if entry.get("team_id"):
         name = f"{entry.get('team_name') or 'Team'} · {name}"
     model = entry.get("entry")
-    kind = model.drink_type if model else entry.get("drink_type")
-    label = DRINK_LABELS.get(kind, "Long drink" if kind == "longdrink" else kind or "Drink")
-    if model and model.size:
-        label += f" · {size_label(kind, model.size, entry['season'].scoring_rules)}"
     points = model.points_awarded + model.time_bonus if model else entry.get("base_points")
     matched = entry["location"] == "matched"
-    colour = identity_colour(entry)
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
         photo_html = f'<img class="memory-photo" src="data:image/jpeg;base64,{encoded}" alt="">'
     else:
         photo_html = '<div class="memory-photo memory-photo-missing"></div>'
-    badge = f'<span class="memory-points">+{escape(format_points(points))}</span>' if points is not None else ""
+    score = f'<b>+{escape(format_points(points))}</b>' if points is not None else ""
     dot = f'<span class="memory-dot {"memory-dot-matched" if matched else "memory-dot-outside"}" aria-hidden="true"></span>'
-    st.html(
-        f'<div class="memory-tile-visual" style="--photo-identity:{colour}">{photo_html}{badge}{dot}</div>'
-        f'<div class="memory-meta"><strong>{escape(name)}</strong><span>{escape(label)}</span></div>'
-    )
+    st.html(f'<div class="memory-tile-visual">{photo_html}{dot}'
+            f'<div class="memory-shade"><span>{escape(name)}</span>{score}</div></div>')
     return st.button(f"View {name}'s check-in", key=f"{key}_open")
 
 
