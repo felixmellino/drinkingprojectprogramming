@@ -82,6 +82,21 @@ These presentation choices introduce no new scoring or database rules.
   Drink/size choices have large selectable areas and an immediate points
   preview. Submit spans the available width. Camera permission remains
   controlled by the browser.
+- Update, 20 November 2026 (less text): after the photo the page shows only the title,
+  the photo with **Retake photo**, the drink and size choices with one points line
+  ("+4 points"), one short location line (found with accuracy, or what to do) and a
+  one-line territory name, then **Submit**. Headings, explanations, the owner-income
+  preview and the lobby/time line are gone, and so is the Focus boost preview (the
+  server still applies any earned boost). After a check-in the result card is followed
+  by one button, **Go to map**; the + tab starts the next check-in.
+- Update, 20 November 2026 (one screen): after the photo everything fits on one screen without
+  scrolling, also on a small phone. The photo takes all the space the controls leave free (Retake is a
+  small round button on the photo); drink and size are small pills in one row each, followed by one
+  points line, one location line ("Location found · 14 m · Shortys") and Submit. The page title is
+  hidden on this step. The Back button sits on the same centre line as the round Profile button on
+  every page.
+- The Map's bottom card is slimmer (about 25 % lower): smaller type, a thin tug-of-war bar, one quiet
+  "All territories" row.
 - Update, 20 November 2026: the scoring window and cooldown are checked before
   the camera opens. If a check-in can't count, one card replaces the camera:
   "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and
@@ -135,13 +150,15 @@ Minimal by design: only the ranking and territory ownership are on screen.
 The title "Ranks" is shown; there is no description, refresh button or lobby
 summary line (data reloads on every page visit).
 
-- One clean list (20 November 2026, the podium was removed): a single white
-  card, one row per player with rank, initials, name and points, hairlines
-  between rows. Exact quarter-points remain visible. Rows preserve the
-  order from `core.leaderboard.season_leaderboard`; the UI never re-sorts or
-  changes the tie rule.
-- The current player's row is softly tinted with a small "You" label. The upper of two tied rows gets a
-  "reached first" tag (R-R01).
+- Podium for the top three (2nd, 1st, 3rd left to right; steps in sky blue,
+  silver and bronze with dark numerals). Each avatar keeps the player's own
+  identity colour, ringed in their step's colour. From rank 4 one rounded
+  card per player (rank, initials, name, points). Exact quarter-points remain
+  visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
+  the UI never re-sorts or changes the tie rule. (The podium was replaced by a
+  single list and brought back on 20 November 2026.)
+- The current player gets a YOU tag and their row an outline. The upper of two
+  tied rows gets a "reached first" tag (R-R01).
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
 - A finished or upcoming season shows a one-line status caption. Service
@@ -250,10 +267,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- A small **Location** pill (label and switch) sits right-aligned under the top bar and
-  quick-zoom chips (20 November 2026). It is the same on/off choice as the Profile switch
-  (R-L01) and also follows the phone's position while on. If the browser forgot its answer
-  the pill shows Off and a tap turns it on.
+- Under the top bar three separate rounded pills in the transparent white of the top and tab bars (no
+  outline, 20 November 2026): **Lisbon** (skyline icon) and **Nova** (graduation-cap icon) stacked on the
+  left, each its own pill with icon + text, and the **Location** label with its switch on the right (same
+  on/off choice as in Profile, R-L01). The pills are bright but see-through; the glass lightens the
+  map behind it. The picked area turns blue and bold. With nothing picked the map starts on you when
+  your position is usable, otherwise on Lisbon; tapping the picked area again returns to that start.
+  These replaced the stretched chip row; the other areas and "All" were removed.
 - City map with the 48 territories coloured for the viewer: sky blue = yours,
   scarlet red = someone else's, grey = unclaimed (palette colours, changed from
   green/red on 19 November 2026 so red-green colour-blind players can tell

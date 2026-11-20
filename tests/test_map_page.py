@@ -144,13 +144,31 @@ def test_quick_zoom_includes_jamor_golf_after_nova():
     assert "jamor-golf" in {t.id for t in load_territories()}
 
 
-def test_quick_zoom_offers_the_areas_and_me_only_with_a_location(phone):
+def test_two_icon_buttons_lisbon_and_nova_and_the_map_starts_on_me_only_with_a_location(phone, monkeypatch):
+    import map_ui
+    seen = []
+    real = map_ui.render_map
+    monkeypatch.setattr(map_ui, "render_map", lambda rows, location, accuracy, focus, **kw: seen.append(focus) or real(rows, location, accuracy, focus, **kw))
     page = open_map()
-    assert page.get("button_group")[0].proto.options and not any(
-        "Me" in o.content for o in page.get("button_group")[0].proto.options)
+    labels = [b.label for b in page.button if b.key and b.key.startswith("map_area_")]
+    assert labels == ["Lisbon", "Nova"], "only two buttons, no Me / Bairro Alto / Jamor / All"
+    assert not page.get("button_group"), "no stretched chip row any more"
+    assert seen[-1] == "Lisbon", "no usable location: start on Lisbon"
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
-    assert "Me" in page.get("button_group")[0].proto.options[0].content
+    assert seen[-1] == map_ui.ME, "usable location, nothing picked: start on me"
+    next(b for b in page.button if b.key == "map_area_nova").click().run()
+    assert not page.exception and seen[-1] == "Nova SBE"
+    assert ".st-key-map_area_nova button{color:var(--accent-ink)" in " ".join(m.value for m in page.markdown)
+    next(b for b in page.button if b.key == "map_area_nova").click().run()   # tap the picked one again: back to me
+    assert seen[-1] == map_ui.ME
+
+
+def test_a_wrong_remembered_area_does_not_break_the_page(phone):
+    page = AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10)
+    page.session_state["map_area"] = "Bairro Alto"
+    page.run()
+    assert not page.exception
 
 
 def test_summary_helper_picks_the_cheapest_territory_to_take():

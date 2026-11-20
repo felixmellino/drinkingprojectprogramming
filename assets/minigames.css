@@ -9,7 +9,7 @@ body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) .st-key-wego_bottom_na
 body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) [data-testid="stMain"] {overflow:hidden!important;}
 :is(.st-key-focus_exit,.st-key-reaction_exit) {position:fixed!important;top:calc(10px + env(safe-area-inset-top));right:12px;width:auto!important;z-index:100001;}
 :is(.st-key-focus_exit,.st-key-reaction_exit) button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
-:is(.st-key-focus_exit,.st-key-reaction_exit) button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+:is(.st-key-focus_exit,.st-key-reaction_exit) button > div {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
 :is(.st-key-focus_stage,.st-key-reaction_stage) [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
 /* Game catalogue: a colourful grid of square tiles, three rows of two on
    every screen (designed for phones first). Each tile is a markdown block

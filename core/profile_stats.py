@@ -49,8 +49,11 @@ def all_time_stats(memberships, entries, *, finished_season_ids=(), transfers=()
         modern = any(entry.rule_version == 'v1' for entry in season_entries)
         snapshot = replay_season(season_entries, season_transfers) if modern else None
         if season_id in finished_season_ids:
-            rows = snapshot.season_rows() if snapshot is not None else []
-            winner = (rows[0][0] if rows else None) if snapshot is not None else season_leader(season_entries, season_transfers)
+            if snapshot is None:
+                winner = season_leader(season_entries, season_transfers)
+            else:
+                rows = snapshot.season_rows()
+                winner = rows[0][0] if rows else None
         else:
             winner = None
         if winner in identities:

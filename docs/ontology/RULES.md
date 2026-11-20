@@ -506,7 +506,8 @@ verify that the selected drink type/size is accurate or that it was consumed.
 
 Login throttling (ten attempts per account per 15 minutes) is a security
 implementation setting, not a scoring rule. Recovery requests and reset attempts
-share this throttle. Brevo's HTTPS API sends recovery emails; SMTP is not required.
+share this throttle. Unregistered emails share a separate per-process budget
+for password checks. Brevo's HTTPS API sends recovery emails; SMTP is not required.
 
 - A11 (authorised 18 November 2026): Forgot password sends a random 16-character
   hexadecimal code, grouped with hyphens for readability, to the registered email.

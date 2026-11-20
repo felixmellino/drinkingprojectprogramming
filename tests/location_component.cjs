@@ -9,7 +9,7 @@ function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={
   classList:{add(){},contains(){return false;}},setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k];},
   addEventListener(name,fn){this.handlers[name]=fn;}});
  const bodyClasses=new Set();
- const document={getElementById:id=>elements[id]??(elements[id]=el()),body:{classList:{add:c=>bodyClasses.add(c)}}};
+ const document={getElementById:id=>elements[id]??(elements[id]=el()),body:{classList:{add:c=>bodyClasses.add(c),contains:c=>bodyClasses.has(c)}}};
  const parent={postMessage:m=>messages.push(m)};
  const position={coords:{latitude:38.7,longitude:-9.1,accuracy:12},timestamp:Date.now()};
  const navigator={geolocation:{

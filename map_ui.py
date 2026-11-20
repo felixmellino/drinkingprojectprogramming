@@ -14,6 +14,8 @@ from pathlib import Path
 import pydeck as pdk
 import streamlit as st
 
+from theme import icon_css
+
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
 from map_markers import owner_markers
@@ -45,6 +47,8 @@ AREAS = {
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
     "Jamor Golf": ["jamor-golf"],
 }
+# The two quick-zoom buttons on the Map: area name -> (label, icon in assets/icons).
+QUICK_AREAS = {"Lisbon": ("Lisbon", "skyline"), "Nova SBE": ("Nova", "graduation-cap")}
 ME = ":material/my_location: Me"
 ALL = "All"
 
@@ -83,11 +87,11 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
         body = "<small>You are</small><h3>Outside the map</h3><p>Drinks here count for season points only.</p>"
     elif status == "inaccurate":
         body = (f"<small>Location</small><h3>Not precise enough</h3>"
-                f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m. Step outside for a moment.</p>")
+                f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m.</p>")
     elif status == "denied":
-        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings, then turn it on in Profile.</p>"
+        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow it in the browser settings, then turn it on in Profile.</p>"
     elif status == "off":
-        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location to see where you are.</p>"
+        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location.</p>"
     else:
         body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
@@ -185,6 +189,29 @@ def summary(rows: list[dict]) -> dict:
         best = min(theirs, key=lambda row: (row["needed"], row["name"]))
         easiest = (best["name"], best["needed"])
     return {"yours": yours, "total": len(rows), "free": free, "easiest": easiest}
+
+
+def area_buttons() -> str | None:
+    """Two icon + text buttons stacked on the left side of the map (a small grouped control).
+    Returns the picked area, or None for "no choice": the map then starts on you (or Lisbon).
+    Tapping the picked button again clears the choice."""
+    picked = st.session_state.get("map_area")
+    if picked not in QUICK_AREAS:
+        picked = None
+    clicked = None
+    with st.container(key="map_areas"):
+        for area, (label, _icon) in QUICK_AREAS.items():
+            if st.button(label, key=f"map_area_{area.split()[0].lower()}", type="tertiary"):
+                clicked = area
+    if clicked:
+        picked = None if clicked == picked else clicked
+        st.session_state["map_area"] = picked
+    css = "".join(icon_css(f".stApp .st-key-map_area_{area.split()[0].lower()} button::before", icon)
+                  for area, (_label, icon) in QUICK_AREAS.items())
+    if picked:  # only a name from QUICK_AREAS reaches the selector
+        css += f".stApp .st-key-map_area_{picked.split()[0].lower()} button{{color:var(--accent-ink);font-weight:700;}}"
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    return picked
 
 
 def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None) -> pdk.ViewState:
