@@ -25,3 +25,12 @@
 .stApp .st-key-start_login button { background: transparent; color: var(--text); border: 0; }
 .stApp .st-key-start_login button p { font-size: 1.15rem; font-weight: 600; color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .start-logo, .stApp .start-center .start-word, .stApp .st-key-start_actions { animation: none; } }
+/* Signed-in welcome: the whole screen is one button; only the hint at the bottom is visible. */
+.stApp .st-key-start_continue { position: fixed; inset: 0; z-index: 3; width: auto !important; }
+.stApp .st-key-start_continue [data-testid="stElementContainer"], .stApp .st-key-start_continue [data-testid="stButton"] { position: absolute; inset: 0; width: 100% !important; height: 100%; margin: 0 !important; }
+.stApp .st-key-start_continue button { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  display: flex; align-items: flex-end; justify-content: center; padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)); cursor: pointer; }
+.stApp .st-key-start_continue button:hover, .stApp .st-key-start_continue button:active { background: transparent; }
+.stApp .st-key-start_continue button p { font-size: 1rem; font-weight: 600; color: var(--text-muted); animation: start-hint 1.8s .8s ease-in-out infinite both; }
+@keyframes start-hint { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stApp .st-key-start_continue button p { animation: none; } }

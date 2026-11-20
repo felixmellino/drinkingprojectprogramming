@@ -39,6 +39,6 @@ Weitere Seiten: Profil (Lobbies, Freunde, Statistiken, Konto, Location-Schalter)
 - Fotos und Schriften brauchen eine **freie Lizenz** oder eigene Rechte (Repo und App sind öffentlich).
 
 ## Gerade in Arbeit / offen für Ideen
-- **Startbildschirm (umgesetzt):** heller Grund, App-Icon „WP“ in Himmelblau, Schriftzug „WeGo“ navy + „Pub“ blau, unten *Create account* (blau) und *Log in* (Text). Kurzer Einstieg (Icon ploppt, Schriftzug gleitet hoch), sonst ruhig.
+- **Startbildschirm (umgesetzt):** heller Grund, App-Icon „WP“ in Himmelblau, Schriftzug „WeGo“ navy + „Pub“ blau, unten *Create account* (blau) und *Log in* (Text). Kurzer Einstieg (Icon ploppt, Schriftzug gleitet hoch), sonst ruhig. Erscheint bei **jedem Öffnen der App**: Wer noch eingeloggt ist, sieht Icon und Schriftzug mit „Tap to continue“, ein Tipp irgendwo führt weiter.
 - Profil- und Lobby-Seite optisch an Karte, Ranks und Photos angleichen.
 - Kleine Ladeanimationen und Leerzustände („noch keine Fotos“ usw.).

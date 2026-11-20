@@ -290,12 +290,37 @@ if st.button("Lose server session"):
         at = AppTest.from_string(script).run()
         assert not at.exception
         assert at.session_state["player_id"] == player.id
+        form(at, "Tap to continue").click().run()   # opening the app greets with the start screen first
         form(at, "Lose server session").click().run()
         assert not at.exception
         assert at.session_state["player_id"] == player.id
         assert requests[0] != requests[-1]
         assert restore.call_count == 2
         assert not at.text_input
+        assert any(b.label == "Tap to continue" for b in at.button), "a fresh session starts with the start screen again"
+
+
+def test_opening_the_app_signed_in_shows_the_start_screen_and_one_tap_continues():
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    script = '''
+import streamlit as st
+from shared import require_login
+require_login()
+st.write("page content")
+'''
+    with patch("device_login._browser_storage",
+               side_effect=lambda **c: {"request_id": c["request_id"], "token": "saved-token", "available": True}), \
+         patch("data.db.get_remembered_player", return_value=player), \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_string(script).run()
+        assert not at.exception and at.session_state["player_id"] == player.id
+        assert [b.label for b in at.button] == ["Tap to continue"], "only the start screen, no tabs, no page yet"
+        assert any("start-logo" in h.value for h in at.get("html"))
+        assert not any("page content" in m.value for m in at.markdown)
+        form(at, "Tap to continue").click().run()
+        assert not at.exception and any("page content" in m.value for m in at.markdown)
+        at.run()
+        assert not any(b.label == "Tap to continue" for b in at.button), "once per opening, not on every page"
 
 
 def recovery_screen():
