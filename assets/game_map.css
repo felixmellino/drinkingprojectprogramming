@@ -54,22 +54,26 @@
   border-radius: 16px; padding: 6px 12px 0; box-shadow: var(--shadow-card); gap: 0 !important; }
 .game-card { color: var(--text); }
 .game-card small { display: block; font-size: 0.58rem; letter-spacing: 0.1em; line-height: 1.2; color: var(--text-muted); text-transform: uppercase; }
-.game-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.02rem;
+.game-card h3 { margin: 0; font-family: var(--font-body); font-weight: 700; font-size: .98rem;
   color: var(--text); padding: 0; line-height: 1.15; }
 .game-card p { margin: 0; font-size: 0.74rem; line-height: 1.25; color: var(--text-muted); }
 .game-card .game-yours { color: var(--territory-yours-ink); }
 .game-card .game-theirs { color: var(--territory-theirs-ink); }
 /* Tug-of-war: big number and you-vs-rival bar for an owned territory you stand in. */
-.game-card .tug-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.game-card .tug-head h3 { min-width: 0; overflow-wrap: anywhere; }
-.game-card .tug-number { text-align: right; flex-shrink: 0; white-space: nowrap; }
-.game-card .tug-number b { display: inline; font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; line-height: 1; }
-.game-card .tug-number em { display: inline; margin-left: 4px; font-style: normal; font-size: 0.62rem; color: var(--text-muted); }
-.game-card .tug-bar { display: flex; height: 4px; margin-top: 5px; border-radius: var(--radius-pill); overflow: hidden; background: var(--border); }
+.game-card .tug-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.game-card .tug-title { min-width: 0; }
+.game-card .tug-title h3 { margin: 0; font-family: var(--font-body); font-weight: 700; font-size: .98rem; line-height: 1.2;
+  color: var(--text); overflow-wrap: anywhere; }
+.game-card .tug-sub { margin: 1px 0 0; font-size: .74rem; line-height: 1.25; color: var(--text-muted); }
+.game-card .tug-pill { flex-shrink: 0; white-space: nowrap; padding: 4px 10px; border-radius: var(--radius-pill);
+  font-size: .76rem; font-weight: 700; }
+.game-card .tug-pill-theirs { background: #FDECEC; color: var(--territory-theirs-ink); }
+.game-card .tug-pill-yours { background: var(--accent-soft); color: var(--territory-yours-ink); }
+.game-card .tug-bar { display: flex; height: 6px; margin-top: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--border); }
 .game-card .tug-bar i { display: block; height: 100%; }
 .game-card .tug-you { background: var(--territory-yours); }
 .game-card .tug-rival { background: var(--territory-theirs); }
-.game-card .tug-labels { display: flex; justify-content: space-between; gap: 10px; margin: 3px 0 0; font-size: 0.66rem; font-weight: 600; }
+.game-card .tug-labels { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0 0; font-size: .7rem; font-weight: 700; }
 .game-card .tug-labels span:last-child { text-align: right; overflow-wrap: anywhere; }
 /* The territory list: a quiet row at the bottom of the sheet. */
 .stApp .st-key-game_card [data-testid="stExpander"] details { box-shadow: none; background: transparent; border: 0; }
