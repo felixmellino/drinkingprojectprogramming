@@ -30,6 +30,7 @@ def show_accounts():
         theme.wordmark()
         st.caption("Track drinks, claim territory, win the season.")
         action = st.radio("Choose an action", ["Create account", "Log in"], horizontal=True,
+                           index=int("lobby_invite" in st.query_params),
                            key="account_action", label_visibility="collapsed")
         if action == "Create account":
             st.caption("Only your username is public. Your name and email stay private.")

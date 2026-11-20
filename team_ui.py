@@ -113,9 +113,9 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     if season is None:
         from lobby_ui import retry_setup
         retry_setup(player_id, lobby)
-    from lobby_ui import delete_lobby_controls, leave_lobby_controls
+    from lobby_ui import leave_lobby_controls, show_lobby_management
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season, members)
     if st.button('Close', key='close_lobby_teams'):
         dismiss_lobby_dialog()
         st.rerun()
