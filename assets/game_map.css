@@ -70,7 +70,7 @@
     top: calc(8px + env(safe-area-inset-top, 0px)); margin: 0; padding: 0; }
   /* Sheet just above the tab bar; the territory list scrolls inside it. */
   .stApp .st-key-game_card { position: fixed; z-index: 10; left: 10px; right: 10px; width: auto !important; margin: 0;
-    bottom: calc(116px + env(safe-area-inset-bottom, 0px));  /* tab bar moved up 24px */
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));  /* tab bar moved up 16px */
     max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 

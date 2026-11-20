@@ -3,7 +3,7 @@
 .st-key-wego_bottom_nav {
   position: fixed; left: 50%; transform: translateX(-50%);
   /* Raised so the hosting badge in the bottom-right corner does not cover the Photos tab. */
-  bottom: calc(34px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   width: min(460px, calc(100% - 20px)); z-index: 1000;
   padding: 6px 6px; border-radius: 28px;
   background: var(--hud-bg); box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
@@ -62,7 +62,7 @@
 
 /* Room for the bar under the page; no sidebar when the bar is shown. */
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stMain"] [data-testid="stMainBlockContainer"] {
-  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stSidebar"],
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Expand sidebar"],
