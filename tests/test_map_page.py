@@ -56,6 +56,16 @@ def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
     replay.assert_called_once()
 
 
+def test_map_has_one_compact_location_switch_that_also_follows_the_position(phone, monkeypatch):
+    calls = []
+    monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: calls.append(kwargs) or phone["location"])
+    page = open_map()
+    assert not page.exception
+    assert len(calls) == 1, "one component only: the switch itself follows, no second invisible tracker"
+    assert calls[0]["mode"] == "switch" and calls[0]["compact"] is True and calls[0]["follow"] is True
+    assert calls[0]["key"] == "location_switch_map"   # a different key than the Profile switch
+
+
 def card(page):
     """The floating location card over the map (HTML in a markdown block)."""
     return next(m.value for m in page.markdown if 'class="game-card"' in m.value)

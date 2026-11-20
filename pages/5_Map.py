@@ -14,7 +14,7 @@ from profile_picture_ui import load_picture, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from parallel import run_parallel
-from phone_location import current_location, track_location
+from phone_location import current_location, location_switch
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -23,7 +23,10 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 map_ui.load_styles()
 
-track_location()
+# Small Location switch under the top bar, shared with the one in Profile. It also follows the
+# phone's position, so it must run before current_location() reads the newest reading below.
+with st.container(key="map_location"):
+    location_switch(compact=True, follow=True)
 try:
     territories = get_territories()
     entries, memberships, players = run_parallel(

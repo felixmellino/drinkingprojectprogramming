@@ -38,10 +38,13 @@ def track_location() -> None:
         st.session_state[_READING_KEY] = value
 
 
-def location_switch() -> None:
-    """The visible Location switch for the Profile menu. Turning it on asks the
-    browser for permission straight away; the choice is remembered in this browser."""
-    value = _phone_location(mode="switch", tokens=_tokens(), key="location_switch", default=None)
+def location_switch(*, compact: bool = False, follow: bool = False) -> None:
+    """The visible Location switch. Turning it on asks the browser for permission straight
+    away; the choice is remembered in this browser and shared by every switch.
+    compact: the small pill for the Map's top bar. follow: the switch also follows the
+    position while it is on (the Map uses it instead of the invisible follower)."""
+    value = _phone_location(mode="switch", compact=compact, follow=follow, tokens=_tokens(),
+                            key="location_switch_map" if compact else "location_switch", default=None)
     if value is not None:
         st.session_state[_READING_KEY] = value
 

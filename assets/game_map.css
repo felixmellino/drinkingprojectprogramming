@@ -93,3 +93,9 @@
 .tt-row b { font-weight: 700; font-variant-numeric: tabular-nums; }
 .tt-none { color: #8A99A6; font-size: 11px; }
 .tt-none:empty { display: none; }
+
+/* Location switch: a small pill under the top bar, right-aligned (its frame is transparent). */
+.stApp .st-key-map_location { position: fixed; z-index: 11; top: calc(100px + env(safe-area-inset-top, 0px));
+  right: 10px; width: 180px !important; margin: 0; padding: 0; }
+.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; }
+.stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }

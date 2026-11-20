@@ -4,7 +4,9 @@ location by itself right after login; Safari answered such unprompted requests
 unreliably. Instead Profile has a **Location switch**. Turning it on is a tap inside
 the page, so the browser asks for permission right then. The choice is remembered
 in this browser. The Check-in and Map pages (and the Chug Duel start) follow the
-GPS automatically only while the switch is on. Before the switch was ever turned on
+GPS automatically only while the switch is on. The Map also has a small Location pill
+under its top bar (same on/off choice, synced with the Profile switch through the
+browser and across tabs); on the Map that pill itself follows the position. Before the switch was ever turned on
 they ask nothing. If the browser has forgotten its answer (Safari does, per visit),
 they probe once for four seconds; without a quick position they report "off" so the
 player taps the switch again, because an invisible frame cannot show the question
