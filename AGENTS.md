@@ -100,6 +100,9 @@ an open team decision. The game definition lives in `docs/ontology/`:
   why it works that way, and how a teammate can verify it.
 - Flag gaps that could affect the submission or walkthrough. Finish the
   core workflows and their tests before proposing extra features.
+- Secrets come from environment variables or the secrets file, are never
+  written in code, and the secrets file is never committed. Never paste
+  real keys into chats, issues, screenshots or agent conversations.
 
 ## Team workflow
 

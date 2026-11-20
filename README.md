@@ -26,6 +26,12 @@ Names above are inferred from git history and may be wrong — each member
 should confirm their own name and fill in their student number before
 submission.
 
+**Selected Block 2 solo project:** TODO — name the member whose Block 2 solo
+project WeGoPub builds on, link it, and list in two short bullet lists what
+that project already had and what the team added (accounts, lobbies, scoring
+v1, territories and map, photo check-ins, four duels, teams, friends,
+standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
 ## Hosting (deployed app)
 
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
@@ -253,7 +259,8 @@ for individual commands, covered cases, reports and the remaining phone checks.
 ## Accounts
 
 Profile has one Create account / Log in selector; only the chosen form is shown.
-Password recovery and account upgrades are currently unavailable.
+Password recovery works by emailed code (see Local setup); there is no
+self-service upgrade for legacy PIN accounts.
 First visit shows registration and login. Every game page requires a signed-in
 account. Registration requires first name, surname, unique username, unique
 email and a password of at least 8 characters, entered twice. Email and
@@ -553,8 +560,8 @@ or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
 [`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
-It is **not applied** to Supabase yet. It passed a local in-memory Postgres
-check (creator/other/retry, history kept); apply it before deploying this code.
+It is applied to the shared Supabase project (checked 20 November 2026,
+together with migrations 021, 024, 025 and 026).
 
 Before using this feature, the Data owner applies
 [`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**
@@ -562,8 +569,7 @@ and `012_player_lobby_choices.sql`. Apply the migration before deploying this
 code. It runs no migrations automatically and does not delete existing history.
 Migration 016 was applied to the shared Supabase project with contributor
 authorization on 19 November 2026. All 19 schema/access/history checks and a
-fresh app-process read/RPC check passed. The frontend changes still need
-review, merge and deployment before the public app shows the button.
+fresh app-process read/RPC check passed.
 
 Verification:
 
