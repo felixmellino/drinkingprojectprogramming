@@ -8,7 +8,6 @@ from httpx import RequestError
 
 import data.db as db
 import theme
-from core.auth import authenticate
 from core.password_recovery import RESET_MESSAGE
 from core.lobbies import create_player
 from device_login import finish_login
@@ -61,11 +60,7 @@ def show_accounts():
                 submitted = st.form_submit_button("Log in")
             if submitted:
                 try:
-                    players = db.list_players()
-                    candidate = next((p for p in players if p.email and p.email == email.strip().lower()), None)
-                    if candidate and not db.allow_login_attempt(candidate.id):
-                        raise ValueError("Too many login attempts. Try again in 15 minutes.")
-                    player = authenticate(email, password, players)
+                    player = db.authenticate_login(email, password)
                     if player:
                         finish_login(player, remember)
                     else:

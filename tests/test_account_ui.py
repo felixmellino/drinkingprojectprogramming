@@ -44,6 +44,8 @@ def test_first_visit_and_direct_game_page_require_account():
 def test_registration_login_logout_and_progress_identity():
     players = []
     with patch("data.db.list_players", side_effect=lambda: players), \
+         patch("data.db._login_player_by_email", side_effect=lambda email: next(
+             (p for p in players if p.email == email), None)), \
          patch("data.db.insert_player", side_effect=players.append), \
          patch("data.db.get_player", side_effect=lambda pid: next((p for p in players if p.id == pid), None)):
         at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
@@ -58,7 +60,7 @@ def test_registration_login_logout_and_progress_identity():
         # New Streamlit process/session still signs into the stored player ID.
         at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
         at.radio(key="account_action").set_value("Log in").run()
-        at.text_input(key="login_email").input("mia@example.com")
+        at.text_input(key="login_email").input(" MIA@EXAMPLE.COM ")
         at.text_input(key="login_password").input("password8")
         form(at, "Log in").click().run()
         assert not at.exception
@@ -88,7 +90,7 @@ def test_login_offers_password_recovery(path):
 def test_incorrect_password_does_not_authenticate_or_change_account():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     original_hash = player.pin_hash
-    with patch("data.db.list_players", return_value=[player]), \
+    with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.insert_player") as insert:
         at = AppTest.from_file(str(ROOT / "app.py")).run()
         at.radio(key="account_action").set_value("Log in").run()
@@ -119,21 +121,44 @@ def test_password_change_invalidates_existing_session():
 
 def test_throttled_login_does_not_authenticate():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
-    with patch("data.db.list_players", return_value=[player]), \
+    with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.allow_login_attempt", return_value=False):
         at = AppTest.from_file(str(ROOT / "app.py")).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
         form(at, "Log in").click().run()
-        assert any("Too many login attempts" in msg.value for msg in at.error)
+        assert [msg.value for msg in at.error] == ["Email or password is incorrect."]
         assert "player_id" not in at.session_state
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_unknown_login_shares_generic_error_and_never_loads_player_list(allowed):
+    with patch("data.db._login_player_by_email", return_value=None) as lookup, \
+         patch("data.db.list_players") as list_players, \
+         patch("data.db.allow_unknown_login_attempt", return_value=allowed) as allow, \
+         patch("data.db.authenticate", return_value=None) as authenticate:
+        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at.radio(key="account_action").set_value("Log in").run()
+        at.text_input(key="login_email").input(" UNKNOWN@example.com ")
+        at.text_input(key="login_password").input("password8")
+        form(at, "Log in").click().run()
+        assert not at.exception
+        assert [msg.value for msg in at.error] == ["Email or password is incorrect."]
+        assert "player_id" not in at.session_state
+        lookup.assert_called_once_with("unknown@example.com")
+        allow.assert_called_once_with()
+        list_players.assert_not_called()
+        if allowed:
+            authenticate.assert_called_once_with("unknown@example.com", "password8", None)
+        else:
+            authenticate.assert_not_called()
 
 
 def test_remember_checkbox_creates_device_token_and_restores_after_new_session():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     token = "random-device-token"
-    with patch("data.db.list_players", return_value=[player]), \
+    with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.get_player", return_value=player), \
          patch("data.db.create_remembered_session", return_value=token) as create, \
          patch("data.db.revoke_remembered_session") as revoke:
@@ -165,7 +190,7 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
 
 def test_unchecked_remember_does_not_create_persistent_access():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
-    with patch("data.db.list_players", return_value=[player]), \
+    with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.get_player", return_value=player), \
          patch("data.db.create_remembered_session") as create:
         at = AppTest.from_file(str(ROOT / "app.py")).run()

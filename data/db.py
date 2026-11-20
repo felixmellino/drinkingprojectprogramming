@@ -9,11 +9,12 @@ SUPABASE_KEY), which is gitignored -- see .streamlit/secrets.toml.example.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
-from core.auth import new_token, token_hash
+from core.auth import allow_unknown_login_attempt, authenticate, new_token, token_hash
 from core.checkin_photo import photo_expires_at
 from core.photo_privacy import can_view_photo
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
@@ -797,6 +798,23 @@ def get_player(player_id: str) -> Player | None:
 
 def allow_login_attempt(player_id: str) -> bool:
     return bool(get_client().rpc("allow_login_attempt", {"target_player": player_id}).execute().data)
+
+
+def _login_player_by_email(email: str) -> Player | None:
+    # Match the literal address, including older accounts with mixed-case emails.
+    pattern = rf"\A{re.escape(email)}\Z"
+    rows = (get_client().table("players").select("id,display_name,first_name,last_name,pin_hash,email")
+            .filter("email", "imatch", pattern).limit(1).execute().data)
+    return Player(**rows[0]) if rows else None
+
+
+def authenticate_login(email: str, password: str) -> Player | None:
+    email = email.strip().lower()
+    if not email or len(email) > 254 or "\x00" in email or len(password) > 1024:
+        return None
+    candidate = _login_player_by_email(email)
+    allowed = allow_login_attempt(candidate.id) if candidate else allow_unknown_login_attempt()
+    return authenticate(email, password, candidate) if allowed else None
 
 
 def _player_by_email(email: str) -> Player | None:

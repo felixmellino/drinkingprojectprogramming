@@ -7,11 +7,18 @@ import hmac
 import os
 import re
 import secrets
+from collections import deque
+from threading import Lock
+from time import monotonic
 
 from core.models import Player
 
 _PBKDF2_ITERATIONS = 600_000
 _LEGACY_ITERATIONS = 200_000
+_UNKNOWN_LOGIN_WINDOW_SECONDS = 60
+_UNKNOWN_LOGIN_LIMIT = 30
+_unknown_login_attempts: deque[float] = deque()
+_unknown_login_lock = Lock()
 
 
 def hash_password(password: str) -> str:
@@ -86,10 +93,24 @@ def validate_account(first_name, last_name, username, email, password, confirmat
 _DUMMY_HASH = f"{_PBKDF2_ITERATIONS}:" + "00" * 16 + ":" + "00" * 32
 
 
-def authenticate(email: str, password: str, players: list[Player]) -> Player | None:
-    player = next((p for p in players if p.email and p.email.lower() == email.strip().lower()), None)
-    valid = verify_password(password, player.pin_hash if player else _DUMMY_HASH)
-    return player if valid else None
+def allow_unknown_login_attempt() -> bool:
+    """Cap dummy password checks per server process, across all unknown addresses."""
+    with _unknown_login_lock:
+        now = monotonic()
+        cutoff = now - _UNKNOWN_LOGIN_WINDOW_SECONDS
+        while _unknown_login_attempts and _unknown_login_attempts[0] <= cutoff:
+            _unknown_login_attempts.popleft()
+        if len(_unknown_login_attempts) >= _UNKNOWN_LOGIN_LIMIT:
+            return False
+        _unknown_login_attempts.append(now)
+        return True
+
+
+def authenticate(email: str, password: str, candidate: Player | None) -> Player | None:
+    if candidate is not None and (not candidate.email or candidate.email.lower() != email.strip().lower()):
+        candidate = None
+    valid = verify_password(password, candidate.pin_hash if candidate else _DUMMY_HASH)
+    return candidate if valid else None
 
 
 def new_token() -> tuple[str, str]:
