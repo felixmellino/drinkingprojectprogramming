@@ -156,7 +156,7 @@ def player_sheet_html(name: str, rank: int, points, stats: dict, now: datetime) 
         return f'<div class="sheet-stat"><small>{escape(label)}</small><b>{escape(str(value))}</b>{sub_html}</div>'
     territories = "—" if stats["territories"] is None else stats["territories"]
     return (
-        f'<div class="sheet-head"><p class="sheet-rank">Rank {rank} · {escape(format_points(points))} points</p></div>'
+        f'<div class="sheet-head"><p class="sheet-rank">Rank {rank} with {escape(format_points(points))} points</p></div>'
         '<div class="sheet-grid">'
         + tile("Drinks", stats["drinks"])
         + tile("Territories", territories)

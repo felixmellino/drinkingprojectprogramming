@@ -193,7 +193,7 @@ def show_photo_privacy(player_id):
 
 def show_stats(player_id):
     st.header("My stats")
-    st.caption("All-time personal stats · Includes lobbies you have left")
+    st.caption("All-time personal stats, including lobbies you have left")
     memberships = db.list_memberships_for_player(player_id, include_left=True)
     now = datetime.now(timezone.utc)
     finished_season_ids = set()

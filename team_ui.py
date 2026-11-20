@@ -49,7 +49,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     st.code(lobby.invite_code, language=None)
     locked = any(e.membership_id == me.id for e in entries)
     totals = dict(season_leaderboard(entries, transfers))
-    st.caption(f'{lobby.team_count} teams · {lobby.team_capacity} players per team · ' +
+    st.caption(f'{lobby.team_count} teams of up to {lobby.team_capacity} players. ' +
                ('Random assignment' if lobby.team_assignment == 'random' else 'Choose your team'))
     if not me.team_id:
         st.info('Join a team below before checking in. Your team locks after your first scored check-in.')
@@ -84,7 +84,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                             st.rerun()
             else:
                 st.text(team.name)
-            st.caption(f'Team {team.number} · {len(teammates)}/{lobby.team_capacity} members · {format_points(totals.get(team.id, 0))} points' + (' · YOUR TEAM' if own else ''))
+            st.caption(f'Team {team.number}: {len(teammates)}/{lobby.team_capacity} members, {format_points(totals.get(team.id, 0))} points' + (' (your team)' if own else ''))
             for member in teammates:
                 label = names.get(member.player_id, 'Lobby member')
                 try:
@@ -94,7 +94,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                 # Existing profile-picture privacy remains authoritative.
                 if picture:
                     st.markdown(f'<img src="data:image/jpeg;base64,{base64.b64encode(picture).decode("ascii")}" alt="Member picture" style="width:28px;height:28px;border-radius:50%">', unsafe_allow_html=True)
-                st.text((label if picture else f'{initials(label)} · {label}') + (' · Left (slot reserved)' if member.left_at else ''))
+                st.text((label if picture else f'{initials(label)}  {label}') + (' (left, slot reserved)' if member.left_at else ''))
             if not teammates:
                 st.caption('No members yet')
             if lobby.team_assignment == 'manual' and not own:

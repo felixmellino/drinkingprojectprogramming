@@ -103,8 +103,8 @@ def territory_card(row: dict, *, standing_in: bool = False) -> str:
     line when it's unclaimed. standing_in adds "You are here" to the sub line."""
     if row["status"] in ("yours", "theirs"):
         return tug_of_war(row, standing_in=standing_in)
-    sub = "You are here · unclaimed" if standing_in else "Unclaimed"
-    return _title(row["name"], f"{sub} · your next drink here claims it")
+    sub = "Unclaimed. You are here" if standing_in else "Unclaimed"
+    return _title(row["name"], f"{sub}. Your next drink here claims it.")
 
 
 def tug_of_war(here: dict, *, standing_in: bool = True) -> str:
@@ -113,17 +113,17 @@ def tug_of_war(here: dict, *, standing_in: bool = True) -> str:
     a thin bar of you against the owner / your closest rival with the two
     scores under it. The full sentence stays as screen-reader text."""
     me = here["my_points"]
-    prefix = "You are here · " if standing_in else ""
     if here["status"] == "theirs":
         rival_name, rival = here["owner"], here["owner_points"]
-        sub = f"{prefix}owned by {rival_name}"
+        sub = f"Owned by {rival_name}"
         pill, tone = f"+{format_points(here['needed'])} to take it", "tug-pill-theirs"
     else:
         rivals = [r for r in here["ranking"] if not r["you"]]
         rival_name, rival = (rivals[0]["name"], rivals[0]["points"]) if rivals else ("No rival yet", 0)
-        sub = f"{prefix}yours"
+        sub = "Yours"
         pill, tone = f"+{format_points(me - rival)} lead", "tug-pill-yours"
-    sub = sub[0].upper() + sub[1:]
+    if standing_in:
+        sub += ". You are here"
     total = me + rival
     share = 50 if total <= 0 else round(100 * float(me) / float(total))
     return (
@@ -312,13 +312,13 @@ def _sheet_row(row: dict) -> dict:
     me = row["my_points"]
     rivals = [r for r in row["ranking"] if not r["you"]]
     if row["status"] == "theirs":
-        badge, sub = row["owner"], f'{row["owner"]} · you {format_points(me)} vs {format_points(row["owner_points"])}'
+        badge, sub = row["owner"], f'Owned by {row["owner"]}, you {format_points(me)} vs {format_points(row["owner_points"])}'
         pill = f'+{format_points(row["needed"])} to take'
     elif row["status"] == "yours":
         rival = rivals[0] if rivals else None
         badge = "You"
-        sub = (f'Yours · {format_points(me)} vs {rival["name"]} {format_points(rival["points"])}' if rival
-               else f"Yours · {format_points(me)}, no rival yet")
+        sub = (f'Yours, {format_points(me)} vs {format_points(rival["points"])} for {rival["name"]}' if rival
+               else f"Yours with {format_points(me)}, no rival yet")
         pill = f'+{format_points(me - (rival["points"] if rival else 0))} lead'
     else:
         badge, sub, pill = "", "Unclaimed", "Claim it"
@@ -344,8 +344,8 @@ _territory_sheet = declare_component(
 
 
 def all_territories_button(rows: list[dict]) -> None:
-    """"All territories · N" in the bottom card: opens the sheet."""
-    if st.button(f"All territories · {len(rows)}", key="map_all_territories", width="stretch"):
+    """The "All territories  N" row in the bottom card: opens the sheet."""
+    if st.button(f"All territories\u2003{len(rows)}", key="map_all_territories", width="stretch"):
         st.session_state["map_sheet_open"] = st.session_state.get("map_sheet_open_count", 0) + 1
         st.session_state["map_sheet_open_count"] = st.session_state["map_sheet_open"]
 
@@ -359,7 +359,7 @@ def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = 
     if not opened:
         return None
     summary = summary_line(rows)
-    note = "Team territories · points and gaps combine all team members’ drinks." if team_mode else ""
+    note = "Team territories: points and gaps combine all team members’ drinks." if team_mode else ""
     with st.container(key="territory_sheet_stage"):
         value = _territory_sheet(rows=territory_sheet_rows(rows), title=lobby_name, summary=summary, note=note,
                                  tokens=component_tokens(), key=f"territory_sheet_{opened}", default=None)
@@ -378,4 +378,4 @@ def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = 
 def summary_line(rows: list[dict]) -> str:
     numbers = summary(rows)
     rivals = numbers["total"] - numbers["yours"] - numbers["free"]
-    return f'{numbers["yours"]} yours · {rivals} rivals · {numbers["free"]} free'
+    return f'{numbers["yours"]} yours\u2003{rivals} rivals\u2003{numbers["free"]} free'

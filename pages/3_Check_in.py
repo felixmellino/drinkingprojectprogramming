@@ -137,7 +137,7 @@ if photo is None and not st.session_state.get('checkin_posted'):
 
 page_header("Check in", compact=True)
 if modern and rules.get('test_mode'):
-    st.caption("Test season · open Wed 08:00 – Sun 18:00")
+    st.caption("Test season, open Wed 08:00 to Sun 18:00")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -258,12 +258,12 @@ with st.container(key="drink_ui_panel_location"):
                 territories = get_territories()
                 preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
                 if preview_result == "matched":
-                    place = " · " + next(t.name for t in territories if t.id == preview_territory)
+                    place = " in " + next(t.name for t in territories if t.id == preview_territory)
                 elif preview_result == "outside":
-                    place = " · outside the territories"
+                    place = ", outside the territories"
             except (APIError, RequestError, RuntimeError):
                 pass  # The territory is checked again on submission.
-        st.caption(f"Location found · {accuracy_m:.0f} m{place}")
+        st.caption(f"Location found, accurate to {accuracy_m:.0f} m{place}")
 
 
 # Recover a lost successful reply even after the scoring window closes.

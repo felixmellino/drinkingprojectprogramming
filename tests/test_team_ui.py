@@ -208,6 +208,6 @@ def test_departed_teammate_slot_is_visible_and_full(ui):
     at = page()
     open_lobby(at)
     assert not at.exception
-    assert any('Left (slot reserved)' in text.value for text in at.text)
+    assert any('(left, slot reserved)' in text.value for text in at.text)
     assert at.button(key='join_team_t1').disabled
     assert any(b.label == 'Leave lobby' for b in at.button)

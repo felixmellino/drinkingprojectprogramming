@@ -135,7 +135,7 @@ def owner_markers(rows, pictures, colours):
             "icon": {"url": badge_image(pictures.get(first["owner_id"]), colours[first["status"]]),
                      "width": 96, "height": 96, "anchorY": 48},
             "name": first["owner"],
-            "detail": f"{len(group)} territories · Tap to view points" if len(group) > 1 else "Tap to view territory points",
+            "detail": f"{len(group)} territories. Tap to view points" if len(group) > 1 else "Tap to view territory points",
             "points": "",
         })
     return markers

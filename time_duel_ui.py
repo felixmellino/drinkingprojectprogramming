@@ -38,7 +38,7 @@ def _render_invitations(player, member, state, labels):
         with st.container(border=True, key='time_invite_' + duel['id']):
             if member == duel['challenger_id']:
                 st.markdown('**Pending Challenge invite**')
-                st.write('Time Duel · Waiting for ' + labels.get(duel['opponent_id'], 'Lobby member'))
+                st.write('Time Duel: waiting for ' + labels.get(duel['opponent_id'], 'Lobby member'))
                 if st.button('Cancel invitation', key='time_cancel_' + duel['id']):
                     _act(player, duel, 'cancel')
             else:
@@ -77,9 +77,9 @@ def _result_card(duel, member, labels):
         result_card('draw', '=', f'Same total error as {rival}',
                     note='Both get the ×1.25 boost only if every round counted.')
     elif duel.get('winner_id') == member:
-        result_card('won', '×1.25', 'on your check-ins for the next hour', note=f'vs {rival} · 3 rounds')
+        result_card('won', '×1.25', 'on your check-ins for the next hour', note=f'vs {rival}, 3 rounds')
     else:
-        result_card('lost', '—', f'{rival} gets the ×1.25 boost', note='3 rounds · smallest total error wins')
+        result_card('lost', '—', f'{rival} gets the ×1.25 boost', note='3 rounds, smallest total error wins')
 
 
 def render_time(player, member, lobby, season, members, labels):
@@ -121,13 +121,13 @@ def render_time(player, member, lobby, season, members, labels):
         st.rerun()
     st.subheader('Time Duel', anchor=False)
     st.write('Feel the seconds. Tap to start, then stop without seeing a clock.')
-    st.caption('Three rounds · Same random 5–12 second target · Smallest total error wins. '
+    st.caption('Three rounds with the same random 5–12 second target. Smallest total error wins. '
                'Fewer abandoned rounds wins first. Leaving or reloading a running timer loses that round.')
     st.info('Win ×1.25 personal season points on ordinary check-ins for one hour. '
             'Territory points and owner income stay unchanged. The highest active boost applies.')
     st.caption('Fairplay: no external clocks. A complete exact tie rewards both players.')
-    st.caption('Test season · Unlimited sequential duels' if state['test_mode'] else
-               'One challenge + one acceptance per evening · Resets at 06:00 in ' + season.timezone_name)
+    st.caption('Test season with unlimited sequential duels' if state['test_mode'] else
+               'One challenge and one acceptance per evening. Resets at 06:00 in ' + season.timezone_name)
     if state.get('boost_ends_at'):
         st.success('Your Time Duel boost is active. Check-in shows the applicable multiplier.')
     cols = st.columns(2)
@@ -166,7 +166,7 @@ def render_time(player, member, lobby, season, members, labels):
         for duel in (d for d in duels if d['status'] in FINAL):
             other = duel['opponent_id'] if duel['challenger_id'] == member else duel['challenger_id']
             verdict = ('Won' if duel.get('winner_id') == member else 'Lost') if duel.get('winner_id') else duel['status'].title()
-            st.write(f"{verdict} · vs {labels.get(other, 'Opponent')}")
+            st.write(f"{verdict} vs {labels.get(other, 'Opponent')}")
             if st.button('View result', key='time_result_' + duel['id']):
                 st.session_state['time_focused_id'] = duel['id']
                 st.rerun(scope='fragment')

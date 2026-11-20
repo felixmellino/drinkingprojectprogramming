@@ -246,7 +246,7 @@ def test_player_sheet_html_shows_four_tiles_escaped():
     stats = {"drinks": 9, "territories": None, "favourite": None, "last_place": "<b>Pub</b>",
              "last_at": START}
     html = standings_ui.player_sheet_html("LucasStink", 1, 16.75, stats, START + timedelta(minutes=22))
-    assert "Rank 1 · 16.75 points" in html and html.count('class="sheet-stat"') == 4
+    assert "Rank 1 with 16.75 points" in html and html.count('class="sheet-stat"') == 4
     assert "<b>Pub</b>" not in html and "&lt;b&gt;Pub&lt;/b&gt;" in html and "22 min ago" in html
     assert html.count(">—<") == 2                       # territories unavailable, no favourite
 
