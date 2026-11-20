@@ -119,7 +119,12 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     radio(page, "Drink").set_value("shot").run()
     assert not any(item.label == "Size" for item in page.radio)
     assert any("+4 points" in item.value for item in page.info)
+    # The size row keeps its place for a shot (invisible spacer + min-height), so the photo does not jump.
+    assert any('class="size-spacer"' in m.value for m in page.markdown)
+    css = (ROOT / "assets" / "drink_entries.css").read_text(encoding="utf-8")
+    assert ".st-key-drink_ui_sizes { min-height: 40px; }" in css and ".size-spacer { display: block; height: 0;" in css
     radio(page, "Drink").set_value("mixed").run()
+    assert not any('class="size-spacer"' in m.value for m in page.markdown), "a drink with sizes shows the radio, not the spacer"
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
 
 
