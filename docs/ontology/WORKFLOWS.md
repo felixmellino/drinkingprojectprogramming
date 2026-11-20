@@ -160,28 +160,37 @@ the points count from the moment the other player confirms.
 The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four quick categories and size presets (P-S01-P-S04); full drinker awards plus separate 25% owner season income (P-S05-P-S08); weekly eligibility (P-S09); a shared two-minute posting cooldown and idempotent retries (P-S10/P-S11); and two-minute corrections with downstream replay (P-S12). This is not the behaviour of the current prototype. Photo deletion and retention remain governed by R7/P-S15. The [acceptance matrix](SCORING_PROPOSAL.md#13--outstanding-approvals-and-acceptance-checklist) covers allowed, rejected and boundary cases.
 
 
-## Remember the selected lobby (18 November 2026)
+## Choose and remember the current lobby
 
 Contributor decision: the last lobby explicitly chosen as the context for
 lobby-specific pages is saved per player in the database, across devices,
-logouts and app restarts. Opening a joined lobby card or successfully
-creating/joining a lobby selects it. Closing its popup and refreshing the
-Lobby page keep that selection. Automatic selection never overwrites the
-player's explicit saved choice, and restoration never reopens a popup.
+logouts and app restarts. Choose **Make current** on an eligible lobby card.
+Exactly one card has the **Current lobby** badge when a lobby is selected.
+**View lobby** opens details without changing the selection, and a lobby's
+standings can be viewed there without making that lobby current.
+Create and Join tell the player before submission that the lobby will become
+current. Successfully creating a lobby with a season or joining a lobby
+that has not finished selects it automatically. If season setup fails during
+creation, a successful setup retry selects it. Finished lobbies remain
+available for history. Automatic fallback never overwrites the saved choice,
+and restoration never reopens a popup.
 
 After authentication, restore the saved lobby before rendering Leaderboard,
 Map, Check-in, Minigames or Photo history. Recheck current membership and load
 current lobby mode, team and season from the database. A preference grants
 no access. If membership has been removed, require a choice on the Lobby page.
 If the saved competition has finished, select the newest active competition
-(by start timestamp, then lobby ID). With no active alternative, require a
-choice; finished results remain available by opening their lobby explicitly.
+(by start timestamp, then lobby ID). This also applies on the next page
+load or Lobby refresh if the season ends during a signed-in session. With
+no active alternative, require a choice for gameplay.
 A player without a saved choice also defaults to their newest active lobby.
 Upcoming/incomplete saved lobbies stay selected; existing workflow checks
 explain when a season or team is still needed.
 
-Leaderboard can display standings even when the shared selection has no usable
-season. It shows the newest active competition the player belongs to if one
+Leaderboard and Map display the lobby's name. If the current lobby is still
+being set up, Leaderboard directs the player to Lobby to complete setup.
+When there is no current lobby, Leaderboard can still display standings.
+It shows the newest active competition the player belongs to if one
 exists. Otherwise it shows the saved lobby's season if the player still belongs
 to it, or the season of the most recently joined lobby with a season. It labels
 finished standings and links to Lobby if there is nothing to show. This

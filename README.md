@@ -472,9 +472,14 @@ and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).
 Apply [`migrations/012_player_lobby_choices.sql`](migrations/012_player_lobby_choices.sql)
 once before deploying this version (also required for new databases).
 It adds a server-only account preference; existing Player/Lobby models and
-scoring records are unchanged. The last explicitly selected lobby follows the
-player across devices. Reopening switches a finished selection to the newest
-active lobby. Removed membership requires selecting a lobby again.
+scoring records are unchanged. In **Profile → Lobby**, choose **Make current**
+to switch Map, Ranks, Check-in, Minigames, and lobby photo history. The selected
+card shows **Current lobby**. **View lobby** opens the details independently.
+Creating a lobby with a season or joining an unfinished lobby also selects it,
+as indicated before submission. The last explicit choice follows the player
+across devices. When the current season finishes, the next page load or Lobby
+refresh picks the newest running lobby if one is available. Removed membership
+requires selecting a lobby again on restoration.
 
 Verify locally with `python -m pytest tests/test_lobby_selection.py tests/test_lobby_ui.py -q`.
 These tests exercise fresh Streamlit sessions, real Leaderboard initialization,
@@ -486,7 +491,7 @@ changing the preference; all temporary test records were removed.
 
 Browser verification on 18 November 2026 passed in a freshly started local
 app against the shared database: choose the older of two active QA lobbies,
-close its popup, open Leaderboard, fully reload the page and sign in again
+open Leaderboard, fully reload the page and sign in again
 without opening Lobby. Leaderboard restored the older chosen lobby correctly.
 The temporary QA account and both lobbies were removed after verification.
 
