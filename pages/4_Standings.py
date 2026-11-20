@@ -1,12 +1,14 @@
 """The season ranking and territory accounts, using the core's existing order."""
 
+from zoneinfo import ZoneInfo
+
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
 from parallel import run_parallel
-from core.leaderboard import season_leaderboard
+from core.leaderboard import game_night_leaderboard, game_night_window, season_leaderboard
 from core.lobby_overview import lobby_status
 from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
@@ -89,12 +91,33 @@ owners = {territory.id: owner for territory, owner, _rows in territory_data} if 
 territory_names = {territory.id: territory.name for territory, _owner, _rows in territory_data}
 
 
+# Season | Game night: the same ranking, or only the drinks of one game night
+# (the running one, else the last). Every member is listed, 0 if they did not score.
+night = game_night_window(current_time(), season) if season else None
+if team_mode:
+    competitors = [t.id for t in teams]
+else:
+    competitors = [m.id for m in memberships if getattr(m, "left_at", None) is None]
+night_rows = game_night_leaderboard(entries, competitors, night[0], night[1]) if night else []
+
+
 @st.fragment
 def ranking():
     """Tapping a place reruns only this part: the season was loaded above."""
-    tapped = standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+    rows = leaderboard
+    if night:
+        view = st.radio("Ranking", ["Season", "Game night"], horizontal=True, key="pill_radio_ranks_view",
+                        label_visibility="collapsed")
+        if view == "Game night":
+            start, end, current = night
+            zone = season.timezone_name
+            first, last = start.astimezone(ZoneInfo(zone)), end.astimezone(ZoneInfo(zone))
+            st.caption(f"{'This' if current else 'Last'} game night, {first:%a %d} to {last:%a %d %b}. "
+                       "Only drinks checked in that night count.")
+            rows = night_rows
+    tapped = standings_ui.leaderboard(rows, names, membership_id, team_mode=team_mode)
     if tapped is not None:
-        rank, points = next((i + 1, p) for i, (m, p) in enumerate(leaderboard) if m == tapped)
+        rank, points = next((i + 1, p) for i, (m, p) in enumerate(rows) if m == tapped)
         stats = standings_ui.player_stats(tapped, entries, owners, territory_names)
         standings_ui.player_sheet(names.get(tapped, "Unknown player"), rank, points, stats, current_time())
 

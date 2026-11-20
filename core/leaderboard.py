@@ -32,3 +32,41 @@ def season_leaderboard(entries: list[DrinkEntry], transfers=()) -> list[tuple[st
     for _ts, membership_id, points in _season_events(entries):
         totals[membership_id] = totals.get(membership_id, 0) + points
     return sorted(totals.items(), key=lambda item: item[1], reverse=True)
+
+
+# -- Game night ranking (Ranks tab: Season | Game night) ----------------------
+
+def game_night_window(now, season):
+    """The game night the Ranks tab shows: the one running now, else the most
+    recent one (Thu 18:00 to Sun 18:00 by default, from the season's rules).
+    Returns (start, end, is_current), or None when the season has not had a
+    game night yet or uses the legacy rules (no scoring window)."""
+    from datetime import timedelta
+    from core.scoring_v1 import utc, window_bounds
+    if getattr(season, "scoring_version", None) != "v1":
+        return None
+    at = min(utc(now), utc(season.ends_at) - timedelta(microseconds=1))
+    start, end = window_bounds(at, season)
+    if at < utc(start):                       # before this week's window: show last week's
+        start, end = window_bounds(at - timedelta(days=7), season)
+    if utc(end) <= utc(season.starts_at):
+        return None
+    return start, end, utc(start) <= utc(now) < utc(end)
+
+
+def game_night_leaderboard(entries: list[DrinkEntry], competitors, start, end) -> list[tuple[str, int | Decimal]]:
+    """Points from each competitor's own drinks checked in during one game
+    night: the drink's season award (incl. any Time Duel bonus), but no owner
+    income and no duel transfers. Every competitor is listed, 0 if they did
+    not score. Ties go to whoever reached the tied total first (R-R01)."""
+    from core.scoring_v1 import entry_order, utc
+    from core.teams import competitor
+    totals: dict[str, int | Decimal] = {c: 0 for c in competitors}
+    reached: dict[str, tuple] = {}
+    counted = [e for e in entries if e.points_awarded > 0 and e.location_check_result in ("matched", "outside")
+               and utc(start) <= utc(e.submitted_at) < utc(end)]
+    for entry in sorted(counted, key=entry_order):
+        who = competitor(entry)
+        totals[who] = totals.get(who, 0) + entry.points_awarded + (entry.time_bonus or 0)
+        reached[who] = entry_order(entry)
+    return sorted(totals.items(), key=lambda row: (-row[1], row[0] not in reached, reached.get(row[0], ()), row[0]))

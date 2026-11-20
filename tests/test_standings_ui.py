@@ -259,3 +259,54 @@ def test_tapping_a_place_opens_that_players_sheet(ui):
     assert not at.exception
     sheet = "".join(m.value for m in at.markdown if "sheet-grid" in m.value)
     assert "Rank 2" in sheet and sheet.count('class="sheet-stat"') == 4
+
+
+# -- Season | Game night switch ------------------------------------------------
+
+def night_page(monkeypatch, now):
+    from tests.test_scoring_v1 import season
+    monkeypatch.setattr("core.scoring_v1.current_time", lambda: now)
+    at = AppTest.from_file(ROOT / "pages/4_Standings.py", default_timeout=10)
+    at.session_state["current_membership_id"] = "member"
+    at.session_state["current_season_id"] = "season"
+    at.session_state["_validated_season"] = season()
+    return at.run()
+
+
+def test_game_night_view_counts_only_that_nights_drinks(ui, monkeypatch):
+    ui["entries"] = ui["entries"] + [entry("next", "other", "mixed", "large", 60 * 24 * 7)]   # next week
+    at = night_page(monkeypatch, START + timedelta(hours=3))
+    assert not at.exception
+    switch = next(r for r in at.radio if r.key == "pill_radio_ranks_view")
+    assert switch.options == ["Season", "Game night"] and switch.value == "Season"
+    assert rank_of(all_markup(at), "Leo") == 1                         # season: Leo has next week's 5 too
+    switch.set_value("Game night").run()
+    assert not at.exception
+    markup = all_markup(at)
+    assert rank_of(markup, "Mia") == 1 and rank_of(markup, "Leo") == 2  # this night only
+    assert any("This game night" in c.value and "Only drinks checked in that night count." in c.value
+               for c in at.caption)
+
+
+def test_members_without_drinks_that_night_are_listed_with_zero(ui, monkeypatch):
+    ui["entries"] = [entry("m1", "member", "beer", "large", 0)]
+    at = night_page(monkeypatch, START + timedelta(hours=3))
+    next(r for r in at.radio if r.key == "pill_radio_ranks_view").set_value("Game night").run()
+    markup = all_markup(at)
+    assert rank_of(markup, "Mia") == 1 and rank_of(markup, "Leo") == 2
+
+
+def test_between_game_nights_the_last_one_is_shown(ui, monkeypatch):
+    at = night_page(monkeypatch, START + timedelta(days=4))
+    next(r for r in at.radio if r.key == "pill_radio_ranks_view").set_value("Game night").run()
+    assert any(c.value.startswith("Last game night") for c in at.caption)
+
+
+def test_no_switch_without_a_game_night_season(ui):
+    at = page()                                                          # no validated v1 season
+    assert not at.exception and not any(r.key == "pill_radio_ranks_view" for r in at.radio)
+
+
+def test_no_reached_first_tag_between_players_on_zero():
+    rows = [("a", 3), ("b", 0), ("c", 0)]
+    assert [reached_first(rows, i) for i in range(3)] == [False, False, False]

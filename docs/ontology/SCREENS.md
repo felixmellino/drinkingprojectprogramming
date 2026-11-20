@@ -194,6 +194,15 @@ summary line (data reloads on every page visit).
   territory with "22 min ago" (never a location). Only scored check-ins count.
   It uses the season already loaded on the page: the ranking is one fragment,
   so a tap does not reload data.
+- Season | Game night switch above the podium (20 November 2026, game-night
+  seasons only). Game night ranks every active member (or team) by the drinks
+  they checked in during the current game night, or the last one between
+  nights: the scored points plus time-duel bonus, nothing else (no owner
+  income or other season adjustments). Members without drinks that night show
+  0. One caption names the night, e.g. "This game night, Thu 19 to Sun 22 Nov".
+  Rules live in `core.leaderboard.game_night_window` and
+  `game_night_leaderboard`; ties follow R-R01, and players on 0 get no
+  "reached first" tag.
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
 - A finished or upcoming season shows a one-line status caption. Service
