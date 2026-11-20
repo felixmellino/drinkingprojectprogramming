@@ -48,7 +48,9 @@ def test_registration_login_logout_and_progress_identity():
              (p for p in players if p.email == email), None)), \
          patch("data.db.insert_player", side_effect=players.append), \
          patch("data.db.get_player", side_effect=lambda pid: next((p for p in players if p.id == pid), None)):
-        at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
+        # Cold imports plus real password hashing can exceed AppTest's 3 s
+        # default on Windows with branch coverage; these are functional checks.
+        at = AppTest.from_file(str(ROOT / "pages/1_Profile.py"), default_timeout=10).run()
         for label, value in [("First name", "Mia"), ("Surname", "Silva"), ("Username", "mia"),
                              ("Email", "MIA@example.com"), ("Password", "password8"), ("Confirm password", "password8")]:
             fill(at, label, value)
