@@ -268,3 +268,5 @@
 .stApp:has(.st-key-checkin_photo) .st-key-drink_ui_points [data-testid="stAlertContainer"] { padding: 0.2rem 0.7rem; min-height: 0; border-radius: 10px; }
 .stApp:has(.st-key-checkin_photo) .st-key-drink_ui_points [data-testid="stAlert"] { padding: 0; }
 .stApp:has(.st-key-checkin_photo) .st-key-drink_ui_points p { margin: 0; }
+.stApp:has(.st-key-checkin_photo) .st-key-drink_ui_sizes { min-height: 40px; }  /* a shot has no sizes: same space, no jump */
+.size-spacer { display: block; height: 0; }  /* the keyed container's min-height does the work */
