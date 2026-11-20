@@ -159,7 +159,7 @@ def test_two_icon_buttons_lisbon_and_nova_and_the_map_starts_on_me_only_with_a_l
     assert seen[-1] == map_ui.ME, "usable location, nothing picked: start on me"
     next(b for b in page.button if b.key == "map_area_nova").click().run()
     assert not page.exception and seen[-1] == "Nova SBE"
-    assert ".st-key-map_area_nova button{color:var(--accent-ink)" in " ".join(m.value for m in page.markdown)
+    assert ".st-key-map_area_nova button{color:#fff" in " ".join(m.value for m in page.markdown)
     next(b for b in page.button if b.key == "map_area_nova").click().run()   # tap the picked one again: back to me
     assert seen[-1] == map_ui.ME
 

@@ -194,7 +194,7 @@ def area_buttons() -> str | None:
     css = "".join(icon_css(f".stApp .st-key-map_area_{area.split()[0].lower()} button::before", icon)
                   for area, (_label, icon) in QUICK_AREAS.items())
     if picked:  # only a name from QUICK_AREAS reaches the selector
-        css += f".stApp .st-key-map_area_{picked.split()[0].lower()} button{{color:var(--accent-ink);font-weight:600;}}"
+        css += f".stApp .st-key-map_area_{picked.split()[0].lower()} button{{color:#fff;font-weight:700;}}"
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     return picked
 
