@@ -21,17 +21,16 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 #switch[aria-checked="true"]::after{transform:translateX(20px)}
 #switch:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}
 #switch:disabled{opacity:.6;cursor:wait}
-/* Compact: a small pill for the Map's top bar, right-aligned; the status stays for screen readers. */
-body.compact{padding:2px 2px 8px}
-body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:10px;padding:4px 6px 4px 14px;
-  border-radius:var(--radius-pill);background:var(--hud-bg);box-shadow:var(--shadow-card);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+/* Compact: label and a small switch on the Map's own frosted-white shape (drawn by the page around this frame);
+   the status stays for screen readers. */
+body.compact{padding:0;height:34px;display:flex;align-items:center;justify-content:center}
+body.compact #row{display:none;width:fit-content;min-height:0;margin:0;gap:8px;padding:0;background:transparent;box-shadow:none}
 body.compact #row.show{display:flex}
-body.compact #title{font-size:.85rem}
+body.compact #title{font-size:.8rem;font-weight:600;color:var(--text)}
 body.compact #status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;margin:0}
-body.compact #switch{width:42px;height:26px;border-radius:13px}
-body.compact #switch::after{top:3px;left:3px;width:20px;height:20px}
-body.compact #switch[aria-checked="true"]::after{transform:translateX(16px)}
+body.compact #switch{width:30px;height:18px;border-radius:9px}
+body.compact #switch::after{top:2px;left:2px;width:14px;height:14px}
+body.compact #switch[aria-checked="true"]::after{transform:translateX(12px)}
 </style></head>
 <body>
 <div id="row"><div id="text"><div id="title">Location</div><div id="status" aria-live="polite"></div></div>
@@ -128,7 +127,7 @@ function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
   $("status").className = bad ? "bad" : "";
-  send("streamlit:setFrameHeight", {height: $("row").offsetHeight + 16});
+  send("streamlit:setFrameHeight", {height: document.body.classList.contains("compact") ? 34 : $("row").offsetHeight + 16});
 }
 async function showSwitch(compact, followToo) {
   if (started) return;

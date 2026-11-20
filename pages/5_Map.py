@@ -22,10 +22,6 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 map_ui.load_styles()
 
-# Small Location switch under the top bar, shared with the one in Profile. It also follows the
-# phone's position, so it must run before current_location() reads the newest reading below.
-with st.container(key="map_location"):
-    location_switch(compact=True, follow=True)
 try:
     territories = get_territories()
     entries, memberships, players = run_parallel(
@@ -70,7 +66,17 @@ else:
         except (*PICTURE_ERRORS, PermissionError, ValueError):
             pass  # An unavailable picture still has the existing initials badge.
 
-# Where am I? Decides the bottom card and whether "Me" is offered.
+# HUD floating over the top of the map: lobby and score, two area chips down the left side and
+# the small Location switch on the right (shared with Profile; it also follows the phone's
+# position, so it runs before current_location() reads the newest reading below).
+with st.container(key="game_hud"):
+    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
+    with st.container(key="map_bar"):   # one frosted strip: area buttons left, Location switch right
+        picked = map_ui.area_buttons()
+        with st.container(key="map_location"):
+            location_switch(compact=True, follow=True)
+
+# Where am I? Decides the bottom card and where the map starts.
 location, accuracy_m, problem = current_location()
 usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
 here, status = None, "waiting"
@@ -83,14 +89,8 @@ elif location is not None:
 elif problem in ("denied", "off"):
     status = problem
 
-# HUD floating over the top of the map: lobby, score, quick zoom.
-with st.container(key="game_hud"):
-    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-    options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
-    focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
-                                 label_visibility="collapsed") or options[0]
-    if focus not in options:  # e.g. "Me" was picked but the location is gone now
-        focus = options[0]
+# No chip picked: start on you when your position is usable, otherwise on Lisbon.
+focus = picked or (map_ui.ME if usable_location else "Lisbon")
 
 # Map and bottom card are one fragment: tapping a territory reruns only this
 # part (no database reads or score replay), so the card switches quickly.

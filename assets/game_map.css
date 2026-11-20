@@ -26,18 +26,24 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Zoom chips: one row of separate pills that scrolls sideways. */
-.st-key-map_focus [data-baseweb="button-group"], .st-key-map_focus [role="radiogroup"] {
-  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; padding: 2px 2px 6px;
-  /* a soft fade on the right edge says "there are more chips" */
-  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
-.st-key-map_focus button { min-height: 32px; padding: 2px 11px; border-radius: var(--radius-pill); white-space: nowrap; flex: 0 0 auto;
-  background: var(--hud-bg); color: var(--text); border: 0; box-shadow: 0 2px 8px rgba(20, 43, 61, .16);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-.st-key-map_focus button p { font-size: 0.75rem; font-weight: 600; }
-/* Streamlit styles the selected chip itself; !important makes ours win. */
-.st-key-map_focus button[aria-checked="true"] { background: var(--accent) !important; color: var(--on-accent) !important; }
-.st-key-map_focus button[aria-checked="true"] p { color: var(--on-accent) !important; }
+/* Three separate frosted-white pills under the top bar, no outline: Lisbon and Nova stacked on the left,
+   Location on the right. The same white as the top bar and tab bar, brighter and more see-through
+   (the glass lightens the map behind it, so a lower opacity still reads as white). Dark type like the app. */
+.st-key-map_bar { position: absolute; z-index: 6; left: 12px; right: 12px; top: 60px; display: flex !important; flex-direction: row !important;
+  align-items: flex-start; justify-content: space-between; gap: 8px !important; pointer-events: none; }
+.st-key-map_bar > [data-testid="stElementContainer"], .st-key-map_bar > [data-testid="stLayoutWrapper"] { width: auto !important; margin: 0 !important; pointer-events: auto; }
+.stApp .st-key-map_areas button, .stApp .st-key-map_location {
+  background: rgba(255, 255, 255, .72); border: 0; box-shadow: 0 2px 10px rgba(20, 43, 61, .10);
+  backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); -webkit-backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); }
+.st-key-map_areas { display: flex !important; flex-direction: column !important; align-items: flex-start; gap: 6px !important; width: max-content !important; }
+.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: auto !important; margin: 0 !important; }
+.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: auto;
+  min-height: 34px; padding: 0 16px 0 11px; border-radius: 999px; color: var(--text); white-space: nowrap; }
+.stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 18px; width: 18px; height: 18px; margin: 0;
+  background-color: currentColor; -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
+.stApp .st-key-map_areas button p { margin: 0; font-size: .8rem; font-weight: inherit; line-height: 1; color: inherit; }
+.stApp .st-key-map_areas button:hover { background: rgba(236, 246, 252, .85); color: var(--text); }
+.stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
 .st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
@@ -86,8 +92,12 @@
     max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 
-/* Location switch: a small pill under the top bar, right-aligned (its frame is transparent). */
-.stApp .st-key-map_location { position: fixed; z-index: 11; top: calc(100px + env(safe-area-inset-top, 0px));
-  right: 10px; width: 180px !important; margin: 0; padding: 0; }
-.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; }
-.stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
+/* Location switch: its own glass pill on the right (the glass is drawn here, not inside the transparent frame). */
+.stApp .st-key-map_location { position: static; width: 112px !important; height: 34px; margin: 0; padding: 0; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; width: 100% !important; height: 34px; }
+.stApp .st-key-map_location iframe { display: block; width: 100% !important; height: 34px !important; background: transparent; color-scheme: normal; }
+@media (max-width: 640px) {
+  /* The phone's top bar has no side padding, so the offsets shrink with it. */
+  .stApp .st-key-map_bar { left: 0; right: 0; top: 48px; }
+}
