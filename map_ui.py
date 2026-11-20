@@ -87,11 +87,11 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
         body = "<small>You are</small><h3>Outside the map</h3><p>Drinks here count for season points only.</p>"
     elif status == "inaccurate":
         body = (f"<small>Location</small><h3>Not precise enough</h3>"
-                f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m. Step outside for a moment.</p>")
+                f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m.</p>")
     elif status == "denied":
-        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings, then turn it on in Profile.</p>"
+        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow it in the browser settings, then turn it on in Profile.</p>"
     elif status == "off":
-        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location to see where you are.</p>"
+        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location.</p>"
     else:
         body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)

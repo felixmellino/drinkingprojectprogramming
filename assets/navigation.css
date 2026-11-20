@@ -70,7 +70,8 @@
 
 /* Back button: small, quiet, at the top of every page. On the phone Map (a full-screen map)
    it becomes a round button left of the top bar. */
-.stApp .st-key-wego_back { margin: -6px 0 -8px; }
+/* The Back row is centred on the same line as the round Profile button (27px from the top). */
+.stApp .st-key-wego_back { margin: 0 0 -14px; }
 .stApp .st-key-wego_back button { min-height: 30px; width: auto; padding: 0 10px 0 2px; gap: 0; border: 0;
   background: transparent; color: var(--text-muted); font-weight: 600; box-shadow: none; }
 @media (max-width: 640px) {
