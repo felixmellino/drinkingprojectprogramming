@@ -2,13 +2,15 @@
    Icons are added by app_navigation.py as CSS masks on button::before. */
 .st-key-wego_bottom_nav {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  /* Raised so the hosting badge in the bottom-right corner does not cover the Photos tab. */
+  bottom: calc(34px + env(safe-area-inset-bottom, 0px));
   width: min(460px, calc(100% - 20px)); z-index: 1000;
   padding: 6px 6px; border-radius: 28px;
   background: var(--hud-bg); box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
-.st-key-wego_bottom_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0; align-items: center; }
+.st-key-wego_bottom_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0; align-items: center;
+  overflow: visible !important; }  /* Streamlit scrolls this row by default, which cut off the top of the plus. */
 .st-key-wego_bottom_nav [data-testid="stColumn"] { min-width: 0 !important; width: 0 !important; flex: 1 1 0 !important; }
 .st-key-wego_bottom_nav [data-testid="stVerticalBlock"] { gap: 0; }
 
@@ -60,7 +62,7 @@
 
 /* Room for the bar under the page; no sidebar when the bar is shown. */
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stMain"] [data-testid="stMainBlockContainer"] {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
 }
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stSidebar"],
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Expand sidebar"],
