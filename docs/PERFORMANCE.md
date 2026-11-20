@@ -1,7 +1,8 @@
 # Full-app performance audit — 20 November 2026
 
 This audit starts from main `ad4c9cf` on `codex/app-performance-audit` and
-also integrates the team's newer main before final verification. It preserves
+also integrates main `80b010a` (including login hardening and the latest layout)
+before final verification. It preserves
 all current game rules, photo privacy, original images, scores and minigames.
 No Supabase migration, credential change or shared-data mutation is required.
 
@@ -198,8 +199,28 @@ isolated PostgreSQL during this audit. The badge counter is read-only.
 - Streamlit hosting startup, mobile radio/Wi-Fi, database region and browser
   map/font assets contribute latency beyond the measured reads. The initial
   HTTP shell sample above is not proof of a host cold start.
+- Installed SDK defaults allow 120 seconds for PostgREST and 20 for Storage;
+  Brevo uses an explicit ten-second timeout. On an outage, these can dominate
+  waiting. A separate read-only deadline/recovery design should be tested
+  before shortening write deadlines or adding automatic mutation retries.
 - Tests include upstream Streamlit/pandas deprecation warnings. They passed;
   dependency warnings are not suppressed as a performance fix.
+
+## Final verification of the combined branch
+
+After integrating main `80b010a`, the complete isolated Python suite passed
+**1,034 tests in 158.02 seconds**. Camera, Location and Reaction component
+checks also passed against the combined source. The read-only credential
+pattern scan covered 299 tracked paths, found no supported secret patterns,
+and confirmed the local secrets file is untracked/ignored.
+
+The browser verified the current actual-page fixture: Profile → Photos,
+25-photo pagination (12 + 12 + 1), an opened original with metadata, Ranks,
+Map, Profile and Lobbies. The public deployment's registration and login
+views loaded without submitting credentials or creating an account. This
+does not deploy or authenticate the new performance branch on that URL.
+Physical-phone verification and actual email delivery remain the explicit
+checks listed above. No shared game data was written or cleaned up.
 
 ---
 

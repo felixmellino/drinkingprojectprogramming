@@ -18,6 +18,13 @@ participant. Turning sharing OFF cannot recall bytes already delivered.
 The photo view displays the username, team where applicable, capture time
 and territory label, with an identity-coloured frame.
 
+The 20 November performance audit shares fresh roster/consent/path/expiry
+checks only within a bounded gallery download of at most twelve photos.
+It checks the entire requested audience before fetching any image, checks
+the private bucket once, and never caches permissions across page requests.
+The metadata listing and full-photo detail each authorize independently.
+Display thumbnails do not replace the stored originals or alter retention.
+
 Apply `migrations/013_checkin_photo_privacy.sql` before deploying these
 checks. The preference table permits only the server service role; profile
 reads/writes validate the current account credential version. Preferences
@@ -91,13 +98,21 @@ If a secret is disclosed, revoke or rotate it at its provider, replace it
 in the deployment secrets, and check access logs for misuse.
 Use an encrypted secrets transfer rather than pasting keys into chats.
 Coordinate replacement across the team's local apps and the deployment.
-The current Supabase 2.9.1 client validates keys as JWTs. If replacing the
-legacy service-role key with an `sb_secret_` key, upgrade and test the SDK
-before the cutover. Follow the provider's
+The earlier Supabase 2.9.1 client validated keys as JWTs. The app now pins
+2.34.1; test any credential-format change with that installed SDK before
+cutover. Follow the provider's
 [key rotation procedure](https://supabase.com/docs/guides/security/rotate-leaked-api-keys)
 so the exposed credential actually stops working.
 
 ## Dependency review
+
+20 November 2026 audit: `pip check` passed. A separate pip-audit 2.10.1
+environment checked all 80 installed app/environment packages and reported
+no known vulnerabilities. No runtime dependency was added for performance.
+The tracked-file scan found no private-key, GitHub-token or Supabase secret-key
+patterns; local `.streamlit/secrets.toml` remains ignored and untracked.
+These are scoped checks, not a guarantee that every possible secret format
+or security issue has been detected. See `PERFORMANCE.md` for test boundaries.
 
 The security review on 17 November 2026 found advisories affecting the old
 Streamlit, Pillow and pytest pins. Their replacements require Python 3.11
