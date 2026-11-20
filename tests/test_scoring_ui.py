@@ -47,8 +47,12 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': None})
     # UI service double; authorization/batching itself is tested against the
     # stateful database double in test_photo_lifecycle/test_photo_privacy.
-    monkeypatch.setattr(db, 'download_checkin_photos', lambda p,l,ids:
-                        {eid:db.download_checkin_photo(p,l,eid) for eid in ids})
+    def batch(p, l, ids):
+        # Like the real function: one authorization batch holds at most MAX_PHOTO_BATCH photos.
+        if len(list(dict.fromkeys(ids))) > db.MAX_PHOTO_BATCH:
+            raise ValueError('Load at most twelve check-in photos at once.')
+        return {eid: db.download_checkin_photo(p, l, eid) for eid in ids}
+    monkeypatch.setattr(db, 'download_checkin_photos', batch)
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
@@ -587,6 +591,55 @@ def test_busy_history_loads_24_then_more_and_every_photo_keeps_its_own_access_ch
     before=len(calls)
     next(b for b in page.button if b.key=='memory_tile_busy-1_open').click().run()
     assert not page.exception and [c[-1] for c in calls[before:]]==['busy-1'],'Opening a detail must not reload the gallery'
+
+
+def test_more_photos_than_one_batch_are_fetched_in_slices_of_twelve(ui,monkeypatch):
+    """Production error: the list asked for 24 photos in one call, the batch function allows 12."""
+    state,game=ui
+    models=[entry(f'big-{i}','member','beer','small',i) for i in range(30)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    sizes=[]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    def batch(p,l,ids):
+        sizes.append(len(ids))
+        assert p=='player' and l=='lobby'
+        if len(ids)>12:
+            raise ValueError('Load at most twelve check-in photos at once.')   # what the real function does
+        return {i:state['photo'].getvalue() for i in ids}
+    monkeypatch.setattr(db,'download_checkin_photos',batch)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and sizes==[12,12], 'The first 24 photos go out as two fresh batches of 12'
+    assert sum('base64' in h.value for h in page.get('html'))==24, 'All 24 photos are shown'
+    sizes.clear()
+    button(page,'Load more').click().run()
+    assert not page.exception and sizes==[12,12,6], 'All 30 photos as 12 + 12 + 6, each batch authorized on its own'
+
+
+def test_a_failed_batch_only_hides_its_own_photos_and_lost_access_stops_the_page(ui,monkeypatch):
+    state,game=ui
+    models=[entry(f'f-{i}','member','beer','small',i) for i in range(20)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    def flaky(p,l,ids):
+        if 'f-19' in ids:                      # the newest slice fails
+            raise RuntimeError('storage unavailable')
+        return {i:state['photo'].getvalue() for i in ids}
+    monkeypatch.setattr(db,'download_checkin_photos',flaky)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and any('could not be loaded' in w.value for w in page.warning)
+    assert sum('base64' in h.value for h in page.get('html'))==8, 'The 8 photos of the other slice still show'
+    def revoked(p,l,ids):
+        raise PermissionError('Membership revoked')
+    monkeypatch.setattr(db,'download_checkin_photos',revoked)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and any('Photo access changed' in w.value for w in page.warning)
+    assert not any('base64' in h.value for h in page.get('html')), 'Lost access shows no photo at all'
 
 
 def test_changing_the_filter_starts_again_at_the_newest_photos(ui,monkeypatch):
