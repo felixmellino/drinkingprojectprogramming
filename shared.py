@@ -50,6 +50,7 @@ def require_login() -> str:
                 st.rerun()
         st.session_state["_remember_attempted"] = True
     st.session_state.pop("_membership_prefetch", None)
+    st.session_state.pop("_invite_badge_prefetch", None)
     if "player_id" in st.session_state:
         try:
             player = _get_player_and_prefetch_membership(st.session_state["player_id"])
@@ -90,17 +91,18 @@ def _membership_key():
 
 
 def _get_player_and_prefetch_membership(player_id):
-    """The account check and, on pages that need it, the lobby/season check, at the same time.
+    """Overlap fresh account, selected membership and invitation-count reads.
 
     The membership read only uses the ids already in this session and is used by
     require_active_membership only after the account check above has passed, so
     nothing is shown or trusted earlier than before. Any failure here is ignored:
-    require_active_membership then simply asks again.
+    require_active_membership then simply asks again. The badge consumes its
+    own fresh result once; later fragment ticks query again.
     """
     from app_navigation import current_page
     key = _membership_key()
-    if key is None or current_page() not in MEMBERSHIP_PAGES:
-        return db.get_player(player_id)
+    needs_context = key is not None and current_page() in MEMBERSHIP_PAGES
+    season_id = st.session_state.get('current_season_id')
 
     def prefetch():
         try:
@@ -108,9 +110,24 @@ def _get_player_and_prefetch_membership(player_id):
         except (APIError, RequestError, RuntimeError, OSError):
             return None
 
-    player, context = run_parallel(lambda: db.get_player(player_id), prefetch)
+    def badge():
+        try:
+            return db.pending_minigame_invite_count(player_id, season_id)
+        except (APIError, RequestError, RuntimeError, OSError):
+            return None  # No retry on this page load; the badge fragment retries later.
+
+    calls = [lambda: db.get_player(player_id)]
+    if needs_context:
+        calls.append(prefetch)
+    if season_id:
+        calls.append(badge)
+    results = iter(run_parallel(*calls))
+    player = next(results)
+    context = next(results) if needs_context else None
     if context is not None:
         st.session_state["_membership_prefetch"] = (key, context)
+    if season_id:
+        st.session_state['_invite_badge_prefetch'] = ((player_id, season_id), next(results))
     return player
 
 

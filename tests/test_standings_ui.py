@@ -57,7 +57,7 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_drink_entries", lambda _: state["entries"])
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
         SimpleNamespace(id="member", player_id="mia"), SimpleNamespace(id="other", player_id="leo")])
-    monkeypatch.setattr(db, "list_players", lambda: state["players"])
+    monkeypatch.setattr(db, "list_public_usernames", lambda: [dict(id=p.id,display_name=p.display_name) for p in state['players']])
     return state
 
 

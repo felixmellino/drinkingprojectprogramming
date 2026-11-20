@@ -1,5 +1,17 @@
 # Workflows
 
+## Page loading and navigation
+
+Navigation processes the requested destination before unnecessary source-page
+image reads. Each destination freshly validates the account and selected lobby;
+independent reads may overlap. The invitation badge uses a matching same-load
+result once and refreshes from the server every ten seconds. Private permissions
+and photos are not cached across requests. Photo history keeps newest-first
+game-night groups with at most twelve photos and two groups per page; larger
+nights continue on the next page. All photos remain accessible through paging.
+Map avatars batch fresh authorization without changing their audience. See the
+[performance record](../PERFORMANCE.md) for measurements and remaining limits.
+
 ## Focus Challenge in test seasons
 
 In an explicitly marked v1 test season, open Minigames → Focus Challenge →
