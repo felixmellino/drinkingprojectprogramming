@@ -146,6 +146,21 @@ The shared navigation and Standings refresh below were explicitly requested
 as follow-ups. Account/lobby behavior and the map remain separate blocks. The
 broader screen proposal below remains a future design outline.
 
+## Empty states (20 November 2026)
+
+When a screen has nothing yet, one card replaces the old blue info box
+(`theme.empty_state`): a Phosphor icon in a pale circle, a short title, one
+line, and a Check in button where that is the next step. A thin scarlet
+stripe on top is its only accent; buttons stay sky blue.
+
+- Ranks, no points: "No points yet · The first drink of the season takes the top spot." + Check in
+- Photos, nothing shared: "No photos yet · Every check-in adds one here." + Check in
+- Photos, Mine tab empty: "None of yours yet · Your check-in photos will show up here." + Check in
+- Lobby, none joined: "Start a lobby · Create one for your group or join with a code above." (the Create/Join buttons are right above)
+- Profile stats, no drinks: "No drinks yet · Your totals start with your first check-in." + Check in
+
+The Check in button opens the camera exactly like the + tab.
+
 ## Standings interface (implemented 17 November 2026, simplified 19 November 2026)
 
 Minimal by design: only the ranking and territory ownership are on screen.

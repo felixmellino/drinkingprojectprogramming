@@ -16,6 +16,7 @@ from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct
 from drink_entry_ui import page_header, section_heading
 from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata, photo_thumbnail
 from shared import require_active_membership, require_login, show_logged_in_as
+from theme import empty_state
 
 
 def entry_label(entry: dict) -> str:
@@ -57,7 +58,7 @@ if st.session_state.pop("checkin_corrected", False):
 try:
     entries = db.list_checkin_photos(player_id, lobby_id)
     if not entries:
-        st.info("No photo history is available to you in this lobby yet. Other players' photos depend on their privacy settings.")
+        empty_state("photos", "images", "No photos yet", "Every check-in adds one here.", check_in=True)
         st.stop()
 
 except PermissionError:
@@ -83,7 +84,7 @@ if len(entries) > 1 and detail_id is None:
         show = st.radio("Show", ["All", "Mine"], horizontal=True, key="photo_filter", label_visibility="collapsed")
     shown = [item for item in entries if show == "All" or item["is_owner"]]
     if not shown:
-        st.info("You have no check-in photos in this lobby yet.")
+        empty_state("photos_mine", "images", "None of yours yet", "Your check-in photos will show up here.", check_in=True)
         st.stop()
     if st.session_state.get("history_filter") != show:   # a new filter starts at the newest photos again
         st.session_state["history_filter"] = show

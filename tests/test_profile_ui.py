@@ -128,7 +128,7 @@ def test_stats_empty_and_load_failure(repo, monkeypatch):
     at = page(repo)
     click(at, 'My stats')
     assert 'Total points 0' in stats_text(at) and 'Total Wins 0' in stats_text(at)
-    assert at.info
+    assert any('empty-state-title' in m.value and 'No drinks yet' in m.value for m in at.markdown)
     monkeypatch.setattr('data.db.list_memberships_for_player', lambda _, **kwargs: [SimpleNamespace(id='me', lobby_id='lobby')])
     monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [])
     at.run()

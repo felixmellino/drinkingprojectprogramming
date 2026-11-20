@@ -14,6 +14,7 @@ from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
+from theme import empty_state
 
 player_id = require_login()
 show_logged_in_as()
@@ -98,7 +99,7 @@ def ranking():
 
 
 if not leaderboard:
-    st.info("No points logged yet this season.")
+    empty_state("ranks", "trophy", "No points yet", "The first drink of the season takes the top spot.", check_in=True)
 else:
     ranking()
 

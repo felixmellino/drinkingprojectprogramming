@@ -12,7 +12,7 @@ from device_login import log_out, queue_storage, set_identity
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
-from theme import menu_icons
+from theme import empty_state, menu_icons
 from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
@@ -230,4 +230,4 @@ def show_stats(player_id):
                "Team scores and team owner bonuses are excluded. Accepted check-ins count immediately; "
                "wins count only after a season ends.")
     if not stats.lobbies:
-        st.info("No scored drinks yet. Your totals will appear here after your first accepted scoring check-in.")
+        empty_state("profile", "beer-stein", "No drinks yet", "Your totals start with your first check-in.", check_in=True)

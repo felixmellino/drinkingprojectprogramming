@@ -58,3 +58,26 @@ def apply_theme() -> None:
 def wordmark(name: str = "WeGoPub") -> None:
     """The app name in the display face, in the brand red."""
     st.markdown(f'<p class="wego-wordmark">{escape(name)}</p>', unsafe_allow_html=True)
+
+
+def empty_state_html(icon: str, title: str, line: str, *, key: str = "") -> str:
+    """Icon, title and one line for an empty screen. Every value is escaped;
+    the icon is a Phosphor name from assets/icons drawn as a CSS mask, scoped
+    to this card so two cards on one page keep their own icons."""
+    scope = f".st-key-empty_state_{key} " if key else ""
+    mask = icon_css(f"{scope}.empty-state-icon i", icon)
+    return (f'<style>{mask}</style>'
+            f'<div class="empty-state-icon" aria-hidden="true"><i></i></div>'
+            f'<p class="empty-state-title">{escape(title)}</p>'
+            f'<p class="empty-state-line">{escape(line)}</p>')
+
+
+def empty_state(key: str, icon: str, title: str, line: str, *, check_in: bool = False) -> None:
+    """One calm card instead of an info box when a screen has nothing yet:
+    icon, title, one line, and (optionally) a Check in button that opens the
+    camera like the + tab. Scarlet stripe on top (theme.css)."""
+    with st.container(key=f"empty_state_{key}"):
+        st.markdown(empty_state_html(icon, title, line, key=key), unsafe_allow_html=True)
+        if check_in and st.button("Check in", key=f"checkin_from_empty_{key}", type="primary", width="stretch"):
+            st.session_state["checkin_open_camera"] = True
+            st.switch_page("pages/3_Check_in.py")

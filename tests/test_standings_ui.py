@@ -113,7 +113,8 @@ def test_empty_season_has_no_invented_rank_or_territory_owner(ui):
     ui["entries"] = []
     at = page()
     assert not at.exception
-    assert any("No points logged yet" in item.value for item in at.info)
+    assert any('empty-state-title' in m.value and 'No points yet' in m.value for m in at.markdown)
+    assert any(b.label == 'Check in' for b in at.button)
     markup = all_markup(at)
     assert 'title="Unclaimed"' in markup
     assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
