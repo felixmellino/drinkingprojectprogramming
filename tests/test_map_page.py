@@ -259,15 +259,15 @@ def test_tapping_a_territory_shows_its_tug_of_war_without_standing_in_it(phone, 
     import map_ui
     monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: SECOND.id)  # tapped Le Pub
     message = card(open_map())                                       # no location yet
-    assert "Le Pub" in message and "tug-bar" in message and "your lead" in message
-    assert "You are in" not in message and "Finding you" not in message
+    assert "Le Pub" in message and "tug-bar" in message and "lead</span>" in message
+    assert "You are here" not in message and "Finding you" not in message
 
 
 def test_tapping_an_unclaimed_territory_says_the_next_drink_claims_it(phone, monkeypatch):
     import map_ui
     monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: FREE.id)
     message = card(open_map())
-    assert "After8" in message and "Your next drink here claims it." in message and "tug-bar" not in message
+    assert "After8" in message and "your next drink here claims it" in message and "tug-bar" not in message
 
 
 def test_tapping_the_territory_you_stand_in_keeps_you_are_in(phone, monkeypatch):
@@ -275,7 +275,7 @@ def test_tapping_the_territory_you_stand_in_keeps_you_are_in(phone, monkeypatch)
     monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: TERRITORY.id)
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     message = card(open_map())
-    assert "You are in · owned by" in message and "pts to take it" in message
+    assert "You are here · owned by" in message and "to take it</span>" in message
 
 
 def test_territory_rows_carry_a_ranking_in_standings_order(phone):
@@ -297,7 +297,7 @@ def _here(status, mine, *, owner="Leo", owner_points=0, needed=None, ranking=Non
 def test_tug_of_war_on_a_rivals_territory_shows_points_to_take_it():
     import map_ui
     html = map_ui.tug_of_war(_here("theirs", 4, owner_points=7, needed=4))
-    assert "owned by Leo" in html and "<b>4</b><em>pts to take it</em>" in html
+    assert "You are here · owned by Leo" in html and 'tug-pill-theirs">+4 to take it</span>' in html
     assert 'class="tug-you" style="width:36%"' in html and 'style="width:64%"' in html
     assert "You 4" in html and "Leo 7" in html
     assert '<p class="sr-only">the full sentence</p>' in html
@@ -308,7 +308,7 @@ def test_tug_of_war_on_your_territory_shows_your_lead_over_the_closest_rival():
     ranking = [{"name": "felix", "points": 5, "you": True}, {"name": "Ana", "points": 3, "you": False},
                {"name": "Ben", "points": 1, "you": False}]
     html = map_ui.tug_of_war(_here("yours", 5, owner="felix", owner_points=5, ranking=ranking))
-    assert "<b>+2</b><em>your lead</em>" in html and "Ana 3" in html and "Ben" not in html
+    assert 'tug-pill-yours">+2 lead</span>' in html and "Ana 3" in html and "Ben" not in html
 
 
 def test_tug_of_war_alone_on_your_territory_has_a_full_bar():
@@ -327,4 +327,10 @@ def test_tug_of_war_escapes_names():
 def test_card_uses_tug_of_war_inside_a_rivals_territory(phone):
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     message = card(open_map())
-    assert 'class="tug-bar"' in message and "pts to take it" in message
+    assert 'class="tug-bar"' in message and "to take it</span>" in message
+
+
+def test_tapped_territory_you_are_not_in_says_owned_by_without_you_are_here():
+    import map_ui
+    html = map_ui.tug_of_war(_here("theirs", 1, owner_points=3, needed=3), standing_in=False)
+    assert '<p class="tug-sub">Owned by Leo</p>' in html and "You are here" not in html

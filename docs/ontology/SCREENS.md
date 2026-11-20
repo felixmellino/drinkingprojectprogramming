@@ -310,10 +310,12 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   R-L01/R-L04); nothing is shown if location is blocked, stale or worse than
   50 m.
 - The bottom card names the territory you're in. For an owned territory it is
-  a tug-of-war (19 November 2026): one big number ("4 pts to take it" in
-  scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
-  your territory points against the owner's (or your closest rival's). The
-  full sentence stays as screen-reader text. Unclaimed areas keep one line.
+  a tug-of-war (19 November 2026, made compact 20 November 2026): the name in
+  plain bold with "Owned by X" / "Yours" under it, a small pill on the right
+  ("+4 to take it" in scarlet, "+2 lead" in sky blue) and a slim bar of your
+  territory points against the owner's (or your closest rival's) with both
+  scores under it. The full sentence stays as screen-reader text. Unclaimed
+  areas keep one line.
 - Tap any territory (20 November 2026): the bottom card switches to that
   territory's tug-of-war ("Owned by X" / "Yours"; "You are in ·" only when you
   stand in it; unclaimed: "Your next drink here claims it."). Tapping empty map
