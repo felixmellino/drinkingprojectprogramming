@@ -73,15 +73,10 @@ def all_markup(at):
 
 
 def rank_of(markup, name):
-    """The rank a player/team is actually labelled with, regardless of the
-    podium's visual DOM order (2nd, 1st, 3rd left-to-right). The current
-    """
-    for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
+    """The rank number a player/team is labelled with in the list."""
+    for m in re.finditer(r'<li class="ranks-row[^"]*"><span class="ranks-rank">(\d+)</span>(.*?)</li>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
-    for offset, m in enumerate(re.finditer(r'<li class="standings-row[^"]*">(.*?)</li>', markup, re.S)):
-        if name in text(m.group(1)):
-            return offset + 4
     return None
 
 
@@ -93,7 +88,7 @@ def test_display_keeps_exact_owner_income_and_base_territory_accounts(ui):
     assert rank_of(markup, "Leo") == 2
     visible = text(markup)
     assert "9.5" in visible and "6.75" in visible
-    assert "YOU" in visible
+    assert "You" in visible
     assert 'title="Yours"' in markup
     assert "private@example.test" not in markup
 
@@ -116,7 +111,7 @@ def test_empty_season_has_no_invented_rank_or_territory_owner(ui):
     assert any("No points logged yet" in item.value for item in at.info)
     markup = all_markup(at)
     assert 'title="Unclaimed"' in markup
-    assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
+    assert '<li class="ranks-row' not in markup
 
 
 @pytest.mark.parametrize("service", ["season", "territories"])
@@ -132,7 +127,7 @@ def test_service_failure_does_not_fabricate_zero_scores(ui, monkeypatch, service
     markup = all_markup(at)
     if service == "season":
         assert at.error
-        assert '<ol class="standings-podium"' not in markup and '<li class="standings-row' not in markup
+        assert '<li class="ranks-row' not in markup
     else:
         assert at.warning
         assert rank_of(markup, "Mia") == 1
@@ -181,8 +176,8 @@ def test_departed_player_keeps_rank_and_quiz_transfers(ui, monkeypatch):
     markup = all_markup(at)
     assert rank_of(markup, 'Leo') == 1
     assert rank_of(markup, 'Mia') == 2
-    assert '<span class="standings-podium-points">8</span>' in markup
-    assert '<span class="standings-podium-points">2</span>' in markup
+    assert '<span class="ranks-points">8</span>' in markup
+    assert '<span class="ranks-points">2</span>' in markup
 
 
 # Tie tag: rows arrive ranked, ties earliest-first.
@@ -197,12 +192,13 @@ def test_reached_first_only_on_upper_of_equal_neighbours():
     assert [reached_first(rows, i) for i in range(3)] == [False, True, False]
 
 
-def test_leaderboard_renders_tie_tag_and_medal_podium(monkeypatch):
+def test_leaderboard_is_one_clean_list_without_a_podium(monkeypatch):
     shown = []
     monkeypatch.setattr(standings_ui.st, "markdown", lambda markup, **_: shown.append(markup))
     standings_ui.leaderboard([("a", 9), ("b", 8), ("c", 8), ("d", 5)], TIE_NAMES, "d")
     markup = "".join(shown)
-    assert markup.count("standings-first-tag") == 1
-    assert "pts behind" not in markup and "standings-gap" not in markup
-    for colour in ("var(--accent)", "var(--medal-2)", "var(--medal-3)"):
-        assert f"background:{colour};" in markup
+    assert len(shown) == 1 and markup.count('<li class="ranks-row') == 4
+    assert [rank_of(markup, n) for n in ("Ana", "Tomás", "Ben", "Dana")] == [1, 2, 3, 4]
+    assert "podium" not in markup and "medal" not in markup
+    assert markup.count("reached first") == 1            # only Tomás, above the equal Ben
+    assert markup.count("ranks-row-you") == 1 and '<span class="ranks-you">You</span>' in markup
