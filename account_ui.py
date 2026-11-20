@@ -14,12 +14,24 @@ from device_login import finish_login
 
 _CSS = Path(__file__).parent / "assets" / "account.css"
 _START_CSS = Path(__file__).parent / "assets" / "start.css"
-def show_start():
-    """First screen when logged out: app icon, wordmark, Create account / Log in.
-    A choice opens the existing form below with that tab already selected."""
+def _start_brand():
     st.markdown(f"<style>{_START_CSS.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
     st.html('<div class="start-center"><div class="start-logo" aria-hidden="true">WP</div>'
             '<h1 class="start-word">WeGo<i>Pub</i></h1></div>')
+
+
+def show_welcome() -> bool:
+    """Start screen for a player who opens the app already signed in (remembered device):
+    the same icon and wordmark, one tap anywhere continues. Returns True on that tap."""
+    _start_brand()
+    with st.container(key="start_continue"):
+        return st.button("Tap to continue", key="start_continue_button", width="stretch")
+
+
+def show_start():
+    """First screen when logged out: app icon, wordmark, Create account / Log in.
+    A choice opens the existing form below with that tab already selected."""
+    _start_brand()
     with st.container(key="start_actions"):
         for label, key in (("Create account", "start_create"), ("Log in", "start_login")):
             if st.button(label, key=key, width="stretch"):
