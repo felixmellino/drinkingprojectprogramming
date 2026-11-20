@@ -74,6 +74,35 @@ Connects one player to one lobby. This is the identity attached to game actions 
 
 The pair `player_id` and `lobby_id` identifies one membership. A second join request for the same pair should resolve to that membership.
 
+#### Lobby roles
+
+The following design choices were selected on 20 November 2026 and are
+pending implementation.
+
+- **Lobby admin.** The creator starts as the admin and can hand over the
+  role to another current member before leaving. The role applies only
+  within that lobby.
+- **Player.** Regular members and admins compete under the same rules.
+  Profiles and member rows use the same layout without role labels or
+  badges. Only the admin sees management controls.
+- **Admission.** The admin chooses per lobby whether new members can use a
+  reusable code or need an account-bound personal invitation. Only the
+  admin can retrieve the shared code from the app. The server enforces the
+  selected mode and checks submitted codes when joining. Anyone who receives
+  a reusable code can forward it.
+- **Return after rotation.** A former member can use the new code where code
+  entry is enabled, or accept a fresh personal invitation. A successful
+  return restores the original membership, points, team and game limits.
+
+Today the lobby overview and member dialog show the shared code to members.
+The earliest membership still determines who can send personal invitations
+and delete the lobby under [R-LB04 and R-LB05](RULES.md#r-lb04-deleting-a-lobby).
+Before implementation, resolve what happens when an admin leaves without a
+handover, whether deletion transfers with the role, and how invite-only
+lobbies handle return for history after the competition ends, when personal
+invites are currently unavailable. Cancelling pending invitations remains a
+proposed privilege.
+
 ### Team
 
 `lobby_teams` stores `id`, `lobby_id`, `number`, `name`, and optional
