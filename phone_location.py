@@ -24,8 +24,8 @@ _READING_KEY = "live_location_reading"
 
 
 def _tokens() -> str:
-    css = (Path(__file__).parent / "assets" / "theme.css").read_text(encoding="utf-8")
-    return css[css.index(":root {"):css.index("/* Base */")]
+    from theme import component_tokens
+    return component_tokens()
 
 
 def track_location() -> None:

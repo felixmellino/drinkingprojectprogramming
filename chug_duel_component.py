@@ -8,8 +8,8 @@ _board = declare_component("chug_duel", path=str(Path(__file__).parent / "compon
 
 def duel_board(duel: dict, challenger: str, opponent: str):
     # Reuse the app's design tokens inside the component's isolated iframe.
-    css = (Path(__file__).parent / "assets" / "theme.css").read_text(encoding="utf-8")
-    tokens = css[css.index(":root {"):css.index("/* Base */")]
+    from theme import component_tokens
+    tokens = component_tokens()  # light, or light + dark when dark mode is on
     return _board(duel_id=duel["id"], challenger=challenger, opponent=opponent,
                   state=duel["status"], winner=("challenger" if duel.get("winner_id") == duel["challenger_id"]
                     else "opponent" if duel.get("winner_id") == duel["opponent_id"] else None),

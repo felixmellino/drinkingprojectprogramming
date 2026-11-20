@@ -6,6 +6,6 @@ _board = declare_component('reaction_duel', path=str(Path(__file__).parent / 'co
 
 
 def reaction_board(run):
-    css = (Path(__file__).parent / 'assets' / 'theme.css').read_text(encoding='utf-8')
-    tokens = css[css.index(':root {'):css.index('/* Base */')]
+    from theme import component_tokens
+    tokens = component_tokens()  # light, or light + dark when dark mode is on
     return _board(attempt=run, tokens=tokens, key=f"reaction_board_{run['id']}", default=None)
