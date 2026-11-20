@@ -46,7 +46,17 @@ def all_time_stats(memberships, entries, *, finished_season_ids=(), transfers=()
             points += transfer.points
     for season_id, season_entries in seasons.items():
         season_transfers = [t for t in unique_transfers if t.season_id == season_id]
-        if season_id in finished_season_ids and season_leader(season_entries, season_transfers) in identities:
+        modern = any(entry.rule_version == 'v1' for entry in season_entries)
+        snapshot = replay_season(season_entries, season_transfers) if modern else None
+        if season_id in finished_season_ids:
+            if snapshot is None:
+                winner = season_leader(season_entries, season_transfers)
+            else:
+                rows = snapshot.season_rows()
+                winner = rows[0][0] if rows else None
+        else:
+            winner = None
+        if winner in identities:
             wins += 1
         for entry in season_entries:
             if (entry.membership_id in member_lobbies and entry.points_awarded > 0
@@ -54,8 +64,8 @@ def all_time_stats(memberships, entries, *, finished_season_ids=(), transfers=()
                 points += Decimal(str(entry.points_awarded))
                 drinks += 1
                 played.add(member_lobbies[entry.membership_id])
-        if any(entry.rule_version == "v1" for entry in season_entries):
-            for recipient, quarters in replay_season(season_entries).awards.values():
+        if snapshot is not None:
+            for recipient, quarters in snapshot.awards.values():
                 if recipient in member_lobbies:
                     points += Decimal(quarters) / 4
     return ProfileStats(points, drinks, len(played), wins)

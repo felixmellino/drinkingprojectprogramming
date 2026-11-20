@@ -8,6 +8,7 @@ import sys
 from datetime import timedelta
 from io import BytesIO
 from time import sleep
+from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import streamlit as st
@@ -33,11 +34,15 @@ entries=[entry(f'photo-{i}','member','beer','small',i) for i in range(25)]
 image=BytesIO()
 Image.new('RGB',(32,24),'#edf2f4').save(image,'JPEG')
 photo=image.getvalue()
+reads=[]
 
 def delayed(value):
     def read(*args,**kwargs):
+        start=perf_counter()
         sleep(0.05)
-        return value() if callable(value) else value
+        result=value() if callable(value) else value
+        reads.append(round((perf_counter()-start)*1000,2))
+        return result
     return read
 
 db.get_client=lambda:(_ for _ in ()).throw(RuntimeError('Shared database disabled in local QA'))
@@ -62,6 +67,7 @@ db.list_checkin_photos=delayed(lambda:[dict(id=e.id,username='Mia',player_id=pla
     corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
     for e in reversed(entries)])
 db.download_checkin_photo=delayed(photo)
+db.download_checkin_photos=lambda p,l,ids:delayed({eid:photo for eid in ids})()
 db.list_checkin_revisions=delayed([])
 shared.get_territories=lambda:[TERRITORY]
 shared.sync_storage=lambda:''
@@ -78,8 +84,10 @@ st.session_state.update(player_id=player.id,credential_version=player.pin_hash,
     current_lobby_name=lobby.name,current_lobby_mode='individual',_lobby_restored_for=player.id,
     _location_asked=True,_remember_attempted=True)
 st.caption('LOCAL QA · Synthetic data · 50 ms per read · Shared database disabled')
+st.session_state['_qa_reads']=reads
+requested=st.query_params.get('qa_page','profile')
 page=st.navigation([st.Page(str(Path(__file__).resolve().parents[2]/'pages'/filename),
-    title=title,url_path=route,default=route=='profile') for title,route,filename in [
+    title=title,url_path=route,default=route==requested) for title,route,filename in [
     ('Profile','profile','1_Profile.py'),('Lobbies','lobby','2_Lobby.py'),
     ('Photo history','check_in_photos','6_Check_in_photos.py'),
     ('Leaderboard','standings','4_Standings.py'),('Map','map','5_Map.py')]],position='hidden')

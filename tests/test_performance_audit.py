@@ -1,0 +1,110 @@
+"""Performance boundaries: no auth caching, no original-image loss or client race."""
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from time import sleep
+from unittest.mock import Mock
+
+from PIL import Image
+import pytest
+
+import data.db as db
+from photo_history_ui import photo_thumbnail
+from scripts.audit_app_performance import requests_trace, route
+
+
+def jpeg(size):
+    output=BytesIO()
+    Image.effect_noise(size,75).convert('RGB').save(output,'JPEG',quality=90)
+    return output.getvalue()
+
+
+def test_gallery_thumbnail_is_smaller_and_leaves_original_intact():
+    original=jpeg((1200,1600))
+    small=photo_thumbnail(original)
+    assert len(small)<len(original)/3
+    with Image.open(BytesIO(small)) as image:
+        assert image.size==(360,480) and image.format=='JPEG'
+        assert not image.getexif()
+    with Image.open(BytesIO(original)) as image:
+        assert image.size==(1200,1600)
+    assert photo_thumbnail(jpeg((32,24))) is not None
+    tiny=jpeg((32,24))
+    assert photo_thumbnail(tiny) is tiny
+
+
+@pytest.mark.parametrize('raw',[None,b'',b'not an image',b'\xff\xd8\xff'])
+def test_invalid_thumbnail_does_not_crash_the_gallery(raw):
+    assert photo_thumbnail(raw) is None
+
+
+def test_parallel_cold_client_initialization_constructs_one_pool(monkeypatch):
+    client=object()
+    def create():
+        sleep(.02)
+        return client
+    factory=Mock(side_effect=create)
+    monkeypatch.setattr(db,'_client',None)
+    monkeypatch.setattr(db,'_create_client',factory)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        clients=list(pool.map(lambda _:db.get_client(),range(24)))
+    assert all(item is client for item in clients)
+    factory.assert_called_once()
+
+
+def test_failed_client_initialization_is_not_cached(monkeypatch):
+    client=object()
+    monkeypatch.setattr(db,'_client',None)
+    factory=Mock(side_effect=[RuntimeError('offline'),client])
+    monkeypatch.setattr(db,'_create_client',factory)
+    with pytest.raises(RuntimeError): db.get_client()
+    assert db.get_client() is client and factory.call_count==2
+
+
+def test_lobby_leader_name_and_roster_requests_overlap(monkeypatch):
+    from threading import Barrier
+    from types import SimpleNamespace
+    from tests.test_scoring_v1 import entry,season
+    import lobby_ui
+    barrier=Barrier(2,timeout=2)
+    def name(*args):
+        barrier.wait()
+        return 'Mia'
+    def roster(*args):
+        barrier.wait()
+        return [SimpleNamespace(id='me',player_id='player')]
+    monkeypatch.setattr(db,'list_drink_entries',lambda _: [entry('one','me','beer','small',0)])
+    monkeypatch.setattr(db,'list_season_transfers',lambda _: [])
+    monkeypatch.setattr(db,'membership_display_name',name)
+    monkeypatch.setattr(db,'list_memberships_for_lobby',roster)
+    monkeypatch.setattr(lobby_ui,'load_picture',lambda *args:None)
+    result=lobby_ui.load_summary('player',SimpleNamespace(id='lobby',game_mode='individual'),season(),'active')
+    assert result[1:] == (True,'Mia',None)
+
+
+@pytest.mark.parametrize('multiplier,expected',[(1.25,'×1.25'),(1.5,'×1.5'),(None,'×1.5')])
+def test_photo_caption_uses_saved_historical_focus_tier(monkeypatch,multiplier,expected):
+    from dataclasses import replace
+    import streamlit as st
+    from photo_history_ui import photo_metadata
+    from tests.test_scoring_v1 import entry,season
+    model=replace(entry('one','me','beer','small',0),focus_attempt_id='saved',focus_multiplier=multiplier)
+    caption=Mock()
+    monkeypatch.setattr(st,'caption',caption)
+    monkeypatch.setattr(st,'markdown',Mock())
+    photo_metadata(dict(entry=model,season=season(),location='matched',captured_at=None,
+                        submitted_at=model.submitted_at.isoformat(),timezone_name='UTC'))
+    assert expected in caption.call_args.args[0]
+
+
+def test_audit_never_records_ids_query_values_headers_or_response_content():
+    import httpx
+    transport=httpx.MockTransport(lambda _:httpx.Response(200,json={'secret':'not logged'}))
+    original=httpx.Client.send
+    with httpx.Client(transport=transport) as client:
+        with requests_trace() as trace:
+            client.get('https://project.supabase.co/storage/v1/object/private/user-id/photo.jpg?token=secret',
+                       headers={'Authorization':'Bearer secret'})
+    assert httpx.Client.send is original
+    assert trace[0][0]=='Supabase Storage object' and trace[0][1]==200
+    assert 'secret' not in str(trace) and 'user-id' not in str(trace)
+    assert route(httpx.URL('https://project.supabase.co/rest/v1/rpc/accept_scoring_checkin?actor=id'))=='Supabase RPC: accept_scoring_checkin'

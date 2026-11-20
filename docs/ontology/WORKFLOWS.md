@@ -9,6 +9,11 @@ result once and refreshes from the server every ten seconds. Private permissions
 and photos are not cached across requests. Photo history keeps newest-first
 game-night groups with at most twelve photos and two groups per page; larger
 nights continue on the next page. All photos remain accessible through paging.
+Each visible photo batch rechecks the current roster, sharing preferences,
+entry paths, expiry and private bucket before downloading. These checks are
+shared only within that invocation, never reused from the metadata listing
+or a previous page. Thumbnails reduce gallery delivery size; opening a photo
+uses its unchanged original and rechecks access again.
 Map avatars batch fresh authorization without changing their audience. See the
 [performance record](../PERFORMANCE.md) for measurements and remaining limits.
 
