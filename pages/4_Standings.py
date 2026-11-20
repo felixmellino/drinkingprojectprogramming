@@ -83,10 +83,24 @@ except (APIError, RequestError, RuntimeError):
     territories_available = False
     territory_data = []
 
+owners = {territory.id: owner for territory, owner, _rows in territory_data} if territories_available else None
+territory_names = {territory.id: territory.name for territory, _owner, _rows in territory_data}
+
+
+@st.fragment
+def ranking():
+    """Tapping a place reruns only this part: the season was loaded above."""
+    tapped = standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+    if tapped is not None:
+        rank, points = next((i + 1, p) for i, (m, p) in enumerate(leaderboard) if m == tapped)
+        stats = standings_ui.player_stats(tapped, entries, owners, territory_names)
+        standings_ui.player_sheet(names.get(tapped, "Unknown player"), rank, points, stats, current_time())
+
+
 if not leaderboard:
     st.info("No points logged yet this season.")
 else:
-    standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+    ranking()
 
 if not territories_available:
     st.warning("Territory standings are unavailable. Reload the page to try again.")

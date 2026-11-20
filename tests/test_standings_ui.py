@@ -76,10 +76,10 @@ def rank_of(markup, name):
     """The rank a player/team is actually labelled with, regardless of the
     podium's visual DOM order (2nd, 1st, 3rd left-to-right). The current
     """
-    for m in re.finditer(r'<li class="standings-podium-place standings-podium-(\d)">(.*?)</li>', markup, re.S):
+    for m in re.finditer(r'<div class="standings-podium-place standings-podium-(\d)">(.*?)</span></span></div>', markup, re.S):
         if name in text(m.group(2)):
             return int(m.group(1))
-    for offset, m in enumerate(re.finditer(r'<li class="standings-row[^"]*">(.*?)</li>', markup, re.S)):
+    for offset, m in enumerate(re.finditer(r'<div class="standings-row[^"]*">(.*?)</div>', markup, re.S)):
         if name in text(m.group(1)):
             return offset + 4
     return None
@@ -209,3 +209,52 @@ def test_leaderboard_renders_tie_tag_and_medal_podium(monkeypatch):
         assert f"0 0 0 6px {colour};" in markup               # avatar ringed in its step's colour
     from photo_history_ui import identity_colour
     assert f"background:{identity_colour({'membership_id': 'a'})};color:#fff;" in markup  # own colour
+
+
+# -- Player sheet (tap a place on Ranks) -------------------------------------
+from datetime import timedelta  # noqa: E402
+from tests.test_scoring_v1 import START  # noqa: E402
+
+
+def test_player_stats_count_scored_drinks_territories_favourite_and_last():
+    entries = [entry("1", "m", "beer", "large", 0), entry("2", "m", "beer", "small", 5),
+               entry("3", "m", "shot", None, 9, territory=None),           # outside the map, latest
+               entry("4", "x", "wine", "large", 10),
+               replace(entry("5", "m", "wine", "large", 11), points_awarded=0)]  # zero points: not counted
+    stats = standings_ui.player_stats("m", entries, {"territory-a": "m", "b": "x"}, {"territory-a": "Bairro Alto"})
+    assert stats["drinks"] == 3 and stats["territories"] == 1 and stats["favourite"] == "Beer"
+    assert stats["last_place"] == "Outside the map" and stats["last_at"] == START + timedelta(minutes=9)
+    matched = standings_ui.player_stats("x", entries, None, {"territory-a": "Bairro Alto"})
+    assert matched["last_place"] == "Bairro Alto" and matched["territories"] is None   # territories unavailable
+
+
+def test_player_stats_for_someone_without_drinks():
+    stats = standings_ui.player_stats("nobody", [entry("1", "m", "beer", "large", 0)], {}, {})
+    assert stats == {"drinks": 0, "territories": 0, "favourite": None, "last_place": None, "last_at": None}
+
+
+def test_ago_reads_like_a_phone():
+    now = START + timedelta(days=3)
+    assert standings_ui.ago(now, now) == "just now"
+    assert standings_ui.ago(now - timedelta(minutes=22), now) == "22 min ago"
+    assert standings_ui.ago(now - timedelta(hours=5), now) == "5 h ago"
+    assert standings_ui.ago(START, now) == f"{START:%a %d %b}"
+
+
+def test_player_sheet_html_shows_four_tiles_escaped():
+    stats = {"drinks": 9, "territories": None, "favourite": None, "last_place": "<b>Pub</b>",
+             "last_at": START}
+    html = standings_ui.player_sheet_html("LucasStink", 1, 16.75, stats, START + timedelta(minutes=22))
+    assert "Rank 1 · 16.75 points" in html and html.count('class="sheet-stat"') == 4
+    assert "<b>Pub</b>" not in html and "&lt;b&gt;Pub&lt;/b&gt;" in html and "22 min ago" in html
+    assert html.count(">—<") == 2                       # territories unavailable, no favourite
+
+
+def test_tapping_a_place_opens_that_players_sheet(ui):
+    at = page()
+    assert not at.exception
+    tap = next(b for b in at.button if b.label == "Show Leo's profile")
+    tap.click().run()
+    assert not at.exception
+    sheet = "".join(m.value for m in at.markdown if "sheet-grid" in m.value)
+    assert "Rank 2" in sheet and sheet.count('class="sheet-stat"') == 4
