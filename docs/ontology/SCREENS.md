@@ -60,6 +60,14 @@ text, no metrics, no manual refresh (screens update by themselves).
   Everything on game screens is centred.
 - Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
   one card with Accept / Decline. Rules are unchanged.
+- Shared minigame result card (20 November 2026, `minigames_ui.result_card`):
+  the same shape as the check-in reward card. Won / Lost / Draw, one big
+  number, one line, an optional small note. Reaction Duel: "+3 season points
+  from Ana" / "−3 … to Ana" / "±0 Stake back", above the rounds table. Time
+  Duel: above the finished board, "×1.25 on your check-ins for the next hour",
+  "— Ana gets the ×1.25 boost" or a draw note (both boosted only if every
+  round counted); the recent list reads "Won · vs Ana". Quiz and Chug keep
+  their own end screens inside their components for now.
 
 ## Drink Entries interface (implemented 17 November 2026)
 

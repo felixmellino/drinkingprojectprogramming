@@ -140,4 +140,15 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .reaction-rounds th, .reaction-rounds td { padding:8px 6px; text-align:center; border-bottom:1px solid var(--border); }
 .reaction-rounds th { font-size:.8rem; font-weight:600; color:var(--text-muted); }
 .reaction-rounds td.win { font-weight:700; color:var(--accent-ink); }
-.reaction-verdict { text-align:center; font:700 1.6rem var(--font-display); margin:6px 0 2px; }
+
+/* Shared minigame result card (minigames_ui.result_card): same shape as the
+   check-in reward card. Won = sky, lost = scarlet ink, draw = muted. */
+.stApp .game-result { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  padding: 18px 16px 16px; margin: 6px 0 12px; text-align: center; }
+.stApp .game-result p { margin: 0; }
+.stApp .game-result-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+.stApp .game-result-big { font-family: var(--font-display); font-size: 3.6rem; line-height: 1; margin-top: 4px !important; color: var(--text-muted); }
+.stApp .game-result-won .game-result-big { color: var(--accent); }
+.stApp .game-result-lost .game-result-big { color: var(--territory-theirs-ink); }
+.stApp .game-result-line { margin-top: 8px !important; font-size: 1rem; font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+.stApp .game-result-note { margin-top: 6px !important; font-size: 0.8rem; color: var(--text-muted); }
