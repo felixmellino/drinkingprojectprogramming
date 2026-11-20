@@ -23,6 +23,7 @@ from core.lobbies import lobby_creator
 from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
 import standings_ui
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
@@ -267,14 +268,22 @@ def remove_lobby_confirm(player_id, lobby, key):
             st.rerun()
 
 
+def show_lobby_management(player_id, lobby, season, memberships=None):
+    """Creator controls shared by the individual and team lobby dialogs."""
+    if memberships is None:
+        try:
+            memberships = db.list_memberships_for_lobby(lobby.id, include_left=True)
+        except LOAD_ERRORS:
+            return
+    if lobby_creator(memberships) != player_id:
+        return
+    if lobby_status(season, datetime.now(timezone.utc)) in ('active', 'upcoming'):
+        show_invite_player(player_id, lobby.id, memberships)
+    delete_lobby_controls(player_id, lobby)
+
+
 def delete_lobby_controls(player_id, lobby):
-    """Only the creator sees this; two deliberate clicks. Shared by both lobby dialogs."""
-    try:
-        creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
-    except LOAD_ERRORS:
-        return
-    if creator != player_id:
-        return
+    """Confirm deletion before asking the database to recheck creator access."""
     key = f'confirm_delete_{lobby.id}'
     if st.button('Delete lobby', key=f'delete_{lobby.id}', icon=':material/delete:', width='stretch'):
         st.session_state[key] = True
@@ -371,7 +380,7 @@ def show_lobby_details(player_id, lobby, season):
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season)
     close_members_button()
 
 
@@ -406,6 +415,7 @@ def show_lobbies(player_id):
     notice = st.session_state.pop('_left_lobby_notice', None)
     if notice:
         st.success(notice)
+    show_pending_lobby_invites(player_id)
     show_overview_actions(player_id)
     st.button('Refresh lobbies')
     if not memberships:

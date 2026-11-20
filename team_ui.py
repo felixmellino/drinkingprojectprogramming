@@ -107,13 +107,13 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                     else:
                         st.session_state['_team_notice'] = 'Team joined.'
                         st.rerun()
-    from lobby_ui import delete_lobby_controls, leave_lobby_controls, lobby_leaderboard, retry_setup
+    from lobby_ui import leave_lobby_controls, lobby_leaderboard, retry_setup, show_lobby_management
     if season is None:
         retry_setup(player_id, lobby)
     else:
         lobby_leaderboard(player_id, lobby, me, season)
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season, members)
     if st.button('Close', key='close_lobby_teams'):
         dismiss_lobby_dialog()
         st.rerun()

@@ -446,6 +446,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
     members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
+    monkeypatch.setattr(db, "pending_lobby_invitations", lambda _: [])
     monkeypatch.setattr(db,"list_memberships_for_player",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"insert_lobby",lobbies.append)
     monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))

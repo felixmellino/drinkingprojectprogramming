@@ -759,3 +759,32 @@ Delete lobby fails until it is applied).
 
 Source: contributor request, 19 November 2026 (who may delete and "hide, keep
 history" are the implementer's decisions; the team should confirm).
+
+### R-LB05 Personal lobby invitations
+
+After lobby setup, its creator can invite accepted friends while still an
+active member, until the competition ends. Existing join codes still work.
+A friend already in the lobby cannot receive an invite. Former members can
+be invited. Invitations are private to the addressed account and expire
+after seven days or at competition end, whichever comes first.
+
+The server sends an email to the friend's registered address using Brevo.
+The link opens the invitation on the Lobby page after login. The same request
+appears under Pending invites, including when email delivery cannot be
+confirmed. Opening the email link is read-only. The recipient can explicitly
+accept or decline while signed in. Response links forwarded to another
+account, repeated responses, expired requests and deleted lobbies are
+rejected.
+
+Accept uses the existing lobby membership and team rules in the same
+database transaction as the invitation response. There is no slot
+reservation. A full lobby leaves the invitation pending, and the recipient
+can still decline. Rejoining restores the existing membership and any
+reserved team slot. Joining by code before responding leaves only the
+original membership when the invitation is accepted. Declining never
+changes membership or scores.
+
+There is at most one pending invitation per lobby and recipient. Sending is
+limited to one invite per lobby and recipient per 24 hours and 20 per
+creator across lobbies per 24 hours. Migration `026_lobby_invitations.sql`
+enforces sending permissions, response ownership, expiry and rate limits.

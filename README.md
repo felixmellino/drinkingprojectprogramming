@@ -28,6 +28,11 @@ submission.
 
 ## Hosting (deployed app)
 
+Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
+use the same Brevo settings as password recovery. In an active lobby, the
+creator can open **Invite player** and select an accepted friend. Invitees
+can open the email link or respond from **Pending invites** on the Lobby page.
+
 The public app runs on **Streamlit Community Cloud** at
 https://wegopubnow.streamlit.app/ and uses the team's shared Supabase project
 (region West EU) as its database and photo storage.

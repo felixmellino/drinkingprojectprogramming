@@ -36,6 +36,7 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 23. `023_minigame_invite_badge.sql`
 24. `024_minigame_tile_badges.sql`
 25. `025_reaction_duel.sql`
+26. `026_lobby_invitations.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -44,13 +45,13 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest first to check:** `025_reaction_duel.sql` (Reaction Duel). The quick check
+**Newest first to check:** `026_lobby_invitations.sql` (personal lobby invitations). The quick check
 
 ```sql
-select count(*) from public.reaction_duels;
+select count(*) from public.lobby_invitations;
 ```
 
-returns a number once 025 is installed.
+returns a number once 026 is installed.
 
 ## Files that are not part of a fresh install
 
@@ -65,6 +66,6 @@ because earlier boosts remain part of the scoring history.
 
 ## Writing a new migration
 
-Give it the next free number (`026_…`), start the file with one comment line saying what
-it needs ("Requires 025"), and add it to the end of the list above. The chain test fails
+Give it the next free number (`027_…`), start the file with one comment line saying what
+it needs ("Requires 026"), and add it to the end of the list above. The chain test fails
 until you do.
