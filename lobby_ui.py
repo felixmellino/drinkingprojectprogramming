@@ -20,7 +20,7 @@ from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
 from parallel import run_parallel
 from core.lobbies import lobby_creator
-from theme import button_icons
+from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
 
@@ -353,7 +353,7 @@ def show_lobbies(player_id):
     st.button('Refresh lobbies')
     if not memberships:
         clear_selection()
-        st.info('You have not joined any lobbies yet. Create one or join with a code above.')
+        empty_state('lobbies', 'users-three', 'Start a lobby', 'Create one for your group or join with a code above.')
         return
     try:
         lobbies = {l.id: l for l in db.list_lobbies()}

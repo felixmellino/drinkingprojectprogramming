@@ -209,3 +209,16 @@
 @media (prefers-reduced-motion: reduce) {
   .stApp * { transition: none !important; animation: none !important; }
 }
+
+/* Empty-state card (theme.empty_state): icon, title, one line, optional
+   button. The thin scarlet stripe on top is its only accent. */
+.stApp [class*="st-key-empty_state_"] { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  border-top: 4px solid var(--brand); padding: 22px 16px 16px; text-align: center; gap: 0 !important; margin: 4px 0 12px; }
+.stApp [class*="st-key-empty_state_"] [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
+.stApp .empty-state-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft);
+  display: grid; place-items: center; margin: 0 auto 10px; }
+.stApp .empty-state-icon i { display: block; width: 26px; height: 26px; background-color: var(--accent-ink);
+  -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.stApp .empty-state-title { margin: 0; text-align: center; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.15; color: var(--text); }
+.stApp .empty-state-line { margin: 6px 0 14px !important; text-align: center; font-size: .9rem; color: var(--text-muted); }

@@ -162,7 +162,7 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
         assert any(button.label == 'Open Lobby' for button in at.button)
     else:
         records.assert_called_once_with(ui['seasons'][expected][0].id)
-        assert any('No points logged yet' in item.value for item in at.info)
+        assert any('empty-state-title' in m.value and 'No points yet' in m.value for m in at.markdown)
     assert any('Final standings' in item.value for item in at.caption) == (expected == 'past')
     if (choice, expected) != ('past', 'old'):
         assert 'current_lobby_id' not in at.session_state
