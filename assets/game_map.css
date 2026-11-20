@@ -29,17 +29,18 @@
 /* Area buttons (Lisbon, Nova): one small card on the left under the top bar, two rows of
    icon + text, like the grouped controls of map apps. */
 .st-key-map_areas { position: absolute; z-index: 6; left: 12px; top: 60px; width: max-content !important; gap: 0 !important;
-  background: var(--hud-bg); border-radius: 14px; box-shadow: var(--shadow-card); overflow: hidden;
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  /* A background helper, not the focus: translucent, soft shadow, muted text. */
+  background: color-mix(in srgb, var(--hud-bg) 62%, transparent); border-radius: 12px; box-shadow: 0 1px 5px rgba(20, 43, 61, .10);
+  overflow: hidden; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: 100% !important; margin: 0 !important; }
-.st-key-map_areas [data-testid="stElementContainer"] + [data-testid="stElementContainer"] { border-top: 1px solid var(--border); }
+.st-key-map_areas [data-testid="stElementContainer"] + [data-testid="stElementContainer"] { border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
 .stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%;
-  min-height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
-  color: var(--text); white-space: nowrap; }
-.stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 22px; width: 22px; height: 22px; margin: 0;
+  min-height: 34px; padding: 0 14px 0 10px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  color: var(--text-muted); white-space: nowrap; }
+.stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 18px; width: 18px; height: 18px; margin: 0;
   background-color: currentColor; -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
-.stApp .st-key-map_areas button p { margin: 0; font-size: .86rem; font-weight: inherit; line-height: 1; color: inherit; }
-.stApp .st-key-map_areas button:hover { background: var(--accent-soft); }
+.stApp .st-key-map_areas button p { margin: 0; font-size: .76rem; font-weight: inherit; line-height: 1; color: inherit; }
+.stApp .st-key-map_areas button:hover { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); color: var(--text); }
 .stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
@@ -98,7 +99,7 @@
 .tt-none:empty { display: none; }
 
 /* Location switch: a small pill on the right under the top bar (its frame is transparent). */
-.stApp .st-key-map_location { position: absolute; z-index: 6; top: 60px; right: 12px; width: 118px !important; margin: 0; padding: 0; }
+.stApp .st-key-map_location { position: absolute; z-index: 6; top: 60px; right: 12px; width: 108px !important; margin: 0; padding: 0; }
 .stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; }
 .stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
 @media (max-width: 640px) {

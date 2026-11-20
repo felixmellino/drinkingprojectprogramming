@@ -23,15 +23,15 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 #switch:disabled{opacity:.6;cursor:wait}
 /* Compact: a small pill for the Map's top bar, right-aligned; the status stays for screen readers. */
 body.compact{padding:1px 1px 6px}
-body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:7px;padding:3px 4px 3px 10px;
-  border-radius:var(--radius-pill);background:var(--hud-bg);box-shadow:0 2px 8px rgba(20,43,61,.16);
-  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:6px;padding:2px 3px 2px 9px;
+  border-radius:var(--radius-pill);background:color-mix(in srgb,var(--hud-bg) 62%,transparent);box-shadow:0 1px 5px rgba(20,43,61,.10);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 body.compact #row.show{display:flex}
-body.compact #title{font-size:.72rem;font-weight:600}
+body.compact #title{font-size:.68rem;font-weight:600;color:var(--text-muted)}
 body.compact #status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;margin:0}
-body.compact #switch{width:34px;height:20px;border-radius:10px}
-body.compact #switch::after{top:2px;left:2px;width:16px;height:16px}
-body.compact #switch[aria-checked="true"]::after{transform:translateX(14px)}
+body.compact #switch{width:30px;height:18px;border-radius:9px}
+body.compact #switch::after{top:2px;left:2px;width:14px;height:14px}
+body.compact #switch[aria-checked="true"]::after{transform:translateX(12px)}
 </style></head>
 <body>
 <div id="row"><div id="text"><div id="title">Location</div><div id="status" aria-live="polite"></div></div>
