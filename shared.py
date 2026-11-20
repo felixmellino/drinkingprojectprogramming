@@ -76,10 +76,7 @@ def require_login() -> str:
         show_accounts()
         st.stop()
     if st.session_state.get("_show_welcome"):
-        if show_welcome():   # one tap anywhere continues to the page that was opened
-            st.session_state.pop("_show_welcome", None)
-            st.session_state["start_seen"] = True
-            st.rerun()
+        show_welcome()   # one tap anywhere continues to the page that was opened
         st.stop()
     try:
         restore_selection(st.session_state["player_id"])
