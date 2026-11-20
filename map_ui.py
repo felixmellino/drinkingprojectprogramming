@@ -14,10 +14,11 @@ from pathlib import Path
 import pydeck as pdk
 import streamlit as st
 
-from theme import icon_css
+from theme import dark_mode, icon_css
 
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
+from core.profile_photo import initials
 from map_markers import owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
@@ -27,12 +28,13 @@ COLOURS = {
     "theirs": [235, 47, 51],    # #EB2F33 Scarlet Red
     "free": [138, 151, 166],    # #8A97A6 grey
 }
-FILL_ALPHA = {"yours": 150, "theirs": 150, "free": 55}
-# Every border is plain white, so each area stands out clearly on the dark
-# map; the fill colour alone says who owns it.
-LINE_COLOUR = [255, 255, 255, 255]
+# Soft translucent fills with a thin outline in the same colour (light basemap,
+# like Citymapper / Strava): the colour says who owns it, the map stays readable.
+FILL_ALPHA = {"yours": 80, "theirs": 80, "free": 22}
+LINE_ALPHA = {"yours": 235, "theirs": 235, "free": 150}
 LEGEND = {"yours": "Yours", "theirs": "Someone else's", "free": "Unclaimed"}
-HOVER_COLOUR = [255, 255, 255, 70]  # lightens the area under the pointer
+HOVER_COLOUR = [20, 43, 61, 28]      # darkens the area under the pointer (light map)
+HOVER_COLOUR_DARK = [255, 255, 255, 60]
 
 # Quick-zoom buttons: which territory ids belong to which part of the city.
 # Ids that aren't in the territory file are simply skipped.
@@ -73,6 +75,16 @@ def hud(lobby_name: str, rows: list[dict]) -> None:
     )
 
 
+def map_style() -> str:
+    return "dark_no_labels" if dark_mode() else "light_no_labels"
+
+
+def _status(tone: str, title: str, sub: str) -> str:
+    """One row for the sheet: a coloured dot (live = pulsing), a title and one line."""
+    return (f'<div class="status-row"><span class="status-dot status-{tone}" aria-hidden="true"></span>'
+            f'<div class="tug-title"><h3>{escape(title)}</h3><p class="tug-sub">{escape(sub)}</p></div></div>')
+
+
 def location_card(here: dict | None, status: str, accuracy_m: float | None = None,
                   selected: dict | None = None) -> None:
     """Bottom card floating over the map. A tapped territory (`selected`) is
@@ -84,17 +96,17 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
     elif standing_in:
         body = territory_card(here, standing_in=True)
     elif status == "outside":
-        body = "<small>You are</small><h3>Outside the map</h3><p>Drinks here count for season points only.</p>"
+        body = _status("grey", "Outside the map", "Drinks here count for season points only")
     elif status == "inaccurate":
-        body = (f"<small>Location</small><h3>Not precise enough</h3>"
-                f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m.</p>")
+        body = _status("amber", "Not precise enough", f"Accurate to about {accuracy_m:.0f} m, we need 50 m")
     elif status == "denied":
-        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow it in the browser settings, then turn it on in Profile.</p>"
+        body = _status("red", "Location is blocked", "Allow it in the browser settings, then turn it on in Profile")
     elif status == "off":
-        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location.</p>"
+        body = _status("grey", "Location is off", "Turn it on in Profile → Location")
     else:
-        body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
-    st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
+        body = _status("live", "Finding you…", "This takes a few seconds")
+    st.markdown(f'<div class="game-card"><div class="sheet-grab" aria-hidden="true"></div>{body}</div>',
+                unsafe_allow_html=True)
 
 
 def _title(name: str, sub: str) -> str:
@@ -251,6 +263,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                 # Only the id goes to the browser: the card is built server-side.
                 "id": row["id"],
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
+                "line": COLOURS[row["status"]] + [LINE_ALPHA[row["status"]]],
             },
         }
         for row in rows
@@ -262,12 +275,12 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             id="territories",
             pickable=True,
             auto_highlight=True,
-            highlight_color=HOVER_COLOUR,
+            highlight_color=HOVER_COLOUR_DARK if dark_mode() else HOVER_COLOUR,
             stroked=True,
             filled=True,
             get_fill_color="properties.fill",
-            get_line_color=LINE_COLOUR,
-            line_width_min_pixels=2.5,
+            get_line_color="properties.line",
+            line_width_min_pixels=1.5,
         )
     ]
     markers = owner_markers(rows, pictures or {}, COLOURS)
@@ -297,9 +310,9 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
             map_provider="carto",
-            # Carto "Dark Matter" without place names: the basemap's district
-            # names clashed with ours. Territory names show on hover.
-            map_style="dark_no_labels",
+            # Carto without place names (they clashed with ours): quiet light
+            # "Positron" normally, "Dark Matter" when the player turned on dark mode.
+            map_style=map_style(),
         ),
         height=600,
         # A tap selects one territory and reruns the page, so the bottom card
@@ -325,15 +338,46 @@ def selected_territory(event, known_ids: set) -> str | None:
     return None
 
 
-def territory_list(rows: list[dict]) -> None:
-    """The same information as the map, as a table (SCREENS.md: map alternative)."""
-    order = {"yours": 0, "theirs": 1, "free": 2}
-    st.dataframe(
-        [
-            {"Territory": row["name"], "Status": LEGEND[row["status"]], "Owner": row["owner"],
-             "Your points": row["my_points"], "What it means": row["detail"]}
-            for row in sorted(rows, key=lambda r: (order[r["status"]], r["name"]))
-        ],
-        hide_index=True,
-        width="stretch",
-    )
+def _list_row(row: dict) -> str:
+    """One territory in the list sheet: owner avatar, name, who vs whom, pill."""
+    me = row["my_points"]
+    rivals = [r for r in row["ranking"] if not r["you"]]
+    if row["status"] == "theirs":
+        badge, sub = row["owner"], f'{row["owner"]} · you {format_points(me)} vs {format_points(row["owner_points"])}'
+        pill, tone = f'+{format_points(row["needed"])} to take', "tug-pill-theirs"
+    elif row["status"] == "yours":
+        rival = rivals[0] if rivals else None
+        badge = "You"
+        sub = (f'Yours · {format_points(me)} vs {rival["name"]} {format_points(rival["points"])}' if rival
+               else f"Yours · {format_points(me)}, no rival yet")
+        pill, tone = f'+{format_points(me - (rival["points"] if rival else 0))} lead', "tug-pill-yours"
+    else:
+        badge, sub, pill, tone = "", "Unclaimed", "Claim it", "tug-pill-free"
+    initials_text = initials(badge) if badge else "–"   # same initials as the map badges
+    return (f'<li class="terr-row"><span class="terr-avatar terr-{row["status"]}" aria-hidden="true">{escape(initials_text)}</span>'
+            f'<span class="terr-text"><b>{escape(row["name"])}</b><span>{escape(sub)}</span></span>'
+            f'<span class="tug-pill {tone}">{escape(pill)}</span>'
+            f'<span class="sr-only">{escape(row["detail"])}</span></li>')
+
+
+def territory_list_html(rows: list[dict]) -> str:
+    """All territories, easiest to take first: rivals' (fewest points needed),
+    then unclaimed, then yours (smallest lead first, the ones to defend)."""
+    def order(row):
+        if row["status"] == "theirs":
+            return (0, row["needed"], row["name"])
+        if row["status"] == "free":
+            return (1, 0, row["name"])
+        rivals = [r["points"] for r in row["ranking"] if not r["you"]]
+        return (2, row["my_points"] - (max(rivals) if rivals else 0), row["name"])
+    return '<ul class="terr-list">' + "".join(_list_row(row) for row in sorted(rows, key=order)) + "</ul>"
+
+
+def territory_list(rows: list[dict], *, team_mode: bool = False) -> None:
+    """A full-width button "All territories · N" that opens the list as a sheet."""
+    if st.button(f"All territories · {len(rows)}", key="map_all_territories", width="stretch"):
+        def body():
+            if team_mode:
+                st.caption("Team territories · points and gaps combine all team members’ drinks.")
+            st.markdown(territory_list_html(rows), unsafe_allow_html=True)
+        st.dialog("Territories", dismissible=True)(body)()
