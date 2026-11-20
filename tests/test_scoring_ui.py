@@ -187,6 +187,24 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     assert not page.exception and camera.call_count == 2 and not page.radio
 
 
+def test_checkin_form_is_one_screen_the_photo_fills_the_free_space(ui):
+    state, _ = ui
+    page = open_checkin()
+    set_location(page, state)
+    assert any(b.key == "checkin_retake" for b in page.button), "Retake is a round button on the photo"
+    keys = [b.key for b in page.button]
+    assert keys.index("checkin_retake") < len(keys) - 1
+    html = "\n".join(item.value for item in page.get("html"))
+    assert 'class="checkin-photo"' in html
+    css = (ROOT / "assets" / "drink_entries.css").read_text(encoding="utf-8")
+    # The photo wrapper is the only flex child that may grow or shrink; the page cannot scroll.
+    assert "has(> .st-key-checkin_photo) { flex: 1 1 0" in css
+    assert "height: 100dvh" in css and "flex-shrink: 0" in css
+    # One location line with the territory, no separate territory row.
+    assert any("Location found · 10 m" in c.value for c in page.caption)
+    assert not any("Territory" == m.value for m in page.markdown)
+
+
 def test_go_to_map_is_the_one_button_after_a_checkin_and_leaves_a_clean_checkin_page(ui, monkeypatch):
     from unittest.mock import Mock
     import streamlit as st

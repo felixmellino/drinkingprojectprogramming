@@ -89,6 +89,14 @@ These presentation choices introduce no new scoring or database rules.
   preview and the lobby/time line are gone, and so is the Focus boost preview (the
   server still applies any earned boost). After a check-in the result card is followed
   by one button, **Go to map**; the + tab starts the next check-in.
+- Update, 20 November 2026 (one screen): after the photo everything fits on one screen without
+  scrolling, also on a small phone. The photo takes all the space the controls leave free (Retake is a
+  small round button on the photo); drink and size are small pills in one row each, followed by one
+  points line, one location line ("Location found · 14 m · Shortys") and Submit. The page title is
+  hidden on this step. The Back button sits on the same centre line as the round Profile button on
+  every page.
+- The Map's bottom card is slimmer (about 25 % lower): smaller type, a thin tug-of-war bar, one quiet
+  "All territories" row.
 - Update, 20 November 2026: the scoring window and cooldown are checked before
   the camera opens. If a check-in can't count, one card replaces the camera:
   "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and

@@ -26,7 +26,7 @@ from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_re
     create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
-from drink_entry_ui import context_line, gate_card_html, page_header, reward_card_html
+from drink_entry_ui import gate_card_html, page_header, reward_card_html
 from phone_location import current_location, track_location
 from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
@@ -183,12 +183,12 @@ if waiting:
 
 
 capture = st.session_state.get('checkin_capture')
-with st.container(key='drink_ui_panel_camera'):
+with st.container(key='checkin_photo'):
+    # The photo fills all the space the controls leave free; Retake is a small round button on it.
     # Keep the preview inside the authenticated session, not a public media URL.
     encoded = b64encode(photo.getvalue()).decode('ascii')
-    st.html(f'<img src="data:image/jpeg;base64,{encoded}" alt="Your drink photo" '
-            'style="display:block;width:100%;max-height:320px;object-fit:contain;border-radius:var(--radius-lg,16px);background:var(--surface,#22334F)">')
-    if st.button('Retake photo', icon=':material/photo_camera:', width='stretch'):
+    st.html(f'<img class="checkin-photo" src="data:image/jpeg;base64,{encoded}" alt="Your drink photo">')
+    if st.button('Retake photo', icon=':material/photo_camera:', key='checkin_retake'):
         reset_camera()
         st.rerun()
 
@@ -209,12 +209,12 @@ with st.container(key="drink_ui_panel_selection"):
     if modern:
         with st.container(key="drink_ui_drinks"):
             drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
-                                  horizontal=True, width="stretch")
+                                  horizontal=True, width="stretch", label_visibility="collapsed")
         if drink_type != "shot":
             with st.container(key="drink_ui_sizes"):
                 size = st.radio("Size", options=list(SIZE_LABELS),
                                 format_func=lambda value: size_label(drink_type, value, rules),
-                                horizontal=True, width="stretch")
+                                horizontal=True, width="stretch", label_visibility="collapsed")
         preview = base_points(drink_type, size, rules) * max(focus_multiplier, time_multiplier)
         point_word = "point" if preview == 1 else "points"
         with st.container(key="drink_ui_points"):
@@ -247,17 +247,18 @@ with st.container(key="drink_ui_panel_location"):
     elif accuracy_m > MAX_GPS_ACCURACY_M:
         st.warning(f"Your location is only accurate to about {accuracy_m:.0f} m (need {MAX_GPS_ACCURACY_M:.0f} m). Step outside.")
     else:
-        st.caption(f"Location found · {accuracy_m:.0f} m")
-    if modern and device_gps is not None and accuracy_m <= MAX_GPS_ACCURACY_M:
-        try:
-            territories = get_territories()
-            preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
-            if preview_result == "matched":
-                context_line("Territory", next(t.name for t in territories if t.id == preview_territory))
-            elif preview_result == "outside":
-                st.caption("Outside the territories: season points only.")
-        except (APIError, RequestError, RuntimeError):
-            pass  # The territory is checked again on submission.
+        place = ""
+        if modern and device_gps is not None:
+            try:
+                territories = get_territories()
+                preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
+                if preview_result == "matched":
+                    place = " · " + next(t.name for t in territories if t.id == preview_territory)
+                elif preview_result == "outside":
+                    place = " · outside the territories"
+            except (APIError, RequestError, RuntimeError):
+                pass  # The territory is checked again on submission.
+        st.caption(f"Location found · {accuracy_m:.0f} m{place}")
 
 
 # Recover a lost successful reply even after the scoring window closes.
