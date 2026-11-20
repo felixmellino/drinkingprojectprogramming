@@ -14,6 +14,8 @@ from pathlib import Path
 import pydeck as pdk
 import streamlit as st
 
+from theme import icon_css
+
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
 from map_markers import owner_markers
@@ -45,8 +47,8 @@ AREAS = {
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
     "Jamor Golf": ["jamor-golf"],
 }
-# The two quick-zoom chips on the Map (area name -> label). No chip picked means "start on me".
-QUICK_AREAS = {"Lisbon": "Lisbon", "Nova SBE": "Nova"}
+# The two quick-zoom buttons on the Map: area name -> (label, icon in assets/icons).
+QUICK_AREAS = {"Lisbon": ("Lisbon", "skyline"), "Nova SBE": ("Nova", "graduation-cap")}
 ME = ":material/my_location: Me"
 ALL = "All"
 
@@ -172,6 +174,29 @@ def summary(rows: list[dict]) -> dict:
         best = min(theirs, key=lambda row: (row["needed"], row["name"]))
         easiest = (best["name"], best["needed"])
     return {"yours": yours, "total": len(rows), "free": free, "easiest": easiest}
+
+
+def area_buttons() -> str | None:
+    """Two icon + text buttons stacked on the left side of the map (a small grouped control).
+    Returns the picked area, or None for "no choice": the map then starts on you (or Lisbon).
+    Tapping the picked button again clears the choice."""
+    picked = st.session_state.get("map_area")
+    if picked not in QUICK_AREAS:
+        picked = None
+    clicked = None
+    with st.container(key="map_areas"):
+        for area, (label, _icon) in QUICK_AREAS.items():
+            if st.button(label, key=f"map_area_{area.split()[0].lower()}", type="tertiary"):
+                clicked = area
+    if clicked:
+        picked = None if clicked == picked else clicked
+        st.session_state["map_area"] = picked
+    css = "".join(icon_css(f".stApp .st-key-map_area_{area.split()[0].lower()} button::before", icon)
+                  for area, (_label, icon) in QUICK_AREAS.items())
+    if picked:  # only a name from QUICK_AREAS reaches the selector
+        css += f".stApp .st-key-map_area_{picked.split()[0].lower()} button{{color:var(--accent-ink);font-weight:700;}}"
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    return picked
 
 
 def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None) -> pdk.ViewState:

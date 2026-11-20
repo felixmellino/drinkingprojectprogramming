@@ -71,13 +71,9 @@ else:
 # HUD floating over the top of the map: lobby and score, two area chips down the left side and
 # the small Location switch on the right (shared with Profile; it also follows the phone's
 # position, so it runs before current_location() reads the newest reading below).
-if st.session_state.get("map_focus") not in (None, *map_ui.QUICK_AREAS):
-    del st.session_state["map_focus"]  # e.g. "Me" or "Bairro Alto" from the earlier chip row
 with st.container(key="game_hud"):
     map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-    with st.container(key="map_areas"):
-        picked = st.segmented_control("Show", list(map_ui.QUICK_AREAS), format_func=map_ui.QUICK_AREAS.get,
-                                      key="map_focus", label_visibility="collapsed")
+    picked = map_ui.area_buttons()
     with st.container(key="map_location"):
         location_switch(compact=True, follow=True)
 

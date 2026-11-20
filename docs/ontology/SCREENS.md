@@ -242,10 +242,11 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- Two area chips, **Lisbon** and **Nova**, stand stacked down the left side under the top
-  bar (20 November 2026; the other areas and "All" were removed). With no chip picked the
-  map starts on you when your position is usable, otherwise on Lisbon; tapping the active
-  chip again returns to that start.
+- Two area buttons, **Lisbon** (skyline icon) and **Nova** (graduation-cap icon), form one small
+  card with two rows of icon + text on the left side under the top bar (20 November 2026; the
+  stretched chip row, the other areas and "All" were removed). The picked row turns blue and
+  bold. With nothing picked the map starts on you when your position is usable, otherwise on
+  Lisbon; tapping the picked row again returns to that start.
 - A small **Location** pill (label and switch) sits right-aligned under the top bar
   (20 November 2026). It is the same on/off choice as the Profile switch
   (R-L01) and also follows the phone's position while on. If the browser forgot its answer

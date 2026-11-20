@@ -26,20 +26,21 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Area chips (Lisbon, Nova): two separate pills stacked down the left side, under the top bar. */
-.st-key-map_areas { position: absolute; z-index: 6; left: 12px; top: 60px; width: max-content !important; }
-.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButtonGroup"] { width: max-content !important; }
-.st-key-map_focus button { width: auto !important; max-width: none !important; }
-.st-key-map_focus button p { overflow: visible !important; text-overflow: clip !important; }
-.st-key-map_focus [data-baseweb="button-group"], .st-key-map_focus [role="radiogroup"] {
-  flex-direction: column; align-items: flex-start; flex-wrap: nowrap; overflow: visible; gap: 6px; padding: 2px; }
-.st-key-map_focus button { min-height: 32px; padding: 2px 11px; border-radius: var(--radius-pill); white-space: nowrap; flex: 0 0 auto;
-  background: var(--hud-bg); color: var(--text); border: 0; box-shadow: 0 2px 8px rgba(20, 43, 61, .16);
+/* Area buttons (Lisbon, Nova): one small card on the left under the top bar, two rows of
+   icon + text, like the grouped controls of map apps. */
+.st-key-map_areas { position: absolute; z-index: 6; left: 12px; top: 60px; width: max-content !important; gap: 0 !important;
+  background: var(--hud-bg); border-radius: 14px; box-shadow: var(--shadow-card); overflow: hidden;
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-.st-key-map_focus button p { font-size: 0.75rem; font-weight: 600; }
-/* Streamlit styles the selected chip itself; !important makes ours win. */
-.st-key-map_focus button[aria-checked="true"] { background: var(--accent) !important; color: var(--on-accent) !important; }
-.st-key-map_focus button[aria-checked="true"] p { color: var(--on-accent) !important; }
+.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: 100% !important; margin: 0 !important; }
+.st-key-map_areas [data-testid="stElementContainer"] + [data-testid="stElementContainer"] { border-top: 1px solid var(--border); }
+.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 8px; width: 100%;
+  min-height: 40px; padding: 0 16px 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  color: var(--text); white-space: nowrap; }
+.stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 22px; width: 22px; height: 22px; margin: 0;
+  background-color: currentColor; -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
+.stApp .st-key-map_areas button p { margin: 0; font-size: .86rem; font-weight: inherit; line-height: 1; color: inherit; }
+.stApp .st-key-map_areas button:hover { background: var(--accent-soft); }
+.stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
 .st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
