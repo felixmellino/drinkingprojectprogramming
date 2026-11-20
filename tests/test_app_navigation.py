@@ -12,14 +12,16 @@ from streamlit.testing.v1 import AppTest
 @pytest.mark.parametrize("label,target", [
     ("Map", "5_Map.py"), ("Ranks", "4_Standings.py"), ("Check in", "3_Check_in.py"),
     ("Games", "7_Minigames.py"), ("Photos", "6_Check_in_photos.py"), ("Profile", "1_Profile.py"),
+    ("Lobbies", "2_Lobby.py"),
 ])
 def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, target):
     switch = Mock()
     monkeypatch.setattr(st, "switch_page", switch)
     at = AppTest.from_string("from app_navigation import bottom_navigation\nbottom_navigation('leaderboard')").run()
     assert not at.exception
-    # Profile is the round corner button, drawn before the five tabs.
-    assert [button.label for button in at.button] == ["Profile", "Map", "Ranks", "Check in", "Games", "Photos"]
+    assert [button.label for button in at.button] == [
+        "Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos",
+    ]
     at.session_state["player_id"] = "signed-in-player"
     next(button for button in at.button if button.label == label).click().run()
     assert not at.exception
@@ -31,17 +33,20 @@ def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, ta
 
 
 def test_check_in_plus_sits_in_the_middle_of_five_tabs():
-    from app_navigation import DESTINATIONS, PROFILE
+    from app_navigation import CORNER_DESTINATIONS, DESTINATIONS
     assert len(DESTINATIONS) == 5
     assert DESTINATIONS[2][0] == "checkin"
     assert DESTINATIONS[4][:3] == ("photos", "Photos", "pages/6_Check_in_photos.py")
-    assert PROFILE[0] == "profile" and PROFILE not in DESTINATIONS
+    assert [item[0] for item in CORNER_DESTINATIONS] == ["profile", "lobby"]
+    assert all(item not in DESTINATIONS for item in CORNER_DESTINATIONS)
 
 
-@pytest.mark.parametrize("active,lit", [("photos", "photos"), ("profile", "profile"), ("map", "map")])
-def test_the_open_page_lights_up_its_tab_or_the_profile_button(active, lit):
-    from app_navigation import _styles
-    css = _styles(active)
+@pytest.mark.parametrize("page,lit", [
+    ("check_in_photos", "photos"), ("profile", "profile"), ("map", "map"), ("lobby", "lobby"),
+])
+def test_the_open_page_lights_up_its_navigation_button(page, lit):
+    from app_navigation import ROUTES, _styles
+    css = _styles(ROUTES[page])
     assert f".st-key-wego_nav_{lit} button{{color:var(--accent-ink);}}" in css
     assert css.count("color:var(--accent-ink);}") == 1
 
@@ -75,23 +80,12 @@ def test_games_invite_badge_follows_the_selected_season_and_hides_at_zero(monkey
     assert not app.get("html")
 
 
-def test_every_tab_icon_exists_in_outline_and_filled_form():
-    from app_navigation import DESTINATIONS, icon_url
-    for route, _label, _page, icon in DESTINATIONS:
+def test_every_navigation_icon_exists_in_outline_and_filled_form():
+    from app_navigation import CORNER_DESTINATIONS, DESTINATIONS, icon_url
+    for route, _label, _page, icon in DESTINATIONS + CORNER_DESTINATIONS:
         assert icon_url(icon).startswith("data:image/svg+xml;base64,")
         if route != "checkin":
             assert icon_url(f"{icon}-fill")
-
-
-def test_lobbies_open_from_the_profile_menu_and_photo_history_is_not_listed(monkeypatch):
-    switch = Mock()
-    monkeypatch.setattr(st, "switch_page", switch)
-    at = AppTest.from_string(
-        "import streamlit as st\nfrom profile_ui import PAGES\n"
-        "for key, label, page, icon in PAGES:\n"
-        "    if st.button(label, key=key):\n"
-        "        st.switch_page(page)").run()
-    assert [b.label for b in at.button] == ["Lobbies"]
 
 
 class Where:
@@ -119,7 +113,7 @@ def test_back_returns_to_the_previous_page_then_to_the_map(monkeypatch, where):
     where.page = "map"
     at = AppTest.from_string(SCRIPT).run()
     assert not back_buttons(at)                      # nothing to go back to on the start screen
-    where.page = "standings"
+    where.page = "lobby"
     at.run()
     assert at.session_state["_nav_history"] == ["map"] and len(back_buttons(at)) == 1
     back_buttons(at)[0].click().run()

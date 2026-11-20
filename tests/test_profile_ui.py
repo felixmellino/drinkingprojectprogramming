@@ -53,8 +53,10 @@ def page(repo):
 def test_menu_edit_and_saved_profile_in_new_session(repo):
     at = page(repo)
     assert not at.exception
-    labels = [b.label for b in at.button]
-    assert labels[-5:] == ['Edit profile', 'Friends', 'My stats', 'Account & security', 'Log out']
+    assert [b.label for b in at.button] == [
+        'Profile', 'Lobbies', 'Map', 'Ranks', 'Check in', 'Games', 'Photos',
+        'Edit profile', 'Friends', 'My stats', 'Account & security', 'Log out',
+    ]
     assert not at.text_input
     click(at, 'Edit profile')
     for field, value in zip(at.text_input, ['NewMia', 'New', 'Name']):
