@@ -30,8 +30,11 @@ def show_time(timestamp: str, zone_name: str) -> str:
     return f"{time:%d %b %Y at %H:%M:%S %Z (%z)} · {zone_name}"
 
 
-def select_history_page(number):
-    st.session_state['history_page'] = number
+STEP = 24  # photos shown at first and added by each "Load more"
+
+
+def load_more(count):
+    st.session_state['history_shown'] = count + STEP
 
 
 def open_photo(entry_id):
@@ -83,10 +86,12 @@ if len(entries) > 1 and detail_id is None:
     if not shown:
         st.info("You have no check-in photos in this lobby yet.")
         st.stop()
-    pages = history_pages(shown)
-    last_page = len(pages) - 1
-    page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
-    visible_nights = pages[page_number]
+    if st.session_state.get("history_filter") != show:   # a new filter starts at the newest photos again
+        st.session_state["history_filter"] = show
+        st.session_state["history_shown"] = STEP
+    count = min(len(shown), max(STEP, st.session_state.get("history_shown", STEP)))
+    # One continuous list, newest first, grouped by game night.
+    visible_nights = history_pages(shown[:count], max_photos=count + 1, max_nights=count + 1)[0]
 
     def fetch_photo(item):
         try:
@@ -104,9 +109,9 @@ if len(entries) > 1 and detail_id is None:
         st.stop()
 
     for start, end, night_entries in visible_nights:
-        count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
+        label = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
         st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
-                    f'<span>{count}</span></div>', unsafe_allow_html=True)
+                    f'<span>{label}</span></div>', unsafe_allow_html=True)
         with st.container(key=f"memory_grid_{start.date().isoformat()}"):
             for item in night_entries:
                 with st.container(key=f"memory_tile_{item['id']}"):
@@ -115,14 +120,9 @@ if len(entries) > 1 and detail_id is None:
                         st.warning("This photo could not be loaded. Its details are still available.")
                     memory_tile(item, photo, key=f"memory_tile_{item['id']}", on_open=open_photo)
 
-    if last_page > 0:
-        newer, _, older = st.columns(3)
-        with newer:
-            st.button("Newer photos", disabled=page_number == 0,
-                      on_click=select_history_page, args=(page_number - 1,))
-        with older:
-            st.button("Older photos", disabled=page_number == last_page,
-                      on_click=select_history_page, args=(page_number + 1,))
+    if count < len(shown):
+        st.button("Load more", key="photo_more", on_click=load_more, args=(count,), width="stretch")
+        st.caption(f"{count} of {len(shown)} photos")
     st.caption(FOOTER)
     st.stop()
 
