@@ -103,8 +103,8 @@
 /* Location switch: its own glass pill on the right (the glass is drawn here, not inside the transparent frame). */
 .stApp .st-key-map_location { position: static; width: 112px !important; height: 34px; margin: 0; padding: 0; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; width: 100% !important; }
-.stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
+.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; width: 100% !important; height: 34px; }
+.stApp .st-key-map_location iframe { display: block; width: 100% !important; height: 34px !important; background: transparent; color-scheme: normal; }
 @media (max-width: 640px) {
   /* The phone's top bar has no side padding, so the offsets shrink with it. */
   .stApp .st-key-map_bar { left: 0; right: 0; top: 48px; }

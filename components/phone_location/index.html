@@ -23,8 +23,8 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 #switch:disabled{opacity:.6;cursor:wait}
 /* Compact: label and a small switch on the Map's own frosted-white shape (drawn by the page around this frame);
    the status stays for screen readers. */
-body.compact{padding:3px 1px}
-body.compact #row{display:none;width:fit-content;min-height:0;margin:0 auto;gap:8px;padding:0;background:transparent;box-shadow:none}
+body.compact{padding:0;height:34px;display:flex;align-items:center;justify-content:center}
+body.compact #row{display:none;width:fit-content;min-height:0;margin:0;gap:8px;padding:0;background:transparent;box-shadow:none}
 body.compact #row.show{display:flex}
 body.compact #title{font-size:.8rem;font-weight:600;color:var(--text)}
 body.compact #status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;margin:0}
@@ -127,7 +127,7 @@ function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
   $("status").className = bad ? "bad" : "";
-  send("streamlit:setFrameHeight", {height: $("row").offsetHeight + (document.body.classList.contains("compact") ? 6 : 16)});
+  send("streamlit:setFrameHeight", {height: document.body.classList.contains("compact") ? 34 : $("row").offsetHeight + 16});
 }
 async function showSwitch(compact, followToo) {
   if (started) return;
