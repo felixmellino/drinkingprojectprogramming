@@ -27,7 +27,8 @@ assert.equal(order[0],'schema.sql');
   assert(doc.includes(file),file+' is not mentioned in docs/MIGRATIONS.md');
  const have=new Set((await pg.query("select proname from pg_proc where pronamespace='public'::regnamespace")).rows.map(r=>r.proname));
  for(const fn of ['accept_scoring_checkin','start_scoring_season','delete_lobby','chug_duel_action','quiz_action','time_action',
-  'reaction_status','invite_reaction_duel','reaction_action','pending_minigame_invites','pending_minigame_invite_count','focus_status'])
+  'reaction_status','invite_reaction_duel','reaction_action','pending_minigame_invites','pending_minigame_invite_count','focus_status',
+  'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation'])
   assert(have.has(fn),'missing function '+fn);
  const tables=new Set((await pg.query("select tablename from pg_tables where schemaname='public'")).rows.map(r=>r.tablename));
  for(const t of ['players','lobbies','seasons','drink_entries','friendships','chug_duels','quiz_duels','quiz_transfers','time_duels','reaction_duels','reaction_runs'])
@@ -35,9 +36,10 @@ assert.equal(order[0],'schema.sql');
  // Both public API roles must be denied, even after the complete migration chain.
  const privateTables=['players','remembered_sessions','password_resets','login_attempts',
   'lobbies','lobby_memberships','seasons','drink_entries','friendships',
-  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels'];
+  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations'];
  const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
-  'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action'];
+  'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action',
+  'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation'];
  for(const fn of privateFunctions)assert(have.has(fn),'missing protected function '+fn);
  for(const role of ['anon','authenticated']){
   for(const t of privateTables){
@@ -55,6 +57,7 @@ assert.equal(order[0],'schema.sql');
    await assert.rejects(pg.query('select 1 from public.'+t),/permission denied/,role+': '+t+' must stay private');
   await pg.exec('reset role');
  }
+ await pg.exec(fs.readFileSync('tests/lobby_invitations_postgres.sql','utf8'));
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();
 })().catch(e=>{console.error(e);process.exit(1);});

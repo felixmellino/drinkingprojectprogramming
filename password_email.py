@@ -1,12 +1,13 @@
-"""Server-only Brevo delivery; never log the API key or reset code."""
+"""Server-only Brevo delivery for WeGoPub account and lobby emails."""
 import json
 import os
 from html import escape
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
-def email_settings():
+def email_settings(*, unavailable="Password recovery is temporarily unavailable. Please try again later."):
     settings = {key: os.environ.get(key) for key in (
         "BREVO_API_KEY", "BREVO_SENDER_EMAIL", "BREVO_SENDER_NAME")}
     try:
@@ -16,7 +17,7 @@ def email_settings():
     except FileNotFoundError:
         pass
     if not settings["BREVO_API_KEY"] or not settings["BREVO_SENDER_EMAIL"]:
-        raise RuntimeError("Password recovery is temporarily unavailable. Please try again later.")
+        raise RuntimeError(unavailable)
     return settings
 
 
@@ -45,7 +46,26 @@ def reset_email(code):
 
 
 def send_reset_email(email, code, settings):
-    payload = reset_email(code)
+    _send_email(email, reset_email(code), settings)
+
+
+def send_lobby_invite_email(email, invite_id, inviter, lobby_name):
+    settings = email_settings(unavailable="Lobby invitation email is temporarily unavailable.")
+    query = urlencode({"lobby_invite": invite_id})
+    link = f"https://wegopubnow.streamlit.app/Lobby?{query}"
+    invitation = f"{inviter} invited you to join {lobby_name} on WeGoPub."
+    payload = {
+        "subject": "You’re invited to a WeGoPub lobby",
+        "textContent": f"{invitation}\n\nReview the invitation: {link}\n\n"
+                       "Sign in to WeGoPub to accept or decline.",
+        "htmlContent": f"<p>{escape(invitation)}</p>"
+                       f'<p><a href="{escape(link, quote=True)}">Review invitation</a></p>'
+                       "<p>Sign in to WeGoPub to accept or decline.</p>",
+    }
+    _send_email(email, payload, settings)
+
+
+def _send_email(email, payload, settings):
     payload.update(sender={"email": settings["BREVO_SENDER_EMAIL"],
                            "name": settings.get("BREVO_SENDER_NAME") or "WeGoPub"},
                    to=[{"email": email}])

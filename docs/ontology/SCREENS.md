@@ -216,13 +216,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
   19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
-- Profile is a round icon button in the top-right corner of every page
-  (20 November 2026; it made room for Photos in the bar). On the phone Map the
-  top bar leaves room for it.
+- Profile and Lobbies are equally sized round icon buttons in the top-right
+  corner of signed-in pages, with Lobbies directly below Profile
+  (20 November 2026). The phone Map leaves room for both.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames, Photos the Photo history. Lobbies open
-  from the top of the Profile menu; hints that send a player to the Lobby page
-  carry an "Open Lobbies" button. The Lobby page lights up the Profile button.
+  the Leaderboard, Games the Minigames, Photos the Photo history. The Lobbies
+  button uses the people icon, shows a “Lobbies” tooltip, and lights up on the
+  Lobby page. Hints that send a player there carry an “Open Lobbies” button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
   filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
@@ -310,10 +310,12 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   R-L01/R-L04); nothing is shown if location is blocked, stale or worse than
   50 m.
 - The bottom card names the territory you're in. For an owned territory it is
-  a tug-of-war (19 November 2026): one big number ("4 pts to take it" in
-  scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
-  your territory points against the owner's (or your closest rival's). The
-  full sentence stays as screen-reader text. Unclaimed areas keep one line.
+  a tug-of-war (19 November 2026, made compact 20 November 2026): the name in
+  plain bold with "Owned by X" / "Yours" under it, a small pill on the right
+  ("+4 to take it" in scarlet, "+2 lead" in sky blue) and a slim bar of your
+  territory points against the owner's (or your closest rival's) with both
+  scores under it. The full sentence stays as screen-reader text. Unclaimed
+  areas keep one line.
 - Tap any territory (20 November 2026): the bottom card switches to that
   territory's tug-of-war ("Owned by X" / "Yours"; "You are in ·" only when you
   stand in it; unclaimed: "Your next drink here claims it."). Tapping empty map
@@ -393,13 +395,16 @@ See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [
 
 ## Profile menu (implemented 18 November 2026)
 
-The authenticated Profile is a vertical list: **Lobbies**, **Edit profile**, **Friends**,
-**My stats**, **Account & security**, a **Location** switch (R-L01, 20 November 2026), then
+The authenticated Profile lists **Edit profile**, **Friends**, **My stats**,
+**Account & security**, **FAQ / Help**, a **Location** switch (R-L01, 20 November 2026), then
 **Log out**. Photo history has no entry here any more (it is the Photos tab in the bar).
 Edit profile, Friends, My stats and Account & security each open a separate view with
 **Back to Profile**. Logout is immediate. The Location switch asks the browser for
 permission when turned on and shows Off / On with accuracy / Blocked.
 
+- FAQ / Help opens a dialog over Profile. Questions start collapsed and are
+  grouped by lobbies and teams, check-ins and points, map and rankings, and
+  games and photos. Tapping a question expands its answer in place.
 - Edit profile updates username, first name and surname. Names use the same
   required/100-character limits as registration. Usernames remain unique,
   ignoring case and surrounding whitespace. Player ID, email, credentials,

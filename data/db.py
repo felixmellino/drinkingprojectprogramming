@@ -174,6 +174,23 @@ def insert_membership(membership: LobbyMembership) -> None:
     ).execute()
 
 
+def issue_lobby_invitation(player_id: str, lobby_id: str, friend_id: str) -> dict:
+    rows = get_client().rpc("issue_lobby_invitation", {
+        "actor_player": player_id, "target_lobby": lobby_id, "target_friend": friend_id,
+    }).execute().data
+    return rows[0]
+
+
+def pending_lobby_invitations(player_id: str) -> list[dict]:
+    return get_client().rpc("pending_lobby_invitations", {"actor_player": player_id}).execute().data
+
+
+def respond_to_lobby_invitation(player_id: str, invite_id: str, response: str) -> str:
+    return get_client().rpc("respond_to_lobby_invitation", {
+        "actor_player": player_id, "target_invite": invite_id, "response": response,
+    }).execute().data
+
+
 def leave_lobby(player_id: str, lobby_id: str) -> None:
     """Retain history; the database serializes departure with game actions."""
     _membership_rpc("leave_lobby", player_id, lobby_id)

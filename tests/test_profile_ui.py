@@ -53,8 +53,10 @@ def page(repo):
 def test_menu_edit_and_saved_profile_in_new_session(repo):
     at = page(repo)
     assert not at.exception
-    labels = [b.label for b in at.button]
-    assert labels[-5:] == ['Edit profile', 'Friends', 'My stats', 'Account & security', 'Log out']
+    assert [b.label for b in at.button] == [
+        'Profile', 'Lobbies', 'Map', 'Ranks', 'Check in', 'Games', 'Photos',
+        'Edit profile', 'Friends', 'My stats', 'Account & security', 'FAQ / Help', 'Log out',
+    ]
     assert not at.text_input
     click(at, 'Edit profile')
     for field, value in zip(at.text_input, ['NewMia', 'New', 'Name']):
@@ -67,6 +69,23 @@ def test_menu_edit_and_saved_profile_in_new_session(repo):
     click(fresh, 'Edit profile')
     assert [f.value for f in fresh.text_input] == ['NewMia', 'New', 'Name']
     assert repo['player'].id == 'self'
+
+
+def test_faq_opens_with_ordered_collapsed_questions_and_returns_to_profile(repo):
+    at = page(repo)
+    assert not at.expander
+    click(at, 'FAQ / Help')
+    assert [heading.value for heading in at.subheader] == [
+        'Lobbies and teams', 'Check-ins and points', 'Map and rankings', 'Games and photos']
+    assert [item.label for item in at.expander[:2]] == [
+        'How do I join a lobby?', 'How do I create a lobby and invite friends?']
+    assert '**Lobbies** button below **Profile**' in at.expander[0].markdown[0].value
+    assert all(not item.proto.expanded for item in at.expander)
+    scoring = next(item for item in at.expander if item.label == 'How do I score points?')
+    assert 'choose its type and size' in scoring.markdown[0].value
+    click(at, 'Close')
+    assert not at.expander
+    assert any(button.label == 'FAQ / Help' for button in at.button)
 
 
 def test_invalid_edit_and_password_change(repo):

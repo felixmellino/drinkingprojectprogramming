@@ -23,6 +23,7 @@ from core.lobbies import lobby_creator
 from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
 import standings_ui
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
@@ -42,8 +43,9 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     label = 'Winner' if status == 'past' else 'Leader'
     result = (f'{label}: <strong>{name}</strong>' if leader_name else name) if ranking_available else 'Standings unavailable'
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
-    if st.session_state.get('current_lobby_id') == lobby.id:
-        meta += ' · <strong class="lobby-current">Current lobby</strong>'
+    # The lobby you play in: tinted card with a pill above its name (option C).
+    current = st.session_state.get('current_lobby_id') == lobby.id
+    pill = '<span class="lobby-current-pill">✓ Current lobby</span>' if current else ''
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
         meta += ' · Test season (Wed 08:00–Sun 18:00)'
     if lobby.game_mode == 'team':
@@ -57,7 +59,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
         elapsed = (utc(now) - utc(season.starts_at)).total_seconds()
         fraction = max(0.0, min(1.0, elapsed / total)) if total > 0 else 1.0
         progress = f'<div class="lobby-progress"><span style="width:{fraction:.1%}"></span></div>'
-    st.markdown(f'<article class="lobby-card lobby-{status}"><p class="lobby-meta">{meta}</p>'
+    st.markdown(f'<article class="lobby-card lobby-{status}{" lobby-is-current" if current else ""}">'
+                f'{pill}<p class="lobby-meta">{meta}</p>'
                 f'<h3>{escape(lobby.name)}</h3><div class="lobby-person">{avatar}<span>{result}</span></div>'
                 f'<p class="lobby-countdown">{escape(timing)}</p>{progress}'
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
@@ -267,14 +270,22 @@ def remove_lobby_confirm(player_id, lobby, key):
             st.rerun()
 
 
+def show_lobby_management(player_id, lobby, season, memberships=None):
+    """Creator controls shared by the individual and team lobby dialogs."""
+    if memberships is None:
+        try:
+            memberships = db.list_memberships_for_lobby(lobby.id, include_left=True)
+        except LOAD_ERRORS:
+            return
+    if lobby_creator(memberships) != player_id:
+        return
+    if lobby_status(season, datetime.now(timezone.utc)) in ('active', 'upcoming'):
+        show_invite_player(player_id, lobby.id, memberships)
+    delete_lobby_controls(player_id, lobby)
+
+
 def delete_lobby_controls(player_id, lobby):
-    """Only the creator sees this; two deliberate clicks. Shared by both lobby dialogs."""
-    try:
-        creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
-    except LOAD_ERRORS:
-        return
-    if creator != player_id:
-        return
+    """Confirm deletion before asking the database to recheck creator access."""
     key = f'confirm_delete_{lobby.id}'
     if st.button('Delete lobby', key=f'delete_{lobby.id}', icon=':material/delete:', width='stretch'):
         st.session_state[key] = True
@@ -371,7 +382,7 @@ def show_lobby_details(player_id, lobby, season):
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season)
     close_members_button()
 
 
@@ -406,6 +417,7 @@ def show_lobbies(player_id):
     notice = st.session_state.pop('_left_lobby_notice', None)
     if notice:
         st.success(notice)
+    show_pending_lobby_invites(player_id)
     show_overview_actions(player_id)
     st.button('Refresh lobbies')
     if not memberships:

@@ -97,37 +97,43 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
 
 
+def _title(name: str, sub: str) -> str:
+    """Territory name in plain bold with one small line under it (layout A)."""
+    return (f'<div class="tug-title"><h3>{escape(name)}</h3>'
+            f'<p class="tug-sub">{escape(sub)}</p></div>')
+
+
 def territory_card(row: dict, *, standing_in: bool = False) -> str:
     """Card body for one territory: the tug-of-war when someone owns it, one
-    line when it's unclaimed. standing_in adds "You are in" to the eyebrow."""
+    line when it's unclaimed. standing_in adds "You are here" to the sub line."""
     if row["status"] in ("yours", "theirs"):
         return tug_of_war(row, standing_in=standing_in)
-    eyebrow = "You are in · unclaimed" if standing_in else "Unclaimed"
-    return (f'<small>{escape(eyebrow)}</small><h3>{escape(row["name"])}</h3>'
-            '<p>Your next drink here claims it.</p>')
+    sub = "You are here · unclaimed" if standing_in else "Unclaimed"
+    return _title(row["name"], f"{sub} · your next drink here claims it")
 
 
 def tug_of_war(here: dict, *, standing_in: bool = True) -> str:
-    """Card body for an owned territory: one big number (points to take it,
-    or your lead) and a bar of you against the owner / your closest rival.
-    The full sentence stays as screen-reader text."""
+    """Compact card for an owned territory (layout A): name with "Owned by X"
+    under it, a small pill on the right (points to take it, or your lead) and
+    a thin bar of you against the owner / your closest rival with the two
+    scores under it. The full sentence stays as screen-reader text."""
     me = here["my_points"]
-    prefix = "You are in · " if standing_in else ""
+    prefix = "You are here · " if standing_in else ""
     if here["status"] == "theirs":
         rival_name, rival = here["owner"], here["owner_points"]
-        eyebrow, number, unit, tone = f"{prefix}owned by {rival_name}", format_points(here["needed"]), "pts to take it", "game-theirs"
+        sub = f"{prefix}owned by {rival_name}"
+        pill, tone = f"+{format_points(here['needed'])} to take it", "tug-pill-theirs"
     else:
         rivals = [r for r in here["ranking"] if not r["you"]]
         rival_name, rival = (rivals[0]["name"], rivals[0]["points"]) if rivals else ("No rival yet", 0)
-        lead = me - rival
-        eyebrow, number, unit, tone = f"{prefix}yours", f"+{format_points(lead)}", "your lead", "game-yours"
-    eyebrow = eyebrow[0].upper() + eyebrow[1:]
+        sub = f"{prefix}yours"
+        pill, tone = f"+{format_points(me - rival)} lead", "tug-pill-yours"
+    sub = sub[0].upper() + sub[1:]
     total = me + rival
     share = 50 if total <= 0 else round(100 * float(me) / float(total))
     return (
-        f'<small>{escape(eyebrow)}</small>'
-        f'<div class="tug-head"><h3>{escape(here["name"])}</h3>'
-        f'<span class="tug-number {tone}"><b>{escape(number)}</b><em>{escape(unit)}</em></span></div>'
+        f'<div class="tug-head">{_title(here["name"], sub)}'
+        f'<span class="tug-pill {tone}">{escape(pill)}</span></div>'
         f'<div class="tug-bar" aria-hidden="true"><i class="tug-you" style="width:{share}%"></i>'
         f'<i class="tug-rival" style="width:{100 - share}%"></i></div>'
         f'<div class="tug-labels" aria-hidden="true"><span class="game-yours">You {escape(format_points(me))}</span>'

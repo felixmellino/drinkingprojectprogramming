@@ -9,6 +9,7 @@ import data.db as db
 from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
+from faq_ui import show_faq
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
@@ -16,10 +17,6 @@ from theme import empty_state, menu_icons
 from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
-# Pages that have no tab in the bottom bar open from the top of this menu.
-PAGES = [
-    ("lobby", "Lobbies", "pages/2_Lobby.py", "users-three"),
-]
 OPTIONS = [
     ("edit", "Edit profile", "pencil-simple"),
     ("friends", "Friends", "users"),
@@ -34,24 +31,22 @@ def show_profile(player):
     view = st.session_state.get("profile_view", "menu")
     if view == "menu":
         # iPhone-style grouped lists: icon, label, chevron (styles in assets/theme.css).
-        menu_icons({**{f"profile_page_{key}": icon for key, _label, _page, icon in PAGES},
-                    **{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+        menu_icons({**{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+                    "profile_faq": "list-bullets",
                     "profile_logout": "sign-out"})
-        with st.container(key="menu_list_play"):
-            for key, label, page, _icon in PAGES:
-                if st.button(label, width="stretch", key=f"profile_page_{key}"):
-                    st.switch_page(page)
         with st.container(key="menu_list_account"):
             for key, label, _icon in OPTIONS:
                 if st.button(label, width="stretch", key=f"profile_{key}"):
                     st.session_state["profile_view"] = key
                     st.rerun()
+            if st.button("FAQ / Help", width="stretch", key="profile_faq"):
+                show_faq()
         # Location: a real switch; the tap makes the browser ask for permission right away.
         location_switch()
         with st.container(key="menu_list_logout"):
             if st.button("Log out", width="stretch", key="profile_logout"):
                 log_out()
-        # Handle links before downloading the avatar for a page being left.
+        # Handle profile actions before downloading the avatar.
         with identity:
             show_picture_identity(player.id, player.id, st.session_state.get('player_display_name', player.display_name))
         return
