@@ -224,3 +224,8 @@
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 .stApp .empty-state-title { margin: 0; text-align: center; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.15; color: var(--text); }
 .stApp .empty-state-line { margin: 6px 0 14px !important; text-align: center; font-size: .9rem; color: var(--text-muted); }
+
+/* Streamlit adds a small link icon next to every heading (an anchor to copy
+   the section's URL). The app has no sections worth linking to, so it is
+   hidden everywhere, including in dialogs (they render outside .stApp). */
+[data-testid="stHeaderActionElements"] { display: none !important; }
