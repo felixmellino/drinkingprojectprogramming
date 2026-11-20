@@ -162,12 +162,14 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 ## Bottom navigation (requested 17 November 2026)
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
-  19 November 2026): **Map | Ranks | + Check in | Games | Profile**.
+  19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
+- Profile is a round icon button in the top-right corner of every page
+  (20 November 2026; it made room for Photos in the bar). On the phone Map the
+  top bar leaves room for it.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames. Lobbies and Photo history open from
-  the top of the Profile menu; hints that send a player to the Lobby page
-  carry an "Open Lobbies" button. A page without its own tab highlights the
-  tab it is reached from (Lobby and Photo history → Profile).
+  the Leaderboard, Games the Minigames, Photos the Photo history. Lobbies open
+  from the top of the Profile menu; hints that send a player to the Lobby page
+  carry an "Open Lobbies" button. The Lobby page lights up the Profile button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
   filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal

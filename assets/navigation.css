@@ -81,3 +81,19 @@
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .stApp:has(.st-key-wego_back):has(.st-key-game_map) .game-hud { margin-left: 46px; }
 }
+
+/* Profile: a round button in the top-right corner of every page (icon only;
+   the "Profile" label stays for screen readers). The map's top bar makes room for it. */
+.stApp .st-key-wego_nav_profile { position: fixed; z-index: 1000; width: 38px !important;
+  top: calc(8px + env(safe-area-inset-top, 0px)); right: 10px; }
+.stApp .st-key-wego_nav_profile button { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 0;
+  border-radius: 50%; background: var(--hud-bg); color: var(--text); box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.stApp .st-key-wego_nav_profile button::before { content: ""; display: block; flex: 0 0 24px; width: 24px; height: 24px; background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain; }
+.stApp .st-key-wego_nav_profile button [data-testid="stMarkdownContainer"] {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  .stApp:has(.st-key-wego_nav_profile):has(.st-key-game_map) .game-hud { margin-right: 46px; }
+}
