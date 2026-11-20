@@ -130,11 +130,6 @@
   border-radius: var(--radius-lg);
 }
 .st-key-drink_ui_panel_details [data-testid="stText"] { color: var(--drink-ink); }
-.history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--surface-raised); border-radius: 14px; }
-.history-photo-frame { margin: .7rem 0; padding: .35rem; border: 3px solid var(--photo-identity); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
-.history-photo-identity { padding: .2rem .4rem .55rem; color: var(--text); font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
-.history-photo-frame .drink-photo { margin: 0; width: 100%; }
-.history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
 .history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success-ink); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
@@ -209,4 +204,21 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .st-key-drink_ui_drinks label, .st-key-drink_ui_sizes label { transition: none; }
+}
+
+/* An opened photo: nearly full screen, edge to edge
+   on the phone, with the player and place on a soft shade at the bottom. */
+.photo-full { position: relative; margin: 4px 0 10px; border-radius: 18px; overflow: hidden; background: #000; }
+/* Screen minus the Back row and the tab bar, so the caption stays above the bar. */
+.photo-full img, .photo-full-missing { display: block; width: 100%; height: min(calc(100dvh - 210px), 900px); object-fit: cover; }
+/* An opened photo needs no page title; "Back to photos" says where you are. */
+.stApp:has(.photo-full) .drink-page-hero { display: none; }
+.photo-full-missing { display: grid; place-items: center; color: #fff; opacity: .7; background: var(--drink-muted); }
+.photo-full figcaption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 2px;
+  padding: 40px 16px 14px; background: linear-gradient(transparent, rgba(0, 0, 0, .6)); color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.photo-full figcaption strong { font-size: 1.15rem; font-weight: 800; }
+.photo-full figcaption span { font-size: .85rem; opacity: .9; }
+@media (max-width: 640px) {
+  .photo-full { margin-left: -0.9rem; margin-right: -0.9rem; border-radius: 0; }
 }

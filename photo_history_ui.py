@@ -72,21 +72,25 @@ def identity_colour(entry: dict) -> str:
     return f"hsl({hue:.3f} 60% 42%)"
 
 
-def framed_photo(entry: dict, photo: bytes | None, *, detail: bool = False) -> None:
+def full_photo(entry: dict, photo: bytes | None, place: str) -> None:
+    """An opened check-in: the photo nearly full screen, the player and place on
+    a soft shade at the bottom (assets/drink_entries.css, .photo-full)."""
     name = entry["username"]
     if entry.get("team_id"):
         name = f"{entry.get('team_name') or 'Team'} · {name}"
-    # Identity-derived colour only; all names are escaped and images stay inline.
-    colour = identity_colour(entry)
-    label = f'<figcaption class="history-photo-identity">{escape(name)}</figcaption>'
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
-        image = (f'<img class="{"drink-photo" if detail else "history-photo"}" '
-                 f'src="data:image/jpeg;base64,{encoded}" alt="Check-in photo by {escape(name, quote=True)}">')
-        st.html(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}{image}</figure>')
+        image = (f'<img src="data:image/jpeg;base64,{encoded}" '
+                 f'alt="Check-in photo by {escape(name, quote=True)}">')
     else:
-        st.markdown(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}'
-                    '<div class="history-photo-missing">Photo unavailable</div></figure>', unsafe_allow_html=True)
+        image = '<div class="photo-full-missing">Photo unavailable</div>'
+    figure = (f'<figure class="photo-full">{image}<figcaption><strong>{escape(name)}</strong>'
+              f'<span>{escape(place)}</span></figcaption></figure>')
+    # st.html only for image bytes; a missing photo is plain markup.
+    if photo is not None:
+        st.html(figure)
+    else:
+        st.markdown(figure, unsafe_allow_html=True)
 
 
 def photo_metadata(entry: dict) -> None:
