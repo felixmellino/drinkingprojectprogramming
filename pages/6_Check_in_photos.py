@@ -14,8 +14,8 @@ from parallel import run_parallel
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
-from drink_entry_ui import context_line, page_header, section_heading
-from photo_history_ui import game_night_bounds, game_night_label, memory_tile, photo_metadata, framed_photo
+from drink_entry_ui import page_header, section_heading
+from photo_history_ui import full_photo, game_night_bounds, game_night_label, memory_tile, photo_metadata
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -128,7 +128,7 @@ if len(entries) > 1 and detail_id is None:
     st.caption(FOOTER)
     st.stop()
 
-if len(entries) > 1 and st.button("Back to photos"):
+if len(entries) > 1 and st.button("Back to photos", key="photo_back", type="tertiary", icon=":material/arrow_back:"):
     st.session_state.pop("history_detail_id", None)
     st.rerun()
 entry = entries_by_id[detail_id] if detail_id in entries_by_id else entries_by_id[next(iter(entries_by_id))]
@@ -142,17 +142,13 @@ except (APIError, RequestError, RuntimeError, StorageException):
     st.error("We couldn't load the photo. Try again.")
     photo = None
 
-with st.container(key="drink_ui_panel_photo"):
-    location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
-    context_line(entry["username"], location or "No territory assigned")
-    if photo is None:
-        framed_photo(entry, None, detail=True)
-        st.info("This check-in's photo is unavailable.")
-        st.caption("Removing a photo keeps the check-in and its score.")
-    else:
-        framed_photo(entry, photo, detail=True)
-    time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
-    st.text(f"{time_label} · {entry_label(entry)}")
+# The opened photo fills almost the whole screen; details follow below it.
+location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
+full_photo(entry, photo, location or "No territory assigned")
+if photo is None:
+    st.caption("This check-in's photo is unavailable. Removing a photo keeps the check-in and its score.")
+time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
+st.text(f"{time_label} · {entry_label(entry)}")
 
 # Scores and revision history remain visible after photo deletion.
 if entry.get("rule_version") == "v1":
