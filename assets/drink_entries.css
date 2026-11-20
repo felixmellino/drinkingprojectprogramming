@@ -243,7 +243,7 @@
 .stApp .st-key-checkin_retake button { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 0; border-radius: 50%;
   background: rgba(255, 255, 255, .78); color: var(--text); box-shadow: 0 1px 6px rgba(0, 0, 0, .2);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.stApp .st-key-checkin_retake button [data-testid="stMarkdownContainer"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.stApp .st-key-checkin_retake button > div { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .stApp:has(.st-key-checkin_photo) [class*="st-key-drink_ui_panel"] { background: none; padding: 0; box-shadow: none; border-radius: 0; }
 .stApp:has(.st-key-checkin_photo) [class*="st-key-drink_ui_panel"] > [data-testid="stVerticalBlock"] { gap: 0.35rem; }
 .stApp:has(.st-key-checkin_photo) .st-key-drink_ui_drinks [role="radiogroup"],

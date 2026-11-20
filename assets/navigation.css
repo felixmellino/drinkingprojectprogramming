@@ -55,7 +55,7 @@
 .stApp .st-key-wego_bottom_nav .st-key-wego_nav_checkin button:hover { background: var(--accent-hover); }
 .st-key-wego_bottom_nav .st-key-wego_nav_checkin button::before { width: 28px; height: 28px; }
 /* Keep the button's accessible name ("Check in") but show only the plus. */
-.st-key-wego_nav_checkin button [data-testid="stMarkdownContainer"] {
+.st-key-wego_nav_checkin button > div {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap;
 }
@@ -80,7 +80,7 @@
   .stApp:has(.st-key-game_map) .st-key-wego_back button { width: 38px; height: 38px; min-height: 38px; padding: 0 0 0 6px;
     border-radius: 50%; background: var(--hud-bg); color: var(--text); box-shadow: var(--shadow-card);
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-  .stApp:has(.st-key-game_map) .st-key-wego_back button [data-testid="stMarkdownContainer"] {
+  .stApp:has(.st-key-game_map) .st-key-wego_back button > div {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .stApp:has(.st-key-wego_back):has(.st-key-game_map) .game-hud { margin-left: 46px; }
 }
@@ -95,7 +95,8 @@
 .stApp .st-key-wego_nav_profile button::before { content: ""; display: block; flex: 0 0 24px; width: 24px; height: 24px; background-color: currentColor;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
   -webkit-mask-size: contain; mask-size: contain; }
-.stApp .st-key-wego_nav_profile button [data-testid="stMarkdownContainer"] {
+/* The label wrapper must leave the layout, or it pushes the icon off the centre of the circle. */
+.stApp .st-key-wego_nav_profile button > div {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 @media (max-width: 640px) {
   .stApp:has(.st-key-wego_nav_profile):has(.st-key-game_map) .game-hud { margin-right: 46px; }
