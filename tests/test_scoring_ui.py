@@ -466,6 +466,30 @@ def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monk
     assert any(b.key == "memory_tile_photo-0_open" for b in page.button)
 
 
+def test_photos_grid_shows_name_and_points_and_mine_hides_other_players(ui, monkeypatch):
+    state, game = ui
+    models = [entry("theirs", "other", "beer", "small", 2), entry("mine", "member", "beer", "small", 1)]
+    photos = [{"id": model.id, "username": name, "captured_at": None, "submitted_at": model.submitted_at.isoformat(),
+               "is_owner": owner, "has_photo": True, "timezone_name": game.timezone_name, "rule_version": "v1",
+               "entry": model, "season": game, "corrected_at": None, "income_recipient": None,
+               "location": "matched", "territory": TERRITORY.name}
+              for model, name, owner in zip(models, ["Leo", "Mia"], [False, True])]
+    downloads = []
+    monkeypatch.setattr(db, "list_checkin_photos", lambda *args: photos)
+    monkeypatch.setattr(db, "download_checkin_photo", lambda p, l, entry_id: downloads.append(entry_id) or state["photo"].getvalue())
+    page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
+    assert not page.exception
+    tiles = "\n".join(item.value for item in page.get("html"))
+    assert tiles.count('class="memory-tile-visual"') == 2
+    assert "<span>Leo</span><b>+1</b>" in tiles and "<span>Mia</span><b>+1</b>" in tiles
+    assert sorted(downloads) == ["mine", "theirs"]
+    page.radio(key="photo_filter").set_value("Mine").run()
+    assert not page.exception
+    tiles = "\n".join(item.value for item in page.get("html"))
+    assert tiles.count('class="memory-tile-visual"') == 1 and "Leo" not in tiles
+    assert any("Photos stay until" in item.value for item in page.caption)
+
+
 def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
     _, game = ui
     models = [entry(f"photo-{i}", "member", "beer", "small", i) for i in range(2)]

@@ -10,11 +10,12 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from parallel import run_parallel
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
-from drink_entry_ui import context_line, page_header, section_heading
-from photo_history_ui import game_night_bounds, game_night_label, memory_tile, photo_metadata, framed_photo
+from drink_entry_ui import page_header, section_heading
+from photo_history_ui import full_photo, game_night_bounds, game_night_label, memory_tile, photo_metadata
 from shared import require_active_membership, require_login, show_logged_in_as
 
 
@@ -33,9 +34,7 @@ player_id = require_login()
 show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
-page_header("Photo history", "Every moment, with the player, place, drink and points together.")
-st.caption("Your photos and photos shared with you in this lobby. Manage sharing in Profile → Account & security → Photo privacy.")
-st.caption(f"Photos are available until {PHOTO_RETENTION_DAYS} days after their season ends. Deleting your photo keeps your score.")
+page_header("Photos")
 if st.session_state.pop("photo_deleted", False):
     st.success("Photo deleted. Your score is unchanged.")
 if st.session_state.pop("checkin_corrected", False):
@@ -61,10 +60,33 @@ if detail_id not in entries_by_id:
     detail_id = None
 
 NIGHTS_PER_PAGE = 2
+FOOTER = (f"Photos stay until {PHOTO_RETENTION_DAYS} days after their season ends. Deleting your photo keeps your score. "
+          "Sharing: Profile → Account & security → Photo privacy.")
+
+
+def download_all(items):
+    """Download the visible photos at the same time. A missing photo becomes None;
+    lost access (PermissionError) stops the page."""
+    def one(item):
+        try:
+            return db.download_checkin_photo(player_id, lobby_id, item["id"])
+        except PermissionError:
+            raise
+        except (APIError, RequestError, RuntimeError, StorageException):
+            return None
+    return run_parallel(*[lambda item=item: one(item) for item in items])
+
 
 if len(entries) > 1 and detail_id is None:
+    # Tabs like a phone gallery: everything shared with you, or only your own.
+    with st.container(key="photo_tabs"):
+        show = st.radio("Show", ["All", "Mine"], horizontal=True, key="photo_filter", label_visibility="collapsed")
+    shown = [item for item in entries if show == "All" or item["is_owner"]]
+    if not shown:
+        st.info("You have no check-in photos in this lobby yet.")
+        st.stop()
     nights = []  # [[start, end, [entries...]], ...], newest night first
-    for item in entries:  # already newest-first
+    for item in shown:  # already newest-first
         start, end = game_night_bounds(item)
         if nights and nights[-1][0] == start:
             nights[-1][2].append(item)
@@ -80,17 +102,15 @@ if len(entries) > 1 and detail_id is None:
         count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
         st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
                     f'<span>{count}</span></div>', unsafe_allow_html=True)
-        with st.container(key=f"memory_row_{start.date().isoformat()}"):
-            for column, item in zip(st.columns(len(night_entries)), night_entries):
-                with column, st.container(key=f"memory_tile_{item['id']}"):
-                    try:
-                        photo = db.download_checkin_photo(player_id, lobby_id, item["id"])
-                    except PermissionError:
-                        st.warning("Photo access changed. Refresh to load the current photo history.")
-                        st.stop()
-                    except (APIError, RequestError, RuntimeError, StorageException):
-                        st.warning("This photo could not be loaded. Its details are still available.")
-                        photo = None
+        try:
+            photos = download_all(night_entries)
+        except PermissionError:
+            st.warning("Photo access changed. Refresh to load the current photo history.")
+            st.stop()
+        # A dense grid of portrait tiles, newest first (assets/drink_entries.css).
+        with st.container(key=f"memory_grid_{start.date().isoformat()}"):
+            for item, photo in zip(night_entries, photos):
+                with st.container(key=f"memory_tile_{item['id']}"):
                     if memory_tile(item, photo, key=f"memory_tile_{item['id']}"):
                         st.session_state["history_detail_id"] = item["id"]
                         st.rerun()
@@ -105,9 +125,10 @@ if len(entries) > 1 and detail_id is None:
             if st.button("Older nights", disabled=page_number == last_page):
                 st.session_state["history_page"] = page_number + 1
                 st.rerun()
+    st.caption(FOOTER)
     st.stop()
 
-if len(entries) > 1 and st.button("Back to photos"):
+if len(entries) > 1 and st.button("Back to photos", key="photo_back", type="tertiary", icon=":material/arrow_back:"):
     st.session_state.pop("history_detail_id", None)
     st.rerun()
 entry = entries_by_id[detail_id] if detail_id in entries_by_id else entries_by_id[next(iter(entries_by_id))]
@@ -121,17 +142,13 @@ except (APIError, RequestError, RuntimeError, StorageException):
     st.error("We couldn't load the photo. Try again.")
     photo = None
 
-with st.container(key="drink_ui_panel_photo"):
-    location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
-    context_line(entry["username"], location or "No territory assigned")
-    if photo is None:
-        framed_photo(entry, None, detail=True)
-        st.info("This check-in's photo is unavailable.")
-        st.caption("Removing a photo keeps the check-in and its score.")
-    else:
-        framed_photo(entry, photo, detail=True)
-    time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
-    st.text(f"{time_label} · {entry_label(entry)}")
+# The opened photo fills almost the whole screen; details follow below it.
+location = "Outside game territories" if entry["location"] == "outside" else entry["territory"]
+full_photo(entry, photo, location or "No territory assigned")
+if photo is None:
+    st.caption("This check-in's photo is unavailable. Removing a photo keeps the check-in and its score.")
+time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
+st.text(f"{time_label} · {entry_label(entry)}")
 
 # Scores and revision history remain visible after photo deletion.
 if entry.get("rule_version") == "v1":

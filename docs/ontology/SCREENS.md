@@ -296,8 +296,13 @@ Map owner badge update (19 November 2026, contributor request):
 
 ## Memories
 
-- Implemented as Photo history: retained lobby photos arranged chronologically,
-  with the player, territory, drink/size, points and timestamp.
+- Implemented as Photo history, the **Photos** tab (gallery look since 20 November
+  2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
+  grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
+  2px gaps). Each tile shows the photo, the player's name and the points on a soft
+  shade at the bottom, and a dot (green = in a territory, grey = outside). Two nights
+  per page with Newer/Older nights; the night's photos download at the same time.
+  Retention and sharing notes sit in one quiet line at the bottom.
 - Selecting View details opens the corresponding check-in detail. Bars are not
   part of the location or scoring model.
 
