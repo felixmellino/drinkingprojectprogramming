@@ -75,7 +75,8 @@ Each teammate then pulls the merged code and uses the same project locally.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip==26.3
+python -m pip install -r requirements.txt
 ```
 
 Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill
