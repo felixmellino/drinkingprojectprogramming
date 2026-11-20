@@ -45,6 +45,8 @@ AREAS = {
     "Nova SBE": ["nova-sbe", "carcavelos-centro", "rebelva"],
     "Jamor Golf": ["jamor-golf"],
 }
+# The two quick-zoom chips on the Map (area name -> label). No chip picked means "start on me".
+QUICK_AREAS = {"Lisbon": "Lisbon", "Nova SBE": "Nova"}
 ME = ":material/my_location: Me"
 ALL = "All"
 

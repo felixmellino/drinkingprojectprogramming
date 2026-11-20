@@ -144,13 +144,30 @@ def test_quick_zoom_includes_jamor_golf_after_nova():
     assert "jamor-golf" in {t.id for t in load_territories()}
 
 
-def test_quick_zoom_offers_the_areas_and_me_only_with_a_location(phone):
+def test_two_area_chips_lisbon_and_nova_and_the_map_starts_on_me_only_with_a_location(phone, monkeypatch):
+    import map_ui
+    seen = []
+    real = map_ui.render_map
+    monkeypatch.setattr(map_ui, "render_map", lambda rows, location, accuracy, focus, **kw: seen.append(focus) or real(rows, location, accuracy, focus, **kw))
     page = open_map()
-    assert page.get("button_group")[0].proto.options and not any(
-        "Me" in o.content for o in page.get("button_group")[0].proto.options)
+    options = [o.content for o in page.get("button_group")[0].proto.options]
+    assert options == ["Lisbon", "Nova"], "only two chips, no Me / Bairro Alto / Jamor / All"
+    assert seen[-1] == "Lisbon", "no usable location: start on Lisbon"
     phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
     page = open_map()
-    assert "Me" in page.get("button_group")[0].proto.options[0].content
+    assert [o.content for o in page.get("button_group")[0].proto.options] == ["Lisbon", "Nova"]
+    assert seen[-1] == map_ui.ME, "usable location, no chip picked: start on me"
+    page.get("button_group")[0].set_value("Nova SBE").run()
+    assert not page.exception and seen[-1] == "Nova SBE"
+    page.get("button_group")[0].set_value(None).run()   # tap the active chip again: back to me
+    assert seen[-1] == map_ui.ME
+
+
+def test_a_chip_remembered_from_the_old_chip_row_does_not_break_the_page(phone):
+    page = AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10)
+    page.session_state["map_focus"] = "Bairro Alto"
+    page.run()
+    assert not page.exception
 
 
 def test_summary_helper_picks_the_cheapest_territory_to_take():

@@ -242,8 +242,12 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- A small **Location** pill (label and switch) sits right-aligned under the top bar and
-  quick-zoom chips (20 November 2026). It is the same on/off choice as the Profile switch
+- Two area chips, **Lisbon** and **Nova**, stand stacked down the left side under the top
+  bar (20 November 2026; the other areas and "All" were removed). With no chip picked the
+  map starts on you when your position is usable, otherwise on Lisbon; tapping the active
+  chip again returns to that start.
+- A small **Location** pill (label and switch) sits right-aligned under the top bar
+  (20 November 2026). It is the same on/off choice as the Profile switch
   (R-L01) and also follows the phone's position while on. If the browser forgot its answer
   the pill shows Off and a tap turns it on.
 - City map with the 48 territories coloured for the viewer: sky blue = yours,

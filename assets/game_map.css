@@ -26,11 +26,13 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Zoom chips: one row of separate pills that scrolls sideways. */
+/* Area chips (Lisbon, Nova): two separate pills stacked down the left side, under the top bar. */
+.st-key-map_areas { position: absolute; z-index: 6; left: 12px; top: 60px; width: max-content !important; }
+.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButtonGroup"] { width: max-content !important; }
+.st-key-map_focus button { width: auto !important; max-width: none !important; }
+.st-key-map_focus button p { overflow: visible !important; text-overflow: clip !important; }
 .st-key-map_focus [data-baseweb="button-group"], .st-key-map_focus [role="radiogroup"] {
-  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; padding: 2px 2px 6px;
-  /* a soft fade on the right edge says "there are more chips" */
-  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  flex-direction: column; align-items: flex-start; flex-wrap: nowrap; overflow: visible; gap: 6px; padding: 2px; }
 .st-key-map_focus button { min-height: 32px; padding: 2px 11px; border-radius: var(--radius-pill); white-space: nowrap; flex: 0 0 auto;
   background: var(--hud-bg); color: var(--text); border: 0; box-shadow: 0 2px 8px rgba(20, 43, 61, .16);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
@@ -94,8 +96,12 @@
 .tt-none { color: #8A99A6; font-size: 11px; }
 .tt-none:empty { display: none; }
 
-/* Location switch: a small pill under the top bar, right-aligned (its frame is transparent). */
-.stApp .st-key-map_location { position: fixed; z-index: 11; top: calc(100px + env(safe-area-inset-top, 0px));
-  right: 10px; width: 180px !important; margin: 0; padding: 0; }
+/* Location switch: a small pill on the right under the top bar (its frame is transparent). */
+.stApp .st-key-map_location { position: absolute; z-index: 6; top: 60px; right: 12px; width: 118px !important; margin: 0; padding: 0; }
 .stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; }
 .stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
+@media (max-width: 640px) {
+  /* The phone's top bar has no side padding, so the offsets shrink with it. */
+  .stApp .st-key-map_areas { left: 0; top: 48px; }
+  .stApp .st-key-map_location { right: 0; top: 48px; }
+}

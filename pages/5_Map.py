@@ -23,10 +23,6 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 map_ui.load_styles()
 
-# Small Location switch under the top bar, shared with the one in Profile. It also follows the
-# phone's position, so it must run before current_location() reads the newest reading below.
-with st.container(key="map_location"):
-    location_switch(compact=True, follow=True)
 try:
     territories = get_territories()
     entries, memberships, players = run_parallel(
@@ -72,7 +68,20 @@ else:
         fetched = run_parallel(*[partial(fetch_picture, m) for m in memberships if m.id in owner_ids])
         pictures = dict(result for result in fetched if result)
 
-# Where am I? Decides the bottom card and whether "Me" is offered.
+# HUD floating over the top of the map: lobby and score, two area chips down the left side and
+# the small Location switch on the right (shared with Profile; it also follows the phone's
+# position, so it runs before current_location() reads the newest reading below).
+if st.session_state.get("map_focus") not in (None, *map_ui.QUICK_AREAS):
+    del st.session_state["map_focus"]  # e.g. "Me" or "Bairro Alto" from the earlier chip row
+with st.container(key="game_hud"):
+    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
+    with st.container(key="map_areas"):
+        picked = st.segmented_control("Show", list(map_ui.QUICK_AREAS), format_func=map_ui.QUICK_AREAS.get,
+                                      key="map_focus", label_visibility="collapsed")
+    with st.container(key="map_location"):
+        location_switch(compact=True, follow=True)
+
+# Where am I? Decides the bottom card and where the map starts.
 location, accuracy_m, problem = current_location()
 usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
 here, status = None, "waiting"
@@ -85,14 +94,8 @@ elif location is not None:
 elif problem in ("denied", "off"):
     status = problem
 
-# HUD floating over the top of the map: lobby, score, quick zoom.
-with st.container(key="game_hud"):
-    map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-    options = ([map_ui.ME] if usable_location else []) + list(map_ui.AREAS) + [map_ui.ALL]
-    focus = st.segmented_control("Show", options, default=options[0], key="map_focus",
-                                 label_visibility="collapsed") or options[0]
-    if focus not in options:  # e.g. "Me" was picked but the location is gone now
-        focus = options[0]
+# No chip picked: start on you when your position is usable, otherwise on Lisbon.
+focus = picked or (map_ui.ME if usable_location else "Lisbon")
 
 with st.container(key="game_map"):
     map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,

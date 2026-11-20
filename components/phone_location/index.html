@@ -22,16 +22,16 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 #switch:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}
 #switch:disabled{opacity:.6;cursor:wait}
 /* Compact: a small pill for the Map's top bar, right-aligned; the status stays for screen readers. */
-body.compact{padding:2px 2px 8px}
-body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:10px;padding:4px 6px 4px 14px;
-  border-radius:var(--radius-pill);background:var(--hud-bg);box-shadow:var(--shadow-card);
+body.compact{padding:1px 1px 6px}
+body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:7px;padding:3px 4px 3px 10px;
+  border-radius:var(--radius-pill);background:var(--hud-bg);box-shadow:0 2px 8px rgba(20,43,61,.16);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 body.compact #row.show{display:flex}
-body.compact #title{font-size:.85rem}
+body.compact #title{font-size:.72rem;font-weight:600}
 body.compact #status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;margin:0}
-body.compact #switch{width:42px;height:26px;border-radius:13px}
-body.compact #switch::after{top:3px;left:3px;width:20px;height:20px}
-body.compact #switch[aria-checked="true"]::after{transform:translateX(16px)}
+body.compact #switch{width:34px;height:20px;border-radius:10px}
+body.compact #switch::after{top:2px;left:2px;width:16px;height:16px}
+body.compact #switch[aria-checked="true"]::after{transform:translateX(14px)}
 </style></head>
 <body>
 <div id="row"><div id="text"><div id="title">Location</div><div id="status" aria-live="polite"></div></div>
@@ -128,7 +128,7 @@ function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
   $("status").className = bad ? "bad" : "";
-  send("streamlit:setFrameHeight", {height: $("row").offsetHeight + 16});
+  send("streamlit:setFrameHeight", {height: $("row").offsetHeight + (document.body.classList.contains("compact") ? 10 : 16)});
 }
 async function showSwitch(compact, followToo) {
   if (started) return;
