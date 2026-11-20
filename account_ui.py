@@ -13,6 +13,19 @@ from core.lobbies import create_player
 from device_login import finish_login
 
 _CSS = Path(__file__).parent / "assets" / "account.css"
+_START_CSS = Path(__file__).parent / "assets" / "start.css"
+def show_start():
+    """First screen when logged out: app icon, wordmark, Create account / Log in.
+    A choice opens the existing form below with that tab already selected."""
+    st.markdown(f"<style>{_START_CSS.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+    st.html('<div class="start-center"><div class="start-logo" aria-hidden="true">WP</div>'
+            '<h1 class="start-word">WeGo<i>Pub</i></h1></div>')
+    with st.container(key="start_actions"):
+        for label, key in (("Create account", "start_create"), ("Log in", "start_login")):
+            if st.button(label, key=key, width="stretch"):
+                st.session_state["start_seen"] = True
+                st.session_state["account_action"] = label
+                st.rerun()
 
 
 def show_error(error):
@@ -25,6 +38,9 @@ def show_error(error):
 
 
 def show_accounts():
+    if not st.session_state.get("start_seen") and not st.session_state.get("_password_recovery"):
+        show_start()
+        return
     st.markdown(f"<style>{_CSS.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
     with st.container(key="account_scene"):
         theme.wordmark()

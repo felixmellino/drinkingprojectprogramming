@@ -1,0 +1,27 @@
+/* Start screen (first visit, logged out): light and calm. The app icon and the wordmark in the
+   middle, Create account and Log in at the bottom. A short entrance, nothing else moves. */
+.stApp:has(.start-logo) { background: var(--bg); }
+.stApp:has(.start-logo) [data-testid="stHeader"] { display: none; }
+.start-center { position: fixed; inset: 0; z-index: 1; pointer-events: none; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding-bottom: 110px; }
+.start-logo { display: grid; place-items: center; width: 104px; height: 104px; border-radius: 28px; background: var(--accent);
+  color: #fff; font: 800 42px/1 var(--font-body); letter-spacing: -.02em; box-shadow: 0 22px 48px -12px rgba(44, 153, 214, .45);
+  animation: start-pop .7s cubic-bezier(.2, 1.3, .4, 1) both; }
+.stApp .start-center .start-word { margin: 26px 0 0; padding: 0; font-family: var(--font-body) !important; font-weight: 800;
+  font-size: 48px; line-height: 1; letter-spacing: -.035em; color: var(--text); text-transform: none;
+  animation: start-rise .7s .25s ease-out both; }
+.start-word i { font-style: normal; color: var(--accent); }
+@keyframes start-pop { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: none; } }
+@keyframes start-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.stApp .st-key-start_actions { position: fixed; z-index: 3; width: auto !important; left: max(30px, calc(50% - 190px));
+  right: max(30px, calc(50% - 190px)); bottom: calc(26px + env(safe-area-inset-bottom, 0px)); gap: 8px;
+  animation: start-rise .7s .45s ease-out both; }
+.stApp .st-key-start_actions [data-testid="stElementContainer"], .stApp .st-key-start_actions [data-testid="stButton"] { width: 100% !important; }
+.stApp .st-key-start_actions button { width: 100%; height: 54px; min-height: 54px; border-radius: 16px; box-shadow: none; }
+/* White on sky blue only passes contrast as large bold text, so the label is 19px bold. */
+.stApp .st-key-start_create button { background: var(--accent); color: #fff; border: 0; }
+.stApp .st-key-start_create button p { font-size: 1.2rem; font-weight: 700; color: #fff; }
+.stApp .st-key-start_create button:hover { background: var(--accent-hover); }
+.stApp .st-key-start_login button { background: transparent; color: var(--text); border: 0; }
+.stApp .st-key-start_login button p { font-size: 1.15rem; font-weight: 600; color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .start-logo, .stApp .start-center .start-word, .stApp .st-key-start_actions { animation: none; } }
