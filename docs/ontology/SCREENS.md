@@ -72,8 +72,14 @@ These presentation choices introduce no new scoring or database rules.
 - Check-in starts with the camera. Drink/size controls appear only after a
   fresh photo is present, followed by the location status and submission.
   Drink/size choices have large selectable areas and an immediate points
-  preview. Closed-window/cooldown messages appear before the form, and Submit
-  spans the available width. Camera permission remains controlled by the browser.
+  preview. Submit spans the available width. Camera permission remains
+  controlled by the browser.
+- Update, 20 November 2026: the scoring window and cooldown are checked before
+  the camera opens. If a check-in can't count, one card replaces the camera:
+  "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and
+  timezone), "Season starts …" or "Season over" (with Open Lobbies), plus a
+  Check again button. A photo already taken keeps the old warnings under it
+  and Submit stays disabled.
 - Follow-up, 18 November 2026: tapping the central + mounts the camera
   into a full-viewport stage, hiding page navigation while taking the photo.
   The camera has a bottom-centre circular shutter, a front/back switch and
