@@ -560,8 +560,8 @@ or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
 [`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
-It is **not applied** to Supabase yet. It passed a local in-memory Postgres
-check (creator/other/retry, history kept); apply it before deploying this code.
+It is applied to the shared Supabase project (checked 20 November 2026,
+together with migrations 021, 024, 025 and 026).
 
 Before using this feature, the Data owner applies
 [`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**
@@ -569,8 +569,7 @@ and `012_player_lobby_choices.sql`. Apply the migration before deploying this
 code. It runs no migrations automatically and does not delete existing history.
 Migration 016 was applied to the shared Supabase project with contributor
 authorization on 19 November 2026. All 19 schema/access/history checks and a
-fresh app-process read/RPC check passed. The frontend changes still need
-review, merge and deployment before the public app shows the button.
+fresh app-process read/RPC check passed.
 
 Verification:
 
