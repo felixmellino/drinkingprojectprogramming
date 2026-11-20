@@ -30,8 +30,10 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 //
 // Two modes:
 //  * default (no argument): an invisible follower. It only runs when the player has turned
-//    location ON in Profile (saved in this browser) and the browser still has permission, so it
-//    never opens a surprise "Allow location?" prompt. Otherwise it reports {error:"off"}.
+//    location ON in Profile (saved in this browser). A browser that has forgotten its answer
+//    (Safari does, per visit) is probed briefly; if it does not hand out a position quickly the
+//    follower reports {error:"off"} and the player taps the switch again. Never turned on:
+//    it asks nothing at all and reports {error:"off"}.
 //  * mode="switch": the visible Location switch in Profile. The player's tap is a real gesture
 //    inside this frame, so the browser (Safari too) asks for permission right then.
 // Sends {lat, lng, accuracy_m, taken_at_ms} when the player gets a fix, moves more than
@@ -86,7 +88,13 @@ async function follow() {
   if (chosen() !== "on" && chosen() !== "unsaved") {sendValue({error: "off"}); return;}
   const state = await permission();
   if (state === "denied") {sendValue({error: "denied"}); return;}
-  if (state === "prompt") {sendValue({error: "off"}); return;}   // needs the switch in Profile (a tap)
+  if (state !== "granted") {
+    // The browser would ask again (or cannot say). Probe once; no quick answer means the player
+    // has to tap the switch in Profile (an invisible frame cannot show the question reliably).
+    const answered = await new Promise(resolve => navigator.geolocation.getCurrentPosition(
+      position => {onPosition(position); resolve(true);}, () => resolve(false), {...OPTIONS, timeout: 4000}));
+    if (!answered) {sendValue({error: "off"}); return;}
+  }
   navigator.geolocation.watchPosition(onPosition, onError, OPTIONS);
   // Standing still produces no new watch events, so ask again regularly.
   setInterval(() => navigator.geolocation.getCurrentPosition(onPosition, onError, OPTIONS), HEARTBEAT_MS);
@@ -94,6 +102,9 @@ async function follow() {
 
 // ---- visible switch in Profile ----------------------------------------------------------
 const $ = id => document.getElementById(id);
+const OFF = "Off. Turn it on to check in and see where you are on the map.";
+const BLOCKED = "Blocked. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using, " +
+  "then Settings → Safari → Location → Ask or Allow. Then turn this on again.";
 function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
@@ -106,13 +117,12 @@ async function showSwitch() {
   $("row").classList.add("show");
   if (!navigator.geolocation) {show(false, "This browser can't share its location.", true); $("switch").disabled = true; return;}
   const state = await permission();
-  if (state === "denied") {choose("off"); show(false, "Blocked. Allow location for this site in the browser settings, then turn it on here.", true);}
-  else if (chosen() === "on" && state === "granted") show(true, "On");
-  else if (chosen() === "on") show(true, "On. Tap the switch off and on again if your browser asks for permission again.");
-  else show(false, "Off. Turn it on to check in and see where you are on the map.");
+  if (state === "denied") show(false, BLOCKED, true);   // tapping still retries: the browser may ask again
+  else if (chosen() === "on") show(true, "On");
+  else show(false, OFF);
   $("switch").addEventListener("click", async () => {
     if ($("switch").getAttribute("aria-checked") === "true") {
-      choose("off"); show(false, "Off. Turn it on to check in and see where you are on the map.");
+      choose("off"); show(false, OFF);
       sendValue({error: "off"});
       return;
     }
@@ -128,9 +138,9 @@ async function showSwitch() {
       const code = errorName(error);
       $("switch").disabled = false;
       if (code === "denied") {
-        choose("off"); show(false, "Blocked. Allow location for this site in the browser settings, then turn it on here.", true);
+        choose("off"); show(false, BLOCKED, true);
       } else {
-        choose("on"); show(true, "On, but your phone can't find its position yet. Move closer to a window or outside.");
+        choose("on"); show(true, "On, but your phone can't find its position yet (" + code + "). Move closer to a window or outside.");
       }
       sendValue({error: code});
     }, {...OPTIONS, maximumAge: 0});

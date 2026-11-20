@@ -252,7 +252,7 @@ with st.container(key="drink_ui_panel_location"):
     section_heading("03", "Location", "Your location assigns this drink to a territory.")
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
-        "waiting": "Finding your location…",
+        "waiting": "Finding your location… Allow location access if your browser asks.",
         "off": "Location is off. Turn it on in Profile → Location, then come back.",
         "stale": "Your last location is more than a minute old. Finding a new one…",
         "denied": "Location access is blocked. Allow location for this site in your browser settings, then turn Location on in Profile.",

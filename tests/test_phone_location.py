@@ -59,12 +59,12 @@ def test_old_readings_are_stale(monkeypatch):
 
 
 def test_no_page_asks_for_location_on_its_own_after_login():
-    """The browser prompt must only come from the tap on the Profile switch."""
+    """No automatic question after login; before opting in nothing asks, the Profile tap does."""
     root = Path(__file__).resolve().parents[1]
     assert "ask_for_location" not in (root / "shared.py").read_text(encoding="utf-8")
     assert "ask_for_location" not in (root / "phone_location.py").read_text(encoding="utf-8")
     page = (root / "components" / "phone_location" / "index.html").read_text(encoding="utf-8")
-    # The follower starts only after the on/off choice, and never while the browser would still ask.
-    assert 'chosen() !== "on"' in page and 'state === "prompt"' in page
+    # The follower starts only after the on/off choice; a browser that forgot its answer is only probed.
+    assert 'chosen() !== "on"' in page and 'state !== "granted"' in page
     # The switch's own geolocation call sits inside its click handler (a real tap).
     assert page.index('addEventListener("click"') < page.index("getCurrentPosition(position => {")

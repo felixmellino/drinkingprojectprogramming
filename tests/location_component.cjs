@@ -33,9 +33,17 @@ function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={
  f=setup({stored:'off',permission:'granted'});await f.render();
  assert.deepEqual(f.values(),[{error:'off'}]);assert.equal(f.calls.watch,0);
 
- // Turned on but the browser would still ask: do not ask at a random moment.
+ // Turned on but the browser forgot its answer (Safari asks per visit): probe; a quick fix means follow.
  f=setup({stored:'on',permission:'prompt'});await f.render();
- assert.deepEqual(f.values(),[{error:'off'}]);assert.equal(f.calls.watch,0,'Never opens the permission prompt on its own');
+ assert.equal(f.calls.get,1,'One quick probe');assert.equal(f.calls.watch,1,'The probe worked, so it follows');
+ assert.equal(f.values().at(-1).accuracy_m,12);
+ // Probe answered with no fix (the invisible frame cannot show the question): tell the player to tap the switch.
+ f=setup({stored:'on',permission:'prompt',geo:'denied'});await f.render();
+ assert.deepEqual(f.values(),[{error:'off'}]);assert.equal(f.calls.watch,0);
+ f=setup({stored:'on',permission:'prompt',geo:'timeout'});await f.render();
+ assert.deepEqual(f.values(),[{error:'off'}]);assert.equal(f.calls.watch,0);
+ // Never turned on: not even a probe.
+ f=setup({permission:'prompt'});await f.render();assert.equal(f.calls.get+f.calls.watch,0);
 
  // Turned on and allowed: follow silently. Blocked in the browser: say so.
  f=setup({stored:'on',permission:'granted'});await f.render();assert.equal(f.calls.watch,1);assert.deepEqual(f.values(),[]);
@@ -65,8 +73,9 @@ function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={
  // Already blocked in the browser settings: the switch says so before any tap.
  f=setup({stored:'on',permission:'denied'});await f.render('switch');
  assert.equal(f.elements.switch.attrs['aria-checked'],'false');assert(f.elements.status.textContent.startsWith('Blocked'));
+ f.elements.switch.handlers.click();assert.equal(f.calls.get,1,'Tapping a blocked switch asks again');
  // No fix yet (timeout): stays on and tells the player what to do.
  f=setup({permission:'prompt',geo:'timeout'});await f.render('switch');f.elements.switch.handlers.click();
  assert.equal(f.elements.switch.attrs['aria-checked'],'true');assert.deepEqual(f.values().at(-1),{error:'timeout'});
- console.log('Location component checks passed: no surprise prompt, switch asks on tap, on/off remembered, denied and timeout handled.');
+ console.log('Location component checks passed: no prompt before opting in, probe after, switch asks on tap, on/off remembered, denied and timeout handled.');
 })().catch(e=>{console.error(e);process.exit(1);});
