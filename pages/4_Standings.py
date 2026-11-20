@@ -44,8 +44,8 @@ try:
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_season_transfers(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_players)
-    players_by_id = {p.id: p.display_name for p in players}
+        db.list_public_usernames)
+    players_by_id = {p['id']: p['display_name'] for p in players}
 except (APIError, RequestError, RuntimeError):
     st.error("We couldn't load the standings. Reload the page to try again.")
     st.stop()

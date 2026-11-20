@@ -108,6 +108,37 @@ def test_wrong_owner_path_cannot_be_read(service, monkeypatch):
     service[2].download.assert_not_called()
 
 
+def test_avatar_batch_reads_credentials_friendships_references_and_bucket_once(service,monkeypatch):
+    from unittest.mock import Mock
+    client,query,bucket,player=service
+    client.table.return_value.in_.return_value=query
+    actor=Mock(return_value=player)
+    friends=Mock(return_value=[{'sender_id':'owner','recipient_id':'friend','status':'accepted'}])
+    monkeypatch.setattr(db,'get_player',actor)
+    monkeypatch.setattr(db,'list_friendships',friends)
+    path=f'friend/{uuid.uuid4()}.jpg'
+    query.execute.return_value.data=[{'player_id':'friend','photo_ref':path}]
+    bucket.download.return_value=b'allowed'
+    assert db.download_profile_pictures('owner','hash',['friend','outsider','friend'])=={'friend':b'allowed'}
+    actor.assert_called_once_with('owner')
+    friends.assert_called_once_with('owner')
+    client.table.return_value.in_.assert_called_once_with('player_id',['friend'])
+    client.storage.get_bucket.assert_called_once()
+    # A new request rechecks access, even if the previous one returned bytes.
+    friends.return_value=[]
+    assert db.download_profile_pictures('owner','hash',['friend'])=={}
+    assert actor.call_count==2 and bucket.download.call_count==1
+
+
+def test_avatar_batch_rejects_stale_credentials_before_storage_access(service,monkeypatch):
+    client,query,bucket,_=service
+    monkeypatch.setattr(db,'list_friendships',lambda _:[])
+    with pytest.raises(ValueError,match='sign-in changed'):
+        db.download_profile_pictures('owner','stale',['owner'])
+    client.table.assert_not_called()
+    bucket.download.assert_not_called()
+
+
 def test_orphan_cleanup_keeps_current_and_recent_uploads(service, monkeypatch):
     _, _, bucket, _ = service
     current, abandoned, recent = [f'{uuid.uuid4()}.jpg' for _ in range(3)]

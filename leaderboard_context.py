@@ -10,6 +10,7 @@ import streamlit as st
 import data.db as db
 from core.lobby_overview import latest_season, lobby_status
 from core.scoring_v1 import utc
+from parallel import run_parallel
 
 
 def newest_active(rows, now):
@@ -23,13 +24,10 @@ def leaderboard_fallback(player_id):
     if not memberships:
         return None
     lobbies = {lobby.id: lobby for lobby in db.list_lobbies()}
-    rows = []
-    for member in memberships:
-        lobby = lobbies.get(member.lobby_id)
-        if lobby is not None:
-            season = latest_season(db.list_seasons_for_lobby(lobby.id))
-            if season is not None:
-                rows.append((lobby, member, season))
+    joined = [member for member in memberships if member.lobby_id in lobbies]
+    seasons = run_parallel(*[lambda m=m: latest_season(db.list_seasons_for_lobby(m.lobby_id))
+                             for m in joined])
+    rows = [(lobbies[m.lobby_id], m, season) for m, season in zip(joined, seasons) if season is not None]
 
     active = newest_active(rows, datetime.now(timezone.utc))
     if active:

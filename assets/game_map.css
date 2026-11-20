@@ -92,14 +92,6 @@
     max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 
-/* Tap or hover a territory: a tiny tooltip next to it, drawn by the map itself (name + points). */
-.tt-name { font-weight: 700; margin-bottom: 2px; }
-.tt-row { display: flex; justify-content: space-between; gap: 14px; }
-.tt-row:has(> span:empty) { display: none; }
-.tt-row b { font-weight: 700; font-variant-numeric: tabular-nums; }
-.tt-none { color: #8A99A6; font-size: 11px; }
-.tt-none:empty { display: none; }
-
 /* Location switch: its own glass pill on the right (the glass is drawn here, not inside the transparent frame). */
 .stApp .st-key-map_location { position: static; width: 112px !important; height: 34px; margin: 0; padding: 0; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; overflow: hidden; }

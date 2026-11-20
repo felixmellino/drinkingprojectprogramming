@@ -35,6 +35,25 @@ def game_night_bounds(entry: dict) -> tuple[datetime, datetime]:
     return start, end
 
 
+def history_pages(entries, *, max_photos=12, max_nights=2):
+    """Keep newest-first night groups, bounded even during a very busy night."""
+    pages, page, count = [], [], 0
+    for entry in entries:
+        start, end = game_night_bounds(entry)
+        new_night = not page or page[-1][0] != start
+        if page and (count >= max_photos or (new_night and len(page) >= max_nights)):
+            pages.append(page)
+            page, count = [], 0
+            new_night = True
+        if new_night:
+            page.append((start, end, []))
+        page[-1][2].append(entry)
+        count += 1
+    if page:
+        pages.append(page)
+    return pages
+
+
 def game_night_label(start: datetime, end: datetime) -> str:
     last_day = end - timedelta(days=1)  # end is exclusive Sunday 18:00
     if start.month == last_day.month:
@@ -42,10 +61,9 @@ def game_night_label(start: datetime, end: datetime) -> str:
     return f"Game night · {start:%d %b}–{last_day:%d %b}"
 
 
-def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
-    """One portrait grid tile like a phone gallery: the photo edge to edge, the
-    player and points on a soft shade at the bottom, a dot for territory (green)
-    or outside (grey). A transparent button over the tile opens the check-in."""
+def memory_tile(entry: dict, photo: bytes | None, *, key: str, on_open=None) -> bool:
+    """Portrait tile with a name/points shade and territory dot.
+    The optional callback selects the detail before the next gallery load."""
     name = entry["username"]
     if entry.get("team_id"):
         name = f"{entry.get('team_name') or 'Team'} · {name}"
@@ -61,7 +79,8 @@ def memory_tile(entry: dict, photo: bytes | None, *, key: str) -> bool:
     dot = f'<span class="memory-dot {"memory-dot-matched" if matched else "memory-dot-outside"}" aria-hidden="true"></span>'
     st.html(f'<div class="memory-tile-visual">{photo_html}{dot}'
             f'<div class="memory-shade"><span>{escape(name)}</span>{score}</div></div>')
-    return st.button(f"View {name}'s check-in", key=f"{key}_open")
+    return st.button(f"View {name}'s check-in", key=f"{key}_open",
+                     on_click=on_open, args=(entry['id'],) if on_open else ())
 
 
 def identity_colour(entry: dict) -> str:

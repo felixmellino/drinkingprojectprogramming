@@ -9,6 +9,8 @@ import data.db as db
 from core.profile_photo import initials, prepare_profile_photo
 
 PICTURE_ERRORS = (APIError, StorageException, RequestError, RuntimeError, OSError)
+_NOT_LOADED = object()
+_UNAVAILABLE = object()
 
 
 def picture_identity(username: str, photo: bytes | None = None, *, size=64):
@@ -32,15 +34,22 @@ def load_picture(viewer_id, owner_id):
     return db.download_profile_picture(viewer_id, st.session_state['credential_version'], owner_id)
 
 
+def load_pictures(viewer_id, owner_ids):
+    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids)
+
+
 def show_picture_identity(viewer_id, owner_id, username, *, size=64):
+    loaded = _UNAVAILABLE
     try:
         photo = load_picture(viewer_id, owner_id)
+        loaded = photo
     except PICTURE_ERRORS:
         photo = None
     picture_identity(username, photo, size=size)
+    return loaded
 
 
-def show_picture_editor(player):
+def show_picture_editor(player, *, saved_photo=_NOT_LOADED):
     st.subheader('Profile picture')
     st.caption('Visible to you, your friends and players with a pending friend request. JPEG, PNG or WebP; up to 10 MB and 20 megapixels. Pictures are centre-cropped automatically.')
     if st.session_state.pop('_picture_saved', False):
@@ -73,8 +82,11 @@ def show_picture_editor(player):
                     st.session_state['_picture_input_version'] = version + 1
                     st.session_state['_picture_saved'] = True
                     st.rerun()
+    if saved_photo is _UNAVAILABLE:
+        st.info('Saved pictures are unavailable. Please try again later.')
+        return
     try:
-        saved = load_picture(player.id, player.id)
+        saved = load_picture(player.id, player.id) if saved_photo is _NOT_LOADED else saved_photo
     except PICTURE_ERRORS:
         st.info('Saved pictures are unavailable. Please try again later.')
         return

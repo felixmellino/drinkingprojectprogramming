@@ -68,6 +68,20 @@ def _render_invitations(player, member, state, labels):
     return pending
 
 
+def _result_card(duel, member, labels):
+    """Shared minigame result card above the finished board (R-M10 reward)."""
+    from minigames_ui import result_card
+    other = duel['opponent_id'] if duel['challenger_id'] == member else duel['challenger_id']
+    rival = labels.get(other, 'Opponent')
+    if duel['status'] == 'draw':
+        result_card('draw', '=', f'Same total error as {rival}',
+                    note='Both get the ×1.25 boost only if every round counted.')
+    elif duel.get('winner_id') == member:
+        result_card('won', '×1.25', 'on your check-ins for the next hour', note=f'vs {rival} · 3 rounds')
+    else:
+        result_card('lost', '—', f'{rival} gets the ×1.25 boost', note='3 rounds · smallest total error wins')
+
+
 def render_time(player, member, lobby, season, members, labels):
     try:
         state = db.time_status(player, season.id)
@@ -83,6 +97,8 @@ def render_time(player, member, lobby, season, members, labels):
     if focused:
         st.session_state['time_focused_id'] = focused['id']
         ack = 'time_ack_' + focused['id']
+        if focused['status'] in {'completed', 'draw'}:
+            _result_card(focused, member, labels)
         with st.container(key='time_stage'):
             value = time_board(focused, member, labels, st.session_state.get(ack))
             parsed = component_action(value, focused)
@@ -148,7 +164,9 @@ def render_time(player, member, lobby, season, members, labels):
         st.info('Another eligible lobby member is needed; team lobbies require an opposing team.')
     with st.expander('Recent Time Duels'):
         for duel in (d for d in duels if d['status'] in FINAL):
-            st.write(labels.get(duel.get('winner_id'), duel['status'].title()))
+            other = duel['opponent_id'] if duel['challenger_id'] == member else duel['challenger_id']
+            verdict = ('Won' if duel.get('winner_id') == member else 'Lost') if duel.get('winner_id') else duel['status'].title()
+            st.write(f"{verdict} · vs {labels.get(other, 'Opponent')}")
             if st.button('View result', key='time_result_' + duel['id']):
                 st.session_state['time_focused_id'] = duel['id']
                 st.rerun(scope='fragment')

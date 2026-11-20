@@ -138,3 +138,42 @@ def test_expired_invite_disappears_on_refresh(service):
     assert not any('Pending Challenge invite' in m.value for m in app.markdown)
     assert not next(b for b in app.button if b.label == 'Send Time Duel challenge').disabled
     action.assert_not_called()
+
+
+# -- Shared result card (minigames_ui.result_card) ---------------------------
+
+def _finished(status, winner):
+    return dict(invitation(id='done', status=status), winner_id=winner)
+
+
+def _card(app):
+    return ''.join(m.value for m in app.markdown if 'game-result' in m.value)
+
+
+@pytest.mark.parametrize('status, winner, tone, big, line', [
+    ('completed', 'a', 'game-result-won', '×1.25', 'on your check-ins for the next hour'),
+    ('completed', 'b', 'game-result-lost', '—', 'Bob gets the ×1.25 boost'),
+    ('draw', None, 'game-result-draw', '=', 'Same total error as Bob'),
+])
+def test_finished_duel_shows_the_shared_result_card(service, status, winner, tone, big, line):
+    state, _, board = service
+    state['duels'] = [_finished(status, winner)]
+    app = page()
+    app.session_state['time_focused_id'] = 'done'
+    app.run()
+    card = _card(app)
+    assert not app.exception and tone in card and f'>{big}<' in card and line in card
+    assert board.called  # the existing board (rounds + Back) stays under the card
+
+
+def test_unfinished_duel_has_no_result_card(service):
+    state, _, _ = service
+    state['duels'] = [dict(invitation(id='live', status='playing'), winner_id=None)]
+    assert not _card(page())
+
+
+def test_recent_list_says_won_or_lost_against_whom(service):
+    state, _, _ = service
+    state['duels'] = [_finished('completed', 'b')]
+    app = page()
+    assert any(w.value == 'Lost · vs Bob' for w in app.markdown)

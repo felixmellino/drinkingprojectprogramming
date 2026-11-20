@@ -152,3 +152,28 @@ def test_revoked_account_discards_the_prefetched_membership(auth, monkeypatch):
     page = open_page(MEMBERSHIP_SCRIPT, player)
     assert not page.exception and not page.success and any('Signed out' in x.value for x in page.info)
     assert '_membership_prefetch' not in page.session_state
+    assert '_invite_badge_prefetch' not in page.session_state
+
+
+def test_navigation_badge_reuses_only_this_pages_parallel_read(auth,monkeypatch):
+    player,_=auth
+    count=Mock(return_value=2)
+    monkeypatch.setattr(db,'pending_minigame_invite_count',count)
+    page=open_page('from shared import require_login\nrequire_login()',player)
+    assert not page.exception
+    count.assert_called_once_with('player','season')
+    assert '_invite_badge_prefetch' not in page.session_state
+    assert any('2 pending minigame invites' in h.value for h in page.get('html'))
+    page.run()
+    assert count.call_count==2,'A later page run must still fetch fresh invitation state'
+
+
+def test_failed_badge_prefetch_does_not_repeat_the_network_failure_on_the_same_page(auth,monkeypatch):
+    from httpx import RequestError
+    player,_=auth
+    count=Mock(side_effect=[RequestError('offline'),0])
+    monkeypatch.setattr(db,'pending_minigame_invite_count',count)
+    page=open_page('from shared import require_login\nrequire_login()',player)
+    assert not page.exception and count.call_count==1
+    page.run()
+    assert not page.exception and count.call_count==2

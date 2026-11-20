@@ -7,6 +7,17 @@ from tests.test_profile_ui import repo, page, click
 from tests.test_profile_photo import picture
 
 
+def test_profile_editor_reuses_its_own_freshly_loaded_identity_picture(repo,monkeypatch):
+    reader=MagicMock(return_value=None)
+    monkeypatch.setattr('data.db.download_profile_picture',reader)
+    at=page(repo)
+    reader.reset_mock()
+    click(at,'Edit profile')
+    assert reader.call_count==1,'Do not fetch an avatar on the departed menu or fetch it twice in the editor'
+    at.run()
+    assert reader.call_count==2,'A later page run must perform a fresh read'
+
+
 @pytest.mark.parametrize('source', ['Upload photo', 'Take photo'])
 def test_picture_preview_save_new_session_and_remove(repo, monkeypatch, source):
     state = {'photo': None}

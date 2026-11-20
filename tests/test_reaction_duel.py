@@ -138,11 +138,12 @@ def test_finished_tries_wait_for_the_opponent_then_show_rounds_and_points(reacti
     state['duels'] = [_duel('completed') | {'run': run, 'winner_id': 'a', 'round_results': rounds, 'reason': 'rounds'}]
     page.run()
     text = ' '.join(m.value for m in page.markdown)
-    assert not page.exception and 'You won +3' in text and 'missed' in text
+    assert not page.exception and 'game-result-won' in text and '>You won<' in text and '>+3<' in text and 'missed' in text
     loser = open_page('pb', 'b', selected='reaction')
     loser.session_state['reaction_focused_id'] = 'r1'
     loser.run()
-    assert 'You lost −3' in ' '.join(m.value for m in loser.markdown)
+    lost = ' '.join(m.value for m in loser.markdown)
+    assert 'game-result-lost' in lost and '>You lost<' in lost and '>−3<' in lost
     button(page, 'Done').click().run()
     assert any(b.label == 'Challenge' for b in page.button)
 

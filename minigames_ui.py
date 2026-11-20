@@ -151,6 +151,25 @@ def game_note(text):
     st.markdown(f'<p class="game-note">{escape(text)}</p>', unsafe_allow_html=True)
 
 
+RESULT_TONES = {"won": "game-result-won", "lost": "game-result-lost", "draw": "game-result-draw"}
+
+
+def result_card_html(outcome: str, big: str, line: str, *, note: str = "") -> str:
+    """The end of every minigame looks the same: Won / Lost / Draw, one big
+    number (what you got or gave), one line, an optional small note.
+    Same shape as the check-in reward card. Every value is escaped."""
+    title = {"won": "You won", "lost": "You lost", "draw": "Draw"}[outcome]
+    note_html = f'<p class="game-result-note">{escape(note)}</p>' if note else ""
+    return (f'<section class="game-result {RESULT_TONES[outcome]}" aria-label="Minigame result">'
+            f'<p class="game-result-title">{title}</p>'
+            f'<p class="game-result-big">{escape(big)}</p>'
+            f'<p class="game-result-line">{escape(line)}</p>{note_html}</section>')
+
+
+def result_card(outcome: str, big: str, line: str, *, note: str = "") -> None:
+    st.markdown(result_card_html(outcome, big, line, note=note), unsafe_allow_html=True)
+
+
 def _capture_and_start(player, lobby, season, duel):
     key = f"chug_photo_{duel['id']}"
     capture = st.session_state.get(key)

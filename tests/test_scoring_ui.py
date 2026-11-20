@@ -478,22 +478,22 @@ def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monk
 
     # Page 1: the two newest game nights, one photo each. The oldest night
     # (two photos) isn't downloaded until its page is opened.
-    assert downloads == ["photo-3", "photo-2"]
+    assert sorted(downloads) == ["photo-2", "photo-3"]
     markup = "\n".join(item.value for item in page.markdown)
     assert markup.count("Game night") == 2
     tiles = "\n".join(item.value for item in page.get("html"))
     assert "&lt;img" in tiles and photos[0]["username"] not in tiles
-    assert button(page, "Newer nights").disabled
-    assert not button(page, "Older nights").disabled
+    assert button(page, "Newer photos").disabled
+    assert not button(page, "Older photos").disabled
 
-    button(page, "Older nights").click().run()
+    button(page, "Older photos").click().run()
     assert not page.exception
     # A button-triggered rerun re-renders the page once before the session
     # state update takes effect, so only the tail (the newly visible night)
     # is asserted here -- see the identical pattern this replaced.
-    assert downloads[-2:] == ["photo-1", "photo-0"]
-    assert not button(page, "Newer nights").disabled
-    assert button(page, "Older nights").disabled
+    assert sorted(downloads[-2:]) == ["photo-0", "photo-1"]
+    assert not button(page, "Newer photos").disabled
+    assert button(page, "Older photos").disabled
 
     next(b for b in page.button if b.key == "memory_tile_photo-0_open").click().run()
     assert not page.exception
@@ -542,6 +542,30 @@ def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
     assert not page.exception and page.warning
     assert not page.get("html")
+
+
+def test_busy_history_is_bounded_and_navigation_downloads_only_the_destination(ui,monkeypatch):
+    state,game=ui
+    models=[entry(f'busy-{i}','member','beer','small',i) for i in range(25)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    downloads=[]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    def download(*args):
+        downloads.append(args[-1])
+        return state['photo'].getvalue()
+    monkeypatch.setattr(db,'download_checkin_photo',download)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and set(downloads)=={f'busy-{i}' for i in range(13,25)}
+    assert len(downloads)==12
+    button(page,'Older photos').click().run()
+    assert not page.exception and len(downloads)==24,'Do not redownload the old page before switching'
+    assert set(downloads[-12:])=={f'busy-{i}' for i in range(1,13)}
+    before=len(downloads)
+    next(b for b in page.button if b.key=='memory_tile_busy-1_open').click().run()
+    assert not page.exception and downloads[before:]==['busy-1'],'Opening a detail must not reload the gallery'
 
 
 def test_submit_needs_the_phone_location_first(ui):

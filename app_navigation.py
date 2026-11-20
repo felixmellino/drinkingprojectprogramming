@@ -94,10 +94,14 @@ def minigame_invite_badge() -> None:
     season_id = st.session_state.get("current_season_id")
     if not player or player.id != st.session_state.get("player_id") or not season_id:
         return
-    try:
-        count = db.pending_minigame_invite_count(player.id, season_id)
-    except (APIError, RuntimeError, OSError, RequestError):
-        return  # Retry on the next refresh without interrupting navigation.
+    prefetched = st.session_state.pop('_invite_badge_prefetch', None)
+    if prefetched and prefetched[0] == (player.id, season_id):
+        count = prefetched[1]  # Fresh read alongside this page's account check, used once.
+    else:
+        try:
+            count = db.pending_minigame_invite_count(player.id, season_id)
+        except (APIError, RuntimeError, OSError, RequestError):
+            return  # Retry on the next refresh without interrupting navigation.
     if count:
         number = str(count) if count <= 99 else "99+"
         label = "invite" if count == 1 else "invites"

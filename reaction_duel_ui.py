@@ -47,23 +47,24 @@ def _play(player, duel):
 
 
 def _result(duel, member, labels):
-    from minigames_ui import game_header, game_note
+    from minigames_ui import game_header, game_note, result_card
     game_header("Reaction Duel", "", "reaction_result_back")
     me_first = duel["challenger_id"] == member
     other = duel["opponent_id"] if me_first else duel["challenger_id"]
+    rival = labels.get(other, "Opponent")
     if duel["status"] == "completed":
         won = duel["winner_id"] == member
-        verdict = f"You won +{duel['stake']}" if won else f"You lost −{duel['stake']}"
+        result_card("won" if won else "lost", f"+{duel['stake']}" if won else f"−{duel['stake']}",
+                    f"season points {'from' if won else 'to'} {rival}", note="Best of 3 rounds")
     else:
-        verdict = "Draw · stake back"
+        result_card("draw", "±0", f"Stake back from {rival}", note="Best of 3 rounds")
     rows = ""
     for r in duel["round_results"]:
         mine, theirs = (r["challenger_ms"], r["opponent_ms"]) if me_first else (r["opponent_ms"], r["challenger_ms"])
         rows += (f'<tr><td>{r["round_no"]}</td>'
                  f'<td class="{"win" if r["winner_id"] == member else ""}">{time_label(mine)}</td>'
                  f'<td class="{"win" if r["winner_id"] == other else ""}">{time_label(theirs)}</td></tr>')
-    st.markdown(f'<p class="reaction-verdict">{escape(verdict)}</p>'
-                f'<table class="reaction-rounds"><tr><th>Round</th><th>You</th>'
+    st.markdown(f'<table class="reaction-rounds"><tr><th>Round</th><th>You</th>'
                 f'<th>{escape(labels.get(other, "Opponent"))}</th></tr>{rows}</table>', unsafe_allow_html=True)
     if duel["status"] == "draw":
         game_note("Same rounds and same total time." if duel["reason"] == "rounds" else "Time ran out before anyone played.")

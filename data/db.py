@@ -1026,6 +1026,45 @@ def download_profile_picture(viewer_id: str, credential_version: str, owner_id: 
     return _profile_picture_bucket().download(path)
 
 
+def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids) -> dict[str, bytes]:
+    """Freshly authorize one map's avatars together; never retain permissions/bytes."""
+    from parallel import run_parallel
+    from core.profile_photo import can_view_profile_photo
+    from httpx import RequestError
+    from storage3.utils import StorageException
+
+    owners = sorted(set(owner_ids))
+    if not owners:
+        return {}
+    if len(owners) > 32:
+        raise ValueError('Too many profile pictures requested at once.')
+    # The membership page has already validated login; downloads still perform
+    # their own fresh credential and friendship checks, once for this batch.
+    _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
+        lambda: list_friendships(viewer_id) if any(owner != viewer_id for owner in owners) else [])
+    allowed = [owner for owner in owners if can_view_profile_photo(viewer_id, owner, relationships)]
+    if not allowed:
+        return {}
+    rows = (get_client().table('profile_pictures').select('player_id,photo_ref')
+            .in_('player_id', allowed).execute().data)
+    paths = {}
+    for row in rows:
+        if row['player_id'] not in allowed or not row.get('photo_ref'):
+            continue
+        _validate_profile_picture_path(row['player_id'], row['photo_ref'])
+        paths[row['player_id']] = row['photo_ref']
+    if not paths:
+        return {}
+    bucket = _profile_picture_bucket()  # Private-bucket check once per fresh batch.
+    def fetch(owner, path):
+        try:
+            return owner, bucket.download(path)
+        except (APIError, StorageException, RequestError, RuntimeError, OSError):
+            return owner, None
+    return {owner: photo for owner, photo in run_parallel(
+        *[lambda owner=owner, path=path: fetch(owner, path) for owner, path in paths.items()]) if photo}
+
+
 def save_profile_picture(player_id: str, credential_version: str, raw: bytes) -> None:
     import uuid
     from core.profile_photo import prepare_profile_photo
