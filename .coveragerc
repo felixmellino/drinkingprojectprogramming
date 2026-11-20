@@ -1,0 +1,12 @@
+[run]
+branch = True
+source = .
+omit =
+    tests/*
+    scripts/*
+    .venv/*
+    node_modules/*
+    output/*
+
+[report]
+show_missing = True

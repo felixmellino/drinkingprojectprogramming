@@ -34,7 +34,7 @@ def main() -> int:
     node = shutil.which("node")
     checks = []
     if "python" in args.group:
-        prefix = [sys.executable, '-m', 'coverage', 'run', '--branch', '--source=core,data', '-m'] if args.coverage else [sys.executable, '-m']
+        prefix = [sys.executable, '-m', 'coverage', 'run', '-m'] if args.coverage else [sys.executable, '-m']
         checks.append(("Python rules and Streamlit forms", prefix + ["pytest", "-q", "--junitxml=.venv/pytest.xml"]))
         if args.coverage:
             checks.extend([

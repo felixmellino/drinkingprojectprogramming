@@ -77,6 +77,9 @@ which branches were exercised; it does not prove the assertions are correct or
 that every input was tested. We report actual coverage rather than claiming an
 arbitrary percentage guarantees the grading outcome. Five targeted mutation
 checks demonstrate sensitivity to those five faults only, not every possible bug.
+`.coveragerc` measures all application Python, including pages and UI modules,
+and excludes tests, verification scripts and development dependencies. It does
+not inflate the result by counting executed test code as product coverage.
 
 ## What a critical examiner can try
 
