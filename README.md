@@ -479,7 +479,8 @@ and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).
 Apply [`migrations/012_player_lobby_choices.sql`](migrations/012_player_lobby_choices.sql)
 once before deploying this version (also required for new databases).
 It adds a server-only account preference; existing Player/Lobby models and
-scoring records are unchanged. In **Profile → Lobby**, choose **Make current**
+scoring records are unchanged. Open **Lobbies** using the round button below
+**Profile**, then choose **Make current**
 to switch Map, Ranks, Check-in, Minigames, and lobby photo history. The selected
 card shows **Current lobby**. **View lobby** opens the details independently.
 Creating a lobby with a season or joining an unfinished lobby also selects it,

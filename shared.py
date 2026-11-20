@@ -11,7 +11,7 @@ import streamlit as st
 import data.db as db
 from core.models import Player, Season, Territory
 from data.territory_file import load_territories, territory_file_version
-from account_ui import show_accounts
+from account_ui import show_accounts, show_welcome
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
@@ -45,6 +45,9 @@ def require_login() -> str:
             if player:
                 set_identity(player)
                 st.session_state["_device_token"] = token
+                # The app was just opened on a remembered device: greet with the start screen first.
+                if not st.session_state.get("start_seen") and "lobby_invite" not in st.query_params:
+                    st.session_state["_show_welcome"] = True
             else:
                 queue_storage("clear")
                 st.rerun()
@@ -60,6 +63,7 @@ def require_login() -> str:
         if not player or not player.email or player.pin_hash != st.session_state.get("credential_version"):
             st.session_state.clear()
             st.session_state["_remember_attempted"] = True
+            st.session_state["start_seen"] = True   # straight to the form, so "Please log in again" is visible
             queue_storage("clear")
             st.info("Please log in again.")
         else:
@@ -67,8 +71,15 @@ def require_login() -> str:
     if "player_id" not in st.session_state:
         notice = st.session_state.pop("_profile_notice", None)
         if notice:
+            st.session_state["start_seen"] = True   # a notice must not hide behind the start screen
             st.success(notice)
         show_accounts()
+        st.stop()
+    if st.session_state.get("_show_welcome"):
+        if show_welcome():   # one tap anywhere continues to the page that was opened
+            st.session_state.pop("_show_welcome", None)
+            st.session_state["start_seen"] = True
+            st.rerun()
         st.stop()
     try:
         restore_selection(st.session_state["player_id"])

@@ -66,11 +66,12 @@
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .stApp { background: var(--bg); color: var(--text); }
 [data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
-/* Invisible helpers (style blocks, the fixed tab bar, background location and
+/* Invisible helpers (style blocks, fixed navigation, background location and
    sign-in components) take no room, so pages don't start with an empty gap.
    They stay in the page and keep working. */
 .stApp [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style):not(:has([data-testid="stMarkdownContainer"] > :not(style))),
 .stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_bottom_nav),
+.stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_corner_nav),
 .stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission, .stApp .st-key-theme_reader {
   position: absolute !important; width: 0; height: 0; overflow: hidden; margin: 0; padding: 0;
 }

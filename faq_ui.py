@@ -19,12 +19,13 @@ POINTS_TABLE = "\n".join([
 FAQ = (
     ("Lobbies and teams", (
         ("How do I join a lobby?",
-         "Open **Profile → Lobbies → Join with a code**, enter the invite code, then tap **Join lobby**."),
+         "Tap the **Lobbies** button below **Profile**, then tap **Join with a code**. "
+         "Enter the invite code and tap **Join lobby**."),
         ("How do I create a lobby and invite friends?",
-         "Go to **Profile → Lobbies → Create a lobby**. Pick a name, Individual or Team mode, "
+         "Go to **Lobbies → Create a lobby**. Pick a name, Individual or Team mode, "
          "a duration, and a timezone. Tap **Create lobby**, then share the invite code from the lobby details."),
         ("How do I switch lobbies?",
-         "Go to **Profile → Lobbies** and tap **View lobby** on the one you want to play in. "
+         "Go to **Lobbies** and tap **Make current** on the active lobby you want to play in. "
          "Your selection controls what you see in **Map**, **Ranks**, **Check in**, **Games**, and **Photos**."),
         ("How do I join a team?",
          "Tap **Join team** on a team with space, or get assigned automatically if the lobby uses random assignment. "
