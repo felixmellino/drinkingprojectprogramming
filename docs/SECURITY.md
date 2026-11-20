@@ -52,6 +52,13 @@ unknown accounts, throttling and delivery failures; this does not guarantee equa
 network timing. Changing a password invalidates active and remembered sign-ins
 through the existing credential-version checks. Recovery never changes game data.
 
+Sign-in fetches one account by a case-insensitive, literal email match.
+Wrong passwords, unknown emails and throttled attempts receive the same
+message. The account throttle remains database-backed. A per-process limit
+of 30 dummy password checks per rolling minute covers unknown emails without
+storing those addresses. The limit resets on restart and covers password
+hashing after account lookup.
+
 ## Image handling
 
 Check-in accepts camera JPEGs up to 10 MiB and 20 million pixels. The byte

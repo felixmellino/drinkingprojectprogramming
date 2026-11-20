@@ -1,7 +1,9 @@
 import hashlib
+from collections import deque
 
 import pytest
 
+import core.auth as auth
 from core.auth import (authenticate, hash_password, new_token, normalize_email,
                        token_hash, validate_password, verify_password)
 from core.lobbies import create_player
@@ -27,10 +29,25 @@ def test_malformed_hash_is_rejected(stored):
 
 
 def test_email_login_ignores_case_and_whitespace(player):
-    assert authenticate(" MIA@EXAMPLE.COM ", "password8", [player]) == player
-    assert authenticate("mia", "password8", [player]) is None
-    assert authenticate(player.email, "wrong", [player]) is None
-    assert authenticate("unknown@example.com", "password8", [player]) is None
+    assert authenticate(" MIA@EXAMPLE.COM ", "password8", player) == player
+    assert authenticate("mia", "password8", player) is None
+    assert authenticate(player.email, "wrong", player) is None
+    assert authenticate("unknown@example.com", "password8", player) is None
+    assert authenticate("unknown@example.com", "password8", None) is None
+
+
+def test_unknown_login_attempts_have_a_bounded_rolling_window(monkeypatch):
+    attempts = deque()
+    monkeypatch.setattr(auth, "_unknown_login_attempts", attempts)
+    monkeypatch.setattr(auth, "monotonic", lambda: 0.0)
+    for _ in range(30):
+        assert auth.allow_unknown_login_attempt()
+    monkeypatch.setattr(auth, "monotonic", lambda: 59.99)
+    assert not auth.allow_unknown_login_attempt()
+    assert len(attempts) == 30
+    monkeypatch.setattr(auth, "monotonic", lambda: 60.0)
+    assert auth.allow_unknown_login_attempt()
+    assert len(attempts) == 1
 
 
 @pytest.mark.parametrize("password,confirmation", [("1234567", "1234567"), ("password8", "different"), ("        ", "        "), ("x" * 1025, "x" * 1025)])
@@ -75,7 +92,7 @@ def legacy_player():
 def test_legacy_player_cannot_log_in_without_email():
     old = legacy_player()
     assert verify_password("1234", old.pin_hash)
-    assert authenticate("mia@example.com", "1234", [old]) is None
+    assert authenticate("mia@example.com", "1234", old) is None
 
 
 def test_device_tokens_are_random_and_only_hash_is_stored():

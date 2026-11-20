@@ -60,3 +60,26 @@ def test_postgrest_wire_error_reaches_scoring_translation():
 def test_postgrest_error_attributes_used_by_app():
     error = APIError({'code': 'PGRST202', 'message': 'Missing function', 'details': None, 'hint': None})
     assert error.code == 'PGRST202' and error.message == 'Missing function'
+
+
+def test_login_filters_one_account_using_an_exact_case_insensitive_pattern(monkeypatch):
+    address = "mia.+*_%@example.com"
+    row = {
+        "id": "player-id", "display_name": "mia", "first_name": "Mia", "last_name": "Silva",
+        "pin_hash": "credential-hash", "email": "MIA.+*_%@example.com",
+    }
+
+    def respond(request):
+        assert request.url.path == "/players"
+        assert request.url.params["email"] == r"imatch.\Amia\.\+\*_%@example\.com\Z"
+        assert request.url.params["limit"] == "1"
+        return httpx.Response(200, json=[row])
+
+    with httpx.Client(transport=httpx.MockTransport(respond),
+                      base_url="https://database.example.invalid") as session:
+        with SyncPostgrestClient("https://database.example.invalid", http_client=session) as client:
+            monkeypatch.setattr(db, "get_client", lambda: client)
+            player = db._login_player_by_email(address)
+
+    assert player.id == row["id"]
+    assert player.email == row["email"]
