@@ -300,6 +300,29 @@ if st.button("Lose server session"):
         assert any(b.label == "Tap to continue" for b in at.button), "a fresh session starts with the start screen again"
 
 
+def test_the_start_screen_shows_once_even_when_app_py_jumps_to_the_map():
+    """Bug: after the tap, app.py skipped require_login and switched to the Map, whose
+    require_login still found the flag and showed the start screen a second time."""
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    app_like = '''
+import streamlit as st
+from shared import require_login
+if "player_id" not in st.session_state:
+    require_login()
+st.write("map")
+'''
+    with patch("device_login._browser_storage",
+               side_effect=lambda **c: {"request_id": c["request_id"], "token": "saved-token", "available": True}), \
+         patch("data.db.get_remembered_player", return_value=player), \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_string(app_like).run()
+        assert [b.label for b in at.button] == ["Tap to continue"]
+        form(at, "Tap to continue").click().run()
+        assert not at.exception and any("map" in m.value for m in at.markdown)
+        assert "_show_welcome" not in at.session_state and at.session_state["start_seen"] is True, \
+            "the Map's own require_login must not show the start screen again"
+
+
 def test_opening_the_app_signed_in_shows_the_start_screen_and_one_tap_continues():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     script = '''

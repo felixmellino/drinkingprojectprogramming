@@ -20,12 +20,20 @@ def _start_brand():
             '<h1 class="start-word">WeGo<i>Pub</i></h1></div>')
 
 
-def show_welcome() -> bool:
+def _continue_after_welcome():
+    # A callback runs before the next script run, whichever page script that is. app.py skips
+    # require_login once the player is known and jumps to the Map, so clearing the flag inside
+    # the page would come too late and the Map would show the start screen a second time.
+    st.session_state.pop("_show_welcome", None)
+    st.session_state["start_seen"] = True
+
+
+def show_welcome() -> None:
     """Start screen for a player who opens the app already signed in (remembered device):
-    the same icon and wordmark, one tap anywhere continues. Returns True on that tap."""
+    the same icon and wordmark, one tap anywhere continues (once per opening)."""
     _start_brand()
     with st.container(key="start_continue"):
-        return st.button("Tap to continue", key="start_continue_button", width="stretch")
+        st.button("Tap to continue", key="start_continue_button", width="stretch", on_click=_continue_after_welcome)
 
 
 def show_start():
