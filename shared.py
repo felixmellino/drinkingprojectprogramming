@@ -221,6 +221,7 @@ def _load_and_sync(version: str) -> list[Territory]:
 
 
 def show_logged_in_as():
-    st.sidebar.caption(f"Logged in as **{st.session_state.get('player_display_name', '?')}**")
-    if "current_lobby_name" in st.session_state:
-        st.sidebar.caption(f"Lobby: **{st.session_state['current_lobby_name']}**")
+    """Kept for the pages that call it. It used to write "Logged in as" into the
+    sidebar, which the app always hides; writing there made the sidebar flash
+    open on every load, so it now shows nothing (the Profile button names you)."""
+    return None
