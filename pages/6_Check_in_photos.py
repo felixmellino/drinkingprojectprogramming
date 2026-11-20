@@ -93,16 +93,22 @@ if len(entries) > 1 and detail_id is None:
     visible_nights = history_pages(shown[:count], max_photos=count + 1, max_nights=count + 1)[0]
 
     visible = [item for _, _, items in visible_nights for item in items]
+    ids = [item['id'] for item in visible]
+    photos = {}
     try:
-        # One fresh audience snapshot for this visible batch, never a cached listing.
-        originals = db.download_checkin_photos(player_id, lobby_id, [item['id'] for item in visible])
-        # Decode one thumbnail at a time to bound memory for large camera images.
-        photos = {item['id']: photo_thumbnail(originals.get(item['id'])) for item in visible}
+        # The list can hold more photos than one authorization batch allows: every slice of at most
+        # MAX_PHOTO_BATCH photos gets its own fresh audience snapshot, never a cached listing.
+        for start in range(0, len(ids), db.MAX_PHOTO_BATCH):
+            batch = ids[start:start + db.MAX_PHOTO_BATCH]
+            try:
+                originals = db.download_checkin_photos(player_id, lobby_id, batch)
+                # Decode one thumbnail at a time and drop the originals, to bound memory for large camera images.
+                photos.update({entry_id: photo_thumbnail(originals.get(entry_id)) for entry_id in batch})
+            except (APIError, RequestError, RuntimeError, StorageException):
+                photos.update(dict.fromkeys(batch))   # this slice failed; the others still show
     except PermissionError:
         st.warning("Photo access changed. Refresh to load the current photo history.")
         st.stop()
-    except (APIError, RequestError, RuntimeError, StorageException):
-        photos = dict.fromkeys(item['id'] for item in visible)
     if any(photos.get(item['id']) is None and item.get('has_photo',True) for item in visible):
         st.warning('Some photos could not be loaded. Their details are still available.')
 
