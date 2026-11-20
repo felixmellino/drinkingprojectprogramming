@@ -4,7 +4,7 @@ const {fixture,uid}=require('./quiz_fixture.cjs');
 (async()=>{
  let f;
  try{
-  f=await fixture({modulePath:'.venv/photo-sql-check/package/dist/index.cjs',disk:path.resolve('.venv','focus-complete-'+Date.now())});
+  f=await fixture({modulePath:process.argv[2]||process.env.PGLITE_MODULE,disk:path.resolve('.venv','focus-complete-'+Date.now())});
   const install=async file=>f.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
   await install('012_player_lobby_choices.sql');
   await install('015_focus_test_replays.sql');await install('016_leave_lobby.sql');
