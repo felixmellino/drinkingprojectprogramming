@@ -215,8 +215,10 @@ def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
     events += [((0, transfer.event_order, transfer.id), 2, transfer) for transfer in transfers]
     for index, (_, kind, entry) in enumerate(sorted(events, key=lambda event: (event[0], event[1]))):
         if kind == 2:
-            if type(entry.points) is not int or not 3 <= entry.points <= 10 or entry.source_id == entry.target_id:
-                raise ValueError('Invalid quiz stake transfer.')
+            # Shared ledger: Quiz Duel stakes are 3-10, Reaction Duel stakes 1-10
+            # (R-M11, migration 025), so accept the wider range here.
+            if type(entry.points) is not int or not 1 <= entry.points <= 10 or entry.source_id == entry.target_id:
+                raise ValueError('Invalid duel stake transfer.')
             prior_order = {account: rank for rank, (account, _) in enumerate(state.season_rows())}
             for account, delta in ((entry.source_id, -entry.points * 4), (entry.target_id, entry.points * 4)):
                 state.season_quarters[account] = state.season_quarters.get(account, 0) + delta

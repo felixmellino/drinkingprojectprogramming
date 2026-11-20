@@ -72,8 +72,14 @@ These presentation choices introduce no new scoring or database rules.
 - Check-in starts with the camera. Drink/size controls appear only after a
   fresh photo is present, followed by the location status and submission.
   Drink/size choices have large selectable areas and an immediate points
-  preview. Closed-window/cooldown messages appear before the form, and Submit
-  spans the available width. Camera permission remains controlled by the browser.
+  preview. Submit spans the available width. Camera permission remains
+  controlled by the browser.
+- Update, 20 November 2026: the scoring window and cooldown are checked before
+  the camera opens. If a check-in can't count, one card replaces the camera:
+  "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and
+  timezone), "Season starts …" or "Season over" (with Open Lobbies), plus a
+  Check again button. A photo already taken keeps the old warnings under it
+  and Submit stays disabled.
 - Follow-up, 18 November 2026: tapping the central + mounts the camera
   into a full-viewport stage, hiding page navigation while taking the photo.
   The camera has a bottom-centre circular shutter, a front/back switch and
@@ -245,9 +251,14 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   points", or "Owned by Y: you need X more points to take it" (owner's
   territory points − yours + 1, because a tie keeps the owner, R-R01).
   Owner income never counts towards territory points.
-- A blue dot shows where you are (automatic location, R-L01/R-L04), with a
-  line saying which territory you're in; nothing is shown if location is
-  blocked, stale or worse than 50 m.
+- A white dot with a navy ring shows where you are (automatic location,
+  R-L01/R-L04); nothing is shown if location is blocked, stale or worse than
+  50 m.
+- The bottom card names the territory you're in. For an owned territory it is
+  a tug-of-war (19 November 2026): one big number ("4 pts to take it" in
+  scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
+  your territory points against the owner's (or your closest rival's). The
+  full sentence stays as screen-reader text. Unclaimed areas keep one line.
 - Hovering or tapping an area tints it in the app's dark green.
 - The base map shows streets, parks and water in colour (Carto Voyager).
 - Three cards below the map: territories you own (e.g. "1 of 48"),

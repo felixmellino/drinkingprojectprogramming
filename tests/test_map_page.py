@@ -233,3 +233,47 @@ def test_territory_rows_carry_a_ranking_in_standings_order(phone):
     assert [(r["id"], r["name"], r["points"], r["you"]) for r in rows[0]["ranking"]] == [
         ("rival", "rival", 4, False), ("me", "felix", 3, True)]
     assert rows[1]["ranking"] == []
+
+
+# -- Tug-of-war card (owned territory you stand in) ---------------------
+
+def _here(status, mine, *, owner="Leo", owner_points=0, needed=None, ranking=None):
+    return {"name": "Bairro Alto", "status": status, "my_points": mine, "owner": owner,
+            "owner_points": owner_points, "needed": needed, "ranking": ranking or [],
+            "detail": "the full sentence"}
+
+
+def test_tug_of_war_on_a_rivals_territory_shows_points_to_take_it():
+    import map_ui
+    html = map_ui.tug_of_war(_here("theirs", 4, owner_points=7, needed=4))
+    assert "owned by Leo" in html and "<b>4</b><em>pts to take it</em>" in html
+    assert 'class="tug-you" style="width:36%"' in html and 'style="width:64%"' in html
+    assert "You 4" in html and "Leo 7" in html
+    assert '<p class="sr-only">the full sentence</p>' in html
+
+
+def test_tug_of_war_on_your_territory_shows_your_lead_over_the_closest_rival():
+    import map_ui
+    ranking = [{"name": "felix", "points": 5, "you": True}, {"name": "Ana", "points": 3, "you": False},
+               {"name": "Ben", "points": 1, "you": False}]
+    html = map_ui.tug_of_war(_here("yours", 5, owner="felix", owner_points=5, ranking=ranking))
+    assert "<b>+2</b><em>your lead</em>" in html and "Ana 3" in html and "Ben" not in html
+
+
+def test_tug_of_war_alone_on_your_territory_has_a_full_bar():
+    import map_ui
+    ranking = [{"name": "felix", "points": 3, "you": True}]
+    html = map_ui.tug_of_war(_here("yours", 3, ranking=ranking))
+    assert "No rival yet 0" in html and 'class="tug-you" style="width:100%"' in html
+
+
+def test_tug_of_war_escapes_names():
+    import map_ui
+    html = map_ui.tug_of_war(_here("theirs", 0, owner="<b>x</b>", owner_points=1, needed=2))
+    assert "<b>x</b>" not in html and "&lt;b&gt;x&lt;/b&gt;" in html
+
+
+def test_card_uses_tug_of_war_inside_a_rivals_territory(phone):
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    message = card(open_map())
+    assert 'class="tug-bar"' in message and "pts to take it" in message

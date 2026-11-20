@@ -72,10 +72,10 @@ def hud(lobby_name: str, rows: list[dict]) -> None:
 def location_card(here: dict | None, status: str, accuracy_m: float | None = None) -> None:
     """Bottom card floating over the map: where you are and what it means.
     status: "matched", "outside", "inaccurate", "denied", "off" or "waiting"."""
-    if status == "matched" and here:
-        tone = {"yours": "game-yours", "theirs": "game-theirs"}.get(here["status"], "")
-        body = (f'<small>You are in</small><h3>{escape(here["name"])}</h3>'
-                f'<p class="{tone}">{escape(here["detail"])}</p>')
+    if status == "matched" and here and here["status"] in ("yours", "theirs"):
+        body = tug_of_war(here)
+    elif status == "matched" and here:
+        body = f'<small>You are in</small><h3>{escape(here["name"])}</h3><p>{escape(here["detail"])}</p>'
     elif status == "outside":
         body = "<small>You are</small><h3>Outside the map</h3><p>Drinks here count for season points only.</p>"
     elif status == "inaccurate":
@@ -88,6 +88,33 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
     else:
         body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
+
+
+def tug_of_war(here: dict) -> str:
+    """Card body for an owned territory you stand in: one big number (points
+    to take it, or your lead) and a bar of you against the owner / your
+    closest rival. The full sentence stays as screen-reader text."""
+    me = here["my_points"]
+    if here["status"] == "theirs":
+        rival_name, rival = here["owner"], here["owner_points"]
+        eyebrow, number, unit, tone = f"You are in · owned by {rival_name}", format_points(here["needed"]), "pts to take it", "game-theirs"
+    else:
+        rivals = [r for r in here["ranking"] if not r["you"]]
+        rival_name, rival = (rivals[0]["name"], rivals[0]["points"]) if rivals else ("No rival yet", 0)
+        lead = me - rival
+        eyebrow, number, unit, tone = "You are in · yours", f"+{format_points(lead)}", "your lead", "game-yours"
+    total = me + rival
+    share = 50 if total <= 0 else round(100 * float(me) / float(total))
+    return (
+        f'<small>{escape(eyebrow)}</small>'
+        f'<div class="tug-head"><h3>{escape(here["name"])}</h3>'
+        f'<span class="tug-number {tone}"><b>{escape(number)}</b><em>{escape(unit)}</em></span></div>'
+        f'<div class="tug-bar" aria-hidden="true"><i class="tug-you" style="width:{share}%"></i>'
+        f'<i class="tug-rival" style="width:{100 - share}%"></i></div>'
+        f'<div class="tug-labels" aria-hidden="true"><span class="game-yours">You {escape(format_points(me))}</span>'
+        f'<span class="game-theirs">{escape(rival_name)} {escape(format_points(rival))}</span></div>'
+        f'<p class="sr-only">{escape(here["detail"])}</p>'
+    )
 
 
 def markdown_safe(text: str) -> str:

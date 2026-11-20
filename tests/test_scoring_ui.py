@@ -78,6 +78,11 @@ def set_location(page, state, accuracy_m=10, age_seconds=0):
     page.run()
 
 
+def gate(page):
+    """Text of the 'check-in not open' card shown instead of the camera."""
+    return "".join(item.value for item in page.markdown if 'gate-card' in item.value)
+
+
 def reward(page):
     """Text of the check-in reward card (empty when none is shown)."""
     return "".join(item.value for item in page.markdown if 'class="reward-card"' in item.value)
@@ -182,8 +187,12 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     assert not page.exception and reward(page)
     assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
     assert not page.radio and button(page, 'New check-in')
+    # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
+    assert not page.exception and camera.call_count == 1 and 'Next check-in in' in gate(page)
+    state['now'] = state['now'] + timedelta(seconds=120)
+    button(page, 'Check again').click().run()
     assert not page.exception and camera.call_count == 2 and not page.radio
 
 
@@ -217,20 +226,51 @@ def test_location_starts_before_camera_capture(ui, monkeypatch):
     assert not any(item.label == 'Submit' for item in page.button)
 
 
-def test_outside_window_blocks_submission_and_shows_next_opening(ui):
+def test_outside_window_shows_next_opening_before_the_camera(ui, monkeypatch):
     state, _ = ui
+    camera = Mock(return_value=state["photo"])
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
     state["now"] = START + timedelta(days=3)
     page = open_checkin()
+    assert not page.exception and camera.call_count == 0
+    card = gate(page)
+    assert "Game night opens" in card and "Europe/Lisbon" in card
+    assert not any(b.label == "Submit" for b in page.button) and button(page, "Check again")
+    assert state["entries"] == []
+
+
+def test_window_closing_after_the_photo_still_blocks_submission(ui):
+    state, _ = ui
+    page = open_checkin()
+    set_location(page, state)
+    state["now"] = START + timedelta(days=3)
+    page.run()
     assert not page.exception and button(page, "Submit").disabled
     assert any("Scoring is closed" in item.value and "Europe/Lisbon" in item.value for item in page.warning)
     assert state["entries"] == []
 
 
-def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
+def test_cooldown_shows_countdown_instead_of_the_camera(ui, monkeypatch):
     state, _ = ui
+    camera = Mock(return_value=state["photo"])
+    monkeypatch.setattr('camera_capture.camera_photo', camera)
     state["now"] = START + timedelta(seconds=60)
     state["entries"] = [entry("saved", "member", "shot", None, 0)]
     page = open_checkin()
+    assert not page.exception and camera.call_count == 0
+    assert "1:00" in gate(page) and "every 2 minutes" in gate(page)
+    state["now"] = START + timedelta(seconds=120)
+    button(page, "Check again").click().run()
+    assert not page.exception and camera.call_count == 1
+
+
+def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
+    # A photo taken before the cooldown started (e.g. a check-in from another
+    # device) is kept, with the wait shown under it.
+    state, _ = ui
+    state["now"] = START + timedelta(seconds=60)
+    page = open_checkin()
+    state["entries"] = [entry("saved", "member", "shot", None, 0)]
     set_location(page, state)
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
