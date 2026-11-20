@@ -394,12 +394,15 @@ See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [
 ## Profile menu (implemented 18 November 2026)
 
 The authenticated Profile is a vertical list: **Lobbies**, **Edit profile**, **Friends**,
-**My stats**, **Account & security**, a **Location** switch (R-L01, 20 November 2026), then
+**My stats**, **Account & security**, **FAQ / Help**, a **Location** switch (R-L01, 20 November 2026), then
 **Log out**. Photo history has no entry here any more (it is the Photos tab in the bar).
 Edit profile, Friends, My stats and Account & security each open a separate view with
 **Back to Profile**. Logout is immediate. The Location switch asks the browser for
 permission when turned on and shows Off / On with accuracy / Blocked.
 
+- FAQ / Help opens a dialog over Profile. Questions start collapsed and are
+  grouped by lobbies and teams, check-ins and points, map and rankings, and
+  games and photos. Tapping a question expands its answer in place.
 - Edit profile updates username, first name and surname. Names use the same
   required/100-character limits as registration. Usernames remain unique,
   ignoring case and surrounding whitespace. Player ID, email, credentials,
