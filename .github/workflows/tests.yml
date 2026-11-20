@@ -17,20 +17,26 @@ jobs:
   pytest:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.14']
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
       - name: Install pinned app dependencies
         run: |
           python -m pip install --upgrade pip==26.3
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-verification.txt
           python -m pip check
       - name: Run the test suite
-        run: python scripts/verify.py --group python
+        run: python scripts/verify.py --group python --coverage
+      - name: Prove critical assertions detect broken rules
+        run: python scripts/verify.py --group mutations --report .venv/mutation-verification.json
       - name: Audit installed dependencies
         run: |
           python -m pip list --format=freeze > "$RUNNER_TEMP/wegopub-dependencies.txt"
@@ -41,8 +47,83 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: python-verification
-          path: .venv/verification.json
+          name: python-verification-${{ matrix.python }}
+          path: |
+            .venv/verification.json
+            .venv/pytest.xml
+            .venv/coverage.json
+            .venv/coverage-html
+            .venv/mutations.json
+            .venv/mutation-verification.json
+          include-hidden-files: true
+          retention-days: 14
+
+  postgres-transactions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
+        env:
+          POSTGRES_USER: verification
+          POSTGRES_PASSWORD: verification-only
+          POSTGRES_DB: wegopub_verification
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U verification -d wegopub_verification"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-verification.txt
+      - name: Race real database transactions
+        env:
+          VERIFICATION_DATABASE_URL: postgresql://verification:verification-only@127.0.0.1:5432/wegopub_verification
+          VERIFICATION_CONTAINER_ID: ${{ job.services.postgres.id }}
+        run: python scripts/verify.py --group postgres
+      - name: Save transaction results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: postgres-transactions
+          path: |
+            .venv/verification.json
+            .venv/postgres.xml
+          include-hidden-files: true
+          retention-days: 14
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Play a two-user game and reload mid-round
+        run: python scripts/verify.py --group browser
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-verification
+          path: |
+            .venv/verification.json
+            .venv/quiz-browser-qa
           include-hidden-files: true
           retention-days: 14
 
