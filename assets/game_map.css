@@ -26,27 +26,24 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Two separate frosted-white shapes under the top bar, no outline: the area buttons (Lisbon, Nova, stacked)
-   on the left and the Location switch on the right. The same white as the top bar and the tab bar, a little
-   see-through, with dark type like the rest of the app. */
+/* Three separate frosted-white pills under the top bar, no outline: Lisbon and Nova stacked on the left,
+   Location on the right. The same white as the top bar and tab bar, brighter and more see-through
+   (the glass lightens the map behind it, so a lower opacity still reads as white). Dark type like the app. */
 .st-key-map_bar { position: absolute; z-index: 6; left: 12px; right: 12px; top: 60px; display: flex !important; flex-direction: row !important;
   align-items: flex-start; justify-content: space-between; gap: 8px !important; pointer-events: none; }
 .st-key-map_bar > [data-testid="stElementContainer"], .st-key-map_bar > [data-testid="stLayoutWrapper"] { width: auto !important; margin: 0 !important; pointer-events: auto; }
-.st-key-map_areas, .stApp .st-key-map_location {
-  background: rgba(255, 255, 255, .78); border: 0;
-  box-shadow: var(--shadow-card); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
-.st-key-map_areas { display: flex !important; flex-direction: column !important; align-items: stretch; gap: 0 !important;
-  width: max-content !important; padding: 3px 0; border-radius: 20px; overflow: hidden; }
-.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: 100% !important; margin: 0 !important; }
-.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: 100%;
-  min-height: 34px; padding: 0 16px 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
-  color: var(--text); white-space: nowrap; }
+.stApp .st-key-map_areas button, .stApp .st-key-map_location {
+  background: rgba(255, 255, 255, .72); border: 0; box-shadow: 0 2px 10px rgba(20, 43, 61, .10);
+  backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); -webkit-backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); }
+.st-key-map_areas { display: flex !important; flex-direction: column !important; align-items: flex-start; gap: 6px !important; width: max-content !important; }
+.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: auto !important; margin: 0 !important; }
+.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: auto;
+  min-height: 34px; padding: 0 16px 0 11px; border-radius: 999px; color: var(--text); white-space: nowrap; }
 .stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 18px; width: 18px; height: 18px; margin: 0;
-  background-color: currentColor;
-  -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
+  background-color: currentColor; -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
 .stApp .st-key-map_areas button p { margin: 0; font-size: .8rem; font-weight: inherit; line-height: 1; color: inherit; }
-.stApp .st-key-map_areas button:hover { background: var(--accent-soft); color: var(--text); }
-.stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.stApp .st-key-map_areas button:hover { background: rgba(236, 246, 252, .85); color: var(--text); }
+.stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
 .st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
@@ -104,7 +101,7 @@
 .tt-none:empty { display: none; }
 
 /* Location switch: its own glass pill on the right (the glass is drawn here, not inside the transparent frame). */
-.stApp .st-key-map_location { position: static; width: 112px !important; height: 36px; margin: 0; padding: 0; border-radius: 999px;
+.stApp .st-key-map_location { position: static; width: 112px !important; height: 34px; margin: 0; padding: 0; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; width: 100% !important; }
 .stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
