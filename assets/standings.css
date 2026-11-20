@@ -50,7 +50,6 @@
 
 /* On the upper of two tied rows: makes the earliest-reached tie rule visible. */
 .standings-first-tag { display: inline-block; margin-left: 4px; padding: 1px 5px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-ink); font-size: 0.6rem; font-weight: 700; vertical-align: middle; }
-.standings-row-you { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-card); }
 
 @media (max-width: 480px) {
   .standings-podium-1 .standings-podium-avatar { width: 44px !important; height: 44px !important; }
