@@ -370,9 +370,10 @@ popup. This preserves the member UI from main and the team competition rules.
 ## Remembered lobby context (18 November 2026)
 
 `lobby_selection.py` owns session context and restoration. `shared.require_login`
-restores after authentication, before any page uses the context. The Lobby
-page saves explicit choices through `data/db.py`; closing a dialog keeps the
-context. Migration 012 stores one preference per account behind service-role
+restores after authentication, before any page uses the context, and again
+when the selected season expires. The Lobby page saves **Make current** and
+successful create/join choices through `data/db.py`; opening and closing a
+details dialog keep that context. Migration 012 stores one preference per account behind service-role
 access. Do not treat a saved lobby ID as authorization; existing membership
 checks still run on every protected workflow. See the remembered-selection
 workflow in `docs/ontology/WORKFLOWS.md` and the migration/verification steps

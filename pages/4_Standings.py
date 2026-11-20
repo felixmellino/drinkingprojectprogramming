@@ -18,11 +18,11 @@ from shared import get_territories, require_active_membership, require_login, sh
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Ranks")
+page_header("Ranks", st.session_state.get("current_lobby_name", ""))
 standings_ui.load_styles()
 
 try:
-    if st.session_state.get("current_membership_id") and st.session_state.get("current_season_id"):
+    if st.session_state.get("current_membership_id"):
         membership_id, lobby_id, season_id = require_active_membership()
         lobby_mode = st.session_state.get("current_lobby_mode")
         season = st.session_state.get("_validated_season")
@@ -34,6 +34,7 @@ try:
                 st.switch_page("pages/2_Lobby.py")
             st.stop()
         lobby, member, season = fallback
+        st.text(lobby.name)
         membership_id, lobby_id, season_id = member.id, lobby.id, season.id
         member, season = db.membership_context(player_id, membership_id, lobby_id, season_id)
         if member is None or season is None:

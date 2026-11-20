@@ -107,13 +107,11 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                     else:
                         st.session_state['_team_notice'] = 'Team joined.'
                         st.rerun()
-    if season and st.button('View leaderboard', width='stretch'):
-        dismiss_lobby_dialog()
-        st.switch_page('pages/4_Standings.py')
+    from lobby_ui import delete_lobby_controls, leave_lobby_controls, lobby_leaderboard, retry_setup
     if season is None:
-        from lobby_ui import retry_setup
         retry_setup(player_id, lobby)
-    from lobby_ui import delete_lobby_controls, leave_lobby_controls
+    else:
+        lobby_leaderboard(player_id, lobby, me, season)
     leave_lobby_controls(player_id, lobby)
     delete_lobby_controls(player_id, lobby)
     if st.button('Close', key='close_lobby_teams'):
