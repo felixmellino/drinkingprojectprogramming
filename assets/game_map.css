@@ -67,7 +67,7 @@
 .game-card .tug-sub { margin: 1px 0 0; font-size: .74rem; line-height: 1.25; color: var(--text-muted); }
 .game-card .tug-pill { flex-shrink: 0; white-space: nowrap; padding: 4px 10px; border-radius: var(--radius-pill);
   font-size: .76rem; font-weight: 700; }
-.game-card .tug-pill-theirs { background: #FDECEC; color: var(--territory-theirs-ink); }
+.game-card .tug-pill-theirs { background: var(--brand-soft); color: var(--territory-theirs-ink); }
 .game-card .tug-pill-yours { background: var(--accent-soft); color: var(--territory-yours-ink); }
 .game-card .tug-bar { display: flex; height: 6px; margin-top: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--border); }
 .game-card .tug-bar i { display: block; height: 100%; }

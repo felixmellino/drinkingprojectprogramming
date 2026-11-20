@@ -11,9 +11,13 @@ from html import escape
 from pathlib import Path
 
 import streamlit as st
+from streamlit.components.v1 import declare_component
 
 _ASSETS = Path(__file__).parent / "assets"
 _CSS = _ASSETS / "theme.css"
+_DARK_CSS = _ASSETS / "theme_dark.css"
+_DARK_KEY = "wego_dark_mode"
+_theme_switch = declare_component("theme_switch", path=str(Path(__file__).parent / "components" / "theme_switch"))
 
 
 @cache
@@ -49,10 +53,54 @@ def button_icons(icons: dict[str, str]) -> None:
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
+def dark_mode() -> bool:
+    """Whether this player turned on dark mode (remembered in their browser)."""
+    return bool(st.session_state.get(_DARK_KEY))
+
+
+def component_tokens() -> str:
+    """The colour/type tokens for components drawn in their own frame (switches,
+    duel boards): the light set, plus the dark one when dark mode is on."""
+    css = _CSS.read_text(encoding="utf-8")
+    tokens = css[css.index(":root {"):css.index("/* Base */")]
+    if dark_mode():
+        dark = _DARK_CSS.read_text(encoding="utf-8")
+        tokens += dark[dark.index(":root {"):dark.index("}", dark.index(":root {")) + 1]
+    return tokens
+
+
+def _sync_dark_mode() -> None:
+    """An invisible reader tells this session what the browser remembers.
+    It is applied once per visit only: the reader keeps reporting the value it
+    read at page load, which must not undo a later tap on the switch."""
+    if st.session_state.get("_wego_dark_synced"):
+        return
+    with st.container(key="theme_reader"):
+        saved = _theme_switch(mode="reader", key="theme_reader_frame", default=None)
+    if saved not in ("dark", "light"):
+        return
+    st.session_state["_wego_dark_synced"] = True
+    if (saved == "dark") != dark_mode():
+        st.session_state[_DARK_KEY] = saved == "dark"
+        st.rerun()
+
+
+def dark_mode_switch() -> None:
+    """The visible Dark mode switch (Profile, under Location)."""
+    value = _theme_switch(mode="switch", current=dark_mode(), tokens=component_tokens(),
+                          key="theme_switch", default=None)
+    if value in ("dark", "light") and (value == "dark") != dark_mode():
+        st.session_state[_DARK_KEY] = value == "dark"
+        st.rerun()
+
+
 def apply_theme() -> None:
     css = _CSS.read_text(encoding="utf-8")
     css += f':root{{--icon-caret-right:url("{icon_url("caret-right")}");}}'
+    if dark_mode():
+        css += _DARK_CSS.read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    _sync_dark_mode()
 
 
 def wordmark(name: str = "WeGoPub") -> None:

@@ -13,7 +13,7 @@ from faq_ui import show_faq
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
-from theme import empty_state, menu_icons
+from theme import dark_mode_switch, empty_state, menu_icons
 from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
@@ -52,6 +52,7 @@ def show_profile(player):
                 show_faq()
         # Location: a real switch; the tap makes the browser ask for permission right away.
         location_switch()
+        dark_mode_switch()
         with st.container(key="menu_list_logout"):
             if st.button("Log out", width="stretch", key="profile_logout"):
                 log_out()

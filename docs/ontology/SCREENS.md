@@ -146,6 +146,18 @@ The shared navigation and Standings refresh below were explicitly requested
 as follow-ups. Account/lobby behavior and the map remain separate blocks. The
 broader screen proposal below remains a future design outline.
 
+## Dark mode (20 November 2026, team decision)
+
+Profile has a **Dark mode** switch under Location. The choice is remembered in
+this browser (like the Location switch), not in the database; it is off by
+default. When on, `assets/theme_dark.css` is loaded after `theme.css` and
+redefines the same tokens (navy-black background, dark blue cards, the
+palette's sky and scarlet slightly brighter), plus overrides for Streamlit's
+own inputs, selectboxes, alerts, expanders and dialogs. Components drawn in
+their own frame (switches, duel boards) get the dark tokens too through
+`theme.component_tokens()`. An invisible reader applies the saved choice once
+per visit, so the very first page of a visit can briefly show light.
+
 ## Empty states (20 November 2026)
 
 When a screen has nothing yet, one card replaces the old blue info box

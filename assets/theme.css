@@ -22,7 +22,8 @@
   --border: rgb(20 43 61 / .12);  /* ink at low alpha, not a solid hex -- blends on any surface colour */
   --hud-bg: rgba(255, 255, 255, .92);
   --brand: #EB2F33;            /* wordmark only, large text */
-  --brand-ink: #C0242A;        /* subtle red: lobby countdowns -- never a fill */
+  --brand-ink: #C0242A;
+  --brand-soft: #FDECEC;       /* pale scarlet behind small scarlet text (pills, chips) */        /* subtle red: lobby countdowns -- never a fill */
   /* territory colours: yours = Sky, theirs = Scarlet, free = grey. Blue vs
      red stays distinct for red-green colour-blind players. Use the -ink
      shades whenever the colour is small text. */
@@ -70,7 +71,7 @@
    They stay in the page and keep working. */
 .stApp [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style):not(:has([data-testid="stMarkdownContainer"] > :not(style))),
 .stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_bottom_nav),
-.stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission {
+.stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission, .stApp .st-key-theme_reader {
   position: absolute !important; width: 0; height: 0; overflow: hidden; margin: 0; padding: 0;
 }
 /* No empty Streamlit header bar: it only held the app menu and took the

@@ -1,0 +1,59 @@
+/* Dark mode (Profile → Dark mode). Loaded after theme.css only when the
+   player turned it on: it redefines the same tokens, so every page style
+   that uses them follows. Navy-black background, dark blue cards, the
+   palette's sky and scarlet a little brighter for contrast on dark. */
+:root {
+  color-scheme: dark;
+  --bg: #0E1A24;
+  --surface: #172938;
+  --surface-raised: #1E3446;
+  --text: #E8F1F7;
+  --text-muted: #9BB4C6;
+  --accent: #2C99D6;
+  --accent-hover: #48A9E0;
+  --accent-ink: #7CC3EE;
+  --accent-soft: #1B3A52;
+  --on-accent: #0E1A24;
+  --border: rgb(232 241 247 / .14);
+  --hud-bg: rgba(23, 41, 56, .92);
+  --brand: #FF5A5E;
+  --brand-ink: #FF8A8C;
+  --brand-soft: #3A1A1E;
+  --success-ink: #5FD08F;
+  --medal-2: #9FB0BC;
+  --medal-3: #C08A55;
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, .05), 0 6px 18px rgba(0, 0, 0, .35);
+  --shadow-float: 0 14px 36px rgba(0, 0, 0, .5);
+}
+
+/* Streamlit's own parts follow the light config theme; restate them dark. */
+.stApp, .stApp [data-testid="stMarkdownContainer"], .stApp :is(h1, h2, h3, h4, h5, h6) { color: var(--text); }
+.stApp [data-testid="stHeader"], .stApp [data-testid="stBottomBlockContainer"] { background: transparent; }
+.stApp input, .stApp textarea { color: var(--text) !important; -webkit-text-fill-color: var(--text); }
+.stApp input::placeholder, .stApp textarea::placeholder { color: var(--text-muted); -webkit-text-fill-color: var(--text-muted); }
+.stApp [data-baseweb="input"], .stApp [data-baseweb="base-input"], .stApp [data-baseweb="select"] > div,
+.stApp [data-baseweb="textarea"] { background: var(--surface) !important; border-color: var(--border) !important; }
+.stApp [data-baseweb="select"] * { color: var(--text); }
+[data-baseweb="popover"] [role="listbox"], [data-baseweb="popover"] ul, [data-baseweb="menu"] { background: var(--surface) !important; }
+[data-baseweb="popover"] li, [data-baseweb="popover"] [role="option"] { color: var(--text) !important; }
+/* Newer Streamlit selectboxes are react-aria comboboxes, not baseweb. */
+.stApp [data-testid="stSelectbox"] .react-aria-ComboBox > div { background: var(--surface) !important; border-color: var(--border) !important; }
+/* Its open list is a separate dropdown attached to <body>. */
+[data-testid="stSelectboxVirtualDropdown"] { background: var(--surface) !important; }
+[data-testid="stSelectboxVirtualDropdown"] [role="option"] { color: var(--text) !important; }
+[data-testid="stSelectboxVirtualDropdown"] [role="option"]:hover,
+[data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] { background: var(--accent-soft) !important; }
+body { background: var(--bg); }
+.stApp [data-testid="stAlertContainer"] { background: var(--accent-soft); color: var(--text); }
+.stApp [data-testid="stAlertContainer"] * { color: var(--text); }
+.stApp [data-testid="stBaseButton-secondary"], .stApp [data-testid="stBaseButton-secondaryFormSubmit"],
+.stApp [data-testid="stBaseButton-tertiary"] { color: var(--text); }
+.stApp [data-testid="stBaseButton-secondary"] p, .stApp [data-testid="stBaseButton-tertiary"] p { color: var(--text); }
+.stApp [data-testid="stExpander"] details, .stApp [data-testid="stExpander"] summary { background: var(--surface); color: var(--text); }
+.stApp [data-testid="stRadio"] label p, .stApp [data-testid="stCheckbox"] label p, .stApp [data-testid="stToggle"] label p { color: var(--text); }
+.stApp [data-testid="stDataFrame"] { filter: invert(.9) hue-rotate(180deg); }
+/* Dialogs (Friends, lobby forms, player sheet) render outside .stApp. */
+[data-testid="stDialog"] > div { background: var(--surface) !important; color: var(--text); }
+[data-testid="stDialog"] :is(h1, h2, h3, p, label, span, li) { color: var(--text); }
+[data-testid="stDialog"] [data-testid="stCaptionContainer"] p { color: var(--text-muted); }
+.sheet-stat { background: var(--bg); }
