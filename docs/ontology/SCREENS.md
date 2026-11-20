@@ -242,16 +242,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
-- Two area buttons, **Lisbon** (skyline icon) and **Nova** (graduation-cap icon) stand on the left
-  side under the top bar as white icon + text straight on the map, with no card behind them and a
-  soft shadow for legibility (20 November 2026; they replaced the stretched chip row, and the other
-  areas and "All" were removed). The picked one turns bright white and bold. With nothing picked
-  the map starts on you when your position is usable, otherwise on Lisbon; tapping the picked one
-  again returns to that start.
-- A small **Location** label with a switch sits right-aligned under the top bar, also transparent and white
-  (20 November 2026). It is the same on/off choice as the Profile switch
-  (R-L01) and also follows the phone's position while on. If the browser forgot its answer
-  the pill shows Off and a tap turns it on.
+- Under the top bar runs one transparent white (frosted glass) capsule from the left to the right edge
+  with rounded ends (20 November 2026). Left in it: the two area buttons **Lisbon** (skyline icon) and
+  **Nova** (graduation-cap icon), white icon + text side by side; right: the **Location** label with
+  its small switch (same on/off choice as in Profile, R-L01). The picked area turns bright and bold.
+  With nothing picked the map starts on you when your position is usable, otherwise on Lisbon;
+  tapping the picked area again returns to that start. These replaced the stretched chip row; the
+  other areas and "All" were removed.
 - City map with the 48 territories coloured for the viewer: sky blue = yours,
   scarlet red = someone else's, grey = unclaimed (palette colours, changed from
   green/red on 19 November 2026 so red-green colour-blind players can tell

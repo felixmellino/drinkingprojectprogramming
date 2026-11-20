@@ -26,19 +26,24 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Area buttons (Lisbon, Nova): two rows of white icon + text straight on the map, no card behind
-   them. A soft shadow keeps them readable; they stay in the background until you pick one. */
-.st-key-map_areas { position: absolute; z-index: 6; left: 12px; top: 60px; width: max-content !important; gap: 0 !important; }
-.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: 100% !important; margin: 0 !important; }
-.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: 100%;
-  min-height: 32px; padding: 0 10px 0 4px; border: 0; border-radius: 0; background: transparent; box-shadow: none;
-  color: rgba(255, 255, 255, .78); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+/* Map strip under the top bar: one transparent white (frosted) capsule from left to right with
+   rounded ends. Area buttons (Lisbon, Nova) sit left, the Location switch right, all in white. */
+.st-key-map_bar { position: absolute; z-index: 6; left: 12px; right: 12px; top: 60px; display: flex !important; flex-direction: row !important;
+  align-items: center; justify-content: space-between; gap: 8px !important; min-height: 40px; padding: 2px 10px 2px 4px;
+  background: rgba(255, 255, 255, .20); border: 1px solid rgba(255, 255, 255, .34); border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .12); backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%); }
+.st-key-map_bar > [data-testid="stElementContainer"], .st-key-map_bar > [data-testid="stLayoutWrapper"] { width: auto !important; margin: 0 !important; }
+.st-key-map_areas { display: flex !important; flex-direction: row !important; align-items: center; gap: 0 !important; width: auto !important; }
+.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: auto !important; margin: 0 !important; }
+.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: auto;
+  min-height: 34px; padding: 0 12px 0 10px; border: 0; border-radius: 999px; background: transparent; box-shadow: none;
+  color: rgba(255, 255, 255, .82); white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, .45); }
 .stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 18px; width: 18px; height: 18px; margin: 0;
-  background-color: currentColor; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55));
+  background-color: currentColor; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45));
   -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
-.stApp .st-key-map_areas button p { margin: 0; font-size: .78rem; font-weight: inherit; line-height: 1; color: inherit; }
-.stApp .st-key-map_areas button:hover { background: transparent; color: #fff; }
-.stApp .st-key-map_areas button:focus-visible { outline: 2px solid #fff; outline-offset: 0; border-radius: 8px; }
+.stApp .st-key-map_areas button p { margin: 0; font-size: .8rem; font-weight: inherit; line-height: 1; color: inherit; }
+.stApp .st-key-map_areas button:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.stApp .st-key-map_areas button:focus-visible { outline: 2px solid #fff; outline-offset: 0; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
 .st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
@@ -95,12 +100,11 @@
 .tt-none { color: #8A99A6; font-size: 11px; }
 .tt-none:empty { display: none; }
 
-/* Location switch: a small pill on the right under the top bar (its frame is transparent). */
-.stApp .st-key-map_location { position: absolute; z-index: 6; top: 60px; right: 12px; width: 108px !important; margin: 0; padding: 0; }
+/* Location switch: inside the strip, on the right (its frame is transparent). */
+.stApp .st-key-map_location { position: static; width: 108px !important; margin: 0; padding: 0; align-self: center; }
 .stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; }
 .stApp .st-key-map_location iframe { background: transparent; color-scheme: normal; }
 @media (max-width: 640px) {
   /* The phone's top bar has no side padding, so the offsets shrink with it. */
-  .stApp .st-key-map_areas { left: 0; top: 48px; }
-  .stApp .st-key-map_location { right: 0; top: 48px; }
+  .stApp .st-key-map_bar { left: 0; right: 0; top: 48px; }
 }

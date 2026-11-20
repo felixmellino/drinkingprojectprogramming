@@ -73,9 +73,10 @@ else:
 # position, so it runs before current_location() reads the newest reading below).
 with st.container(key="game_hud"):
     map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-    picked = map_ui.area_buttons()
-    with st.container(key="map_location"):
-        location_switch(compact=True, follow=True)
+    with st.container(key="map_bar"):   # one frosted strip: area buttons left, Location switch right
+        picked = map_ui.area_buttons()
+        with st.container(key="map_location"):
+            location_switch(compact=True, follow=True)
 
 # Where am I? Decides the bottom card and where the map starts.
 location, accuracy_m, problem = current_location()
