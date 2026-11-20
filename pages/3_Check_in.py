@@ -210,8 +210,13 @@ with st.container(key="drink_ui_panel_selection"):
         with st.container(key="drink_ui_drinks"):
             drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
                                   horizontal=True, width="stretch", label_visibility="collapsed")
-        if drink_type != "shot":
-            with st.container(key="drink_ui_sizes"):
+        # A shot has no size, but its row keeps the same height (an invisible spacer in the same keyed
+        # container, which has a minimum height, see drink_entries.css), so the photo above does not
+        # jump when you switch.
+        with st.container(key="drink_ui_sizes"):
+            if drink_type == "shot":
+                st.markdown('<span class="size-spacer" aria-hidden="true"></span>', unsafe_allow_html=True)
+            else:
                 size = st.radio("Size", options=list(SIZE_LABELS),
                                 format_func=lambda value: size_label(drink_type, value, rules),
                                 horizontal=True, width="stretch", label_visibility="collapsed")
