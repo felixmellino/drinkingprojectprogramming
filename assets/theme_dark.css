@@ -57,3 +57,14 @@ body { background: var(--bg); }
 [data-testid="stDialog"] :is(h1, h2, h3, p, label, span, li) { color: var(--text); }
 [data-testid="stDialog"] [data-testid="stCaptionContainer"] p { color: var(--text-muted); }
 .sheet-stat { background: var(--bg); }
+/* Text inputs: the root behind the field (shows next to the password eye). */
+.stApp [data-testid="stTextInputRootElement"] { background: var(--surface) !important; border-color: var(--border) !important; }
+.stApp [data-testid="stTextInputRootElement"] button { background: transparent !important; color: var(--text-muted); }
+/* Unchecked checkbox square (checked keeps the sky fill from the theme). */
+.stApp [data-testid="stCheckbox"] label:has(input:not(:checked)) > span + div { background: var(--surface) !important; border-color: rgb(232 241 247 / .35) !important; }
+/* Frosted-white controls with token-coloured text become frosted-dark.
+   Page styles load after this file, so these use a stronger selector (html …). */
+html .stApp .st-key-map_areas button, html .stApp .st-key-map_location {
+  background: rgba(23, 41, 56, .78); box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(18px) saturate(1.15); -webkit-backdrop-filter: blur(18px) saturate(1.15); }
+html .stApp .st-key-checkin_retake button { background: rgba(23, 41, 56, .78); color: var(--text); }
