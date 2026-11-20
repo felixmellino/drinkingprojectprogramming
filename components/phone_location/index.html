@@ -21,14 +21,14 @@ body{padding:2px 2px 12px}  /* room for the card's shadow inside the frame */
 #switch[aria-checked="true"]::after{transform:translateX(20px)}
 #switch:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}
 #switch:disabled{opacity:.6;cursor:wait}
-/* Compact: white label and a small switch straight on the map (no card), right-aligned; the status stays for screen readers. */
+/* Compact: label and a small switch on the Map's own frosted-white shape (drawn by the page around this frame);
+   the status stays for screen readers. */
 body.compact{padding:3px 1px}
-body.compact #row{display:none;width:fit-content;min-height:0;margin-left:auto;gap:7px;padding:0 2px 0 6px;background:transparent;box-shadow:none}
+body.compact #row{display:none;width:fit-content;min-height:0;margin:0 auto;gap:8px;padding:0;background:transparent;box-shadow:none}
 body.compact #row.show{display:flex}
-body.compact #title{font-size:.8rem;font-weight:600;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.45)}
+body.compact #title{font-size:.8rem;font-weight:600;color:var(--text)}
 body.compact #status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;margin:0}
-body.compact #switch{width:30px;height:18px;border-radius:9px;background:rgba(255,255,255,.35);box-shadow:0 1px 3px rgba(0,0,0,.35)}
-body.compact #switch[aria-checked="true"]{background:var(--accent)}
+body.compact #switch{width:30px;height:18px;border-radius:9px}
 body.compact #switch::after{top:2px;left:2px;width:14px;height:14px}
 body.compact #switch[aria-checked="true"]::after{transform:translateX(12px)}
 </style></head>
