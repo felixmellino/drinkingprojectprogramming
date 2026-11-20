@@ -50,11 +50,49 @@
 
 /* On the upper of two tied rows: makes the earliest-reached tie rule visible. */
 .standings-first-tag { display: inline-block; margin-left: 4px; padding: 1px 5px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-ink); font-size: 0.6rem; font-weight: 700; vertical-align: middle; }
-.standings-row-you { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-card); }
 
 @media (max-width: 480px) {
   .standings-podium-1 .standings-podium-avatar { width: 44px !important; height: 44px !important; }
   .standings-podium-2 .standings-podium-avatar, .standings-podium-3 .standings-podium-avatar { width: 36px !important; height: 36px !important; }
   .standings-podium-name { font-size: 13px !important; }
   .stApp .standings-list .standings-row { padding: 12px 20px 12px 14px; gap: 10px; }
+}
+
+/* Podium as three Streamlit columns (each place is tappable): keep them side
+   by side on phones too, bottoms aligned, the leader's column a bit wider. */
+.st-key-rank_podium [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 8px !important; align-items: flex-end; }
+.st-key-rank_podium [data-testid="stColumn"] { min-width: 0 !important; flex: 30 1 0 !important; width: auto !important; }
+.st-key-rank_podium [data-testid="stColumn"]:has(.standings-podium-1) { flex-grow: 34 !important; }
+.st-key-rank_podium .standings-podium-place { width: 100%; }
+.stApp .st-key-rank_list { gap: 10px !important; margin-top: 18px; }
+
+/* An invisible button the size of each place/row makes it tappable (same
+   trick as the photo grid in drink_entries.css). */
+[class*="st-key-rank_tap_"] { position: relative; gap: 0 !important; }
+/* Streamlit gives markdown a -16px bottom margin; without this each card
+   overflows its tappable wrapper and the rows touch. */
+[class*="st-key-rank_tap_"] [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
+[class*="st-key-rank_tap_"] .stElementContainer:has([data-testid="stButton"]),
+[class*="st-key-rank_tap_"] [data-testid="stButton"] {
+  position: absolute !important; inset: 0 !important; margin: 0 !important; width: 100% !important; height: 100% !important; }
+[class*="st-key-rank_tap_"] [data-testid="stButton"] button {
+  position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
+  padding: 0; border: 0; border-radius: var(--radius-lg); background: transparent; opacity: 0; cursor: pointer; font-size: 0; }
+[class*="st-key-rank_tap_"] [data-testid="stButton"] button:focus-visible {
+  opacity: 1; background: rgba(44, 153, 214, .10); outline: 3px solid var(--accent-ink); outline-offset: 2px; }
+
+/* Player sheet (st.dialog renders outside .stApp, so no .stApp prefix). */
+.sheet-rank { margin: -6px 0 10px; font-size: .9rem; color: var(--text-muted); }
+.sheet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.sheet-stat { background: var(--bg); border-radius: var(--radius-md); padding: 10px 12px; min-width: 0; }
+.sheet-stat small { display: block; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.sheet-stat b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.4rem; line-height: 1.15; color: var(--text); overflow-wrap: anywhere; }
+.sheet-stat em { display: block; font-style: normal; font-size: .75rem; color: var(--text-muted); }
+/* The dialog panel is white so the light stat tiles stand out. */
+[data-testid="stDialog"]:has(.sheet-grid) > div { background: var(--surface) !important; }
+@media (max-width: 640px) {
+  /* On phones the panel sits on the bottom edge as a sheet. */
+  [data-testid="stDialog"]:has(.sheet-grid) { align-items: flex-end !important; padding: 0 !important; }
+  [data-testid="stDialog"]:has(.sheet-grid) > div { margin: 0 !important; width: 100% !important; max-width: none !important;
+    border-radius: 18px 18px 0 0 !important; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }

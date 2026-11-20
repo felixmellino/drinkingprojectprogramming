@@ -157,8 +157,14 @@ summary line (data reloads on every page visit).
   visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
   the UI never re-sorts or changes the tie rule. (The podium was replaced by a
   single list and brought back on 20 November 2026.)
-- The current player gets a YOU tag and their row an outline. The upper of two
-  tied rows gets a "reached first" tag (R-R01).
+- The current player gets a YOU tag (no outline since 20 November 2026). The
+  upper of two tied rows gets a "reached first" tag (R-R01).
+- Tap any podium place or row (20 November 2026): a bottom sheet (a centred
+  dialog on laptops) shows that player or team: rank and points, drinks this
+  season, territories owned, favourite drink type and the last check-in's
+  territory with "22 min ago" (never a location). Only scored check-ins count.
+  It uses the season already loaded on the page: the ranking is one fragment,
+  so a tap does not reload data.
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
 - A finished or upcoming season shows a one-line status caption. Service
