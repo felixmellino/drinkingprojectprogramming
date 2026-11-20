@@ -71,7 +71,7 @@ def hud(lobby_name: str, rows: list[dict]) -> None:
 
 def location_card(here: dict | None, status: str, accuracy_m: float | None = None) -> None:
     """Bottom card floating over the map: where you are and what it means.
-    status: "matched", "outside", "inaccurate", "denied" or "waiting"."""
+    status: "matched", "outside", "inaccurate", "denied", "off" or "waiting"."""
     if status == "matched" and here:
         tone = {"yours": "game-yours", "theirs": "game-theirs"}.get(here["status"], "")
         body = (f'<small>You are in</small><h3>{escape(here["name"])}</h3>'
@@ -82,9 +82,11 @@ def location_card(here: dict | None, status: str, accuracy_m: float | None = Non
         body = (f"<small>Location</small><h3>Not precise enough</h3>"
                 f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m. Step outside for a moment.</p>")
     elif status == "denied":
-        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings.</p>"
+        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings, then turn it on in Profile.</p>"
+    elif status == "off":
+        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location to see where you are.</p>"
     else:
-        body = "<small>Location</small><h3>Finding you…</h3><p>Allow location access if your browser asks.</p>"
+        body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
 
 

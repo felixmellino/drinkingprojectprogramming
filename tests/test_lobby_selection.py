@@ -108,7 +108,6 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     ui['choices']['me'] = 'old'
     monkeypatch.setattr('shared.require_login', real_require_login)
     monkeypatch.setattr('shared.sync_storage', lambda: '')
-    monkeypatch.setattr('shared.ask_for_location', lambda: None)
     navigation = Mock()
     monkeypatch.setattr('shared.bottom_navigation', navigation)
     monkeypatch.setattr(db, 'get_player', lambda pid: SimpleNamespace(id=pid, email='me@example.com', pin_hash='credential'))
@@ -143,7 +142,6 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
     ui['members'] = [member for member in ui['members'] if member.lobby_id in joined]
     monkeypatch.setattr('shared.require_login', real_require_login)
     monkeypatch.setattr('shared.sync_storage', lambda: '')
-    monkeypatch.setattr('shared.ask_for_location', lambda: None)
     monkeypatch.setattr('shared.bottom_navigation', lambda: None)
     monkeypatch.setattr(db, 'get_player', lambda pid: Mock(email='me@example.com', pin_hash='credential'))
     monkeypatch.setattr(db, 'list_players', lambda: [])

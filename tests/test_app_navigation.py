@@ -83,7 +83,7 @@ def test_every_tab_icon_exists_in_outline_and_filled_form():
             assert icon_url(f"{icon}-fill")
 
 
-def test_lobby_and_photo_history_open_from_the_profile_menu(monkeypatch):
+def test_lobbies_open_from_the_profile_menu_and_photo_history_is_not_listed(monkeypatch):
     switch = Mock()
     monkeypatch.setattr(st, "switch_page", switch)
     at = AppTest.from_string(
@@ -91,7 +91,7 @@ def test_lobby_and_photo_history_open_from_the_profile_menu(monkeypatch):
         "for key, label, page, icon in PAGES:\n"
         "    if st.button(label, key=key):\n"
         "        st.switch_page(page)").run()
-    assert [b.label for b in at.button] == ["Lobbies", "Photo history"]
+    assert [b.label for b in at.button] == ["Lobbies"]
 
 
 class Where:

@@ -79,8 +79,8 @@ if usable_location:
     status = "matched" if result == "matched" and here else "outside"
 elif location is not None:
     status = "inaccurate"
-elif problem == "denied":
-    status = "denied"
+elif problem in ("denied", "off"):
+    status = problem
 
 # HUD floating over the top of the map: lobby, score, quick zoom.
 with st.container(key="game_hud"):

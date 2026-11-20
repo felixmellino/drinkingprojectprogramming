@@ -181,8 +181,10 @@ def _capture_and_start(player, lobby, season, duel):
     encoded = b64encode(capture[0]).decode("ascii")
     st.html(f'<img class="chug-photo" src="data:image/jpeg;base64,{encoded}" alt="Shared duel photo">')
     gps, accuracy, problem = current_location()
-    if problem:
-        st.warning("Waiting for your location. Allow it and keep this page open.")
+    if problem == "off":
+        st.warning("Location is off. Turn it on in Profile → Location.")
+    elif problem:
+        st.warning("Waiting for your location. Keep this page open.")
     start, retake = st.columns(2)
     with start:
         go = st.button("Start duel", type="primary", key=key + "_start", disabled=bool(problem), width="stretch")

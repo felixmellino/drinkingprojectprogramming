@@ -226,16 +226,20 @@ with st.container(key="drink_ui_panel_location"):
     section_heading("03", "Location", "Your location assigns this drink to a territory.")
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
-        "waiting": "Finding your location… Allow location access if your browser asks.",
+        "waiting": "Finding your location…",
+        "off": "Location is off. Turn it on in Profile → Location, then come back.",
         "stale": "Your last location is more than a minute old. Finding a new one…",
-        "denied": "Location access is blocked. Allow location for this site in your browser settings, then reload the page.",
+        "denied": "Location access is blocked. Allow location for this site in your browser settings, then turn Location on in Profile.",
         "unavailable": "Your phone can't find its position right now. Move closer to a window or outside.",
         "timeout": "Finding your position is taking long. Keep the page open, it keeps trying.",
         "unsupported": "This browser can't share its location. Try another browser on your phone.",
         "invalid": "Something went wrong reading your location. Reload the page.",
     }
-    if location_problem in ("denied", "unsupported", "invalid"):
+    if location_problem in ("off", "denied", "unsupported", "invalid"):
         st.warning(location_messages[location_problem])
+        if location_problem in ("off", "denied") and st.button("Open Profile", key="location_open_profile"):
+            st.session_state["profile_view"] = "menu"
+            st.switch_page("pages/1_Profile.py")
     elif location_problem:
         st.caption(location_messages[location_problem])
     elif accuracy_m > MAX_GPS_ACCURACY_M:

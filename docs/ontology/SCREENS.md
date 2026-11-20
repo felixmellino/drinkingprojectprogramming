@@ -318,9 +318,12 @@ See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [
 
 ## Profile menu (implemented 18 November 2026)
 
-The authenticated Profile is a vertical list: **Edit profile**, **Friends**,
-**My stats**, **Account & security**, then **Log out**. Each of the first
-four opens a separate view with **Back to Profile**. Logout is immediate.
+The authenticated Profile is a vertical list: **Lobbies**, **Edit profile**, **Friends**,
+**My stats**, **Account & security**, a **Location** switch (R-L01, 20 November 2026), then
+**Log out**. Photo history has no entry here any more (it is the Photos tab in the bar).
+Edit profile, Friends, My stats and Account & security each open a separate view with
+**Back to Profile**. Logout is immediate. The Location switch asks the browser for
+permission when turned on and shows Off / On with accuracy / Blocked.
 
 - Edit profile updates username, first name and surname. Names use the same
   required/100-character limits as registration. Usernames remain unique,
