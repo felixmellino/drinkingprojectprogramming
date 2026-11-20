@@ -91,16 +91,26 @@ with st.container(key="game_hud"):
     if focus not in options:  # e.g. "Me" was picked but the location is gone now
         focus = options[0]
 
-with st.container(key="game_map"):
-    map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
-                      pictures=pictures,
-                      context=f"{lobby_id}:{season_id}:{membership_id}")
+# Map and bottom card are one fragment: tapping a territory reruns only this
+# part (no database reads or score replay), so the card switches quickly.
+# The earlier tap dialog reran the whole page and felt slow.
+@st.fragment
+def map_and_card():
+    with st.container(key="game_map"):
+        tapped = map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
+                                   pictures=pictures,
+                                   context=f"{lobby_id}:{season_id}:{membership_id}")
+    selected = next((row for row in rows if row["id"] == tapped), None)
 
-# Slim sheet over the bottom of the map: where you are, and the full
-# territory list (opens upwards inside the sheet). Checking in is the + tab.
-with st.container(key="game_card"):
-    map_ui.location_card(here, status, accuracy_m)
-    with st.expander("All territories"):
-        if team_mode:
-            st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
-        map_ui.territory_list(rows)
+    # Slim sheet over the bottom of the map: the tapped territory or where you
+    # are, and the full territory list (opens upwards inside the sheet).
+    # Checking in is the + tab.
+    with st.container(key="game_card"):
+        map_ui.location_card(here, status, accuracy_m, selected)
+        with st.expander("All territories"):
+            if team_mode:
+                st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
+            map_ui.territory_list(rows)
+
+
+map_and_card()

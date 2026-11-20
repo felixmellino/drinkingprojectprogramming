@@ -228,6 +228,13 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
   your territory points against the owner's (or your closest rival's). The
   full sentence stays as screen-reader text. Unclaimed areas keep one line.
+- Tap any territory (20 November 2026): the bottom card switches to that
+  territory's tug-of-war ("Owned by X" / "Yours"; "You are in ·" only when you
+  stand in it; unclaimed: "Your next drink here claims it."). Tapping empty map
+  space goes back to your location. This replaces the white tooltip below.
+  The map and card are one Streamlit fragment, so a tap reruns only them (no
+  database reads or replay), unlike the earlier slow dialog. Only territory ids
+  are sent to the browser.
 - Hovering or tapping an area tints it in the app's dark green.
 - The base map shows streets, parks and water in colour (Carto Voyager).
 - Three cards below the map: territories you own (e.g. "1 of 48"),
@@ -250,7 +257,8 @@ Map owner badge update (19 November 2026, contributor request):
 - Badge diameter scales with area and available interior space, capped at
   120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
   Green remains yours/your team's, red others', grey unclaimed.
-- Tapping (phone) or hovering (laptop) a territory shows a tiny tooltip next
+- (Replaced 20 November 2026 by the tap card above.) Tapping (phone) or
+  hovering (laptop) a territory showed a tiny tooltip next
   to it with the territory name and a list of name and territory points
   (best five, ranking order; you are marked "(you)"; "no points yet" if
   nobody has drunk there). It is drawn by the map in the browser itself, so
