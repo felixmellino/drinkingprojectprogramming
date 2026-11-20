@@ -9,6 +9,7 @@ import data.db as db
 from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
+from faq_ui import show_faq
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
@@ -31,12 +32,15 @@ def show_profile(player):
     if view == "menu":
         # iPhone-style grouped lists: icon, label, chevron (styles in assets/theme.css).
         menu_icons({**{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+                    "profile_faq": "list-bullets",
                     "profile_logout": "sign-out"})
         with st.container(key="menu_list_account"):
             for key, label, _icon in OPTIONS:
                 if st.button(label, width="stretch", key=f"profile_{key}"):
                     st.session_state["profile_view"] = key
                     st.rerun()
+            if st.button("FAQ / Help", width="stretch", key="profile_faq"):
+                show_faq()
         # Location: a real switch; the tap makes the browser ask for permission right away.
         location_switch()
         with st.container(key="menu_list_logout"):

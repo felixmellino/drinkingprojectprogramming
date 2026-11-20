@@ -43,8 +43,9 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     label = 'Winner' if status == 'past' else 'Leader'
     result = (f'{label}: <strong>{name}</strong>' if leader_name else name) if ranking_available else 'Standings unavailable'
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
-    if st.session_state.get('current_lobby_id') == lobby.id:
-        meta += ' · <strong class="lobby-current">Current lobby</strong>'
+    # The lobby you play in: tinted card with a pill above its name (option C).
+    current = st.session_state.get('current_lobby_id') == lobby.id
+    pill = '<span class="lobby-current-pill">✓ Current lobby</span>' if current else ''
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
         meta += ' · Test season (Wed 08:00–Sun 18:00)'
     if lobby.game_mode == 'team':
@@ -58,7 +59,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
         elapsed = (utc(now) - utc(season.starts_at)).total_seconds()
         fraction = max(0.0, min(1.0, elapsed / total)) if total > 0 else 1.0
         progress = f'<div class="lobby-progress"><span style="width:{fraction:.1%}"></span></div>'
-    st.markdown(f'<article class="lobby-card lobby-{status}"><p class="lobby-meta">{meta}</p>'
+    st.markdown(f'<article class="lobby-card lobby-{status}{" lobby-is-current" if current else ""}">'
+                f'{pill}<p class="lobby-meta">{meta}</p>'
                 f'<h3>{escape(lobby.name)}</h3><div class="lobby-person">{avatar}<span>{result}</span></div>'
                 f'<p class="lobby-countdown">{escape(timing)}</p>{progress}'
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
