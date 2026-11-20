@@ -17,7 +17,7 @@ ERRORS = (APIError, RequestError, RuntimeError, PermissionError, ValueError)
 
 def avatar(name, photo=None):
     content = (f'<img src="data:image/jpeg;base64,{escape(photo, quote=True)}" alt="Team picture" style="width:64px;height:64px;border-radius:50%;object-fit:cover">'
-               if photo else f'<span style="display:inline-grid;place-items:center;background:#d4e9de;border-radius:50%;width:64px;height:64px;font-size:24px">{escape(initials(name))}</span>')
+               if photo else f'<span style="display:inline-grid;place-items:center;background:#d4e9de;color:#142B3D;border-radius:50%;width:64px;height:64px;font-size:24px">{escape(initials(name))}</span>')
     st.markdown(content, unsafe_allow_html=True)
 
 
