@@ -1,0 +1,110 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style id="tokens"></style>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:transparent;color:var(--text);font:16px var(--font-body);overflow:hidden}
+#backdrop{position:fixed;inset:0;background:rgba(14,26,36,.38);opacity:0;transition:opacity .22s}
+#sheet{position:fixed;left:0;right:0;bottom:0;max-height:82vh;display:flex;flex-direction:column;background:var(--surface);
+  border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18);transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
+  padding-bottom:env(safe-area-inset-bottom,0px);max-width:720px;margin:0 auto}
+body.open #backdrop{opacity:1} body.open #sheet{transform:translateY(0)}
+body.dragging #sheet{transition:none}
+#head{padding:8px 18px 6px;touch-action:none;cursor:grab}
+#grab{width:36px;height:5px;border-radius:3px;background:var(--border);margin:0 auto 10px}
+#titlerow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+#title{margin:0;font-size:1.15rem;font-weight:700}
+#lobby,#summary,#note{font-size:.78rem;color:var(--text-muted)}
+#summary{margin:2px 0 0}#note{margin:4px 0 0}
+#list{list-style:none;margin:6px 0 0;padding:0 18px 18px;overflow-y:auto;overscroll-behavior:contain}
+.row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 0;border:0;border-top:1px solid var(--border);
+  background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+li:first-child .row{border-top:0}
+.row:focus-visible{outline:3px solid var(--accent-ink);outline-offset:2px;border-radius:8px}
+.av{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:50%;font-size:.68rem;font-weight:800;color:#fff}
+.av.theirs{background:var(--territory-theirs)}.av.yours{background:var(--territory-yours);color:var(--on-accent)}
+.av.free{background:var(--bg);color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border)}
+.txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.name{font-size:.92rem;font-weight:700;color:var(--accent-ink);overflow-wrap:anywhere}
+.sub{font-size:.75rem;color:var(--text-muted)}
+.pill{flex-shrink:0;white-space:nowrap;padding:4px 10px;border-radius:999px;font-size:.74rem;font-weight:700}
+.pill.theirs{background:var(--brand-soft,#FDECEC);color:var(--territory-theirs-ink)}
+.pill.yours{background:var(--accent-soft);color:var(--territory-yours-ink)}
+.pill.free{background:var(--bg);color:var(--text-muted)}
+@media (prefers-reduced-motion: reduce){#sheet,#backdrop{transition:none}}
+</style></head>
+<body>
+<div id="backdrop"></div>
+<section id="sheet" role="dialog" aria-modal="true" aria-labelledby="title">
+  <div id="head"><div id="grab" aria-hidden="true"></div>
+    <div id="titlerow"><h2 id="title">Territories</h2><span id="lobby"></span></div>
+    <p id="summary"></p><p id="note" hidden></p></div>
+  <ul id="list"></ul>
+</section>
+<script>
+// The Map's territory list as an iPhone-style sheet: swipe it down (or tap the
+// backdrop, or press Escape) to close; tap a territory to select it on the map.
+// Everything is drawn with textContent, so names can never become HTML.
+const $ = id => document.getElementById(id);
+function send(type, details) {window.parent.postMessage({isStreamlitMessage: true, type, ...details}, "*");}
+let done = false;
+function finish(value) {
+  if (done) return; done = true;
+  document.body.classList.remove("open");
+  setTimeout(() => send("streamlit:setComponentValue", {value, dataType: "json"}), 200);
+}
+function build(args) {
+  if (args.tokens) $("tokens").textContent = args.tokens;
+  $("lobby").textContent = args.title || "";
+  $("summary").textContent = args.summary || "";
+  if (args.note) {$("note").textContent = args.note; $("note").hidden = false;}
+  const list = $("list"); list.textContent = "";
+  for (const row of args.rows || []) {
+    const li = document.createElement("li"), b = document.createElement("button");
+    b.className = "row"; b.type = "button"; b.setAttribute("aria-label", row.name + ". " + row.detail);
+    const av = document.createElement("span"); av.className = "av " + row.status; av.textContent = row.avatar; av.setAttribute("aria-hidden", "true");
+    const txt = document.createElement("span"); txt.className = "txt";
+    const name = document.createElement("span"); name.className = "name"; name.textContent = row.name;
+    const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = row.sub;
+    txt.append(name, sub);
+    const pill = document.createElement("span"); pill.className = "pill " + row.status; pill.textContent = row.pill; pill.setAttribute("aria-hidden", "true");
+    b.append(av, txt, pill);
+    b.addEventListener("click", () => finish({action: "select", id: row.id}));
+    li.append(b); list.append(li);
+  }
+}
+// Swipe down to close: drag the header anywhere, or the list once it is scrolled to the top.
+let startY = null, lastY = 0, lastT = 0, speed = 0;
+function down(e) {
+  if (e.target.closest("#list") && $("list").scrollTop > 0) return;
+  startY = e.clientY; lastY = startY; lastT = performance.now(); speed = 0;
+  document.body.classList.add("dragging");
+}
+function move(e) {
+  if (startY === null) return;
+  const dy = Math.max(0, e.clientY - startY);
+  const now = performance.now(); speed = (e.clientY - lastY) / Math.max(1, now - lastT); lastY = e.clientY; lastT = now;
+  if (dy > 4) e.preventDefault();
+  $("sheet").style.transform = `translateY(${dy}px)`;
+}
+function up() {
+  if (startY === null) return;
+  const dy = Math.max(0, lastY - startY); startY = null;
+  document.body.classList.remove("dragging");
+  $("sheet").style.transform = "";
+  if (dy > 90 || speed > 0.6) {$("sheet").style.transform = "translateY(100%)"; finish({action: "close"});}
+}
+$("sheet").addEventListener("pointerdown", down);
+window.addEventListener("pointermove", move, {passive: false});
+window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+$("backdrop").addEventListener("click", () => finish({action: "close"}));
+window.addEventListener("keydown", e => {if (e.key === "Escape") finish({action: "close"});});
+let ready = false;
+window.addEventListener("message", event => {
+  if (event.source !== window.parent || event.data.type !== "streamlit:render") return;
+  build(event.data.args || {});
+  if (!ready) {ready = true; send("streamlit:setFrameHeight", {height: 2000}); requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add("open")));}
+});
+send("streamlit:componentReady", {apiVersion: 1});
+</script></body></html>

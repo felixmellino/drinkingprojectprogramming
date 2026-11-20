@@ -64,7 +64,4 @@ body { background: var(--bg); }
 .stApp [data-testid="stCheckbox"] label:has(input:not(:checked)) > span + div { background: var(--surface) !important; border-color: rgb(232 241 247 / .35) !important; }
 /* Frosted-white controls with token-coloured text become frosted-dark.
    Page styles load after this file, so these use a stronger selector (html …). */
-html .stApp .st-key-map_areas button, html .stApp .st-key-map_location {
-  background: rgba(23, 41, 56, .78); box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
-  backdrop-filter: blur(18px) saturate(1.15); -webkit-backdrop-filter: blur(18px) saturate(1.15); }
 html .stApp .st-key-checkin_retake button { background: rgba(23, 41, 56, .78); color: var(--text); }

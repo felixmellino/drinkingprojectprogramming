@@ -344,6 +344,22 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
+Map selection flow (20 November 2026, design session):
+
+- Nothing is selected by default, also not the territory you stand in: the
+  bottom card is just "All territories · 48". Tapping a territory selects it
+  (thicker outline in its own colour) and opens its compact tug-of-war card;
+  the grey handle on top of the card, or tapping empty map space, closes it.
+  (The map component does not report a second tap on an already selected
+  area, so tapping it again does not close the card.)
+- "All territories" opens a sheet over the whole map (its own component,
+  `components/territory_sheet`): swipe it down, tap the backdrop or press
+  Escape to close it; tap a name to select that territory and zoom the map
+  to it. The lobby name and the yours / rivals / free counts are in its header.
+- The Lisbon / Nova pills and the Location pill are gone from the map, and the
+  Map has no Back button (it is home). Location is switched on in Profile; the
+  map follows the phone with the same invisible tracker as Check-in.
+
 Map polish (20 November 2026, design session):
 
 - Basemap: Carto Positron without labels (quiet light grey); Dark Matter only
