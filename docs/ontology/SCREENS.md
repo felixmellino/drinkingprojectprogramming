@@ -74,6 +74,13 @@ These presentation choices introduce no new scoring or database rules.
   Drink/size choices have large selectable areas and an immediate points
   preview. Submit spans the available width. Camera permission remains
   controlled by the browser.
+- Update, 20 November 2026 (less text): after the photo the page shows only the title,
+  the photo with **Retake photo**, the drink and size choices with one points line
+  ("+4 points"), one short location line (found with accuracy, or what to do) and a
+  one-line territory name, then **Submit**. Headings, explanations, the owner-income
+  preview and the lobby/time line are gone, and so is the Focus boost preview (the
+  server still applies any earned boost). After a check-in the result card is followed
+  by one button, **Go to map**; the + tab starts the next check-in.
 - Update, 20 November 2026: the scoring window and cooldown are checked before
   the camera opens. If a check-in can't count, one card replaces the camera:
   "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and

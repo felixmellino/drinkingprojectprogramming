@@ -222,3 +222,6 @@
 @media (max-width: 640px) {
   .photo-full { margin-left: -0.9rem; margin-right: -0.9rem; border-radius: 0; }
 }
+
+/* The one button under the check-in result card. */
+.st-key-checkin_go_map { margin-top: 14px; }

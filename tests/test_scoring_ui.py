@@ -96,7 +96,7 @@ def test_quick_controls_preview_save_and_owner_income(ui):
     assert radio(page, "Size").options == ["Small · 250 ml", "Medium · 330 ml", "Large · 500 ml"]
     radio(page, "Drink").set_value("wine").run()
     radio(page, "Size").set_value("large").run()
-    assert any("+4 season" in item.value for item in page.info)
+    assert any("+4 points" in item.value for item in page.info)
     set_location(page, state)
     button(page, "Submit").click().run()
     assert not page.exception and 'reward-points">+4<' in reward(page)
@@ -110,42 +110,32 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     page = open_checkin()
     radio(page, "Drink").set_value("shot").run()
     assert not any(item.label == "Size" for item in page.radio)
-    assert any("+4 season" in item.value for item in page.info)
+    assert any("+4 points" in item.value for item in page.info)
     radio(page, "Drink").set_value("mixed").run()
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
 
 
-def test_active_focus_boost_is_in_checkin_preview(ui, monkeypatch):
-    monkeypatch.setattr(db, 'focus_status', lambda *args: {'boost_ends_at': (START + timedelta(hours=1)).isoformat()})
+def test_time_duel_boost_is_in_the_checkin_preview(ui, monkeypatch):
+    monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': (START + timedelta(hours=1)).isoformat()})
     page = open_checkin()
     radio(page, 'Size').set_value('large').run()
     assert not page.exception
-    assert any('Focus boost ×1.5 active' in item.value for item in page.success)
-    assert any('+4.5 season' in item.value for item in page.info)
+    assert any('Time Duel ×1.25 until' in item.value for item in page.success)
+    assert any('+3.75 points' in item.value for item in page.info)
 
 
-def test_partial_focus_boost_is_shown_in_season_and_territory_preview(ui,monkeypatch):
-    monkeypatch.setattr(db,'focus_status',lambda *args:{
-        'boost_ends_at':(START+timedelta(hours=1)).isoformat(),'boost_multiplier':1.25})
-    page=open_checkin()
-    radio(page,'Size').set_value('large').run()
-    assert not page.exception
-    assert any('Focus boost ×1.25 active' in item.value for item in page.success)
-    assert any('+3.75 season' in item.value and '+3.75 territory' in item.value for item in page.info)
+def test_checkin_form_has_only_the_necessary_controls_and_little_text(ui):
+    state, _ = ui
+    page = open_checkin()
+    set_location(page, state)
+    assert [b.label for b in page.button] == ["Profile", "Map", "Ranks", "Check in", "Games", "Photos", "Retake photo", "Submit"] \
+        or [b.label for b in page.button][-2:] == ["Retake photo", "Submit"]
+    assert len([b for b in page.button if b.label not in {"Profile", "Map", "Ranks", "Check in", "Games", "Photos"}]) == 2
+    text = " ".join(m.value for m in page.markdown) + " ".join(c.value for c in page.caption)
+    for gone in ("Take a photo. Choose your drink", "Looking good", "Shared only with your lobby", "One drink, one size",
+                 "Preview only", "territory points if", "25% season income", "Your location assigns"):
+        assert gone not in text, gone
 
-
-
-@pytest.mark.parametrize('focus,season_points,territory_points', [(False,'3.75','3'),(True,'4.5','4.5')])
-def test_time_duel_preview_keeps_territory_award_and_uses_higher_boost(ui,monkeypatch,focus,season_points,territory_points):
-    active={'boost_ends_at':(START+timedelta(hours=1)).isoformat()}
-    monkeypatch.setattr(db,'time_status',lambda *args:active)
-    if focus:
-        monkeypatch.setattr(db,'focus_status',lambda *args:active)
-    page=open_checkin()
-    radio(page,'Size').set_value('large').run()
-    assert not page.exception
-    assert any('Time Duel ×1.25 season boost active' in item.value for item in page.success)
-    assert any(f'+{season_points} season' in item.value and f'+{territory_points} territory' in item.value for item in page.info)
 
 def test_camera_photo_is_required_before_selecting_drink_or_size(ui):
     state, _ = ui
@@ -186,7 +176,8 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     button(page, 'Submit').click().run()
     assert not page.exception and reward(page)
     assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
-    assert not page.radio and button(page, 'New check-in')
+    assert not page.radio and button(page, 'Go to map') and not any(b.label == 'New check-in' for b in page.button)
+    assert [b.label for b in page.button if b.label not in {"Profile", "Map", "Ranks", "Check in", "Games", "Photos"}] == ["Go to map"]
     # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
@@ -194,6 +185,21 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     state['now'] = state['now'] + timedelta(seconds=120)
     button(page, 'Check again').click().run()
     assert not page.exception and camera.call_count == 2 and not page.radio
+
+
+def test_go_to_map_is_the_one_button_after_a_checkin_and_leaves_a_clean_checkin_page(ui, monkeypatch):
+    from unittest.mock import Mock
+    import streamlit as st
+    state, _ = ui
+    switch = Mock()
+    monkeypatch.setattr(st, "switch_page", switch)
+    page = open_checkin()
+    set_location(page, state)
+    button(page, "Submit").click().run()
+    assert page.session_state["checkin_posted"] is True
+    button(page, "Go to map").click().run()
+    assert switch.call_args.args == ("pages/5_Map.py",)
+    assert "checkin_posted" not in page.session_state, "coming back to Check-in must not show the old result"
 
 
 def test_changing_context_discards_pending_photo(ui, monkeypatch):
@@ -275,7 +281,7 @@ def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
     assert button(page, "Submit").disabled
-    assert any("Wait 1:00" in item.value for item in page.warning)
+    assert any("Next check-in in 1:00" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture
     state["now"] = START + timedelta(seconds=120)
     button(page, "Refresh remaining wait").click().run()
@@ -551,7 +557,7 @@ def test_submit_needs_the_phone_location_first(ui):
     assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
-    assert any("Location found automatically, accurate to about 10 m" in item.value for item in page.caption)
+    assert any("Location found · 10 m" in item.value for item in page.caption)
 
 
 def test_inaccurate_phone_location_warns_and_saves_nothing(ui):
@@ -573,7 +579,7 @@ def test_phone_permission_retry_keeps_photo_and_selection_and_accepts_50m(ui):
     state["location"] = {"error": "denied"}
     page.run()
     assert not page.exception and button(page, "Submit").disabled
-    assert any("Location access is blocked" in item.value for item in page.warning)
+    assert any("Location is blocked" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture_id
     assert radio(page, "Drink").value == "wine" and radio(page, "Size").value == "large"
     assert state["calls"] == 0 and state["entries"] == []
@@ -590,6 +596,6 @@ def test_location_older_than_60_seconds_is_not_used(ui):
     page = open_checkin()
     set_location(page, state, age_seconds=61)
     assert button(page, "Submit").disabled
-    assert any("more than a minute old" in item.value for item in page.caption)
+    assert any("Updating your location" in item.value for item in page.caption)
     set_location(page, state, age_seconds=59)
     assert not button(page, "Submit").disabled
