@@ -1,4 +1,5 @@
 """The Map page with its real widgets, a fake database and a simulated phone."""
+import re
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -75,19 +76,23 @@ def hud(page):
     return next(m.value for m in page.markdown if 'class="game-hud"' in m.value)
 
 
-def table(page):
-    return {row["Territory"]: row for row in page.dataframe[0].value.to_dict("records")}
+def territory_sheet(page):
+    """Open "All territories" and return the list sheet's HTML."""
+    next(b for b in page.button if b.label.startswith("All territories")).click().run()
+    return "".join(m.value for m in page.markdown if 'class="terr-list"' in m.value)
 
 
 def test_list_shows_owner_colour_and_capture_gap(phone):
     page = open_map()
+    assert not page.exception and any(b.label == "All territories · 3" for b in page.button)
+    sheet = territory_sheet(page)
     assert not page.exception
-    rows = table(page)
-    assert rows["Bairro Alto"]["Status"] == "Someone else's"
-    assert rows["Bairro Alto"]["What it means"] == "Owned by **rival**: you need 2 more points to take it."
-    assert rows["Le Pub"]["Status"] == "Yours"
-    assert rows["Le Pub"]["What it means"] == "Yours: you lead by 5 points."
-    assert rows["After8"]["Status"] == "Unclaimed"
+    names = re.findall(r"<b>([^<]+)</b>", sheet)
+    assert names == ["Bairro Alto", "After8", "Le Pub"]          # easiest to take first, then free, then yours
+    assert 'terr-avatar terr-theirs' in sheet and '+2 to take' in sheet
+    assert "Owned by **rival**: you need 2 more points to take it." in sheet   # sr-only sentence
+    assert "Yours: you lead by 5 points." in sheet and "+5 lead" in sheet
+    assert "Unclaimed" in sheet and "Claim it" in sheet
     assert len(page.get("deck_gl_json_chart")) == 1
 
 
@@ -334,3 +339,25 @@ def test_tapped_territory_you_are_not_in_says_owned_by_without_you_are_here():
     import map_ui
     html = map_ui.tug_of_war(_here("theirs", 1, owner_points=3, needed=3), standing_in=False)
     assert '<p class="tug-sub">Owned by Leo</p>' in html and "You are here" not in html
+
+
+def test_basemap_is_light_and_dark_only_in_dark_mode(monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "dark_mode", lambda: False)
+    assert map_ui.map_style() == "light_no_labels"
+    monkeypatch.setattr(map_ui, "dark_mode", lambda: True)
+    assert map_ui.map_style() == "dark_no_labels"
+
+
+def test_areas_have_a_thin_outline_in_their_own_colour(phone):
+    page = open_map()
+    layer = next(l for l in chart_json(page)["layers"] if l["id"] == "territories")
+    props = layer["data"]["features"][0]["properties"]
+    assert props["line"][:3] == props["fill"][:3] and props["line"][3] > props["fill"][3]
+    assert layer["lineWidthMinPixels"] == 1.5
+
+
+def test_every_card_state_is_a_dot_title_and_one_line(phone):
+    page = open_map()
+    message = card(page)
+    assert 'class="sheet-grab"' in message and "status-live" in message and "<small>" not in message

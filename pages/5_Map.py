@@ -108,10 +108,7 @@ def map_and_card():
     # Checking in is the + tab.
     with st.container(key="game_card"):
         map_ui.location_card(here, status, accuracy_m, selected)
-        with st.expander("All territories"):
-            if team_mode:
-                st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
-            map_ui.territory_list(rows)
+        map_ui.territory_list(rows, team_mode=team_mode)
 
 
 map_and_card()

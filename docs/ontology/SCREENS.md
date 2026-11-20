@@ -344,6 +344,23 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
 
+Map polish (20 November 2026, design session):
+
+- Basemap: Carto Positron without labels (quiet light grey); Dark Matter only
+  when the player turned on dark mode. Territories have a soft translucent
+  fill and a thin 1.5 px outline in their own colour (sky / scarlet / grey)
+  instead of thick white borders.
+- The Lisbon and Nova pills have the same width.
+- The bottom card is one calm sheet for every state: a small grab handle,
+  then one row (a coloured dot - pulsing while finding you, grey when off or
+  outside, red when blocked, amber when not precise - with a title and one
+  line), or the territory's tug-of-war. No uppercase eyebrow.
+- "All territories · 48" is one quiet row that opens a list sheet (bottom
+  sheet on phones): owner avatar, name, "owner · you X vs Y" and a pill,
+  sorted easiest to take first, then unclaimed, then yours (smallest lead
+  first). It replaces the table; each row keeps the full sentence for
+  screen readers.
+
 Map owner badge update (19 November 2026, contributor request):
 
 - Claimed areas show a circular, blurred owner picture with crisp public-name
