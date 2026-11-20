@@ -1,0 +1,8 @@
+{
+  "name": "wegopub-verification",
+  "private": true,
+  "description": "Development-only PostgreSQL test engine; not used by the deployed app.",
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14"
+  }
+}

@@ -32,11 +32,29 @@ assert.equal(order[0],'schema.sql');
  const tables=new Set((await pg.query("select tablename from pg_tables where schemaname='public'")).rows.map(r=>r.tablename));
  for(const t of ['players','lobbies','seasons','drink_entries','friendships','chug_duels','quiz_duels','quiz_transfers','time_duels','reaction_duels','reaction_runs'])
   assert(tables.has(t),'missing table '+t);
- // Browser roles must not reach any game table.
- await pg.exec('set role anon');
- for(const t of ['reaction_duels','quiz_duels','time_duels','chug_duels','drink_entries'])
-  await assert.rejects(pg.query('select 1 from public.'+t),/permission denied/,t+' must stay private');
- await pg.exec('reset role');
+ // Both public API roles must be denied, even after the complete migration chain.
+ const privateTables=['players','remembered_sessions','password_resets','login_attempts',
+  'lobbies','lobby_memberships','seasons','drink_entries','friendships',
+  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels'];
+ const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
+  'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action'];
+ for(const fn of privateFunctions)assert(have.has(fn),'missing protected function '+fn);
+ for(const role of ['anon','authenticated']){
+  for(const t of privateTables){
+   const privileges=(await pg.query('select has_table_privilege($1,$2,$3) allowed',
+    [role,'public.'+t,'SELECT,INSERT,UPDATE,DELETE'])).rows[0];
+   assert.equal(privileges.allowed,false,role+' must have no direct access to '+t);
+  }
+  const functions=(await pg.query(`select p.oid::regprocedure::text signature,
+   has_function_privilege($1,p.oid,'EXECUTE') allowed from pg_proc p
+   where p.pronamespace='public'::regnamespace and p.proname=any($2::text[])`,
+   [role,privateFunctions])).rows;
+  for(const fn of functions)assert.equal(fn.allowed,false,role+' must not execute '+fn.signature);
+  await pg.exec('set role '+role);
+  for(const t of privateTables)
+   await assert.rejects(pg.query('select 1 from public.'+t),/permission denied/,role+': '+t+' must stay private');
+  await pg.exec('reset role');
+ }
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();
 })().catch(e=>{console.error(e);process.exit(1);});

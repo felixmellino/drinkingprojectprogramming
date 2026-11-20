@@ -230,6 +230,19 @@ The test suite covers pure logic and Streamlit forms with mocked database
 services; it needs no live Supabase connection. Run from the repository
 root. The mocks do not verify PostgreSQL migrations.
 
+For the complete automated check (Python, JavaScript components and isolated
+PostgreSQL), install Node.js 24 and the development-only test dependency, then run:
+
+```bash
+npm ci --ignore-scripts
+python scripts/verify.py
+```
+
+Both test jobs run on every pull request to `main` and every push to `main`.
+The database tests use disposable synthetic data, not the shared Supabase
+project. See [verification guide and release checklist](docs/VERIFICATION.md)
+for individual commands, covered cases, reports and the remaining phone checks.
+
 ## Accounts
 
 Profile has one Create account / Log in selector; only the chosen form is shown.

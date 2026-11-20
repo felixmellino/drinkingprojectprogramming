@@ -227,3 +227,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Development-only JavaScript test dependencies
+node_modules/
