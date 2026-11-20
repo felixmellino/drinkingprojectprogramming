@@ -65,8 +65,8 @@ db.download_checkin_photo=delayed(photo)
 db.list_checkin_revisions=delayed([])
 shared.get_territories=lambda:[TERRITORY]
 shared.sync_storage=lambda:''
-shared.ask_for_location=lambda:None
 phone_location.track_location=lambda:None
+phone_location.location_switch=lambda **kwargs:None
 device_login.sync_storage=lambda:''
 def switch_page(target):
     if isinstance(target,str) and target.startswith('pages/'):

@@ -13,7 +13,7 @@ from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from parallel import run_parallel
-from phone_location import current_location, track_location
+from phone_location import current_location, location_switch
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 
 player_id = require_login()
@@ -22,7 +22,10 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 map_ui.load_styles()
 
-track_location()
+# Small Location switch under the top bar, shared with the one in Profile. It also follows the
+# phone's position, so it must run before current_location() reads the newest reading below.
+with st.container(key="map_location"):
+    location_switch(compact=True, follow=True)
 try:
     territories = get_territories()
     entries, memberships, players = run_parallel(
@@ -77,8 +80,8 @@ if usable_location:
     status = "matched" if result == "matched" and here else "outside"
 elif location is not None:
     status = "inaccurate"
-elif problem == "denied":
-    status = "denied"
+elif problem in ("denied", "off"):
+    status = problem
 
 # HUD floating over the top of the map: lobby, score, quick zoom.
 with st.container(key="game_hud"):
@@ -89,16 +92,26 @@ with st.container(key="game_hud"):
     if focus not in options:  # e.g. "Me" was picked but the location is gone now
         focus = options[0]
 
-with st.container(key="game_map"):
-    map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
-                      pictures=pictures,
-                      context=f"{lobby_id}:{season_id}:{membership_id}")
+# Map and bottom card are one fragment: tapping a territory reruns only this
+# part (no database reads or score replay), so the card switches quickly.
+# The earlier tap dialog reran the whole page and felt slow.
+@st.fragment
+def map_and_card():
+    with st.container(key="game_map"):
+        tapped = map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
+                                   pictures=pictures,
+                                   context=f"{lobby_id}:{season_id}:{membership_id}")
+    selected = next((row for row in rows if row["id"] == tapped), None)
 
-# Slim sheet over the bottom of the map: where you are, and the full
-# territory list (opens upwards inside the sheet). Checking in is the + tab.
-with st.container(key="game_card"):
-    map_ui.location_card(here, status, accuracy_m)
-    with st.expander("All territories"):
-        if team_mode:
-            st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
-        map_ui.territory_list(rows)
+    # Slim sheet over the bottom of the map: the tapped territory or where you
+    # are, and the full territory list (opens upwards inside the sheet).
+    # Checking in is the + tab.
+    with st.container(key="game_card"):
+        map_ui.location_card(here, status, accuracy_m, selected)
+        with st.expander("All territories"):
+            if team_mode:
+                st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")
+            map_ui.territory_list(rows)
+
+
+map_and_card()

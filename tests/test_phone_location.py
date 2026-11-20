@@ -1,64 +1,70 @@
-"""The location prompt after login and the session reading it stores."""
+"""The Location switch in Profile, the follower on other pages and the session reading."""
 import time
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
+FIX = {"lat": 38.6782, "lng": -9.3259, "accuracy_m": 15}
 
-def run(monkeypatch, browser_reply):
+
+def run(monkeypatch, browser_reply, which="track_location"):
     monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: browser_reply(kwargs))
 
     def page():
         import streamlit as st
-        from phone_location import ask_for_location, current_location
-        ask_for_location()
-        st.write(repr(current_location()))
+        import phone_location
+        getattr(phone_location, st.session_state["which"])()
+        st.write(repr(phone_location.current_location()))
 
-    return AppTest.from_function(page).run()
+    at = AppTest.from_function(page)
+    at.session_state["which"] = which
+    return at.run()
 
 
-def test_login_asks_once_and_stores_the_reading(monkeypatch):
+def fresh():
+    return dict(FIX, taken_at_ms=time.time() * 1000)
+
+
+def test_follower_stores_the_reading_and_never_asks_for_permission_itself(monkeypatch):
     calls = []
-
-    def reply(kwargs):
-        calls.append(kwargs)
-        return {"lat": 38.6782, "lng": -9.3259, "accuracy_m": 15, "taken_at_ms": time.time() * 1000}
-
-    page = run(monkeypatch, reply)
+    page = run(monkeypatch, lambda kwargs: calls.append(kwargs) or fresh())
     assert not page.exception
-    assert calls[0]["once"] is True and calls[0]["key"] == "location_permission"
+    assert "once" not in calls[0] and "mode" not in calls[0] and calls[0]["key"] == "live_location_tracker"
     assert "(38.6782, -9.3259), 15.0, None" in page.markdown[0].value
 
 
-def test_blocked_location_is_reported(monkeypatch):
-    page = run(monkeypatch, lambda kwargs: {"error": "denied"})
-    assert "'denied'" in page.markdown[0].value
-
-
-def test_nothing_yet_while_the_browser_is_asking(monkeypatch):
-    page = run(monkeypatch, lambda kwargs: None)
-    assert "'waiting'" in page.markdown[0].value
-
-
-def test_asks_only_once_per_session(monkeypatch):
+def test_switch_asks_through_the_visible_component_and_stores_the_reading(monkeypatch):
     calls = []
-
-    def reply(kwargs):
-        calls.append(kwargs)
-        return {"lat": 38.6782, "lng": -9.3259, "accuracy_m": 15, "taken_at_ms": time.time() * 1000}
-
-    page = run(monkeypatch, reply)
-    page.run()
-    page.run()
-    assert len(calls) == 1
+    page = run(monkeypatch, lambda kwargs: calls.append(kwargs) or fresh(), which="location_switch")
+    assert not page.exception
+    assert calls[0]["mode"] == "switch" and calls[0]["key"] == "location_switch"
+    assert ":root" in calls[0]["tokens"]
+    assert "(38.6782, -9.3259), 15.0, None" in page.markdown[0].value
 
 
-def test_keeps_asking_until_the_browser_has_answered(monkeypatch):
-    calls = []
+def test_location_that_is_off_blocked_or_pending_is_reported_as_such(monkeypatch):
+    for reply, expected in [({"error": "off"}, "'off'"), ({"error": "denied"}, "'denied'"), (None, "'waiting'")]:
+        page = run(monkeypatch, lambda kwargs, reply=reply: reply)
+        assert expected in page.markdown[0].value
 
-    def reply(kwargs):
-        calls.append(kwargs)
-        return None  # the prompt is still open
 
-    page = run(monkeypatch, reply)
-    page.run()
-    assert len(calls) == 2
+def test_an_unknown_error_name_from_the_browser_is_invalid(monkeypatch):
+    page = run(monkeypatch, lambda kwargs: {"error": "<script>"})
+    assert "'invalid'" in page.markdown[0].value
+
+
+def test_old_readings_are_stale(monkeypatch):
+    page = run(monkeypatch, lambda kwargs: dict(FIX, taken_at_ms=time.time() * 1000 - 120_000))
+    assert "'stale'" in page.markdown[0].value
+
+
+def test_no_page_asks_for_location_on_its_own_after_login():
+    """No automatic question after login; before opting in nothing asks, the Profile tap does."""
+    root = Path(__file__).resolve().parents[1]
+    assert "ask_for_location" not in (root / "shared.py").read_text(encoding="utf-8")
+    assert "ask_for_location" not in (root / "phone_location.py").read_text(encoding="utf-8")
+    page = (root / "components" / "phone_location" / "index.html").read_text(encoding="utf-8")
+    # The follower starts only after the on/off choice; a browser that forgot its answer is only probed.
+    assert 'chosen() !== "on"' in page and 'state !== "granted"' in page
+    # The switch's own geolocation call sits inside its click handler (a real tap).
+    assert page.index('addEventListener("click"') < page.index("getCurrentPosition(position => {")

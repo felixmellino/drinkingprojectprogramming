@@ -21,7 +21,7 @@ from core.models import Territory
 
 GPS = tuple[float, float]  # (lat, lng)
 
-BROWSER_LOCATION_ERRORS = {"denied", "unavailable", "timeout", "unsupported"}
+BROWSER_LOCATION_ERRORS = {"denied", "unavailable", "timeout", "unsupported", "off"}
 
 
 def parse_phone_reading(
@@ -31,8 +31,8 @@ def parse_phone_reading(
 
     Returns (device_gps, accuracy_m, problem). On success problem is None.
     Otherwise device_gps and accuracy_m are None and problem is one of:
-    "waiting" (no reading yet), "denied", "unavailable", "timeout",
-    "unsupported" (reported by the browser), "stale" (older than
+    "waiting" (no reading yet), "off" (the player has not turned Location on in
+    Profile), "denied", "unavailable", "timeout", "unsupported" (reported by the browser), "stale" (older than
     MAX_GPS_AGE_SECONDS, R-L04), or "invalid" (anything malformed, so a
     tampered request can't inject a location).
 

@@ -130,59 +130,42 @@
   border-radius: var(--radius-lg);
 }
 .st-key-drink_ui_panel_details [data-testid="stText"] { color: var(--drink-ink); }
-.history-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--surface-raised); border-radius: 14px; }
-.history-photo-frame { margin: .7rem 0; padding: .35rem; border: 3px solid var(--photo-identity); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
-.history-photo-identity { padding: .2rem .4rem .55rem; color: var(--text); font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
-.history-photo-frame .drink-photo { margin: 0; width: 100%; }
-.history-photo-missing { display: grid; place-items: center; min-height: 180px; border-radius: var(--radius-md); background: var(--surface-raised); color: var(--drink-muted); font-size: 0.85rem; }
 .history-card-details h3 { margin: 10px 0 8px; padding: 0; color: var(--drink-ink); font-size: 1rem; font-weight: 700; }
 .history-card-details .history-award { margin: 0 0 8px; padding: 9px 10px; border-radius: var(--radius-sm); color: var(--success-ink); background: var(--accent-soft); font-size: 0.82rem; font-weight: 650; }
 .history-card-details .history-time, .history-owner-income { color: var(--drink-muted); font-size: 0.75rem; line-height: 1.45; margin: 0; }
 
-/* Photo memories: tap-to-open tiles grouped by game night. Each night is a
-   native st.columns() row, widened into a horizontal scroller so a busy
-   night swipes sideways instead of squeezing or wrapping. */
-.memory-night-label { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 10px; }
-.memory-night-label:first-of-type { margin-top: 6px; }
+/* Photos: a dense gallery grid like a phone's memories, grouped by game night.
+   Portrait tiles edge to edge with 2px gaps; name and points sit on a soft shade. */
+.memory-night-label { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 8px; }
 .memory-night-label strong { font-size: 0.92rem; font-weight: 700; color: var(--drink-ink); }
 .memory-night-label span { font-size: 0.76rem; color: var(--drink-muted); }
-
-[class*="st-key-memory_row_"] [data-testid="stHorizontalBlock"] {
-  flex-wrap: nowrap; overflow-x: auto; gap: 10px; padding-bottom: 6px;
-  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
-  /* Fades the row's edges so a swipeable night signals "more this way"
-     without any extra arrow/chevron UI. */
-  mask: linear-gradient(90deg, transparent, black 2%, black 96%, transparent);
-  -webkit-mask: linear-gradient(90deg, transparent, black 2%, black 96%, transparent);
+.stApp [class*="st-key-memory_grid_"] { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px !important; border-radius: 14px; overflow: hidden; }
+@media (max-width: 640px) {
+  /* Edge to edge on the phone, like the gallery it is modelled on. */
+  .stApp [class*="st-key-memory_grid_"] { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 -0.9rem; border-radius: 0; }
 }
-[class*="st-key-memory_row_"] [data-testid="stColumn"] {
-  flex: 0 0 132px; min-width: 132px; width: 132px; scroll-snap-align: start;
-}
-[class*="st-key-memory_tile_"] { position: relative; }
-
-/* 20px tile radius, 10px padding -> the photo's own radius is the 10px
-   remainder, so its corners read as cut from the same shape as the tile. */
-.memory-tile-visual {
-  position: relative; background: var(--surface); border-radius: 20px; padding: 10px;
-  box-shadow: var(--shadow-card);
-}
-.memory-photo {
-  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px;
-  background: var(--surface-raised);
-}
-.memory-points {
-  position: absolute; top: 16px; left: 16px; background: rgba(20, 43, 61, .6); color: #fff;
-  font-size: 0.68rem; font-weight: 700; padding: 3px 7px; border-radius: var(--radius-pill);
-}
-.memory-dot {
-  position: absolute; top: 18px; right: 18px; width: 9px; height: 9px; border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85);
-}
+[class*="st-key-memory_tile_"] { position: relative; min-width: 0; gap: 0 !important; }
+.memory-tile-visual { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--surface-raised); }
+.memory-photo { display: block; width: 100%; height: 100%; object-fit: cover; }
+.memory-shade { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 8px 6px; display: flex; flex-direction: column;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .55)); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.memory-shade span { font-size: 0.7rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memory-shade b { font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+.memory-dot { position: absolute; top: 7px; right: 7px; width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
 .memory-dot-matched { background: var(--success); }
 .memory-dot-outside { background: var(--drink-muted); }
-.memory-meta { padding: 7px 2px 0; }
-.memory-meta strong { display: block; font-size: 0.78rem; color: var(--drink-ink); overflow-wrap: anywhere; }
-.memory-meta span { display: block; font-size: 0.7rem; color: var(--drink-muted); overflow-wrap: anywhere; }
+
+/* All | Mine: underlined text tabs instead of radio circles. */
+.stApp .st-key-photo_tabs [role="radiogroup"] { display: flex; gap: 24px; border-bottom: 1px solid var(--border); }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"] { margin: 0; padding: 4px 0 6px; cursor: pointer;
+  border-bottom: 2.5px solid transparent; }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"] > div > div:first-child { display: none; }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"] p { font-size: 1.02rem; font-weight: 700; color: var(--text-muted); }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"]:has(input:checked) { border-bottom-color: var(--text); }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"]:has(input:checked) p { color: var(--text); }
+.stApp .st-key-photo_tabs [data-testid="stRadioOption"]:has(input:focus-visible) { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
 
 /* A transparent button, the exact size of the tile, makes the whole tile
    tappable; its label stays in the accessibility tree while hidden visually.
@@ -196,17 +179,13 @@
 }
 [class*="st-key-memory_tile_"] [data-testid="stButton"] button {
   position: absolute !important; inset: 0 !important;
-  width: 100% !important; height: 100% !important; padding: 0; border: 0; border-radius: 20px;
+  width: 100% !important; height: 100% !important; padding: 0; border: 0; border-radius: 0;
   background: transparent; opacity: 0; cursor: pointer; font-size: 0;
 }
 [class*="st-key-memory_tile_"] [data-testid="stButton"] button:focus-visible {
   opacity: 1; background: rgba(44, 153, 214, .12); outline: 3px solid var(--accent-ink); outline-offset: 2px;
 }
-@media (max-width: 640px) {
-  [class*="st-key-memory_row_"] [data-testid="stColumn"] { flex-basis: 112px; width: 112px; }
-  .memory-tile-visual { padding: 8px; border-radius: 16px; }
-  .memory-photo { border-radius: 8px; }
-}
+
 @media (max-width: 640px) {
   /* Same tight phone margins as every other page (assets/theme.css). */
   .stApp:has(.drink-page-hero) [data-testid="stMainBlockContainer"] {
@@ -225,4 +204,21 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .st-key-drink_ui_drinks label, .st-key-drink_ui_sizes label { transition: none; }
+}
+
+/* An opened photo: nearly full screen, edge to edge
+   on the phone, with the player and place on a soft shade at the bottom. */
+.photo-full { position: relative; margin: 4px 0 10px; border-radius: 18px; overflow: hidden; background: #000; }
+/* Screen minus the Back row and the tab bar, so the caption stays above the bar. */
+.photo-full img, .photo-full-missing { display: block; width: 100%; height: min(calc(100dvh - 210px), 900px); object-fit: cover; }
+/* An opened photo needs no page title; "Back to photos" says where you are. */
+.stApp:has(.photo-full) .drink-page-hero { display: none; }
+.photo-full-missing { display: grid; place-items: center; color: #fff; opacity: .7; background: var(--drink-muted); }
+.photo-full figcaption { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 2px;
+  padding: 40px 16px 14px; background: linear-gradient(transparent, rgba(0, 0, 0, .6)); color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.photo-full figcaption strong { font-size: 1.15rem; font-weight: 800; }
+.photo-full figcaption span { font-size: .85rem; opacity: .9; }
+@media (max-width: 640px) {
+  .photo-full { margin-left: -0.9rem; margin-right: -0.9rem; border-radius: 0; }
 }

@@ -2,7 +2,37 @@
 
 ## Minigames
 
+### R-M11 Reaction Duel (replaces the solo Reaction Test, 19 November 2026)
+
+Decided by Felix (Location & Territories) on 19 November 2026; the Games tile that
+showed the solo Reaction Test (R-M06–R-M09) now opens the Reaction Duel.
+- A player challenges another lobby member (in team lobbies: a player of another
+  team) for a stake of **1–10 season points**. Both must have the full stake free;
+  acceptance reserves it on both accounts (same reservation as Quiz Duel).
+- After acceptance both play **three reaction tries** on their own phone within
+  15 minutes. Each try waits a random 3.5–6.5 s, then TAP NOW; the time counts if it is
+  100–2000 ms. A tap before the signal, or under 100 ms (a guess), is a false start:
+  red screen, the try repeats. No tap within 2 s = missed.
+- **Best of three:** try n is compared with the opponent's try n; the faster time wins
+  the round. More rounds wins. Equal rounds -> lower total time wins. Equal total -> draw.
+- The winner receives the stake from the loser (shared `quiz_transfers` ledger, so it
+  counts in standings and profile stats). A draw returns both stakes.
+- Time runs out: unplayed tries count as missed (a player who played beats one who did
+  not; nobody played -> draw). Invitations expire after 10 minutes.
+- Normal seasons: one accepted outgoing and one accepted incoming duel per 06:00-based
+  night. Test seasons: no nightly limit. Opens with the scoring window (test seasons:
+  any time while the season is active). One running Reaction Duel per player.
+- The opponent's times stay hidden until the duel ends; only their progress is shown.
+- Limit: like the old Reaction Test, the phone measures the time; the server checks
+  that it is 100–2000 ms and that the tap arrives after the signal.
+- Code: `migrations/025_reaction_duel.sql` (decides results), `core/reaction_duel.py`,
+  `reaction_duel_ui.py`, `components/reaction_duel/`. Old Focus attempts and boosts
+  stay in the database and in scoring history.
+
 ### R-M06 Focus Challenge unlocks and attempts
+
+**Replaced on the Games tab by R-M11 (19 November 2026).** Kept for history: old
+attempts and boosts still count in scoring.
 
 Players see this game as **Reaction Test** (renamed on screen 19 November
 2026); the rules, code and saved data keep the name Focus Challenge.
@@ -219,14 +249,12 @@ loss can resume the saved started game until expiry. A lost successful reply
 recovers its existing start/result instead of creating another one.
 
 Minigames is the Games tab, immediately right of the check-in plus in the bottom navigation.
-The catalogue shows pending counts for incoming **Minigame invites** and
-outgoing **Minigame requests** for Chug Duel, Quiz Duel and Time Duel in the
-selected lobby. Open either list to see the game, the other player and any
-drink or stake terms. Recipients can accept or decline in the pop-up, and
-senders can cancel pending requests there. Accepting opens that game's setup
-on the recipient's device. The catalogue refreshes automatically and offers
-a **Join** button for accepted or running duels. Game screens retain their
-own setup, start and outcome flows. Migration 021 for Time Duel and migration
+The catalogue shows pending incoming invitation counts on the Chug Duel, Quiz
+Duel and Time Duel tiles for the selected season. The Games tab icon shows
+the combined count. Counts refresh automatically. Open a game to accept or
+decline an invitation, cancel a sent invitation or resume an accepted or
+running duel. Accepting opens that game's setup on the recipient's device.
+Migration 021 for Time Duel and migration
 022 for Quiz Duel keep every pending invitation visible when a player has
 more than 20. Both migrations were verified on the shared WeGoPub database
 on 19 November 2026.
@@ -342,23 +370,32 @@ Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
 ## Location
 
 ### R-L01 Location source
-Right after login the app asks the phone for its location once per login
-session, so the browser shows its "Allow location?" prompt straight away.
-Whether the browser asks again on later visits is the browser's setting
-(e.g. Safari: website settings → Location → Allow). The
-Check-in and Map pages then keep following the GPS automatically; there is
-no button. A
-check-in uses the newest reading at the moment the player submits. GPS data
+Changed 20 November 2026 (Location owner): the app no longer asks for the phone's
+location by itself right after login; Safari answered such unprompted requests
+unreliably. Instead Profile has a **Location switch**. Turning it on is a tap inside
+the page, so the browser asks for permission right then. The choice is remembered
+in this browser. The Check-in and Map pages (and the Chug Duel start) follow the
+GPS automatically only while the switch is on. The Map also has a small Location pill
+under its top bar (same on/off choice, synced with the Profile switch through the
+browser and across tabs); on the Map that pill itself follows the position. Before the switch was ever turned on
+they ask nothing. If the browser has forgotten its answer (Safari does, per visit),
+they probe once for four seconds; without a quick position they report "off" so the
+player taps the switch again, because an invisible frame cannot show the question
+reliably. When the switch is off they say
+"Location is off. Turn it on in Profile → Location." (Check-in also offers an
+"Open Profile" button.) If the browser blocks location, the switch says so and
+the player allows it in the browser settings (e.g. Safari: website settings →
+Location → Allow) and turns the switch on again. If the browser asks again for
+each new visit, the player taps the switch off and on once to answer it.
+A check-in uses the newest reading at the moment the player submits. GPS data
 stored in the photo is not used. Readings stay in the open session only and
 are never saved; only the check-in's result and territory are stored.
 
 | Case | Outcome |
 | --- | --- |
-| Allowed | The newest automatic phone reading (R-L02, R-L04 apply). |
-| Rejected | No phone reading (permission denied, no signal, unsupported browser) or a malformed one: Submit stays disabled, nothing is saved, and the page explains what to do (R2). Typed-in coordinates are not accepted. |
-| Boundary | A photo with GPS data that points somewhere else does not change the result. With the app closed or the phone locked, tracking pauses; the next reading arrives when the page is open again. |
-
-Source: Location & Territories block (Felix), 2026-11-17, updated 2026-11-18 (automatic tracking). Resolves D-09.
+| Allowed | Location is on and the newest phone reading passes R-L02 and R-L04. |
+| Rejected | Location is off, unavailable, denied, malformed, inaccurate or stale: Submit remains disabled and no entry or points are saved. |
+| Boundary | Switching location off clears its usable reading. Re-enabling requires a fresh valid reading; previous readings cannot authorize a submission. |
 
 ### R-L02 Accuracy limit
 The phone reports how many metres its reading may be off. A reading off by

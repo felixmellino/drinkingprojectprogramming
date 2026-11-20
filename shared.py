@@ -19,7 +19,6 @@ from app_navigation import bottom_navigation, minigame_invite_badge
 from theme import apply_theme
 from lobby_selection import restore_selection
 from parallel import run_parallel
-from phone_location import ask_for_location
 
 
 def require_login() -> str:
@@ -79,7 +78,6 @@ def require_login() -> str:
     if not navigation_rendered:
         bottom_navigation()
     minigame_invite_badge()
-    ask_for_location()  # browser asks "Allow location?" right after login (R-L01)
     return st.session_state["player_id"]
 
 

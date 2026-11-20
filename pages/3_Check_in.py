@@ -27,7 +27,7 @@ from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_re
     create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
-from drink_entry_ui import context_line, page_header, reward_card_html, section_heading
+from drink_entry_ui import context_line, gate_card_html, page_header, reward_card_html, section_heading
 from phone_location import current_location, track_location
 from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
@@ -78,6 +78,35 @@ if st.session_state.pop('checkin_open_camera', False):
     reset_camera()
 photo_number = st.session_state.get('checkin_photo_number', 0)
 photo = st.session_state.get('checkin_pending_photo')
+
+# Check the window and the cooldown before the camera opens, so nobody takes
+# a photo that can't count. A photo already taken keeps the warnings below.
+period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
+closed = period_closed or (modern and not scoring_open(now, season))
+waiting = cooldown_remaining(membership_id, now, recent_entries, rules["cooldown_seconds"]) if modern else 0
+if photo is None and not st.session_state.get('checkin_posted') and (closed or waiting):
+    page_header("Check in", compact=True)
+    zone = ZoneInfo(season.timezone_name)
+    opening = next_opening(now, season) if closed and modern else None
+    if waiting:
+        card = gate_card_html("Next check-in in", f"{waiting // 60}:{waiting % 60:02d}",
+                              f"One drink every {rules['cooldown_seconds'] // 60} minutes.")
+    elif opening:
+        local = opening.astimezone(zone)
+        card = gate_card_html("Game night opens", f"{local:%a %H:%M}",
+                              f"Check-ins open {local:%A %d %B at %H:%M} ({season.timezone_name}).")
+    elif utc(now) < utc(season.starts_at):
+        local = season.starts_at.astimezone(zone)
+        card = gate_card_html("Season starts", f"{local:%d %b}", f"{local:%A %d %B at %H:%M} ({season.timezone_name}).")
+    else:
+        card = gate_card_html("Season over", "Done", "Start or choose a new season on the Lobby page.")
+    st.markdown(card, unsafe_allow_html=True)
+    if closed and not opening and not utc(now) < utc(season.starts_at):
+        lobby_button()
+    elif st.button("Check again", type="primary", width="stretch"):
+        st.rerun()
+    st.stop()
+
 if photo is None and not st.session_state.get('checkin_posted'):
     # Only the camera occupies the viewport. GPS continues in its hidden component.
     st.markdown("""<style>
@@ -147,9 +176,6 @@ if st.session_state.get('checkin_posted'):
         st.rerun()
     st.stop()
 
-period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
-closed = period_closed or (modern and not scoring_open(now, season))
-waiting = cooldown_remaining(membership_id, now, recent_entries, rules["cooldown_seconds"]) if modern else 0
 if closed:
     opening = next_opening(now, season) if modern else None
     if opening:
@@ -227,15 +253,19 @@ with st.container(key="drink_ui_panel_location"):
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
         "waiting": "Finding your location… Allow location access if your browser asks.",
+        "off": "Location is off. Turn it on in Profile → Location, then come back.",
         "stale": "Your last location is more than a minute old. Finding a new one…",
-        "denied": "Location access is blocked. Allow location for this site in your browser settings, then reload the page.",
+        "denied": "Location access is blocked. Allow location for this site in your browser settings, then turn Location on in Profile.",
         "unavailable": "Your phone can't find its position right now. Move closer to a window or outside.",
         "timeout": "Finding your position is taking long. Keep the page open, it keeps trying.",
         "unsupported": "This browser can't share its location. Try another browser on your phone.",
         "invalid": "Something went wrong reading your location. Reload the page.",
     }
-    if location_problem in ("denied", "unsupported", "invalid"):
+    if location_problem in ("off", "denied", "unsupported", "invalid"):
         st.warning(location_messages[location_problem])
+        if location_problem in ("off", "denied") and st.button("Open Profile", key="location_open_profile"):
+            st.session_state["profile_view"] = "menu"
+            st.switch_page("pages/1_Profile.py")
     elif location_problem:
         st.caption(location_messages[location_problem])
     elif accuracy_m > MAX_GPS_ACCURACY_M:

@@ -75,7 +75,8 @@ Each teammate then pulls the merged code and uses the same project locally.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade pip==26.3
+python -m pip install -r requirements.txt
 ```
 
 Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill
@@ -94,6 +95,10 @@ For a **new database**, apply `schema.sql` via the Supabase SQL editor.
 Territories load automatically from `data/territories.geojson` into the
 database the first time the app runs (see `shared.get_territories()`) —
 no separate seed step needed.
+
+**Migration order:** many migration files share a number, so follow the numbered list in
+[`docs/MIGRATIONS.md`](docs/MIGRATIONS.md) (`node tests/migration_chain.cjs <path to pglite
+dist/index.cjs>` installs it on an empty PostgreSQL and checks the result).
 
 For an **existing database**, back it up and apply only
 `migrations/001_personal_accounts.sql` once, then
@@ -312,7 +317,8 @@ four building blocks, and the team's workflow rules.
   the QA replay UI update requires deployment with the new Python code.
   Normal lobbies keep their nightly limits. Real two-phone gameplay remains to verify; see
   [CHUG_DUEL.md](docs/CHUG_DUEL.md).
-  Focus Challenge is implemented; migrations 014 and 015 activate existing explicit test seasons and new normal seasons. Quiz Duel and Time Duel are implemented with activation notes linked above. See the build order in
+  Chug Duel, Quiz Duel, Time Duel and the Reaction Duel (R-M11) are implemented; the solo
+  Focus Challenge was replaced by the Reaction Duel on 20 November 2026. See the build order in
   `AGENTS.md`/the project plan for what's next.
 - Scoring v1 has an implemented point table and weekly window. Legacy/minigame
   constants and calendar-month season
@@ -484,41 +490,31 @@ Navigation/loading improvements and reproducible benchmarks are documented in
 [Performance](docs/PERFORMANCE.md). They require the app update, with no new
 database migration for the performance change.
 
-### Focus Challenge (19 November 2026)
+### Reaction Duel (19 November 2026)
 
-The second playable minigame adds randomized reaction, seven-step memory and
-precision tests. New attempts play every task, even after a miss: three passes
-earn x1.5, two earn x1.25, and zero or one leave points unchanged. Both tiers last
-one hour. Apply [`migrations/022_focus_complete_all_games.sql`](migrations/022_focus_complete_all_games.sql)
-after 021 for this revision; deploy the matching app code. Migration 022 is
-prepared and locally verified, with shared activation pending.
-The flow uses one reaction within 220 ms, Start memory,
-then Start precision. Apply [`migrations/021_focus_three_stage_flow.sql`](migrations/021_focus_three_stage_flow.sql)
-last, after 015 and any already-installed 018/019/020 changes; it includes the optional
-017 Focus setup and preserves running games. Migration 021 was installed on the
-shared project on 19 November 2026. Start a new attempt after refreshing the app;
-already-running reaction-only attempts keep their previous rules.
-Accepted entries unlock attempts at five, then seven/nine/etc.
-after failures. One rewarded attempt per evening grants a personal 60-minute ordinary
-season/territory effect, including 25% owner income on boosted awards.
-Chug Duel scoring is unchanged. Before activation, the Data owner applies
-`migrations/014_focus_challenge.sql` after 011, `012_qa_minigames.sql` and
-`013_checkin_photo_privacy.sql`, then applies `015_focus_test_replays.sql`.
-Existing explicitly marked test seasons can play immediately without uploads,
-including unlimited sequential retries/wins throughout the active season.
-Repeated wins refresh the single x1.5 hour. Normal seasons retain 5/7/9 unlocks,
-one win per evening and their scoring window; older normal snapshots stay frozen.
-See [the setup, security limits and verification record](docs/FOCUS_CHALLENGE.md).
-Shared Focus migrations 014/015/021 are installed. The database verification
-confirmed one reaction, a 220 ms limit and three-stage flow; status RPC checks
-confirmed zero-upload, unlimited play in all nine populated test seasons.
-Real-phone difficulty calibration and complete deployed gameplay still need verification.
+The Reaction Test tile now opens a **Reaction Duel**: challenge a lobby member for
+1–10 points, both play three reaction tries, best of three wins the stake. Apply
+[`migrations/025_reaction_duel.sql`](migrations/025_reaction_duel.sql) (last step of the
+[install order](docs/MIGRATIONS.md)). Rules: R-M11 in `docs/ontology/RULES.md`. Tests:
+`tests/test_reaction_duel.py`, `node tests/reaction_component.cjs`,
+`node tests/reaction_postgres.cjs <path to pglite dist/index.cjs>`.
+
+### Focus Challenge (replaced)
+
+The solo Focus Challenge ("Reaction Test": reaction, memory and precision tests with a
+×1.25 / ×1.5 boost) no longer has a screen: the Games tile now opens the Reaction Duel
+above. Its database part (migrations 014, 015, 021, 022) stays installed because boosts
+already earned remain in the scoring history. Details: [docs/FOCUS_CHALLENGE.md](docs/FOCUS_CHALLENGE.md).
 
 ### Minigame invite badge
 
-Apply [migration 023](migrations/023_minigame_invite_badge.sql) after the Chug,
+Apply [migration 022](migrations/022_quiz_duel_invite_list.sql) so Quiz Duel lists
+all pending invites. Apply [migration 023](migrations/023_minigame_invite_badge.sql) and
+[migration 024](migrations/024_minigame_tile_badges.sql) after the Chug,
 Quiz and Time Duel migrations. The Games tab checks every 10 seconds for pending
-incoming invitations in the selected season while the app is open.
+incoming invitations in the selected season. The catalogue checks every 3 seconds
+and shows the count on each duel's tile. Open the game to respond or manage
+a challenge you sent.
 
 ### Leaving and rejoining lobbies
 
@@ -526,7 +522,7 @@ Open a lobby and choose **Leave lobby → Confirm leave**. Scores remain in lobb
 standings and Profile → My stats, including earned owner income. Personal owner
 income pauses while absent. Rejoin using the original invite code to restore
 the same membership, history, team and game limits. Team slots stay reserved;
-accepted/running duels and running Focus attempts block leaving until finished
+accepted/running duels block leaving until finished
 or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs

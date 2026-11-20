@@ -56,6 +56,16 @@ def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
     replay.assert_called_once()
 
 
+def test_map_has_one_compact_location_switch_that_also_follows_the_position(phone, monkeypatch):
+    calls = []
+    monkeypatch.setattr("phone_location._phone_location", lambda **kwargs: calls.append(kwargs) or phone["location"])
+    page = open_map()
+    assert not page.exception
+    assert len(calls) == 1, "one component only: the switch itself follows, no second invisible tracker"
+    assert calls[0]["mode"] == "switch" and calls[0]["compact"] is True and calls[0]["follow"] is True
+    assert calls[0]["key"] == "location_switch_map"   # a different key than the Profile switch
+
+
 def card(page):
     """The floating location card over the map (HTML in a markdown block)."""
     return next(m.value for m in page.markdown if 'class="game-card"' in m.value)
@@ -204,28 +214,50 @@ def chart_json(page):
     return json.loads(page.get("deck_gl_json_chart")[0].proto.json)
 
 
-def test_tooltip_is_client_side_plain_text_and_lists_names_and_points(phone, monkeypatch):
+def test_map_sends_only_territory_ids_and_selects_on_tap(phone, monkeypatch):
     monkeypatch.setattr(db, "list_public_usernames", lambda: [
         dict(id="p-me", display_name="felix"), dict(id="p-rival", display_name="<b>rival</b>")])
     page = open_map()
     assert not page.exception
-    assert not getattr(page.get("deck_gl_json_chart")[0].proto, "selection_mode", None)  # no round trip on tap
+    chart = page.get("deck_gl_json_chart")[0].proto
+    assert chart.selection_mode and not chart.tooltip                # a tap selects; no white tooltip
     layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
     assert layers["owner-badges"]["pickable"] is False             # taps reach the territory under a badge
     props = layers["territories"]["data"]["features"][0]["properties"]
-    assert (props["n1"], props["p1"]) == ("<b>rival</b>", "4")      # plain text, best first; the map escapes it
-    assert (props["n2"], props["p2"]) == ("felix (you)", "3")      # marks you
-    assert props["n3"] == props["p3"] == "" and props["none"] == "" and props["more"] == ""
-    assert "{n5}" in page.get("deck_gl_json_chart")[0].proto.tooltip
+    assert props["id"] == TERRITORY.id
+    assert "<b>rival</b>" not in chart.json and "rival" not in str(props)  # names stay server-side
 
 
-def test_tooltip_rows_are_tiny_and_handle_empty_and_long_lists():
+def test_selected_territory_reads_only_known_ids():
     import map_ui
-    ranking = [{"id": str(i), "name": f"p{i}", "points": 10 - i, "you": False} for i in range(8)]
-    props = map_ui.tooltip_rows({"ranking": ranking})
-    assert props["n5"] == "p4" and "n6" not in props and props["more"] == "…"
-    empty = map_ui.tooltip_rows({"ranking": []})
-    assert empty["none"] == "no points yet" and empty["n1"] == ""
+    event = SimpleNamespace(selection={"objects": {"territories": [{"properties": {"id": "territory-b"}}]}})
+    assert map_ui.selected_territory(event, {"territory-a", "territory-b"}) == "territory-b"
+    assert map_ui.selected_territory(event, {"territory-a"}) is None                     # unknown id ignored
+    assert map_ui.selected_territory(SimpleNamespace(selection={}), {"territory-a"}) is None
+    assert map_ui.selected_territory(None, {"territory-a"}) is None
+
+
+def test_tapping_a_territory_shows_its_tug_of_war_without_standing_in_it(phone, monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: SECOND.id)  # tapped Le Pub
+    message = card(open_map())                                       # no location yet
+    assert "Le Pub" in message and "tug-bar" in message and "your lead" in message
+    assert "You are in" not in message and "Finding you" not in message
+
+
+def test_tapping_an_unclaimed_territory_says_the_next_drink_claims_it(phone, monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: FREE.id)
+    message = card(open_map())
+    assert "After8" in message and "Your next drink here claims it." in message and "tug-bar" not in message
+
+
+def test_tapping_the_territory_you_stand_in_keeps_you_are_in(phone, monkeypatch):
+    import map_ui
+    monkeypatch.setattr(map_ui, "render_map", lambda *args, **kwargs: TERRITORY.id)
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    message = card(open_map())
+    assert "You are in · owned by" in message and "pts to take it" in message
 
 
 def test_territory_rows_carry_a_ranking_in_standings_order(phone):
@@ -234,3 +266,47 @@ def test_territory_rows_carry_a_ranking_in_standings_order(phone):
     assert [(r["id"], r["name"], r["points"], r["you"]) for r in rows[0]["ranking"]] == [
         ("rival", "rival", 4, False), ("me", "felix", 3, True)]
     assert rows[1]["ranking"] == []
+
+
+# -- Tug-of-war card (owned territory you stand in) ---------------------
+
+def _here(status, mine, *, owner="Leo", owner_points=0, needed=None, ranking=None):
+    return {"name": "Bairro Alto", "status": status, "my_points": mine, "owner": owner,
+            "owner_points": owner_points, "needed": needed, "ranking": ranking or [],
+            "detail": "the full sentence"}
+
+
+def test_tug_of_war_on_a_rivals_territory_shows_points_to_take_it():
+    import map_ui
+    html = map_ui.tug_of_war(_here("theirs", 4, owner_points=7, needed=4))
+    assert "owned by Leo" in html and "<b>4</b><em>pts to take it</em>" in html
+    assert 'class="tug-you" style="width:36%"' in html and 'style="width:64%"' in html
+    assert "You 4" in html and "Leo 7" in html
+    assert '<p class="sr-only">the full sentence</p>' in html
+
+
+def test_tug_of_war_on_your_territory_shows_your_lead_over_the_closest_rival():
+    import map_ui
+    ranking = [{"name": "felix", "points": 5, "you": True}, {"name": "Ana", "points": 3, "you": False},
+               {"name": "Ben", "points": 1, "you": False}]
+    html = map_ui.tug_of_war(_here("yours", 5, owner="felix", owner_points=5, ranking=ranking))
+    assert "<b>+2</b><em>your lead</em>" in html and "Ana 3" in html and "Ben" not in html
+
+
+def test_tug_of_war_alone_on_your_territory_has_a_full_bar():
+    import map_ui
+    ranking = [{"name": "felix", "points": 3, "you": True}]
+    html = map_ui.tug_of_war(_here("yours", 3, ranking=ranking))
+    assert "No rival yet 0" in html and 'class="tug-you" style="width:100%"' in html
+
+
+def test_tug_of_war_escapes_names():
+    import map_ui
+    html = map_ui.tug_of_war(_here("theirs", 0, owner="<b>x</b>", owner_points=1, needed=2))
+    assert "<b>x</b>" not in html and "&lt;b&gt;x&lt;/b&gt;" in html
+
+
+def test_card_uses_tug_of_war_inside_a_rivals_territory(phone):
+    phone["location"] = {"lat": INSIDE[0], "lng": INSIDE[1], "accuracy_m": 12, "taken_at_ms": time.time() * 1000}
+    message = card(open_map())
+    assert 'class="tug-bar"' in message and "pts to take it" in message

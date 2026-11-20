@@ -1,16 +1,16 @@
 .chug-photo { display:block; width:min(100%,420px); max-height:360px; object-fit:cover;
   border-radius:var(--radius-lg); border:var(--border-width) solid var(--border); margin:auto; }
-.st-key-focus_stage {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
+:is(.st-key-focus_stage,.st-key-reaction_stage) {position:fixed!important;inset:0;z-index:100000;width:100vw!important;
   max-width:none!important;height:100dvh!important;margin:0!important;background:var(--bg);overflow:hidden;}
-.st-key-focus_stage iframe {width:100vw!important;height:100dvh!important;border:0;}
-body:has(.st-key-focus_stage) [data-testid="stHeader"],
-body:has(.st-key-focus_stage) [data-testid="stSidebar"],
-body:has(.st-key-focus_stage) .st-key-wego_bottom_nav {display:none!important;}
-body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;}
-.st-key-focus_exit {position:fixed!important;top:calc(10px + env(safe-area-inset-top));right:12px;width:auto!important;z-index:100001;}
-.st-key-focus_exit button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
-.st-key-focus_exit button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
-.st-key-focus_stage [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
+:is(.st-key-focus_stage,.st-key-reaction_stage) iframe {width:100vw!important;height:100dvh!important;border:0;}
+body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) [data-testid="stHeader"],
+body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) [data-testid="stSidebar"],
+body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) .st-key-wego_bottom_nav {display:none!important;}
+body:has(:is(.st-key-focus_stage,.st-key-reaction_stage)) [data-testid="stMain"] {overflow:hidden!important;}
+:is(.st-key-focus_exit,.st-key-reaction_exit) {position:fixed!important;top:calc(10px + env(safe-area-inset-top));right:12px;width:auto!important;z-index:100001;}
+:is(.st-key-focus_exit,.st-key-reaction_exit) button {width:44px;height:44px;border-radius:50%;padding:0;background:var(--surface);}
+:is(.st-key-focus_exit,.st-key-reaction_exit) button [data-testid="stMarkdownContainer"] {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+:is(.st-key-focus_stage,.st-key-reaction_stage) [data-testid="stAlert"] {position:fixed;bottom:12px;left:16px;right:16px;z-index:100002;}
 /* Game catalogue: a colourful grid of square tiles, three rows of two on
    every screen (designed for phones first). Each tile is a markdown block
    with the "Open …" button laid invisibly over it: the whole tile taps. */
@@ -27,6 +27,10 @@ body:has(.st-key-focus_stage) [data-testid="stMain"] {overflow:hidden!important;
 .game-tile-quiz { background:linear-gradient(150deg,#3CCB97 0%,#13967A 100%); }
 [class*="game-tile-soon_"] { background:var(--surface); color:var(--text-muted); box-shadow:none; border:1px dashed var(--border); }
 .game-tile-art { position:absolute; top:5%; left:50%; width:64%; transform:translateX(-50%); pointer-events:none; }
+.game-tile-invite-badge { position:absolute; z-index:1; top:9px; right:9px; min-width:20px; height:20px;
+  box-sizing:border-box; padding:0 7px; border-radius:999px; background:#b32639; color:#fff;
+  box-shadow:0 0 0 1px #fff; font-size:11px; font-weight:700; line-height:20px; text-align:center;
+  pointer-events:none; }
 [class*="game-tile-soon_"] .game-tile-art { width:56%; top:10%; }
 .game-tile-text { position:relative; display:flex; flex-direction:column; gap:0; min-width:0; }
 .game-tile-text strong { font-size:1rem; font-weight:700; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -105,15 +109,15 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .stApp [class*="st-key-chug_card_"], .stApp [data-testid="stVerticalBlockBorderWrapper"]:has(.duel-vs) {
   border-radius: var(--radius-lg); background: var(--surface); }
 /* Pickers (who, drink, size, stake): big pills that wrap, one tap each. */
-.stApp [class*="st-key-pill_radio_chug"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_quiz"] [role="radiogroup"],
+.stApp [class*="st-key-pill_radio_chug"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_quiz"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_reaction"] [role="radiogroup"],
 .stApp [class*="st-key-chug_drink"] [role="radiogroup"] {
   display: flex; flex-wrap: wrap; gap: 6px; background: transparent; box-shadow: none; padding: 0; }
-.stApp [class*="st-key-pill_radio_chug"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_quiz"] [data-testid="stRadioOption"],
+.stApp [class*="st-key-pill_radio_chug"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_quiz"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_reaction"] [data-testid="stRadioOption"],
 .stApp [class*="st-key-chug_drink"] [data-testid="stRadioOption"] {
   background: var(--surface); box-shadow: var(--shadow-card); padding: 0.6rem 1rem; }
-.stApp .st-key-chug_invite button, .stApp .st-key-quiz_challenge button { min-height: 56px; font-size: 1.05rem; }
+.stApp .st-key-chug_invite button, .stApp .st-key-quiz_challenge button, .stApp .st-key-reaction_challenge button { min-height: 56px; font-size: 1.05rem; }
 /* A button that cannot be pressed yet stays recognisable (blue, faded) instead of turning into a white box. */
-.stApp .st-key-chug_invite button:disabled, .stApp .st-key-quiz_challenge button:disabled, .stApp .st-key-focus_start button:disabled {
+.stApp .st-key-chug_invite button:disabled, .stApp .st-key-quiz_challenge button:disabled, .stApp .st-key-focus_start button:disabled, .stApp .st-key-reaction_challenge button:disabled {
   background: var(--accent); color: var(--on-accent); opacity: .4; }
 
 /* Game screens: everything centred. */
@@ -130,3 +134,10 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .stApp:has(.game-title) [data-testid="stElementContainer"]:has(> [data-testid="stButton"] button[kind="tertiary"]) [data-testid="stButton"] { width: auto; }
 .stApp:has(.game-title) [class*="st-key-minigames_home"], .stApp:has(.game-title) [class*="st-key-focus_home"],
 .stApp:has(.game-title) [class*="st-key-quiz_back"] { align-self: center; margin-inline: auto; }
+
+/* Reaction Duel result: one line per round, the faster time in bold. */
+.reaction-rounds { width:100%; border-collapse:collapse; margin:4px 0 10px; font-variant-numeric:tabular-nums; }
+.reaction-rounds th, .reaction-rounds td { padding:8px 6px; text-align:center; border-bottom:1px solid var(--border); }
+.reaction-rounds th { font-size:.8rem; font-weight:600; color:var(--text-muted); }
+.reaction-rounds td.win { font-weight:700; color:var(--accent-ink); }
+.reaction-verdict { text-align:center; font:700 1.6rem var(--font-display); margin:6px 0 2px; }

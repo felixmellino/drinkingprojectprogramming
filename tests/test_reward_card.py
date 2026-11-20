@@ -37,3 +37,10 @@ def test_owner_income_and_unavailable_notes():
 def test_territory_name_is_escaped():
     card = reward_card_html("1", "matched", territory="<b>Pub</b>", captured=True)
     assert "<b>" not in card and "&lt;b&gt;Pub&lt;/b&gt;" in card
+
+
+def test_gate_card_shows_eyebrow_number_and_line_escaped():
+    from drink_entry_ui import gate_card_html
+    card = gate_card_html("Next check-in in", "1:24", "<script>x</script>")
+    assert "gate-card" in card and ">1:24<" in card and "Next check-in in" in card
+    assert "<script>" not in card and "&lt;script&gt;" in card

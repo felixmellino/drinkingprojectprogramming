@@ -62,30 +62,23 @@ def game_night_label(start: datetime, end: datetime) -> str:
 
 
 def memory_tile(entry: dict, photo: bytes | None, *, key: str, on_open=None) -> bool:
-    """One tap-to-open grid tile: photo, points badge and a territory dot,
-    overlaid with a transparent full-tile button. Returns True once clicked."""
+    """Portrait tile with a name/points shade and territory dot.
+    The optional callback selects the detail before the next gallery load."""
     name = entry["username"]
     if entry.get("team_id"):
         name = f"{entry.get('team_name') or 'Team'} · {name}"
     model = entry.get("entry")
-    kind = model.drink_type if model else entry.get("drink_type")
-    label = DRINK_LABELS.get(kind, "Long drink" if kind == "longdrink" else kind or "Drink")
-    if model and model.size:
-        label += f" · {size_label(kind, model.size, entry['season'].scoring_rules)}"
     points = model.points_awarded + model.time_bonus if model else entry.get("base_points")
     matched = entry["location"] == "matched"
-    colour = identity_colour(entry)
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
         photo_html = f'<img class="memory-photo" src="data:image/jpeg;base64,{encoded}" alt="">'
     else:
         photo_html = '<div class="memory-photo memory-photo-missing"></div>'
-    badge = f'<span class="memory-points">+{escape(format_points(points))}</span>' if points is not None else ""
+    score = f'<b>+{escape(format_points(points))}</b>' if points is not None else ""
     dot = f'<span class="memory-dot {"memory-dot-matched" if matched else "memory-dot-outside"}" aria-hidden="true"></span>'
-    st.html(
-        f'<div class="memory-tile-visual" style="--photo-identity:{colour}">{photo_html}{badge}{dot}</div>'
-        f'<div class="memory-meta"><strong>{escape(name)}</strong><span>{escape(label)}</span></div>'
-    )
+    st.html(f'<div class="memory-tile-visual">{photo_html}{dot}'
+            f'<div class="memory-shade"><span>{escape(name)}</span>{score}</div></div>')
     return st.button(f"View {name}'s check-in", key=f"{key}_open",
                      on_click=on_open, args=(entry['id'],) if on_open else ())
 
@@ -98,21 +91,25 @@ def identity_colour(entry: dict) -> str:
     return f"hsl({hue:.3f} 60% 42%)"
 
 
-def framed_photo(entry: dict, photo: bytes | None, *, detail: bool = False) -> None:
+def full_photo(entry: dict, photo: bytes | None, place: str) -> None:
+    """An opened check-in: the photo nearly full screen, the player and place on
+    a soft shade at the bottom (assets/drink_entries.css, .photo-full)."""
     name = entry["username"]
     if entry.get("team_id"):
         name = f"{entry.get('team_name') or 'Team'} · {name}"
-    # Identity-derived colour only; all names are escaped and images stay inline.
-    colour = identity_colour(entry)
-    label = f'<figcaption class="history-photo-identity">{escape(name)}</figcaption>'
     if photo is not None:
         encoded = b64encode(photo).decode("ascii")
-        image = (f'<img class="{"drink-photo" if detail else "history-photo"}" '
-                 f'src="data:image/jpeg;base64,{encoded}" alt="Check-in photo by {escape(name, quote=True)}">')
-        st.html(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}{image}</figure>')
+        image = (f'<img src="data:image/jpeg;base64,{encoded}" '
+                 f'alt="Check-in photo by {escape(name, quote=True)}">')
     else:
-        st.markdown(f'<figure class="history-photo-frame" style="--photo-identity:{colour}">{label}'
-                    '<div class="history-photo-missing">Photo unavailable</div></figure>', unsafe_allow_html=True)
+        image = '<div class="photo-full-missing">Photo unavailable</div>'
+    figure = (f'<figure class="photo-full">{image}<figcaption><strong>{escape(name)}</strong>'
+              f'<span>{escape(place)}</span></figcaption></figure>')
+    # st.html only for image bytes; a missing photo is plain markup.
+    if photo is not None:
+        st.html(figure)
+    else:
+        st.markdown(figure, unsafe_allow_html=True)
 
 
 def photo_metadata(entry: dict) -> None:

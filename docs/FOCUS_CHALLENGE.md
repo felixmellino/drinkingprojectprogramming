@@ -1,5 +1,8 @@
 # Focus Challenge — implementation handoff, 19 November 2026
 
+> Replaced on the Games tab by the Reaction Duel (R-M11 in `docs/ontology/RULES.md`,
+> migration 025). The screen was removed; database, saved attempts and boosts stay.
+
 Shown to players as **Reaction Test** (Minigames tile, page title and start
 button). Code, database and rules keep the name Focus Challenge.
 

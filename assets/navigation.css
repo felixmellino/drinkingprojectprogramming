@@ -2,13 +2,15 @@
    Icons are added by app_navigation.py as CSS masks on button::before. */
 .st-key-wego_bottom_nav {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  /* Raised so the hosting badge in the bottom-right corner does not cover the Photos tab. */
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
   width: min(460px, calc(100% - 20px)); z-index: 1000;
   padding: 6px 6px; border-radius: 28px;
   background: var(--hud-bg); box-shadow: var(--shadow-float), 0 0 0 1px var(--border);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
-.st-key-wego_bottom_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0; align-items: center; }
+.st-key-wego_bottom_nav [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0; align-items: center;
+  overflow: visible !important; }  /* Streamlit scrolls this row by default, which cut off the top of the plus. */
 .st-key-wego_bottom_nav [data-testid="stColumn"] { min-width: 0 !important; width: 0 !important; flex: 1 1 0 !important; }
 .st-key-wego_bottom_nav [data-testid="stVerticalBlock"] { gap: 0; }
 
@@ -60,7 +62,7 @@
 
 /* Room for the bar under the page; no sidebar when the bar is shown. */
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stMain"] [data-testid="stMainBlockContainer"] {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
 }
 .stApp:has(.st-key-wego_bottom_nav) [data-testid="stSidebar"],
 .stApp:has(.st-key-wego_bottom_nav) button[aria-label="Expand sidebar"],
@@ -80,4 +82,20 @@
   .stApp:has(.st-key-game_map) .st-key-wego_back button [data-testid="stMarkdownContainer"] {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .stApp:has(.st-key-wego_back):has(.st-key-game_map) .game-hud { margin-left: 46px; }
+}
+
+/* Profile: a round button in the top-right corner of every page (icon only;
+   the "Profile" label stays for screen readers). The map's top bar makes room for it. */
+.stApp .st-key-wego_nav_profile { position: fixed; z-index: 1000; width: 38px !important;
+  top: calc(8px + env(safe-area-inset-top, 0px)); right: 10px; }
+.stApp .st-key-wego_nav_profile button { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 0;
+  border-radius: 50%; background: var(--hud-bg); color: var(--text); box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.stApp .st-key-wego_nav_profile button::before { content: ""; display: block; flex: 0 0 24px; width: 24px; height: 24px; background-color: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain; }
+.stApp .st-key-wego_nav_profile button [data-testid="stMarkdownContainer"] {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  .stApp:has(.st-key-wego_nav_profile):has(.st-key-game_map) .game-hud { margin-right: 46px; }
 }

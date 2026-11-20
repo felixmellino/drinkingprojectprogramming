@@ -6,8 +6,8 @@ The Minigames page is a colourful grid of square tiles, three rows of two on
 every screen, phones first (redesign 19 November 2026). Each tile has an
 animated picture (`assets/games/*.svg`, drawn for this app), the name and one
 short status line; tapping a playable tile opens the game. Order: Chug Duel
-(orange), Reaction Test = Focus Challenge (violet), Quiz Duel (green) and
-three "New game" placeholders. Chug Duel is playable. Focus Challenge opens in new seasons whose frozen
+(orange), Reaction Test = Focus Challenge (violet), Quiz Duel (green), Time Duel
+(blue) and two "New game" placeholders. Focus Challenge opens in new seasons whose frozen
 rules enable it; older seasons show a disabled action and retain their rules.
 Focus shows check-in progress, its next unlock, the tasks and reward. A saved
 running attempt resumes full screen. Its timer continues on navigation; Close
@@ -17,12 +17,12 @@ result. Check-in previews and photo history identify the earned multiplier.
 Open Chug Duel replaces the list with the existing invitation, acceptance,
 shared capture, allowance and history controls, like a page on a phone.
 ‹ All games returns to the list without cancelling invitations or changing
-any allowance. The hub polls invitations and shows a white status pill on the
-Chug Duel tile when a response is waiting. A small count in the upper-right
-corner of the Games tab icon shows pending incoming Chug, Quiz and Time Duel
-invitations in the selected season. The count refreshes while the app is open,
-including on other tabs. Opening Games keeps the badge visible while invites
-are pending. The badge disappears when the count reaches zero.
+any allowance. The upper-right badge on a duel tile shows its pending incoming
+invitations in the selected season. The Games tab icon shows the combined count
+and refreshes on other tabs too. Open the relevant game to accept or decline an
+invite or to see a challenge you sent. Reading an invite leaves it pending.
+Acceptance, decline, cancellation or expiry removes it from the count, and a
+zero count hides the badge.
 A host's running duel still takes priority and resumes its full-screen
 board, retaining its saved result until explicit dismissal. Membership is
 checked before the list is shown. The catalogue does not mount a continuous
@@ -54,8 +54,9 @@ text, no metrics, no manual refresh (screens update by themselves).
   Precision. No countdown clock and no second start button; each try shows its
   reaction time; an early tap turns the screen red with "FALSE START" (tap to
   continue; that try repeats); the result screen lists all tries and the average.
-- Reaction Test: one line of reward ("×1.5 points for 1 hour"), a progress bar
-  only while locked, Start. No slogans or disclaimers on any game screen.
+- Reaction Duel (replaces the Reaction Test, R-M11): pick who and stake (1 to 10) as
+  pills, Challenge; invitations Accept / Decline; full-screen tap board for 3 tries;
+  then "Waiting for …" and a result with one line per round and +/− points. No slogans or disclaimers on any game screen.
   Everything on game screens is centred.
 - Quiz Duel: pick who and stake (3 to 10) as pills, Challenge; invitations are
   one card with Accept / Decline. Rules are unchanged.
@@ -71,8 +72,14 @@ These presentation choices introduce no new scoring or database rules.
 - Check-in starts with the camera. Drink/size controls appear only after a
   fresh photo is present, followed by the location status and submission.
   Drink/size choices have large selectable areas and an immediate points
-  preview. Closed-window/cooldown messages appear before the form, and Submit
-  spans the available width. Camera permission remains controlled by the browser.
+  preview. Submit spans the available width. Camera permission remains
+  controlled by the browser.
+- Update, 20 November 2026: the scoring window and cooldown are checked before
+  the camera opens. If a check-in can't count, one card replaces the camera:
+  "Next check-in in 1:24", "Game night opens Thu 18:00" (with date and
+  timezone), "Season starts …" or "Season over" (with Open Lobbies), plus a
+  Check again button. A photo already taken keeps the old warnings under it
+  and Submit stays disabled.
 - Follow-up, 18 November 2026: tapping the central + mounts the camera
   into a full-viewport stage, hiding page navigation while taking the photo.
   The camera has a bottom-centre circular shutter, a front/back switch and
@@ -117,16 +124,15 @@ broader screen proposal below remains a future design outline.
 ## Standings interface (implemented 17 November 2026, simplified 19 November 2026)
 
 Minimal by design: only the ranking and territory ownership are on screen.
-The page title is kept for screen readers but hidden; there is no
-description, refresh button or lobby summary line (data reloads on every
-page visit).
+The title "Ranks" is shown; there is no description, refresh button or lobby
+summary line (data reloads on every page visit).
 
-- Podium for the top three (2nd, 1st, 3rd left to right; blocks in sky blue,
-  silver and bronze with dark numerals), then one row per
-  player from rank 4. Exact quarter-points remain visible. Rows preserve the
+- One clean list (20 November 2026, the podium was removed): a single white
+  card, one row per player with rank, initials, name and points, hairlines
+  between rows. Exact quarter-points remain visible. Rows preserve the
   order from `core.leaderboard.season_leaderboard`; the UI never re-sorts or
   changes the tie rule.
-- The current player gets a YOU tag. The upper of two tied rows gets a
+- The current player's row is softly tinted with a small "You" label. The upper of two tied rows gets a
   "reached first" tag (R-R01).
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
@@ -161,12 +167,14 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 ## Bottom navigation (requested 17 November 2026)
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
-  19 November 2026): **Map | Ranks | + Check in | Games | Profile**.
+  19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
+- Profile is a round icon button in the top-right corner of every page
+  (20 November 2026; it made room for Photos in the bar). On the phone Map the
+  top bar leaves room for it.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames. Lobbies and Photo history open from
-  the top of the Profile menu; hints that send a player to the Lobby page
-  carry an "Open Lobbies" button. A page without its own tab highlights the
-  tab it is reached from (Lobby and Photo history → Profile).
+  the Leaderboard, Games the Minigames, Photos the Photo history. Lobbies open
+  from the top of the Profile menu; hints that send a player to the Lobby page
+  carry an "Open Lobbies" button. The Lobby page lights up the Profile button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
   filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
@@ -234,6 +242,10 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 Implemented 18 November 2026 (`pages/5_Map.py`, `map_ui.py`), for the
 current lobby's season only. Bars are not part of the game, so none are shown.
 
+- A small **Location** pill (label and switch) sits right-aligned under the top bar and
+  quick-zoom chips (20 November 2026). It is the same on/off choice as the Profile switch
+  (R-L01) and also follows the phone's position while on. If the browser forgot its answer
+  the pill shows Off and a tap turns it on.
 - City map with the 48 territories coloured for the viewer: sky blue = yours,
   scarlet red = someone else's, grey = unclaimed (palette colours, changed from
   green/red on 19 November 2026 so red-green colour-blind players can tell
@@ -243,9 +255,21 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   points", or "Owned by Y: you need X more points to take it" (owner's
   territory points − yours + 1, because a tie keeps the owner, R-R01).
   Owner income never counts towards territory points.
-- A blue dot shows where you are (automatic location, R-L01/R-L04), with a
-  line saying which territory you're in; nothing is shown if location is
-  blocked, stale or worse than 50 m.
+- A white dot with a navy ring shows where you are (automatic location,
+  R-L01/R-L04); nothing is shown if location is blocked, stale or worse than
+  50 m.
+- The bottom card names the territory you're in. For an owned territory it is
+  a tug-of-war (19 November 2026): one big number ("4 pts to take it" in
+  scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
+  your territory points against the owner's (or your closest rival's). The
+  full sentence stays as screen-reader text. Unclaimed areas keep one line.
+- Tap any territory (20 November 2026): the bottom card switches to that
+  territory's tug-of-war ("Owned by X" / "Yours"; "You are in ·" only when you
+  stand in it; unclaimed: "Your next drink here claims it."). Tapping empty map
+  space goes back to your location. This replaces the white tooltip below.
+  The map and card are one Streamlit fragment, so a tap reruns only them (no
+  database reads or replay), unlike the earlier slow dialog. Only territory ids
+  are sent to the browser.
 - Hovering or tapping an area tints it in the app's dark green.
 - The base map shows streets, parks and water in colour (Carto Voyager).
 - Three cards below the map: territories you own (e.g. "1 of 48"),
@@ -268,7 +292,8 @@ Map owner badge update (19 November 2026, contributor request):
 - Badge diameter scales with area and available interior space, capped at
   120 metres and 52 screen pixels (12-pixel minimum at distant zoom levels).
   Green remains yours/your team's, red others', grey unclaimed.
-- Tapping (phone) or hovering (laptop) a territory shows a tiny tooltip next
+- (Replaced 20 November 2026 by the tap card above.) Tapping (phone) or
+  hovering (laptop) a territory showed a tiny tooltip next
   to it with the territory name and a list of name and territory points
   (best five, ranking order; you are marked "(you)"; "no points yet" if
   nobody has drunk there). It is drawn by the map in the browser itself, so
@@ -294,8 +319,13 @@ Map owner badge update (19 November 2026, contributor request):
 
 ## Memories
 
-- Implemented as Photo history: retained lobby photos arranged chronologically,
-  with the player, territory, drink/size, points and timestamp.
+- Implemented as Photo history, the **Photos** tab (gallery look since 20 November
+  2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
+  grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
+  2px gaps). Each tile shows the photo, the player's name and the points on a soft
+  shade at the bottom, and a dot (green = in a territory, grey = outside). Two nights
+  per page with Newer/Older nights; the night's photos download at the same time.
+  Retention and sharing notes sit in one quiet line at the bottom.
 - Selecting View details opens the corresponding check-in detail. Bars are not
   part of the location or scoring model.
 
@@ -311,9 +341,12 @@ See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [
 
 ## Profile menu (implemented 18 November 2026)
 
-The authenticated Profile is a vertical list: **Edit profile**, **Friends**,
-**My stats**, **Account & security**, then **Log out**. Each of the first
-four opens a separate view with **Back to Profile**. Logout is immediate.
+The authenticated Profile is a vertical list: **Lobbies**, **Edit profile**, **Friends**,
+**My stats**, **Account & security**, a **Location** switch (R-L01, 20 November 2026), then
+**Log out**. Photo history has no entry here any more (it is the Photos tab in the bar).
+Edit profile, Friends, My stats and Account & security each open a separate view with
+**Back to Profile**. Logout is immediate. The Location switch asks the browser for
+permission when turned on and shows Off / On with accuracy / Blocked.
 
 - Edit profile updates username, first name and surname. Names use the same
   required/100-character limits as registration. Usernames remain unique,

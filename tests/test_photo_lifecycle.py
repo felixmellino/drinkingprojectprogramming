@@ -274,7 +274,8 @@ def test_photo_context_treats_usernames_and_territories_as_text(store, monkeypat
     store.rows["entry"]["territories"]["name"] = payload
     page = photo_page(monkeypatch)
     assert not page.exception
-    markup = "\n".join(element.value for element in page.markdown)
+    # The caption on the opened photo is html; the details below are markdown.
+    markup = "\n".join(element.value for element in [*page.markdown, *page.get("html")])
     assert payload not in markup
     assert "&lt;img" in markup
 

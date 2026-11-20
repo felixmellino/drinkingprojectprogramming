@@ -108,7 +108,6 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     ui['choices']['me'] = 'old'
     monkeypatch.setattr('shared.require_login', real_require_login)
     monkeypatch.setattr('shared.sync_storage', lambda: '')
-    monkeypatch.setattr('shared.ask_for_location', lambda: None)
     navigation = Mock()
     monkeypatch.setattr('shared.bottom_navigation', navigation)
     monkeypatch.setattr(db, 'get_player', lambda pid: SimpleNamespace(id=pid, email='me@example.com', pin_hash='credential'))
@@ -124,7 +123,7 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert not at.exception
         assert at.session_state['current_lobby_id'] == 'old'
         assert not any('Choose a lobby' in i.value for i in at.info)
-        assert any('<h1 class="sr-only">Leaderboard</h1>' in m.value for m in at.markdown)
+        assert any('<h1>Ranks</h1>' in m.value for m in at.markdown)
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
     assert invite_count.call_args_list == [call('me', ui['seasons']['old'][0].id)] * 2
 
@@ -143,7 +142,6 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
     ui['members'] = [member for member in ui['members'] if member.lobby_id in joined]
     monkeypatch.setattr('shared.require_login', real_require_login)
     monkeypatch.setattr('shared.sync_storage', lambda: '')
-    monkeypatch.setattr('shared.ask_for_location', lambda: None)
     monkeypatch.setattr('shared.bottom_navigation', lambda: None)
     monkeypatch.setattr(db, 'get_player', lambda pid: Mock(email='me@example.com', pin_hash='credential'))
     monkeypatch.setattr(db, 'list_players', lambda: [])

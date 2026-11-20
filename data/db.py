@@ -688,6 +688,12 @@ def pending_minigame_invite_count(player_id: str, season_id: str) -> int:
     }).execute().data
 
 
+def pending_minigame_invites(player_id: str, season_id: str) -> dict[str, int]:
+    return get_client().rpc("pending_minigame_invites", {
+        "actor_player": player_id, "target_season": season_id,
+    }).execute().data[0]
+
+
 def invite_chug_duel(player_id: str, season_id: str, invitation_id: str,
                      opponent_id: str, drink: str, size: str | None) -> dict:
     return _duel_rpc("invite_chug_duel", {"actor_player": player_id, "target_season": season_id,
@@ -1214,6 +1220,37 @@ def invite_quiz_duel(player_id, season_id, invitation_id, opponent_id, stake):
 def quiz_action(player_id, duel_id, action, round_no=None, choice=None):
     return _quiz_rpc("quiz_action", dict(actor_player=player_id, target_duel=duel_id,
         selected_action=action, expected_round=round_no, selected_choice=choice))
+
+
+# -- Reaction Duel: stakes, three tries each, settled in PostgreSQL (migration 025) --
+def _reaction_rpc(name, parameters):
+    from core.reaction_duel import ERRORS
+    try:
+        return get_client().rpc(name, parameters).execute().data
+    except APIError as error:
+        reason = (error.message or '').strip()
+        if reason == 'permission_denied':
+            raise PermissionError(ERRORS[reason]) from None
+        if reason in ERRORS:
+            raise ValueError(ERRORS[reason]) from None
+        if error.code in {"PGRST202", "42P01", "PGRST205"}:
+            raise RuntimeError("Reaction Duel needs database migration 025 before it can open.") from None
+        raise
+
+
+def reaction_status(player_id, season_id):
+    return _reaction_rpc("reaction_status", {"actor_player": player_id, "target_season": season_id})
+
+
+def invite_reaction_duel(player_id, season_id, invitation_id, opponent_id, stake):
+    from core.reaction_duel import validate_stake
+    return _reaction_rpc("invite_reaction_duel", dict(actor_player=player_id, target_season=season_id,
+        invitation_id=invitation_id, opponent_member=opponent_id, selected_stake=validate_stake(stake)))
+
+
+def reaction_action(player_id, duel_id, action, revision=None, elapsed_ms=None):
+    return _reaction_rpc("reaction_action", dict(actor_player=player_id, target_duel=duel_id,
+        selected_action=action, expected_revision=revision, elapsed_ms=elapsed_ms))
 
 
 def list_season_transfers(season_id):

@@ -74,3 +74,16 @@ def reward_card_html(points: str, location: str, *, territory: str | None = None
                      'check the Map or Leaderboard.</p>')
     lines.append("</section>")
     return "".join(lines)
+
+
+def gate_card_html(eyebrow: str, big: str, line: str) -> str:
+    """Shown instead of the camera when a check-in can't count right now
+    (game night closed, season not running, or the cooldown). Same card
+    shape as the reward card, with a muted number. Every value is escaped."""
+    return (
+        '<section class="reward-card gate-card" aria-label="Check-in not open">'
+        f'<p class="reward-eyebrow">{escape(eyebrow)}</p>'
+        f'<p class="reward-points reward-zero">{escape(big)}</p>'
+        f'<p class="reward-where">{escape(line)}</p>'
+        "</section>"
+    )

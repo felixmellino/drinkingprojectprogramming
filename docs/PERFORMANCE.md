@@ -1,5 +1,11 @@
 # Navigation and loading performance — 19 November 2026
 
+Merge reconciliation, 20 November 2026: retain main's Photos tab, All/Mine
+filter, portrait grid and full-photo detail, Location switches and tapped-map
+territory cards. The optimized bounded loading and destination callbacks apply
+to that current interface. Main's Reaction Duel replacement remains in place;
+the removed solo Focus screen is not restored.
+
 This change reduces repeated reads and sequential network waits. It does not
 change scores, game rules, location thresholds, membership or photo audiences.
 Deploy it through the normal reviewed PR. No new database migration is needed
@@ -62,6 +68,15 @@ and 50 ms simulated reads. A browser switched between them, opened photo
 details and reached the last of 25 photos (12 + 12 + 1), without shared data.
 The full local Python suite passed 961 tests; a subsequent Map error-path
 check also covers a credential change during an avatar request.
+Those counts describe the original performance branch. Verification of the
+20 November merge is recorded in the PR. The merge also reconstructs the
+accidentally overwritten rulebook from its last intact Git version, preserving
+Reaction Duel/scoring/privacy rules and inserting the current Location rule
+once. It removes the repeated Location-only text (about 70 MB) from the file.
+Final merge verification: all 1,000 Python tests passed. Location and Reaction
+Duel component checks and the documented 25-file SQL installation chain passed.
+An isolated browser verified All/Mine filtering, the portrait grid and the
+full-photo detail with the destination callback. No shared data was changed.
 
 ## Remaining limits
 

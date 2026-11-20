@@ -11,6 +11,7 @@ from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
+from phone_location import location_switch
 from theme import menu_icons
 from parallel import run_parallel
 
@@ -18,7 +19,6 @@ SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 # Pages that have no tab in the bottom bar open from the top of this menu.
 PAGES = [
     ("lobby", "Lobbies", "pages/2_Lobby.py", "users-three"),
-    ("photos", "Photo history", "pages/6_Check_in_photos.py", "images"),
 ]
 OPTIONS = [
     ("edit", "Edit profile", "pencil-simple"),
@@ -46,6 +46,8 @@ def show_profile(player):
                 if st.button(label, width="stretch", key=f"profile_{key}"):
                     st.session_state["profile_view"] = key
                     st.rerun()
+        # Location: a real switch; the tap makes the browser ask for permission right away.
+        location_switch()
         with st.container(key="menu_list_logout"):
             if st.button("Log out", width="stretch", key="profile_logout"):
                 log_out()

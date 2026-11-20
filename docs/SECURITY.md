@@ -236,6 +236,10 @@ cleanup in dry-run mode and verify it never selects a current picture.
 
 ## Focus Challenge — 19 November 2026
 
+> The solo Focus screen was replaced by the Reaction Duel on 20 November 2026 (R-M11, migration 025:
+> same private server-only tables, RPCs run as the trusted server role, the stake moves through
+> the shared ledger exactly once). The notes below describe the Focus database part that remains.
+
 Migration 014 keeps attempts/private random challenges server-only. Its game
 RPCs use the trusted server role and also validate current player membership,
 phase/revision, evidence shape, server deadlines, one-win limits and atomic

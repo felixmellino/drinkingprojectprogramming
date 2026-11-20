@@ -1,8 +1,9 @@
-"""Automatic phone location for the Check-in and Map pages (R-L01, R-L04).
+"""Phone location for the Check-in and Map pages (R-L01, R-L04).
 
-track_location() mounts an invisible browser component that follows the
-phone's GPS while the page is open and keeps the newest reading in this
-session only. current_location() returns that reading after checking it
+location_switch() is the Location switch in Profile: a tap asks the browser for
+permission. track_location() mounts an invisible browser component that follows
+the phone's GPS while the page is open (only when the switch is on) and keeps
+the newest reading in this session only. current_location() returns that reading after checking it
 (core/location.py's parse_phone_reading): valid numbers, accuracy, age.
 Nothing here is written to the database.
 """
@@ -22,25 +23,30 @@ _phone_location = declare_component(
 _READING_KEY = "live_location_reading"
 
 
+def _tokens() -> str:
+    css = (Path(__file__).parent / "assets" / "theme.css").read_text(encoding="utf-8")
+    return css[css.index(":root {"):css.index("/* Base */")]
+
+
 def track_location() -> None:
-    """Start following the phone's position on this page. The browser asks
-    for permission once per site; after that it runs without any button."""
+    """Follow the phone's position on this page, but only if the player turned
+    Location on in Profile and the browser still allows it. This never opens a
+    permission prompt by itself (the switch does, from a tap), so the browser's
+    question no longer appears at random moments. Otherwise the reading says "off"."""
     value = _phone_location(key="live_location_tracker", default=None)
     if value is not None:
         st.session_state[_READING_KEY] = value
 
 
-def ask_for_location() -> None:
-    """Ask for the phone's location once per login session, right after
-    login, so the browser's permission prompt appears straight away. After
-    the browser has answered (allowed or blocked), other pages don't ask
-    again; only Check-in and Map keep following the location."""
-    if st.session_state.get("_location_asked"):
-        return
-    value = _phone_location(once=True, key="location_permission", default=None)
+def location_switch(*, compact: bool = False, follow: bool = False) -> None:
+    """The visible Location switch. Turning it on asks the browser for permission straight
+    away; the choice is remembered in this browser and shared by every switch.
+    compact: the small pill for the Map's top bar. follow: the switch also follows the
+    position while it is on (the Map uses it instead of the invisible follower)."""
+    value = _phone_location(mode="switch", compact=compact, follow=follow, tokens=_tokens(),
+                            key="location_switch_map" if compact else "location_switch", default=None)
     if value is not None:
         st.session_state[_READING_KEY] = value
-        st.session_state["_location_asked"] = True
 
 
 def current_location():

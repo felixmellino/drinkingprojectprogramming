@@ -69,23 +69,67 @@ def hud(lobby_name: str, rows: list[dict]) -> None:
     )
 
 
-def location_card(here: dict | None, status: str, accuracy_m: float | None = None) -> None:
-    """Bottom card floating over the map: where you are and what it means.
-    status: "matched", "outside", "inaccurate", "denied" or "waiting"."""
-    if status == "matched" and here:
-        tone = {"yours": "game-yours", "theirs": "game-theirs"}.get(here["status"], "")
-        body = (f'<small>You are in</small><h3>{escape(here["name"])}</h3>'
-                f'<p class="{tone}">{escape(here["detail"])}</p>')
+def location_card(here: dict | None, status: str, accuracy_m: float | None = None,
+                  selected: dict | None = None) -> None:
+    """Bottom card floating over the map. A tapped territory (`selected`) is
+    shown first; otherwise where you are and what it means.
+    status: "matched", "outside", "inaccurate", "denied", "off" or "waiting"."""
+    standing_in = status == "matched" and here is not None
+    if selected is not None:
+        body = territory_card(selected, standing_in=standing_in and here["id"] == selected["id"])
+    elif standing_in:
+        body = territory_card(here, standing_in=True)
     elif status == "outside":
         body = "<small>You are</small><h3>Outside the map</h3><p>Drinks here count for season points only.</p>"
     elif status == "inaccurate":
         body = (f"<small>Location</small><h3>Not precise enough</h3>"
                 f"<p>Accurate to about {accuracy_m:.0f} m, we need 50 m. Step outside for a moment.</p>")
     elif status == "denied":
-        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings.</p>"
+        body = "<small>Location</small><h3>Location is blocked</h3><p>Allow location for this site in your browser settings, then turn it on in Profile.</p>"
+    elif status == "off":
+        body = "<small>Location</small><h3>Location is off</h3><p>Turn it on in Profile → Location to see where you are.</p>"
     else:
-        body = "<small>Location</small><h3>Finding you…</h3><p>Allow location access if your browser asks.</p>"
+        body = "<small>Location</small><h3>Finding you…</h3><p>This takes a few seconds.</p>"
     st.markdown(f'<div class="game-card">{body}</div>', unsafe_allow_html=True)
+
+
+def territory_card(row: dict, *, standing_in: bool = False) -> str:
+    """Card body for one territory: the tug-of-war when someone owns it, one
+    line when it's unclaimed. standing_in adds "You are in" to the eyebrow."""
+    if row["status"] in ("yours", "theirs"):
+        return tug_of_war(row, standing_in=standing_in)
+    eyebrow = "You are in · unclaimed" if standing_in else "Unclaimed"
+    return (f'<small>{escape(eyebrow)}</small><h3>{escape(row["name"])}</h3>'
+            '<p>Your next drink here claims it.</p>')
+
+
+def tug_of_war(here: dict, *, standing_in: bool = True) -> str:
+    """Card body for an owned territory: one big number (points to take it,
+    or your lead) and a bar of you against the owner / your closest rival.
+    The full sentence stays as screen-reader text."""
+    me = here["my_points"]
+    prefix = "You are in · " if standing_in else ""
+    if here["status"] == "theirs":
+        rival_name, rival = here["owner"], here["owner_points"]
+        eyebrow, number, unit, tone = f"{prefix}owned by {rival_name}", format_points(here["needed"]), "pts to take it", "game-theirs"
+    else:
+        rivals = [r for r in here["ranking"] if not r["you"]]
+        rival_name, rival = (rivals[0]["name"], rivals[0]["points"]) if rivals else ("No rival yet", 0)
+        lead = me - rival
+        eyebrow, number, unit, tone = f"{prefix}yours", f"+{format_points(lead)}", "your lead", "game-yours"
+    eyebrow = eyebrow[0].upper() + eyebrow[1:]
+    total = me + rival
+    share = 50 if total <= 0 else round(100 * float(me) / float(total))
+    return (
+        f'<small>{escape(eyebrow)}</small>'
+        f'<div class="tug-head"><h3>{escape(here["name"])}</h3>'
+        f'<span class="tug-number {tone}"><b>{escape(number)}</b><em>{escape(unit)}</em></span></div>'
+        f'<div class="tug-bar" aria-hidden="true"><i class="tug-you" style="width:{share}%"></i>'
+        f'<i class="tug-rival" style="width:{100 - share}%"></i></div>'
+        f'<div class="tug-labels" aria-hidden="true"><span class="game-yours">You {escape(format_points(me))}</span>'
+        f'<span class="game-theirs">{escape(rival_name)} {escape(format_points(rival))}</span></div>'
+        f'<p class="sr-only">{escape(here["detail"])}</p>'
+    )
 
 
 def markdown_safe(text: str) -> str:
@@ -162,41 +206,17 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
                          zoom=max(9.0, min(zoom, 17.0)))
 
 
-TOP_N = 5  # the tooltip stays tiny: only the best few players
-TOOLTIP_STYLE = {"backgroundColor": "rgba(255,255,255,.96)", "color": "#142B3D", "padding": "6px 10px",
-                 "borderRadius": "10px", "fontSize": "12px", "lineHeight": "1.35", "minWidth": "110px",
-                 "maxWidth": "170px", "boxShadow": "0 4px 14px rgba(20,43,61,.25)"}
-
-
-def tooltip_rows(row: dict) -> dict:
-    """The tooltip's little list as plain text properties (name1/points1 ...).
-    No HTML: the map's tooltip escapes every value, so usernames are safe."""
-    props = {}
-    shown = row["ranking"][:TOP_N]
-    for place in range(TOP_N):
-        entry = shown[place] if place < len(shown) else None
-        props[f"n{place + 1}"] = (entry["name"] + (" (you)" if entry["you"] else "")) if entry else ""
-        props[f"p{place + 1}"] = format_points(entry["points"]) if entry else ""
-    props["more"] = "…" if len(row["ranking"]) > TOP_N else ""
-    props["none"] = "" if row["ranking"] else "no points yet"
-    return props
-
-
-TOOLTIP_HTML = ('<div class="tt-name">{name}</div>'
-                + "".join(f'<div class="tt-row"><span>{{n{i}}}</span><b>{{p{i}}}</b></div>' for i in range(1, TOP_N + 1))
-                + '<div class="tt-none">{more}{none}</div>')
-
-
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
-               focus: str = "Bairro Alto", *, pictures=None, context="map") -> None:
+               focus: str = "Bairro Alto", *, pictures=None, context="map") -> str | None:
+    """Draw the map and return the id of the territory the player tapped
+    (None when nothing is selected; tapping empty map space clears it)."""
     features = [
         {
             "type": "Feature",
             "geometry": row["boundary"],
             "properties": {
-                # Plain text only: the tooltip escapes values, so usernames can't inject HTML.
-                "name": row["name"],
-                **tooltip_rows(row),
+                # Only the id goes to the browser: the card is built server-side.
+                "id": row["id"],
                 "fill": COLOURS[row["status"]] + [FILL_ALPHA[row["status"]]],
             },
         }
@@ -218,9 +238,8 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
         )
     ]
     markers = owner_markers(rows, pictures or {}, COLOURS)
-    # Marker tooltip strings are HTML too; the unescaped owner name stays server-side.
     for marker in markers:
-        marker["name"] = escape(marker["name"])
+        marker["name"] = escape(marker["name"])  # never rendered as HTML, escaped anyway
     layers += [
         pdk.Layer("IconLayer", markers, id="owner-badges", get_position="position", get_icon="icon",
                   get_size="size", size_units="meters", size_min_pixels=12, size_max_pixels=52,
@@ -230,7 +249,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                   get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
                   get_text_anchor="'middle'", get_alignment_baseline="'center'", pickable=False),
     ]
-    # No territory names on the map (too crowded with 48 areas): the name shows on hover.
+    # No territory names on the map (too crowded with 48 areas): tap one for its card.
     if location is not None:
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
         layers += [
@@ -240,7 +259,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
                       radius_min_pixels=8, get_fill_color=[255, 255, 255, 255],  # --you-dot
                       get_line_color=[20, 43, 61, 255], stroked=True, line_width_min_pixels=3),
         ]
-    st.pydeck_chart(
+    event = st.pydeck_chart(
         pdk.Deck(
             layers=layers,
             initial_view_state=view_for(rows, focus, location),
@@ -248,12 +267,29 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             # Carto "Dark Matter" without place names: the basemap's district
             # names clashed with ours. Territory names show on hover.
             map_style="dark_no_labels",
-            # Shown by the browser itself (no server round trip): name + points.
-            tooltip={"html": TOOLTIP_HTML, "style": TOOLTIP_STYLE},
         ),
         height=600,
+        # A tap selects one territory and reruns the page, so the bottom card
+        # can show its tug-of-war (replaces the old hover tooltip).
+        on_select="rerun",
+        selection_mode="single-object",
         key=f"territory_map:{context}",
     )
+    return selected_territory(event, {row["id"] for row in rows})
+
+
+def selected_territory(event, known_ids: set) -> str | None:
+    """The tapped territory's id from the map's selection state, if any.
+    Only ids we drew are accepted."""
+    try:
+        objects = (event.selection or {}).get("objects", {}).get("territories", [])
+    except AttributeError:
+        return None
+    for picked in objects:
+        territory_id = (picked.get("properties") or {}).get("id") if isinstance(picked, dict) else None
+        if territory_id in known_ids:
+            return territory_id
+    return None
 
 
 def territory_list(rows: list[dict]) -> None:

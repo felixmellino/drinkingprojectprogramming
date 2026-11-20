@@ -101,6 +101,22 @@ def test_mixed_seasons_and_bad_transfer_rejected():
     with pytest.raises(ValueError):replay_season([], [replace(t, points=True)])
 
 
+@pytest.mark.parametrize("stake", [1, 2])
+def test_reaction_duel_small_stakes_replay_in_standings(stake):
+    # Reaction Duel (R-M11) stakes 1-10 through the same ledger; a 1 or 2
+    # point transfer used to crash every standings page of the lobby.
+    entries=[entry('a','a','mixed','large',0,order=1),entry('b','b','mixed','large',1,order=2)]
+    transfer=SeasonTransfer('duel','season','a','b','a','b',stake,3,START)
+    after=replay_season(entries,[transfer])
+    assert after.season_quarters['b'] - replay_season(entries).season_quarters['b'] == stake * 4
+
+
+@pytest.mark.parametrize("points", [0, 11, -1])
+def test_out_of_range_transfer_still_rejected(points):
+    t=SeasonTransfer('duel','season','a','b','a','b',points,3,START)
+    with pytest.raises(ValueError, match='stake transfer'):replay_season([], [t])
+
+
 @pytest.mark.parametrize("bad", [None,{},dict(duel_id='other'),dict(duel_id='duel',event_id=True,action='ready'),
     dict(duel_id='duel',event_id='e',action='answer',round_no=0,choice=True),
     dict(duel_id='duel',event_id='e',action='answer',round_no=1,choice=0),
