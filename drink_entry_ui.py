@@ -67,8 +67,7 @@ def reward_card_html(points: str, location: str, *, territory: str | None = None
         who = "Your team captured" if team_mode else "You captured"
         lines.append(f'<p class="reward-chip">{escape(who)} {escape(territory)}!</p>')
     if owner_income:
-        lines.append(f'<p class="reward-note">The previous owner also earned +{escape(owner_income)} season points. '
-                     'You kept all your points.</p>')
+        lines.append(f'<p class="reward-note">The previous owner also earned +{escape(owner_income)} season points.</p>')
     if ownership_unavailable:
         lines.append('<p class="reward-note">Your check-in was saved. The ownership update is unavailable; '
                      'check the Map or Leaderboard.</p>')

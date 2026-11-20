@@ -19,15 +19,14 @@ from storage3.utils import StorageException
 
 import data.db as db
 from camera_capture import CameraCancelled, camera_photo
-from core.focus_challenge import enabled as focus_enabled
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
-    create_scored_entry, current_time, format_points, next_opening, replay_season, rules_for, scoring_open, size_label, utc)
+    create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
-from drink_entry_ui import context_line, gate_card_html, page_header, reward_card_html, section_heading
+from drink_entry_ui import context_line, gate_card_html, page_header, reward_card_html
 from phone_location import current_location, track_location
 from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
@@ -48,8 +47,6 @@ if team_mode and not competitor_id:
     st.info("Open this lobby on the Lobby page and join a team before checking in.")
     lobby_button()
     st.stop()
-if team_mode:
-    st.caption("Team mode · Your check-ins add to your team’s season and territory totals.")
 now = current_time()
 recent_entries = db.list_drink_entries_for_membership(membership_id)
 track_location()
@@ -138,13 +135,9 @@ if photo is None and not st.session_state.get('checkin_posted'):
         st.rerun()
     st.stop()
 
-page_header("Check in", "Take a photo. Choose your drink. Post.", compact=True)
-if modern:
-    lobby_time = now.astimezone(ZoneInfo(season.timezone_name))
-    context_line(st.session_state.get("current_lobby_name", "Your lobby"),
-                 f"{lobby_time:%a %d %b · %H:%M %Z} · {season.timezone_name}")
-    if rules.get('test_mode'):
-        st.info('TEST SEASON · Posting is open Wednesday 08:00–Sunday 18:00 in the lobby timezone.')
+page_header("Check in", compact=True)
+if modern and rules.get('test_mode'):
+    st.caption("Test season · open Wed 08:00 – Sun 18:00")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -170,10 +163,10 @@ if saved_result is not None:
                     unsafe_allow_html=True)
 
 if st.session_state.get('checkin_posted'):
-    st.caption('Find your drink in Photo history, or see where you stand on the Leaderboard.')
-    if st.button('New check-in', type='primary', width='stretch'):
+    # The one button after a check-in. (The + tab in the bar starts the next one.)
+    if st.button('Go to map', type='primary', width='stretch', key='checkin_go_map'):
         reset_camera()
-        st.rerun()
+        st.switch_page('pages/5_Map.py')
     st.stop()
 
 if closed:
@@ -185,13 +178,12 @@ if closed:
     else:
         st.warning("This season has ended. Start or choose a new season on the Lobby page.")
 if waiting:
-    st.warning(f"Wait {waiting // 60}:{waiting % 60:02d} before your next check-in. Your photo and selections stay here.")
+    st.warning(f"Next check-in in {waiting // 60}:{waiting % 60:02d}.")
     st.button("Refresh remaining wait")
 
 
 capture = st.session_state.get('checkin_capture')
 with st.container(key='drink_ui_panel_camera'):
-    section_heading('01', 'Your photo', 'Looking good? Choose your drink below.')
     # Keep the preview inside the authenticated session, not a public media URL.
     encoded = b64encode(photo.getvalue()).decode('ascii')
     st.html(f'<img src="data:image/jpeg;base64,{encoded}" alt="Your drink photo" '
@@ -199,20 +191,10 @@ with st.container(key='drink_ui_panel_camera'):
     if st.button('Retake photo', icon=':material/photo_camera:', width='stretch'):
         reset_camera()
         st.rerun()
-    st.caption('Shared only with your lobby, alongside your username, photo receipt time and territory.')
 
 size = None
 amount = None
-focus_multiplier = 1
-if focus_enabled(season):
-    try:
-        focus_info = db.focus_status(player_id, season_id)
-        if focus_info.get('boost_ends_at'):
-            focus_multiplier = focus_info.get('boost_multiplier', 1.5)
-            boost_end = datetime.fromisoformat(focus_info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
-            st.success(f'Focus boost ×{focus_multiplier:g} active until {boost_end:%H:%M:%S %Z}.')
-    except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
-        st.caption('Focus preview unavailable. Any earned multiplier is checked by the server on submission.')
+focus_multiplier = 1  # earned boosts are applied and checked by the server; the Focus screen no longer exists
 time_multiplier = 1
 if modern:
     try:
@@ -220,11 +202,10 @@ if modern:
         if time_info.get('boost_ends_at'):
             time_multiplier = 1.25
             boost_end = datetime.fromisoformat(time_info['boost_ends_at']).astimezone(ZoneInfo(season.timezone_name))
-            st.success(f'Time Duel ×1.25 season boost active until {boost_end:%H:%M:%S %Z}. Highest active boost applies.')
+            st.success(f'Time Duel ×1.25 until {boost_end:%H:%M}.')
     except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
-        st.caption('Time Duel preview unavailable. Earned bonuses are checked by the server on submission.')
+        pass  # The server applies any earned bonus on submission.
 with st.container(key="drink_ui_panel_selection"):
-    section_heading("02", "Choose your drink", "One drink, one size. Your points update as you choose.")
     if modern:
         with st.container(key="drink_ui_drinks"):
             drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
@@ -234,32 +215,27 @@ with st.container(key="drink_ui_panel_selection"):
                 size = st.radio("Size", options=list(SIZE_LABELS),
                                 format_func=lambda value: size_label(drink_type, value, rules),
                                 horizontal=True, width="stretch")
-        else:
-            st.caption("One shot serving. No size selection needed.")
         preview = base_points(drink_type, size, rules) * max(focus_multiplier, time_multiplier)
-        territory_preview = base_points(drink_type, size, rules) * focus_multiplier
         point_word = "point" if preview == 1 else "points"
         with st.container(key="drink_ui_points"):
-            st.info(f"**+{format_points(preview)} season {point_word}**  \n+{format_points(territory_preview)} territory points if your location matches a territory.")
-        st.caption("Another territory owner's 25% season income is additional; your points stay the same.")
+            st.info(f"**+{format_points(preview)} {point_word}**")
     else:
-        st.caption("This existing season keeps its original scoring rules. New seasons use the new scoring system.")
+        st.caption("This season keeps its original scoring rules.")
         drink_type = st.selectbox("Drink type", options=["beer", "wine", "shot", "longdrink"])
         if drink_type in ("beer", "wine"):
             amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
 
 with st.container(key="drink_ui_panel_location"):
-    section_heading("03", "Location", "Your location assigns this drink to a territory.")
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
-        "waiting": "Finding your location… Allow location access if your browser asks.",
-        "off": "Location is off. Turn it on in Profile → Location, then come back.",
-        "stale": "Your last location is more than a minute old. Finding a new one…",
-        "denied": "Location access is blocked. Allow location for this site in your browser settings, then turn Location on in Profile.",
-        "unavailable": "Your phone can't find its position right now. Move closer to a window or outside.",
-        "timeout": "Finding your position is taking long. Keep the page open, it keeps trying.",
-        "unsupported": "This browser can't share its location. Try another browser on your phone.",
-        "invalid": "Something went wrong reading your location. Reload the page.",
+        "waiting": "Finding your location… Allow access if asked.",
+        "off": "Location is off. Turn it on in Profile.",
+        "stale": "Updating your location…",
+        "denied": "Location is blocked in your browser. Allow it in the browser settings, then turn it on in Profile.",
+        "unavailable": "Can't find your position. Move closer to a window or outside.",
+        "timeout": "Still searching for your position…",
+        "unsupported": "This browser can't share its location.",
+        "invalid": "Couldn't read your location. Reload the page.",
     }
     if location_problem in ("off", "denied", "unsupported", "invalid"):
         st.warning(location_messages[location_problem])
@@ -269,34 +245,19 @@ with st.container(key="drink_ui_panel_location"):
     elif location_problem:
         st.caption(location_messages[location_problem])
     elif accuracy_m > MAX_GPS_ACCURACY_M:
-        st.warning(
-            f"Your location is only accurate to about {accuracy_m:.0f} m (we need {MAX_GPS_ACCURACY_M:.0f} m or better). "
-            "Step outside or wait a moment; it updates by itself."
-        )
+        st.warning(f"Your location is only accurate to about {accuracy_m:.0f} m (need {MAX_GPS_ACCURACY_M:.0f} m). Step outside.")
     else:
-        st.caption(f"Location found automatically, accurate to about {accuracy_m:.0f} m.")
+        st.caption(f"Location found · {accuracy_m:.0f} m")
     if modern and device_gps is not None and accuracy_m <= MAX_GPS_ACCURACY_M:
         try:
             territories = get_territories()
             preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
             if preview_result == "matched":
-                name = next(t.name for t in territories if t.id == preview_territory)
-                owner = replay_season(db.list_drink_entries(season_id)).owners.get(preview_territory)
-                context_line("Detected territory", name)
-                if owner == competitor_id:
-                    st.text("Your team currently owns this territory. No owner income from teammates." if team_mode else "You currently own this territory. Your check-in earns normal base points.")
-                elif owner:
-                    owner_name = (next((t.name for t in db.list_lobby_teams(player_id, lobby_id) if t.id == owner), "Team")
-                                  if team_mode else db.membership_display_name(owner, lobby_id))
-                    income = format_points(Decimal(preview) / 4)
-                    st.text(f"Current owner: {owner_name} · estimated additional owner income: {income} season points")
-                else:
-                    st.text("Currently unclaimed. No owner income on its first accepted check-in.")
+                context_line("Territory", next(t.name for t in territories if t.id == preview_territory))
             elif preview_result == "outside":
-                st.info(f"Outside game territories: +{preview} season points, no territory points or owner income.")
-            st.caption("Preview only. Location evidence, ownership and eligibility are checked again on submission.")
+                st.caption("Outside the territories: season points only.")
         except (APIError, RequestError, RuntimeError):
-            st.warning("The territory preview is unavailable. It will be checked again on submission.")
+            pass  # The territory is checked again on submission.
 
 
 # Recover a lost successful reply even after the scoring window closes.
