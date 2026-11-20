@@ -89,6 +89,7 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert not any(b.label == 'Start next scoring season' for b in at.button)
     assert len([b for b in at.button if b.label == 'View lobby →']) == 3
     assert 'Current lobby' in shown[0] and all('Current lobby' not in card for card in shown[1:])
+    assert 'lobby-is-current' in shown[0] and all('lobby-is-current' not in card for card in shown[1:])
     assert at.button(key='make_current_old').label == 'Make current'
     assert not any(b.key == 'make_current_past' for b in at.button)
 
