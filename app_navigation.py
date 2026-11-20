@@ -1,7 +1,7 @@
 """Bottom tab bar using native Streamlit page switching, preserving login.
 
-Five tabs like an iPhone app, with the check-in plus in the middle. Lobby
-and Photo history open from the Profile tab. Icons are Phosphor SVGs
+Five tabs like an iPhone app, with the check-in plus in the middle. Profile
+is a round button in the top-right corner of every page; Lobby opens from it. Icons are Phosphor SVGs
 (assets/icons, MIT licence), drawn with a CSS mask so they take the text
 colour: outline normally, filled for the active tab.
 """
@@ -25,12 +25,14 @@ DESTINATIONS = [
     ("leaderboard", "Ranks", "pages/4_Standings.py", "trophy"),
     ("checkin", "Check in", "pages/3_Check_in.py", "plus-bold"),
     ("minigames", "Games", "pages/7_Minigames.py", "game-controller"),
-    ("profile", "Profile", "pages/1_Profile.py", "user-circle"),
+    ("photos", "Photos", "pages/6_Check_in_photos.py", "images"),
 ]
+# Profile sits apart from the tabs: a round button in the top-right corner.
+PROFILE = ("profile", "Profile", "pages/1_Profile.py", "user-circle")
 # Pages without their own tab light up the tab they are reached from.
 ROUTES = {"profile": "profile", "lobby": "profile", "check_in": "checkin",
           "standings": "leaderboard", "leaderboard": "leaderboard", "map": "map",
-          "check_in_photos": "profile", "photo_history": "profile", "minigames": "minigames"}
+          "check_in_photos": "photos", "photo_history": "photos", "minigames": "minigames"}
 
 
 # URL name of each page (lower case) -> its file.
@@ -77,10 +79,10 @@ def back_button(page: str | None, history: list[str], navigate) -> None:
 
 def _styles(active: str | None) -> str:
     css = (ASSETS / "navigation.css").read_text(encoding="utf-8")
-    for route, _label, _page, icon in DESTINATIONS:
+    for route, _label, _page, icon in DESTINATIONS + [PROFILE]:
         filled = route == active and route != "checkin"
         css += icon_css(f".st-key-wego_nav_{route} button::before", f"{icon}-fill" if filled else icon)
-    if active in {item[0] for item in DESTINATIONS} and active != "checkin":
+    if active in {item[0] for item in DESTINATIONS + [PROFILE]} and active != "checkin":
         css += f".st-key-wego_nav_{active} button{{color:var(--accent-ink);}}"
     return css
 
@@ -118,6 +120,10 @@ def bottom_navigation(active: str | None = None, *, navigate=None) -> None:
     navigate = navigate or st.switch_page
     page = current_page()
     back_button(page, track_history(page), navigate)
+    name, label, target, _icon = PROFILE
+    with st.container(key=f"wego_nav_{name}"):
+        if st.button(label, key=f"bottom_nav_{name}", type="tertiary"):
+            navigate(str(Path(__file__).parent / target))
     with st.container(key="wego_bottom_nav"):
         for column, (name, label, target, _icon) in zip(st.columns(len(DESTINATIONS), gap=None, wrap=False), DESTINATIONS):
             with column, st.container(key=f"wego_nav_{name}"):

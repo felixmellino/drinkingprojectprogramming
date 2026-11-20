@@ -252,7 +252,8 @@ Authenticated pages now get the shared five-tab bottom bar from
 `app_navigation.py`. For an existing session, `shared.require_login` handles
 this generic bar before network reads; every destination verifies the account
 before showing private data. Tabs: Map, Ranks (Leaderboard), the Check-in plus in the middle, Games
-(Minigames), Profile. Lobbies and Photo history open from the Profile menu. Use native `st.switch_page` to keep login/session state; do not replace
+(Minigames), Photos (Photo history). Profile is the round button in the top-right
+corner (`PROFILE` in `app_navigation.py`); Lobbies open from the Profile menu. Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 

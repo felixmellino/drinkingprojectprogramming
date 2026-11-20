@@ -11,14 +11,15 @@ from streamlit.testing.v1 import AppTest
 
 @pytest.mark.parametrize("label,target", [
     ("Map", "5_Map.py"), ("Ranks", "4_Standings.py"), ("Check in", "3_Check_in.py"),
-    ("Games", "7_Minigames.py"), ("Profile", "1_Profile.py"),
+    ("Games", "7_Minigames.py"), ("Photos", "6_Check_in_photos.py"), ("Profile", "1_Profile.py"),
 ])
 def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, target):
     switch = Mock()
     monkeypatch.setattr(st, "switch_page", switch)
     at = AppTest.from_string("from app_navigation import bottom_navigation\nbottom_navigation('leaderboard')").run()
     assert not at.exception
-    assert [button.label for button in at.button] == ["Map", "Ranks", "Check in", "Games", "Profile"]
+    # Profile is the round corner button, drawn before the five tabs.
+    assert [button.label for button in at.button] == ["Profile", "Map", "Ranks", "Check in", "Games", "Photos"]
     at.session_state["player_id"] = "signed-in-player"
     next(button for button in at.button if button.label == label).click().run()
     assert not at.exception
@@ -30,9 +31,19 @@ def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, ta
 
 
 def test_check_in_plus_sits_in_the_middle_of_five_tabs():
-    from app_navigation import DESTINATIONS
+    from app_navigation import DESTINATIONS, PROFILE
     assert len(DESTINATIONS) == 5
     assert DESTINATIONS[2][0] == "checkin"
+    assert DESTINATIONS[4][:3] == ("photos", "Photos", "pages/6_Check_in_photos.py")
+    assert PROFILE[0] == "profile" and PROFILE not in DESTINATIONS
+
+
+@pytest.mark.parametrize("active,lit", [("photos", "photos"), ("profile", "profile"), ("map", "map")])
+def test_the_open_page_lights_up_its_tab_or_the_profile_button(active, lit):
+    from app_navigation import _styles
+    css = _styles(active)
+    assert f".st-key-wego_nav_{lit} button{{color:var(--accent-ink);}}" in css
+    assert css.count("color:var(--accent-ink);}") == 1
 
 
 def test_games_invite_badge_follows_the_selected_season_and_hides_at_zero(monkeypatch):
