@@ -14,6 +14,39 @@ from core.lobbies import create_player
 from device_login import finish_login
 
 _CSS = Path(__file__).parent / "assets" / "account.css"
+_START_CSS = Path(__file__).parent / "assets" / "start.css"
+def _start_brand():
+    st.markdown(f"<style>{_START_CSS.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+    st.html('<div class="start-center"><div class="start-logo" aria-hidden="true">WP</div>'
+            '<h1 class="start-word">WeGo<i>Pub</i></h1></div>')
+
+
+def _continue_after_welcome():
+    # A callback runs before the next script run, whichever page script that is. app.py skips
+    # require_login once the player is known and jumps to the Map, so clearing the flag inside
+    # the page would come too late and the Map would show the start screen a second time.
+    st.session_state.pop("_show_welcome", None)
+    st.session_state["start_seen"] = True
+
+
+def show_welcome() -> None:
+    """Start screen for a player who opens the app already signed in (remembered device):
+    the same icon and wordmark, one tap anywhere continues (once per opening)."""
+    _start_brand()
+    with st.container(key="start_continue"):
+        st.button("Tap to continue", key="start_continue_button", width="stretch", on_click=_continue_after_welcome)
+
+
+def show_start():
+    """First screen when logged out: app icon, wordmark, Create account / Log in.
+    A choice opens the existing form below with that tab already selected."""
+    _start_brand()
+    with st.container(key="start_actions"):
+        for label, key in (("Create account", "start_create"), ("Log in", "start_login")):
+            if st.button(label, key=key, width="stretch"):
+                st.session_state["start_seen"] = True
+                st.session_state["account_action"] = label
+                st.rerun()
 
 
 def show_error(error):
@@ -26,11 +59,17 @@ def show_error(error):
 
 
 def show_accounts():
+    # An invitation link goes straight to the login form, like a pending notice or password recovery.
+    if (not st.session_state.get("start_seen") and not st.session_state.get("_password_recovery")
+            and "lobby_invite" not in st.query_params):
+        show_start()
+        return
     st.markdown(f"<style>{_CSS.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
     with st.container(key="account_scene"):
         theme.wordmark()
         st.caption("Track drinks, claim territory, win the season.")
         action = st.radio("Choose an action", ["Create account", "Log in"], horizontal=True,
+                           index=int("lobby_invite" in st.query_params),
                            key="account_action", label_visibility="collapsed")
         if action == "Create account":
             st.caption("Only your username is public. Your name and email stay private.")

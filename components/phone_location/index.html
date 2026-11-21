@@ -172,7 +172,7 @@ async function showSwitch(compact, followToo) {
     navigator.geolocation.getCurrentPosition(position => {
       choose("on"); $("switch").disabled = false;
       const fix = reading(position);
-      show(true, "On · accurate to about " + Math.round(fix.accuracy_m) + " m");
+      show(true, "On, accurate to about " + Math.round(fix.accuracy_m) + " m");
       sendValue(fix);
       if (followToo) {lastSent = fix; lastSentAt = Date.now(); latest = fix; startFollowing();}
     }, error => {

@@ -253,7 +253,8 @@ Authenticated pages now get the shared five-tab bottom bar from
 this generic bar before network reads; every destination verifies the account
 before showing private data. Tabs: Map, Ranks (Leaderboard), the Check-in plus in the middle, Games
 (Minigames), Photos (Photo history). Profile is the round button in the top-right
-corner (`PROFILE` in `app_navigation.py`); Lobbies open from the Profile menu. Use native `st.switch_page` to keep login/session state; do not replace
+corner, with an equally sized Lobbies button directly below it
+(`CORNER_DESTINATIONS` in `app_navigation.py`). Use native `st.switch_page` to keep login/session state; do not replace
 these controls with hard browser links. Profile and Lobby retain their own
 workflows. `assets/navigation.css` provides the fixed bar and content clearance.
 
@@ -370,9 +371,10 @@ popup. This preserves the member UI from main and the team competition rules.
 ## Remembered lobby context (18 November 2026)
 
 `lobby_selection.py` owns session context and restoration. `shared.require_login`
-restores after authentication, before any page uses the context. The Lobby
-page saves explicit choices through `data/db.py`; closing a dialog keeps the
-context. Migration 012 stores one preference per account behind service-role
+restores after authentication, before any page uses the context, and again
+when the selected season expires. The Lobby page saves **Make current** and
+successful create/join choices through `data/db.py`; opening and closing a
+details dialog keep that context. Migration 012 stores one preference per account behind service-role
 access. Do not treat a saved lobby ID as authorization; existing membership
 checks still run on every protected workflow. See the remembered-selection
 workflow in `docs/ontology/WORKFLOWS.md` and the migration/verification steps

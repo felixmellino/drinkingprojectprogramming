@@ -1,4 +1,5 @@
 """Create/join dialogs; the existing lobby and scoring rules stay in core/data."""
+from datetime import datetime, timezone
 from zoneinfo import available_timezones
 
 import streamlit as st
@@ -7,7 +8,7 @@ import data.db as db
 from core.checkins import CheckinRejected
 from core.action_feedback import checkin_message
 from core.lobbies import create_lobby, join_lobby
-from core.lobby_overview import latest_season
+from core.lobby_overview import latest_season, lobby_status
 from httpx import RequestError
 from postgrest.exceptions import APIError
 
@@ -16,16 +17,18 @@ def dismiss_dialog():
     st.session_state.pop('_lobby_dialog', None)
 
 
-def open_created_lobby(lobby_id, message):
+def open_joined_lobby(lobby_id, message, *, make_current):
     dismiss_dialog()
     st.session_state['_opened_lobby_id'] = lobby_id
-    st.session_state['_lobby_choice_pending'] = lobby_id
+    if make_current:
+        st.session_state['_lobby_choice_pending'] = lobby_id
     st.session_state['_lobby_notice'] = message
     st.rerun()
 
 
 @st.dialog('Create a lobby', dismissible=True, on_dismiss=dismiss_dialog)
 def create_dialog(player_id):
+    st.info('Creating a lobby will make it your current lobby once its season starts.')
     zones = sorted(available_timezones())
     mode = st.radio("Competition mode", ["individual", "team"], format_func=str.title, horizontal=True,
                     key='pill_radio_competition_mode')
@@ -65,28 +68,22 @@ def create_dialog(player_id):
             except (APIError, RequestError, RuntimeError):
                 st.error("Could not create the lobby. Refresh your lobbies before trying again.")
                 return
-            st.session_state["current_lobby_mode"] = lobby.game_mode
-            st.session_state["current_membership_id"] = membership.id
-            st.session_state["current_lobby_id"] = lobby.id
-            st.session_state["current_lobby_name"] = lobby.name
             try:
-                season = db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
+                db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
                                                  **({"test_mode": True} if test_mode else {}))
             except CheckinRejected as error:
-                open_created_lobby(lobby.id, f"Lobby created. {checkin_message(error.reason)} Use Retry lobby setup below if needed.")
+                open_joined_lobby(lobby.id, f"Lobby created. {checkin_message(error.reason)} Use Retry lobby setup below if needed.",
+                                  make_current=False)
             except (APIError, RequestError, RuntimeError):
-                open_created_lobby(lobby.id, "Lobby created. Its scoring season could not start; use Retry lobby setup below.")
+                open_joined_lobby(lobby.id, "Lobby created. Its scoring season could not start. Use Retry lobby setup below.",
+                                  make_current=False)
 
-            st.session_state["current_lobby_mode"] = lobby.game_mode
-            st.session_state["current_membership_id"] = membership.id
-            st.session_state["current_lobby_id"] = lobby.id
-            st.session_state["current_lobby_name"] = lobby.name
-            st.session_state["current_season_id"] = season.id
-            open_created_lobby(lobby.id, f"Lobby created! Invite code: {lobby.invite_code}")
+            open_joined_lobby(lobby.id, f"Lobby created! Invite code: {lobby.invite_code}", make_current=True)
 
 
 @st.dialog('Join with a code', dismissible=True, on_dismiss=dismiss_dialog)
 def join_dialog(player_id):
+    st.info('Joining will make this your current lobby. Finished lobbies are available for viewing.')
     with st.form("join_lobby_form"):
         invite_code = st.text_input("Invite code").strip().upper()
         join_submitted = st.form_submit_button("Join lobby")
@@ -98,20 +95,21 @@ def join_dialog(player_id):
     if join_submitted:
         try:
             memberships = db.list_memberships_for_player(player_id, include_left=True)
-            membership = join_lobby(player_id, invite_code, db.list_lobbies(), memberships)
+            lobbies = db.list_lobbies()
+            membership = join_lobby(player_id, invite_code, lobbies, memberships)
         except (APIError, RequestError, RuntimeError):
             st.error("Could not load lobbies. Please try again.")
         except ValueError:
             st.error("That invite code doesn't match any lobby. Check the code with the person who invited you and enter it again.")
         else:
             is_new = membership.id not in {m.id for m in memberships}
+            lobby = next(l for l in lobbies if l.id == membership.lobby_id)
             try:
+                season = latest_season(db.list_seasons_for_lobby(lobby.id))
                 if is_new:
                     db.insert_membership(membership)
                 elif membership.left_at is not None:
                     db.rejoin_lobby(player_id, membership.lobby_id)
-                lobby = next(l for l in db.list_lobbies() if l.id == membership.lobby_id)
-                seasons = db.list_seasons_for_lobby(lobby.id)
             except (PermissionError, ValueError) as error:
                 st.error(str(error))
                 return
@@ -119,10 +117,5 @@ def join_dialog(player_id):
                 st.error("Could not finish joining the lobby. Refresh your lobbies before trying again.")
                 return
 
-            st.session_state["current_lobby_mode"] = lobby.game_mode
-            st.session_state["current_membership_id"] = membership.id
-            st.session_state["current_lobby_id"] = lobby.id
-            st.session_state["current_lobby_name"] = lobby.name
-            chosen_season = latest_season(seasons)
-            st.session_state["current_season_id"] = chosen_season.id if chosen_season else None
-            open_created_lobby(lobby.id, f"Joined {lobby.name}!")
+            open_joined_lobby(lobby.id, f"Joined {lobby.name}!",
+                              make_current=lobby_status(season, datetime.now(timezone.utc)) != 'past')

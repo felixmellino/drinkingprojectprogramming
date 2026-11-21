@@ -1,7 +1,7 @@
 """Bottom tab bar using native Streamlit page switching, preserving login.
 
 Five tabs like an iPhone app, with the check-in plus in the middle. Profile
-is a round button in the top-right corner of every page; Lobby opens from it. Icons are Phosphor SVGs
+and Lobbies are round buttons in the top-right corner. Icons are Phosphor SVGs
 (assets/icons, MIT licence), drawn with a CSS mask so they take the text
 colour: outline normally, filled for the active tab.
 """
@@ -27,10 +27,11 @@ DESTINATIONS = [
     ("minigames", "Games", "pages/7_Minigames.py", "game-controller"),
     ("photos", "Photos", "pages/6_Check_in_photos.py", "images"),
 ]
-# Profile sits apart from the tabs: a round button in the top-right corner.
-PROFILE = ("profile", "Profile", "pages/1_Profile.py", "user-circle")
-# Pages without their own tab light up the tab they are reached from.
-ROUTES = {"profile": "profile", "lobby": "profile", "check_in": "checkin",
+CORNER_DESTINATIONS = [
+    ("profile", "Profile", "pages/1_Profile.py", "user-circle"),
+    ("lobby", "Lobbies", "pages/2_Lobby.py", "users-three"),
+]
+ROUTES = {"profile": "profile", "lobby": "lobby", "check_in": "checkin",
           "standings": "leaderboard", "leaderboard": "leaderboard", "map": "map",
           "check_in_photos": "photos", "photo_history": "photos", "minigames": "minigames"}
 
@@ -65,6 +66,8 @@ def back_button(page: str | None, history: list[str], navigate) -> None:
     """A Back button on every page: the previous page, or the Map when there is none."""
     if page == "minigames" and st.session_state.get("minigame_selected"):
         return  # a game screen has its own "All games" link
+    if page == "map":
+        return  # the Map is home: its territory list takes you anywhere on it
     target = history[-1] if history else ("map" if page not in (None, "map") else None)
     if target is None:
         return
@@ -79,11 +82,11 @@ def back_button(page: str | None, history: list[str], navigate) -> None:
 
 def _styles(active: str | None) -> str:
     css = (ASSETS / "navigation.css").read_text(encoding="utf-8")
-    for route, _label, _page, icon in DESTINATIONS + [PROFILE]:
+    for route, _label, _page, icon in DESTINATIONS + CORNER_DESTINATIONS:
         filled = route == active and route != "checkin"
         css += icon_css(f".st-key-wego_nav_{route} button::before", f"{icon}-fill" if filled else icon)
-    if active in {item[0] for item in DESTINATIONS + [PROFILE]} and active != "checkin":
-        css += f".st-key-wego_nav_{active} button{{color:var(--accent-ink);}}"
+        if filled:
+            css += f".stApp .st-key-wego_nav_{route} button{{color:var(--accent-ink);}}"
     return css
 
 
@@ -118,16 +121,17 @@ def bottom_navigation(active: str | None = None, *, navigate=None) -> None:
     if active is None:
         path = urlsplit(st.context.url or "").path.rstrip("/").rsplit("/", 1)[-1].lower()
         active = ROUTES.get(path)
-    # Only trusted route names from DESTINATIONS reach the CSS selectors.
+    # Only routes in the destination lists reach the CSS selectors.
     st.markdown(f"<style>{_styles(active if active in ROUTES.values() else None)}</style>",
                 unsafe_allow_html=True)
     navigate = navigate or st.switch_page
     page = current_page()
     back_button(page, track_history(page), navigate)
-    name, label, target, _icon = PROFILE
-    with st.container(key=f"wego_nav_{name}"):
-        if st.button(label, key=f"bottom_nav_{name}", type="tertiary"):
-            navigate(str(Path(__file__).parent / target))
+    with st.container(key="wego_corner_nav", gap="small"):
+        for name, label, target, _icon in CORNER_DESTINATIONS:
+            with st.container(key=f"wego_nav_{name}"):
+                if st.button(label, key=f"bottom_nav_{name}", type="tertiary", help=label):
+                    navigate(str(Path(__file__).parent / target))
     with st.container(key="wego_bottom_nav"):
         for column, (name, label, target, _icon) in zip(st.columns(len(DESTINATIONS), gap=None, wrap=False), DESTINATIONS):
             with column, st.container(key=f"wego_nav_{name}"):

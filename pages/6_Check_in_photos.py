@@ -18,21 +18,25 @@ from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct
 from drink_entry_ui import page_header, section_heading
 from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata, photo_thumbnail
 from shared import require_active_membership, require_login, show_logged_in_as
+from theme import empty_state
 
 
 def entry_label(entry: dict) -> str:
     timestamp = entry["captured_at"] or entry["submitted_at"]
     time = show_time(timestamp, entry.get("timezone_name", "UTC"))
-    return f"{entry['username']} · {time}"
+    return f"{entry['username']}, {time}"
 
 
 def show_time(timestamp: str, zone_name: str) -> str:
     time = utc(datetime.fromisoformat(timestamp)).astimezone(ZoneInfo(zone_name))
-    return f"{time:%d %b %Y at %H:%M:%S %Z (%z)} · {zone_name}"
+    return f"{time:%d %b %Y at %H:%M:%S %Z (%z)}, {zone_name}"
 
 
-def select_history_page(number):
-    st.session_state['history_page'] = number
+STEP = 24  # photos shown at first and added by each "Load more"
+
+
+def load_more(count):
+    st.session_state['history_shown'] = count + STEP
 
 
 def open_photo(entry_id):
@@ -56,7 +60,7 @@ if st.session_state.pop("checkin_corrected", False):
 try:
     entries = db.list_checkin_photos(player_id, lobby_id)
     if not entries:
-        st.info("No photo history is available to you in this lobby yet. Other players' photos depend on their privacy settings.")
+        empty_state("photos", "images", "No photos yet", "Every check-in adds one here.", check_in=True)
         st.stop()
 
 except PermissionError:
@@ -82,45 +86,48 @@ if len(entries) > 1 and detail_id is None:
         show = st.radio("Show", ["All", "Mine"], horizontal=True, key="photo_filter", label_visibility="collapsed")
     shown = [item for item in entries if show == "All" or item["is_owner"]]
     if not shown:
-        st.info("You have no check-in photos in this lobby yet.")
+        empty_state("photos_mine", "images", "None of yours yet", "Your check-in photos will show up here.", check_in=True)
         st.stop()
-    pages = history_pages(shown)
-    last_page = len(pages) - 1
-    page_number = min(max(st.session_state.get("history_page", 0), 0), last_page)
-    visible_nights = pages[page_number]
+    if st.session_state.get("history_filter") != show:   # a new filter starts at the newest photos again
+        st.session_state["history_filter"] = show
+        st.session_state["history_shown"] = STEP
+    count = min(len(shown), max(STEP, st.session_state.get("history_shown", STEP)))
+    # One continuous list, newest first, grouped by game night.
+    visible_nights = history_pages(shown[:count], max_photos=count + 1, max_nights=count + 1)[0]
 
     visible = [item for _, _, items in visible_nights for item in items]
+    ids = [item['id'] for item in visible]
+    photos = {}
     try:
-        # One fresh audience snapshot for this visible batch, never a cached listing.
-        originals = db.download_checkin_photos(player_id, lobby_id, [item['id'] for item in visible])
-        # Decode one thumbnail at a time to bound memory for large camera images.
-        photos = {item['id']: photo_thumbnail(originals.get(item['id'])) for item in visible}
+        # The list can hold more photos than one authorization batch allows: every slice of at most
+        # MAX_PHOTO_BATCH photos gets its own fresh audience snapshot, never a cached listing.
+        for start in range(0, len(ids), db.MAX_PHOTO_BATCH):
+            batch = ids[start:start + db.MAX_PHOTO_BATCH]
+            try:
+                originals = db.download_checkin_photos(player_id, lobby_id, batch)
+                # Decode one thumbnail at a time and drop the originals, to bound memory for large camera images.
+                photos.update({entry_id: photo_thumbnail(originals.get(entry_id)) for entry_id in batch})
+            except (APIError, RequestError, RuntimeError, StorageException):
+                photos.update(dict.fromkeys(batch))   # this slice failed; the others still show
     except PermissionError:
         st.warning("Photo access changed. Refresh to load the current photo history.")
         st.stop()
-    except (APIError, RequestError, RuntimeError, StorageException):
-        photos = dict.fromkeys(item['id'] for item in visible)
     if any(photos.get(item['id']) is None and item.get('has_photo',True) for item in visible):
         st.warning('Some photos could not be loaded. Their details are still available.')
 
     for start, end, night_entries in visible_nights:
-        count = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
+        label = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
         st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
-                    f'<span>{count}</span></div>', unsafe_allow_html=True)
+                    f'<span>{label}</span></div>', unsafe_allow_html=True)
         with st.container(key=f"memory_grid_{start.date().isoformat()}"):
             for item in night_entries:
                 with st.container(key=f"memory_tile_{item['id']}"):
                     photo = photos[item['id']]
                     memory_tile(item, photo, key=f"memory_tile_{item['id']}", on_open=open_photo)
 
-    if last_page > 0:
-        newer, _, older = st.columns(3)
-        with newer:
-            action_button("Newer photos", problems=["You are viewing the newest photos. Choose Older photos to see earlier game nights." if page_number == 0 else None],
-                          on_click=select_history_page, args=(max(0, page_number - 1),))
-        with older:
-            action_button("Older photos", problems=["You are viewing the oldest photos available to you. Choose Newer photos to return to recent game nights." if page_number == last_page else None],
-                          on_click=select_history_page, args=(min(last_page, page_number + 1),))
+    if count < len(shown):
+        st.button("Load more", key="photo_more", on_click=load_more, args=(count,), width="stretch")
+        st.caption(f"{count} of {len(shown)} photos")
     st.caption(FOOTER)
     st.stop()
 
@@ -143,7 +150,7 @@ full_photo(entry, photo, location or "No territory assigned")
 if photo is None:
     st.caption("This check-in's photo is unavailable. Removing a photo keeps the check-in and its score.")
 time_label = "Photo received" if entry["captured_at"] else "Check-in submitted"
-st.text(f"{time_label} · {entry_label(entry)}")
+st.text(f"{time_label}, {entry_label(entry)}")
 
 # Scores and revision history remain visible after photo deletion.
 if entry.get("rule_version") == "v1":
@@ -153,12 +160,12 @@ if entry.get("rule_version") == "v1":
         section_heading("02", "Points & details", "The current award for this check-in.")
         selection = DRINK_LABELS.get(model.drink_type, model.drink_type)
         if model.size:
-            selection += f" · {size_label(model.drink_type, model.size, season.scoring_rules)}"
+            selection += f", {size_label(model.drink_type, model.size, season.scoring_rules)}"
         st.text(selection)
         territory_points = model.points_awarded if model.location_check_result == "matched" else 0
-        st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points · +{format_points(territory_points)} territory points")
+        st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points and +{format_points(territory_points)} territory points")
         if model.focus_attempt_id:
-            st.caption('Focus boost ×1.5 · This check-in keeps its earned multiplier after the boost ends.')
+            st.caption('Focus boost ×1.5. This check-in keeps its earned multiplier after the boost ends.')
         if model.owner_bonus_quarters:
             income = format_points(Decimal(model.owner_bonus_quarters) / 4)
             st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")
@@ -166,11 +173,11 @@ if entry.get("rule_version") == "v1":
             st.text("No owner income for this check-in.")
         st.caption("Awards reflect the current corrected history. Corrections elsewhere can change the owner-income recipient.")
     with st.expander("Exact timestamps"):
-        st.text(f"Submitted · {show_time(entry['submitted_at'], zone)}")
+        st.text(f"Submitted: {show_time(entry['submitted_at'], zone)}")
         if entry["captured_at"]:
-            st.text(f"Photo received · {show_time(entry['captured_at'], zone)}")
+            st.text(f"Photo received: {show_time(entry['captured_at'], zone)}")
     if model.revision:
-        st.text(f"Corrected · {show_time(entry['corrected_at'], zone)} · revision {model.revision}")
+        st.text(f"Corrected: {show_time(entry['corrected_at'], zone)}, revision {model.revision}")
         try:
             revisions = db.list_checkin_revisions(player_id, lobby_id, model.id)
         except (APIError, RequestError, RuntimeError, PermissionError):

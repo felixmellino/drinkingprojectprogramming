@@ -49,7 +49,7 @@ Unknown check-in rejection codes get a safe recovery message, never raw codes.
 | Photos: expired / duel / somebody else's correction | View each kind of entry | Explain two-minute/season limit, shared-duel lock or owner restriction | Existing correction rules; visible caption |
 | Photos: concurrent correction / reserved points | Reject a correction at save | Refresh and review current revision, or finish duel holding reserved points | Existing correction/RPC tests |
 | Photos: deletion not confirmed | Press Delete my photo without checkbox | Tick confirmation, then retry; image and points retained | `test_photo_lifecycle.py` |
-| Photos: first/last gallery page | Tap Newer/Older at a boundary | Explain newest/oldest page and opposite navigation | `test_scoring_ui.py` |
+| Photos: more history | Scroll through the continuous list and select Load more while more photos remain | Additional photos are appended; the control disappears once all available photos are shown | `test_scoring_ui.py` |
 | Photos: private / expired / deleted / download failure | Review inaccessible or removed image | Existing privacy/retention/removed-photo state; score stays; refresh on access change | Existing photo lifecycle/privacy tests |
 | Map: unusable location | Tap Location help with denied/unsupported/timeout reading | Explain actual browser failure and recovery, rather than generic waiting | `test_map_page.py` |
 | Account: registration / credentials / duplicate name/email | Submit each invalid form | Field requirement, different username or existing-account login/reset route | Account/auth tests |

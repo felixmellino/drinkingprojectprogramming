@@ -78,7 +78,7 @@ def _result(duel, member, labels):
 
 def _home(player, member, lobby, season, members, labels, state):
     from minigames_ui import game_header, game_note
-    game_header("Reaction Duel", "1 vs 1 · 3 tries · best of 3", "reaction_back")
+    game_header("Reaction Duel", "1 vs 1\u20033 tries\u2003best of 3", "reaction_back")
     game_note(f"{format_points(state['available_points'])} points available")
     duels = state["duels"]
     pending = [d for d in duels if d["status"] == "invited"]
@@ -140,7 +140,7 @@ def _home(player, member, lobby, season, members, labels, state):
             for duel in recent[:10]:
                 other = duel["opponent_id"] if duel["challenger_id"] == member else duel["challenger_id"]
                 result = ("Won" if duel.get("winner_id") == member else "Lost") if duel.get("winner_id") else "Draw"
-                if st.button(f"{result} vs {labels.get(other, 'Player')} · {duel['stake']} points",
+                if st.button(f"{result} vs {labels.get(other, 'Player')}, {duel['stake']} points",
                              key="reaction_result_" + duel["id"], type="tertiary"):
                     st.session_state["reaction_focused_id"] = duel["id"]
                     st.rerun()
@@ -167,7 +167,7 @@ def render_reaction(player, member, lobby, season, members, labels):
             game_header("Reaction Duel", "", "reaction_wait_back")
             other = running["opponent_id"] if running["challenger_id"] == member else running["challenger_id"]
             game_note(f"Your tries: {', '.join(time_label(t) for t in running['run']['reaction_ms'])}")
-            game_note(f"Waiting for {labels.get(other, 'your opponent')} · try {min(running['other_step'] + 1, 3)} of 3")
+            game_note(f"Waiting for {labels.get(other, 'your opponent')}, try {min(running['other_step'] + 1, 3)} of 3")
         return
     focused = next((d for d in duels if d["id"] == st.session_state.get("reaction_focused_id")
                     and d["status"] in FINAL), None)

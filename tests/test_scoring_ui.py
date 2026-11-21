@@ -48,8 +48,12 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': None})
     # UI service double; authorization/batching itself is tested against the
     # stateful database double in test_photo_lifecycle/test_photo_privacy.
-    monkeypatch.setattr(db, 'download_checkin_photos', lambda p,l,ids:
-                        {eid:db.download_checkin_photo(p,l,eid) for eid in ids})
+    def batch(p, l, ids):
+        # Like the real function: one authorization batch holds at most MAX_PHOTO_BATCH photos.
+        if len(list(dict.fromkeys(ids))) > db.MAX_PHOTO_BATCH:
+            raise ValueError('Load at most twelve check-in photos at once.')
+        return {eid: db.download_checkin_photo(p, l, eid) for eid in ids}
+    monkeypatch.setattr(db, 'download_checkin_photos', batch)
     monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
     monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
@@ -98,7 +102,7 @@ def test_quick_controls_preview_save_and_owner_income(ui):
     page = open_checkin()
     assert not page.exception
     assert radio(page, "Drink").options == ["Beer", "Wine", "Shot", "Mixed drink"]
-    assert radio(page, "Size").options == ["Small · 250 ml", "Medium · 330 ml", "Large · 500 ml"]
+    assert radio(page, "Size").options == ["Small 250 ml", "Medium 330 ml", "Large 500 ml"]
     radio(page, "Drink").set_value("wine").run()
     radio(page, "Size").set_value("large").run()
     assert any("+4 points" in item.value for item in page.info)
@@ -116,7 +120,12 @@ def test_shot_skips_size_and_mixed_uses_labels(ui):
     radio(page, "Drink").set_value("shot").run()
     assert not any(item.label == "Size" for item in page.radio)
     assert any("+4 points" in item.value for item in page.info)
+    # The size row keeps its place for a shot (invisible spacer + min-height), so the photo does not jump.
+    assert any('class="size-spacer"' in m.value for m in page.markdown)
+    css = (ROOT / "assets" / "drink_entries.css").read_text(encoding="utf-8")
+    assert ".st-key-drink_ui_sizes { min-height: 40px; }" in css and ".size-spacer { display: block; height: 0;" in css
     radio(page, "Drink").set_value("mixed").run()
+    assert not any('class="size-spacer"' in m.value for m in page.markdown), "a drink with sizes shows the radio, not the spacer"
     assert radio(page, "Size").options == ["Small", "Medium", "Large"]
 
 
@@ -133,9 +142,9 @@ def test_checkin_form_has_only_the_necessary_controls_and_little_text(ui):
     state, _ = ui
     page = open_checkin()
     set_location(page, state)
-    assert [b.label for b in page.button] == ["Profile", "Map", "Ranks", "Check in", "Games", "Photos", "Retake photo", "Submit"] \
+    assert [b.label for b in page.button] == ["Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos", "Retake photo", "Submit"] \
         or [b.label for b in page.button][-2:] == ["Retake photo", "Submit"]
-    assert len([b for b in page.button if b.label not in {"Profile", "Map", "Ranks", "Check in", "Games", "Photos"}]) == 2
+    assert len([b for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos"}]) == 2
     text = " ".join(m.value for m in page.markdown) + " ".join(c.value for c in page.caption)
     for gone in ("Take a photo. Choose your drink", "Looking good", "Shared only with your lobby", "One drink, one size",
                  "Preview only", "territory points if", "25% season income", "Your location assigns"):
@@ -182,7 +191,7 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     assert not page.exception and reward(page)
     assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
     assert not page.radio and button(page, 'Go to map') and not any(b.label == 'New check-in' for b in page.button)
-    assert [b.label for b in page.button if b.label not in {"Profile", "Map", "Ranks", "Check in", "Games", "Photos"}] == ["Go to map"]
+    assert [b.label for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos"}] == ["Go to map"]
     # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
@@ -206,7 +215,7 @@ def test_checkin_form_is_one_screen_the_photo_fills_the_free_space(ui):
     assert "has(> .st-key-checkin_photo) { flex: 1 1 0" in css
     assert "height: 100dvh" in css and "flex-shrink: 0" in css
     # One location line with the territory, no separate territory row.
-    assert any("Location found · 10 m" in c.value for c in page.caption)
+    assert any("Location found, accurate to 10 m" in c.value for c in page.caption)
     assert not any("Territory" == m.value for m in page.markdown)
 
 
@@ -440,6 +449,7 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
     members, games, calls, lobbies = [], [], [], []
     monkeypatch.setattr("shared.require_login", lambda: "player")
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
+    monkeypatch.setattr(db, "pending_lobby_invitations", lambda _: [])
     monkeypatch.setattr(db,"list_memberships_for_player",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"insert_lobby",lobbies.append)
     monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))
@@ -507,24 +517,13 @@ def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monk
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
     assert not page.exception
 
-    # Page 1: the two newest game nights, one photo each. The oldest night
-    # (two photos) isn't downloaded until its page is opened.
-    assert sorted(downloads) == ["photo-2", "photo-3"]
+    # One continuous list: all three game nights at once, every photo fetched on its own.
+    assert sorted(downloads) == ["photo-0", "photo-1", "photo-2", "photo-3"]
     markup = "\n".join(item.value for item in page.markdown)
-    assert markup.count("Game night") == 2
+    assert markup.count("Game night") == 3
     tiles = "\n".join(item.value for item in page.get("html"))
     assert "&lt;img" in tiles and photos[0]["username"] not in tiles
-    assert_blocked(page, "Newer photos", "newest", "Older photos")
-    assert not button(page, "Older photos").disabled
-
-    button(page, "Older photos").click().run()
-    assert not page.exception
-    # A button-triggered rerun re-renders the page once before the session
-    # state update takes effect, so only the tail (the newly visible night)
-    # is asserted here -- see the identical pattern this replaced.
-    assert sorted(downloads[-2:]) == ["photo-0", "photo-1"]
-    assert not button(page, "Newer photos").disabled
-    assert_blocked(page, "Older photos", "oldest", "Newer photos")
+    assert not any(b.label in {"Newer photos", "Older photos", "Load more"} for b in page.button), "nothing left to page through"
 
     next(b for b in page.button if b.key == "memory_tile_photo-0_open").click().run()
     assert not page.exception
@@ -575,28 +574,99 @@ def test_gallery_access_denial_stops_before_rendering_a_photo(ui, monkeypatch):
     assert not page.get("html")
 
 
-def test_busy_history_is_bounded_and_navigation_downloads_only_the_destination(ui,monkeypatch):
+def test_busy_history_loads_24_then_more_and_every_photo_keeps_its_own_access_check(ui,monkeypatch):
     state,game=ui
     models=[entry(f'busy-{i}','member','beer','small',i) for i in range(25)]
     photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
         is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
         entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
         for m in reversed(models)]
-    downloads=[]
+    calls=[]
     monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
     def download(*args):
-        downloads.append(args[-1])
+        calls.append(args)
         return state['photo'].getvalue()
     monkeypatch.setattr(db,'download_checkin_photo',download)
     page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
-    assert not page.exception and set(downloads)=={f'busy-{i}' for i in range(13,25)}
-    assert len(downloads)==12
-    button(page,'Older photos').click().run()
-    assert not page.exception and len(downloads)==24,'Do not redownload the old page before switching'
-    assert set(downloads[-12:])=={f'busy-{i}' for i in range(1,13)}
-    before=len(downloads)
+    assert not page.exception and {c[-1] for c in calls}=={f'busy-{i}' for i in range(1,25)}
+    assert len(calls)==24, 'Only the first 24 photos are fetched'
+    assert all(c[:2]==('player','lobby') for c in calls), 'Every fetch carries the viewer and the lobby, so the server checks access per photo'
+    assert any('24 of 25 photos' in c.value for c in page.caption)
+    before=len(calls)
+    button(page,'Load more').click().run()
+    assert not page.exception and len(calls)-before==25, 'Every photo is checked again on each load (no cached bytes)'
+    assert {c[-1] for c in calls[before:]}=={f'busy-{i}' for i in range(25)}
+    assert not any(b.label=='Load more' for b in page.button), 'All photos are listed now'
+    before=len(calls)
     next(b for b in page.button if b.key=='memory_tile_busy-1_open').click().run()
-    assert not page.exception and downloads[before:]==['busy-1'],'Opening a detail must not reload the gallery'
+    assert not page.exception and [c[-1] for c in calls[before:]]==['busy-1'],'Opening a detail must not reload the gallery'
+
+
+def test_more_photos_than_one_batch_are_fetched_in_slices_of_twelve(ui,monkeypatch):
+    """Production error: the list asked for 24 photos in one call, the batch function allows 12."""
+    state,game=ui
+    models=[entry(f'big-{i}','member','beer','small',i) for i in range(30)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    sizes=[]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    def batch(p,l,ids):
+        sizes.append(len(ids))
+        assert p=='player' and l=='lobby'
+        if len(ids)>12:
+            raise ValueError('Load at most twelve check-in photos at once.')   # what the real function does
+        return {i:state['photo'].getvalue() for i in ids}
+    monkeypatch.setattr(db,'download_checkin_photos',batch)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and sizes==[12,12], 'The first 24 photos go out as two fresh batches of 12'
+    assert sum('base64' in h.value for h in page.get('html'))==24, 'All 24 photos are shown'
+    sizes.clear()
+    button(page,'Load more').click().run()
+    assert not page.exception and sizes==[12,12,6], 'All 30 photos as 12 + 12 + 6, each batch authorized on its own'
+
+
+def test_a_failed_batch_only_hides_its_own_photos_and_lost_access_stops_the_page(ui,monkeypatch):
+    state,game=ui
+    models=[entry(f'f-{i}','member','beer','small',i) for i in range(20)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=True,has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    def flaky(p,l,ids):
+        if 'f-19' in ids:                      # the newest slice fails
+            raise RuntimeError('storage unavailable')
+        return {i:state['photo'].getvalue() for i in ids}
+    monkeypatch.setattr(db,'download_checkin_photos',flaky)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and any('could not be loaded' in w.value for w in page.warning)
+    assert sum('base64' in h.value for h in page.get('html'))==8, 'The 8 photos of the other slice still show'
+    def revoked(p,l,ids):
+        raise PermissionError('Membership revoked')
+    monkeypatch.setattr(db,'download_checkin_photos',revoked)
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    assert not page.exception and any('Photo access changed' in w.value for w in page.warning)
+    assert not any('base64' in h.value for h in page.get('html')), 'Lost access shows no photo at all'
+
+
+def test_changing_the_filter_starts_again_at_the_newest_photos(ui,monkeypatch):
+    state,game=ui
+    models=[entry(f'p-{i}','member' if i%2 else 'other','beer','small',i) for i in range(60)]
+    photos=[dict(id=m.id,username='Mia',captured_at=None,submitted_at=m.submitted_at.isoformat(),
+        is_owner=m.membership_id=='member',has_photo=True,timezone_name=game.timezone_name,rule_version='v1',
+        entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
+        for m in reversed(models)]
+    calls=[]
+    monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
+    monkeypatch.setattr(db,'download_checkin_photo',lambda *args:calls.append(args[-1]) or state['photo'].getvalue())
+    page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
+    button(page,'Load more').click().run()
+    assert page.session_state['history_shown']==48
+    page.radio(key='photo_filter').set_value('Mine').run()
+    assert not page.exception and page.session_state['history_shown']==24
+    assert any('24 of 30 photos' in c.value for c in page.caption)
 
 
 def test_submit_needs_the_phone_location_first(ui):
@@ -606,7 +676,7 @@ def test_submit_needs_the_phone_location_first(ui):
     assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
-    assert any("Location found · 10 m" in item.value for item in page.caption)
+    assert any("Location found, accurate to 10 m" in item.value for item in page.caption)
 
 
 def test_inaccurate_phone_location_warns_and_saves_nothing(ui):

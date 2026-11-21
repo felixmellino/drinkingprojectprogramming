@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style id="tokens"></style>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:transparent;color:var(--text);font:16px var(--font-body)}
+body{padding:2px 2px 12px}
+#row{display:none;align-items:center;gap:12px;min-height:64px;padding:10px 16px;background:var(--surface);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
+#row.show{display:flex}
+#text{flex:1;min-width:0}
+#title{font-weight:650}
+#status{font-size:.82rem;color:var(--text-muted);line-height:1.35;margin-top:2px}
+#switch{flex:0 0 auto;position:relative;width:52px;height:32px;border-radius:16px;border:0;padding:0;cursor:pointer;
+  background:var(--border);transition:background .15s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+#switch[aria-checked="true"]{background:var(--accent)}
+#switch[aria-checked="true"]::after{transform:translateX(20px)}
+#switch:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}
+</style></head>
+<body>
+<div id="row"><div id="text"><div id="title">Dark mode</div><div id="status" aria-live="polite"></div></div>
+<button id="switch" role="switch" aria-checked="false" aria-label="Dark mode"></button></div>
+<script>
+// Dark mode on/off, remembered in this browser (same idea as the Location switch).
+//  * mode="reader": invisible; tells the page the saved choice ("dark" / "light", or null if never set).
+//  * mode="switch": the visible switch in Profile; a tap saves the choice and tells the page.
+const KEY = "wegopub-theme";
+const $ = id => document.getElementById(id);
+function send(type, details) {window.parent.postMessage({isStreamlitMessage: true, type, ...details}, "*");}
+function sendValue(value) {send("streamlit:setComponentValue", {value, dataType: "json"});}
+function saved() {try {return localStorage.getItem(KEY);} catch (e) {return null;}}
+function save(value) {try {localStorage.setItem(KEY, value);} catch (e) {}}
+function show(on) {
+  $("switch").setAttribute("aria-checked", on ? "true" : "false");
+  $("status").textContent = on ? "On" : "Off";
+}
+let ready = false;
+window.addEventListener("message", event => {
+  if (event.source !== window.parent || event.data.type !== "streamlit:render") return;
+  const args = event.data.args || {};
+  if (args.tokens) $("tokens").textContent = args.tokens;
+  if (ready) return;
+  ready = true;
+  if (args.mode === "switch") {
+    $("row").classList.add("show");
+    show(Boolean(args.current));
+    send("streamlit:setFrameHeight", {height: $("row").offsetHeight + 16});
+    $("switch").addEventListener("click", () => {
+      const on = $("switch").getAttribute("aria-checked") !== "true";
+      show(on); save(on ? "dark" : "light"); sendValue(on ? "dark" : "light");
+    });
+  } else {
+    send("streamlit:setFrameHeight", {height: 0});
+    sendValue(saved());
+  }
+});
+send("streamlit:componentReady", {apiVersion: 1});
+</script></body></html>

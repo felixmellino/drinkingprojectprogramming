@@ -143,7 +143,7 @@ if photo is None and not st.session_state.get('checkin_posted'):
 
 page_header("Check in", compact=True)
 if modern and rules.get('test_mode'):
-    st.caption("Test season · open Wed 08:00 – Sun 18:00")
+    st.caption("Test season, open Wed 08:00 to Sun 18:00")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -216,8 +216,13 @@ with st.container(key="drink_ui_panel_selection"):
         with st.container(key="drink_ui_drinks"):
             drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
                                   horizontal=True, width="stretch", label_visibility="collapsed")
-        if drink_type != "shot":
-            with st.container(key="drink_ui_sizes"):
+        # A shot has no size, but its row keeps the same height (an invisible spacer in the same keyed
+        # container, which has a minimum height, see drink_entries.css), so the photo above does not
+        # jump when you switch.
+        with st.container(key="drink_ui_sizes"):
+            if drink_type == "shot":
+                st.markdown('<span class="size-spacer" aria-hidden="true"></span>', unsafe_allow_html=True)
+            else:
                 size = st.radio("Size", options=list(SIZE_LABELS),
                                 format_func=lambda value: size_label(drink_type, value, rules),
                                 horizontal=True, width="stretch", label_visibility="collapsed")
@@ -259,12 +264,12 @@ with st.container(key="drink_ui_panel_location"):
                 territories = get_territories()
                 preview_result, preview_territory = evaluate_location(device_gps, accuracy_m, territories)
                 if preview_result == "matched":
-                    place = " · " + next(t.name for t in territories if t.id == preview_territory)
+                    place = " in " + next(t.name for t in territories if t.id == preview_territory)
                 elif preview_result == "outside":
-                    place = " · outside the territories (season points only)"
+                    place = ", outside the territories (season points only)"
             except (APIError, RequestError, RuntimeError):
                 pass  # The territory is checked again on submission.
-        st.caption(f"Location found · {accuracy_m:.0f} m{place}")
+        st.caption(f"Location found, accurate to {accuracy_m:.0f} m{place}")
 
 
 # Recover a lost successful reply even after the scoring window closes.

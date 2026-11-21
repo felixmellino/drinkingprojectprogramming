@@ -26,7 +26,18 @@ Names above are inferred from git history and may be wrong — each member
 should confirm their own name and fill in their student number before
 submission.
 
+**Selected Block 2 solo project:** TODO — name the member whose Block 2 solo
+project WeGoPub builds on, link it, and list in two short bullet lists what
+that project already had and what the team added (accounts, lobbies, scoring
+v1, territories and map, photo check-ins, four duels, teams, friends,
+standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
 ## Hosting (deployed app)
+
+Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
+use the same Brevo settings as password recovery. In an active lobby, the
+creator can open **Invite player** and select an accepted friend. Invitees
+can open the email link or respond from **Pending invites** on the Lobby page.
 
 The public app runs on **Streamlit Community Cloud** at
 https://wegopubnow.streamlit.app/ and uses the team's shared Supabase project
@@ -230,10 +241,26 @@ The test suite covers pure logic and Streamlit forms with mocked database
 services; it needs no live Supabase connection. Run from the repository
 root. The mocks do not verify PostgreSQL migrations.
 
+For the standard local check (Python, JavaScript components, rule mutations and isolated
+PostgreSQL), install Node.js 24 and the development-only test dependency, then run:
+
+```bash
+npm ci --ignore-scripts
+python scripts/verify.py
+```
+
+CI also runs native PostgreSQL concurrency/restart tests, a two-user Chromium
+game, and Python branch coverage on 3.12 and 3.14. All jobs run on every pull
+request to `main` and every push to `main`.
+The database tests use disposable synthetic data, not the shared Supabase
+project. See [verification guide and release checklist](docs/VERIFICATION.md)
+for individual commands, covered cases, reports and the remaining phone checks.
+
 ## Accounts
 
 Profile has one Create account / Log in selector; only the chosen form is shown.
-Password recovery and account upgrades are currently unavailable.
+Password recovery works by emailed code (see Local setup); there is no
+self-service upgrade for legacy PIN accounts.
 First visit shows registration and login. Every game page requires a signed-in
 account. Registration requires first name, surname, unique username, unique
 email and a password of at least 8 characters, entered twice. Email and
@@ -459,9 +486,15 @@ and 009. See [setup, code handoff and verification](docs/TEAM_MODE.md).
 Apply [`migrations/012_player_lobby_choices.sql`](migrations/012_player_lobby_choices.sql)
 once before deploying this version (also required for new databases).
 It adds a server-only account preference; existing Player/Lobby models and
-scoring records are unchanged. The last explicitly selected lobby follows the
-player across devices. Reopening switches a finished selection to the newest
-active lobby. Removed membership requires selecting a lobby again.
+scoring records are unchanged. Open **Lobbies** using the round button below
+**Profile**, then choose **Make current**
+to switch Map, Ranks, Check-in, Minigames, and lobby photo history. The selected
+card shows **Current lobby**. **View lobby** opens the details independently.
+Creating a lobby with a season or joining an unfinished lobby also selects it,
+as indicated before submission. The last explicit choice follows the player
+across devices. When the current season finishes, the next page load or Lobby
+refresh picks the newest running lobby if one is available. Removed membership
+requires selecting a lobby again on restoration.
 
 Verify locally with `python -m pytest tests/test_lobby_selection.py tests/test_lobby_ui.py -q`.
 These tests exercise fresh Streamlit sessions, real Leaderboard initialization,
@@ -473,7 +506,7 @@ changing the preference; all temporary test records were removed.
 
 Browser verification on 18 November 2026 passed in a freshly started local
 app against the shared database: choose the older of two active QA lobbies,
-close its popup, open Leaderboard, fully reload the page and sign in again
+open Leaderboard, fully reload the page and sign in again
 without opening Lobby. Leaderboard restored the older chosen lobby correctly.
 The temporary QA account and both lobbies were removed after verification.
 
@@ -527,8 +560,8 @@ or expired. Team owner income continues normally. See R-LB01–R-LB03.
 
 Delete lobby (creator only, hides the lobby, keeps history; R-LB04) needs
 [`migrations/017_delete_lobby.sql`](migrations/017_delete_lobby.sql) **after 016**.
-It is **not applied** to Supabase yet. It passed a local in-memory Postgres
-check (creator/other/retry, history kept); apply it before deploying this code.
+It is applied to the shared Supabase project (checked 20 November 2026,
+together with migrations 021, 024, 025 and 026).
 
 Before using this feature, the Data owner applies
 [`migrations/016_leave_lobby.sql`](migrations/016_leave_lobby.sql) **after 015**
@@ -536,8 +569,7 @@ and `012_player_lobby_choices.sql`. Apply the migration before deploying this
 code. It runs no migrations automatically and does not delete existing history.
 Migration 016 was applied to the shared Supabase project with contributor
 authorization on 19 November 2026. All 19 schema/access/history checks and a
-fresh app-process read/RPC check passed. The frontend changes still need
-review, merge and deployment before the public app shows the button.
+fresh app-process read/RPC check passed.
 
 Verification:
 

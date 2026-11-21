@@ -10,17 +10,14 @@ from action_feedback import explain
 from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
+from faq_ui import show_faq
 from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
-from theme import menu_icons
+from theme import dark_mode_switch, empty_state, menu_icons
 from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
-# Pages that have no tab in the bottom bar open from the top of this menu.
-PAGES = [
-    ("lobby", "Lobbies", "pages/2_Lobby.py", "users-three"),
-]
 OPTIONS = [
     ("edit", "Edit profile", "pencil-simple"),
     ("friends", "Friends", "users"),
@@ -35,24 +32,23 @@ def show_profile(player):
     view = st.session_state.get("profile_view", "menu")
     if view == "menu":
         # iPhone-style grouped lists: icon, label, chevron (styles in assets/theme.css).
-        menu_icons({**{f"profile_page_{key}": icon for key, _label, _page, icon in PAGES},
-                    **{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+        menu_icons({**{f"profile_{key}": icon for key, _label, icon in OPTIONS},
+                    "profile_faq": "list-bullets",
                     "profile_logout": "sign-out"})
-        with st.container(key="menu_list_play"):
-            for key, label, page, _icon in PAGES:
-                if st.button(label, width="stretch", key=f"profile_page_{key}"):
-                    st.switch_page(page)
         with st.container(key="menu_list_account"):
             for key, label, _icon in OPTIONS:
                 if st.button(label, width="stretch", key=f"profile_{key}"):
                     st.session_state["profile_view"] = key
                     st.rerun()
+            if st.button("FAQ / Help", width="stretch", key="profile_faq"):
+                show_faq()
         # Location: a real switch; the tap makes the browser ask for permission right away.
         location_switch()
+        dark_mode_switch()
         with st.container(key="menu_list_logout"):
             if st.button("Log out", width="stretch", key="profile_logout"):
                 log_out()
-        # Handle links before downloading the avatar for a page being left.
+        # Handle profile actions before downloading the avatar.
         with identity:
             show_picture_identity(player.id, player.id, st.session_state.get('player_display_name', player.display_name))
         return
@@ -200,7 +196,7 @@ def show_photo_privacy(player_id):
 
 def show_stats(player_id):
     st.header("My stats")
-    st.caption("All-time personal stats · Includes lobbies you have left")
+    st.caption("All-time personal stats, including lobbies you have left")
     memberships = db.list_memberships_for_player(player_id, include_left=True)
     now = datetime.now(timezone.utc)
     finished_season_ids = set()
@@ -233,4 +229,4 @@ def show_stats(player_id):
                "Team scores and team owner bonuses are excluded. Accepted check-ins count immediately; "
                "wins count only after a season ends.")
     if not stats.lobbies:
-        st.info("No scored drinks yet. Your totals will appear here after your first accepted scoring check-in.")
+        empty_state("profile", "beer-stein", "No drinks yet", "Your totals start with your first check-in.", check_in=True)

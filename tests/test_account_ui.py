@@ -24,6 +24,24 @@ def form(at, label):
     return next(button for button in at.button if button.label == label)
 
 
+def _past_start(at):
+    """Skip the start screen: these tests are about the form behind it."""
+    at.session_state["start_seen"] = True
+    return at
+
+
+def test_first_visit_shows_the_start_screen_and_each_button_opens_its_form():
+    at = AppTest.from_file(str(ROOT / "app.py")).run()
+    assert not at.exception and not at.radio
+    assert [b.label for b in at.button] == ["Create account", "Log in"]
+    assert any("start-logo" in h.value and "WeGo<i>Pub</i>" in h.value for h in at.get("html"))
+    next(b for b in at.button if b.label == "Log in").click().run()
+    assert at.radio(key="account_action").value == "Log in"
+    fresh = AppTest.from_file(str(ROOT / "app.py")).run()
+    next(b for b in fresh.button if b.label == "Create account").click().run()
+    assert fresh.radio(key="account_action").value == "Create account"
+
+
 def fill(at, label, value):
     next(field for field in at.text_input if field.label == label).input(value)
 
@@ -33,7 +51,7 @@ def test_first_visit_and_direct_game_page_require_account():
         "app.py", "pages/2_Lobby.py", "pages/3_Check_in.py",
         "pages/4_Standings.py", "pages/6_Check_in_photos.py",
     ]:
-        at = AppTest.from_file(str(ROOT / path)).run()
+        at = _past_start(AppTest.from_file(str(ROOT / path))).run()
         assert not at.exception
         assert at.radio(key="account_action").options == ["Create account", "Log in"]
         assert not at.tabs
@@ -48,7 +66,9 @@ def test_registration_login_logout_and_progress_identity():
              (p for p in players if p.email == email), None)), \
          patch("data.db.insert_player", side_effect=players.append), \
          patch("data.db.get_player", side_effect=lambda pid: next((p for p in players if p.id == pid), None)):
-        at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
+        # Cold imports plus real password hashing can exceed AppTest's 3 s
+        # default on Windows with branch coverage; these are functional checks.
+        at = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"), default_timeout=10)).run()
         for label, value in [("First name", "Mia"), ("Surname", "Silva"), ("Username", "mia"),
                              ("Email", "MIA@example.com"), ("Password", "password8"), ("Confirm password", "password8")]:
             fill(at, label, value)
@@ -58,7 +78,7 @@ def test_registration_login_logout_and_progress_identity():
         assert players[0].id == pid
         form(at, "Log out").click().run()
         # New Streamlit process/session still signs into the stored player ID.
-        at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(" MIA@EXAMPLE.COM ")
         at.text_input(key="login_password").input("password8")
@@ -69,7 +89,7 @@ def test_registration_login_logout_and_progress_identity():
 
 def test_invalid_registration_creates_nothing():
     with patch("data.db.list_players", return_value=[]), patch("data.db.insert_player") as insert:
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         form(at, "Create account").click().run()
         assert at.error
         insert.assert_not_called()
@@ -78,7 +98,7 @@ def test_invalid_registration_creates_nothing():
 
 @pytest.mark.parametrize("path", ["app.py", "pages/1_Profile.py", "pages/2_Lobby.py"])
 def test_login_offers_password_recovery(path):
-    at = AppTest.from_file(str(ROOT / path)).run()
+    at = _past_start(AppTest.from_file(str(ROOT / path))).run()
     at.radio(key="account_action").set_value("Log in").run()
     assert not at.exception
     assert not at.expander
@@ -92,7 +112,7 @@ def test_incorrect_password_does_not_authenticate_or_change_account():
     original_hash = player.pin_hash
     with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.insert_player") as insert:
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("wrong-password")
@@ -108,7 +128,7 @@ def test_password_change_invalidates_existing_session():
     old = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     changed = create_player("mia", "Mia", "Silva", "mia@example.com", "newpass8", "newpass8", [])
     with patch("data.db.get_player", return_value=changed):
-        at = AppTest.from_file(str(ROOT / "pages/2_Lobby.py"))
+        at = _past_start(AppTest.from_file(str(ROOT / "pages/2_Lobby.py")))
         at.session_state["player_id"] = old.id
         at.session_state["credential_version"] = old.pin_hash
         at.session_state["current_lobby_id"] = "old-lobby"
@@ -123,7 +143,7 @@ def test_throttled_login_does_not_authenticate():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.allow_login_attempt", return_value=False):
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
@@ -138,7 +158,7 @@ def test_unknown_login_shares_generic_error_and_never_loads_player_list(allowed)
          patch("data.db.list_players") as list_players, \
          patch("data.db.allow_unknown_login_attempt", return_value=allowed) as allow, \
          patch("data.db.authenticate", return_value=None) as authenticate:
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(" UNKNOWN@example.com ")
         at.text_input(key="login_password").input("password8")
@@ -162,7 +182,7 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
          patch("data.db.get_player", return_value=player), \
          patch("data.db.create_remembered_session", return_value=token) as create, \
          patch("data.db.revoke_remembered_session") as revoke:
-        at = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
@@ -178,7 +198,7 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
     with patch("device_login._browser_storage", side_effect=lambda **c: {"request_id": c["request_id"], "token": token, "available": True}), \
          patch("data.db.get_remembered_player", return_value=player), \
          patch("data.db.get_player", return_value=player):
-        fresh = AppTest.from_file(str(ROOT / "pages/1_Profile.py")).run()
+        fresh = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"))).run()
         assert not fresh.exception
         assert fresh.session_state["player_id"] == player.id
         assert not fresh.text_input
@@ -193,7 +213,7 @@ def test_unchecked_remember_does_not_create_persistent_access():
     with patch("data.db._login_player_by_email", return_value=player), \
          patch("data.db.get_player", return_value=player), \
          patch("data.db.create_remembered_session") as create:
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
@@ -209,7 +229,7 @@ def test_invalid_saved_token_is_cleared_without_access():
         return {"request_id": command["request_id"], "token": token, "available": True}
     with patch("device_login._browser_storage", side_effect=browser), \
          patch("data.db.get_remembered_player", return_value=None):
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         assert not at.exception
         assert "player_id" not in at.session_state
         assert at.radio(key="account_action").options == ["Create account", "Log in"]
@@ -228,7 +248,7 @@ def test_delayed_browser_read_waits_then_restores_without_login_form():
     with patch("device_login._browser_storage", side_effect=delayed_browser), \
          patch("data.db.get_remembered_player", return_value=player) as restore, \
          patch("data.db.get_player", return_value=player):
-        at = AppTest.from_file(str(ROOT / "app.py")).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
         assert not at.exception
         assert not at.radio
         assert not at.text_input
@@ -270,16 +290,64 @@ if st.button("Lose server session"):
         at = AppTest.from_string(script).run()
         assert not at.exception
         assert at.session_state["player_id"] == player.id
+        form(at, "Tap to continue").click().run()   # opening the app greets with the start screen first
         form(at, "Lose server session").click().run()
         assert not at.exception
         assert at.session_state["player_id"] == player.id
         assert requests[0] != requests[-1]
         assert restore.call_count == 2
         assert not at.text_input
+        assert any(b.label == "Tap to continue" for b in at.button), "a fresh session starts with the start screen again"
+
+
+def test_the_start_screen_shows_once_even_when_app_py_jumps_to_the_map():
+    """Bug: after the tap, app.py skipped require_login and switched to the Map, whose
+    require_login still found the flag and showed the start screen a second time."""
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    app_like = '''
+import streamlit as st
+from shared import require_login
+if "player_id" not in st.session_state:
+    require_login()
+st.write("map")
+'''
+    with patch("device_login._browser_storage",
+               side_effect=lambda **c: {"request_id": c["request_id"], "token": "saved-token", "available": True}), \
+         patch("data.db.get_remembered_player", return_value=player), \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_string(app_like).run()
+        assert [b.label for b in at.button] == ["Tap to continue"]
+        form(at, "Tap to continue").click().run()
+        assert not at.exception and any("map" in m.value for m in at.markdown)
+        assert "_show_welcome" not in at.session_state and at.session_state["start_seen"] is True, \
+            "the Map's own require_login must not show the start screen again"
+
+
+def test_opening_the_app_signed_in_shows_the_start_screen_and_one_tap_continues():
+    player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
+    script = '''
+import streamlit as st
+from shared import require_login
+require_login()
+st.write("page content")
+'''
+    with patch("device_login._browser_storage",
+               side_effect=lambda **c: {"request_id": c["request_id"], "token": "saved-token", "available": True}), \
+         patch("data.db.get_remembered_player", return_value=player), \
+         patch("data.db.get_player", return_value=player):
+        at = AppTest.from_string(script).run()
+        assert not at.exception and at.session_state["player_id"] == player.id
+        assert [b.label for b in at.button] == ["Tap to continue"], "only the start screen, no tabs, no page yet"
+        assert any("start-logo" in h.value for h in at.get("html"))
+        assert not any("page content" in m.value for m in at.markdown)
+        form(at, "Tap to continue").click().run()
+        assert not at.exception and any("page content" in m.value for m in at.markdown)
+        at.run()
+        assert not any(b.label == "Tap to continue" for b in at.button), "once per opening, not on every page"
 
 
 def recovery_screen():
-    at = AppTest.from_file(str(ROOT / "app.py")).run()
+    at = _past_start(AppTest.from_file(str(ROOT / "app.py"))).run()
     at.radio(key="account_action").set_value("Log in").run()
     form(at, "Forgot password?").click().run()
     assert not at.exception

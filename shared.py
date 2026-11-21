@@ -11,7 +11,7 @@ import streamlit as st
 import data.db as db
 from core.models import Player, Season, Territory
 from data.territory_file import load_territories, territory_file_version
-from account_ui import show_accounts
+from account_ui import show_accounts, show_welcome
 from device_login import sync_storage, set_identity, queue_storage
 from postgrest.exceptions import APIError
 from httpx import RequestError
@@ -45,6 +45,9 @@ def require_login() -> str:
             if player:
                 set_identity(player)
                 st.session_state["_device_token"] = token
+                # The app was just opened on a remembered device: greet with the start screen first.
+                if not st.session_state.get("start_seen") and "lobby_invite" not in st.query_params:
+                    st.session_state["_show_welcome"] = True
             else:
                 queue_storage("clear")
                 st.rerun()
@@ -60,6 +63,7 @@ def require_login() -> str:
         if not player or not player.email or player.pin_hash != st.session_state.get("credential_version"):
             st.session_state.clear()
             st.session_state["_remember_attempted"] = True
+            st.session_state["start_seen"] = True   # straight to the form, so "Please log in again" is visible
             queue_storage("clear")
             st.info("Please log in again.")
         else:
@@ -67,8 +71,12 @@ def require_login() -> str:
     if "player_id" not in st.session_state:
         notice = st.session_state.pop("_profile_notice", None)
         if notice:
+            st.session_state["start_seen"] = True   # a notice must not hide behind the start screen
             st.success(notice)
         show_accounts()
+        st.stop()
+    if st.session_state.get("_show_welcome"):
+        show_welcome()   # one tap anywhere continues to the page that was opened
         st.stop()
     try:
         restore_selection(st.session_state["player_id"])
@@ -213,6 +221,7 @@ def _load_and_sync(version: str) -> list[Territory]:
 
 
 def show_logged_in_as():
-    st.sidebar.caption(f"Logged in as **{st.session_state.get('player_display_name', '?')}**")
-    if "current_lobby_name" in st.session_state:
-        st.sidebar.caption(f"Lobby: **{st.session_state['current_lobby_name']}**")
+    """Kept for the pages that call it. It used to write "Logged in as" into the
+    sidebar, which the app always hides; writing there made the sidebar flash
+    open on every load, so it now shows nothing (the Profile button names you)."""
+    return None

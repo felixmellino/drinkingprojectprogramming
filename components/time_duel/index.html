@@ -2,7 +2,7 @@
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;color:#f5f4ee;background:#17263e}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}main{max-width:600px;margin:auto;padding:24px 20px;text-align:center}header{display:flex;justify-content:space-between;color:#aebcd0;font-size:12px;letter-spacing:.12em}h1{font-size:32px;margin:24px 0 12px}p{line-height:1.5;color:#c9d3e2}.target{font-size:64px;font-weight:800;color:#f5d98b;margin:12px}.tap{width:min(72vw,270px);height:min(72vw,270px);border-radius:50%;font-size:30px;font-weight:800;margin:12px;background:#f5d98b;color:#17263e;border:8px solid #34465b;touch-action:manipulation;user-select:none;-webkit-user-select:none}.tap.running{background:#82d4c3}.hint{font-size:13px}button{cursor:pointer;font:inherit;min-height:48px;border:1px solid #708399;background:#253a55;color:#fff;padding:12px 22px;border-radius:14px}button:disabled{opacity:.55;cursor:default}button:focus-visible{outline:3px solid #fff;outline-offset:4px}.results{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}.card{background:#25364e;border-radius:18px;padding:16px;min-width:0}.card strong{display:block;font-size:24px;margin:8px 0}.card span{font-size:13px;color:#c9d3e2}table{width:100%;font-size:13px;margin:20px 0;border-collapse:collapse}td,th{padding:10px 4px;border-bottom:1px solid #34465b}#message{min-height:26px}footer{margin-top:20px}#cancel{background:transparent} @media(max-height:700px){main{padding-top:12px}h1{font-size:26px;margin:16px 0 8px}.target{font-size:48px}.tap{width:200px;height:200px;margin:6px}}
 </style></head><body><main>
-<header><span>WEGOPUB · TIME DUEL</span><span id="round">ROUND 1 / 3</span></header>
+<header><span>TIME DUEL</span><span id="round">ROUND 1 / 3</span></header>
 <section id="ready"><h1>Find your rhythm.</h1><p>Both players get the same secret target.<br>Ready up to reveal it.</p><button id="readyButton">I'm ready</button></section>
 <section id="play" hidden><p id="instruction">Your target</p><div id="target" class="target"></div><button id="tap" class="tap">Start</button><p class="hint">Tap once to start. Tap again when the time feels right.</p></section>
 <section id="result" hidden><h1 id="resultTitle"></h1><p id="reward"></p><p id="summary"></p><button id="back">Back to Time Duel</button></section>
@@ -26,7 +26,7 @@ function render(){
  const a=own(),b=other(),done=terminal(),active=running!==null;
  $('round').textContent=`ROUND ${d.round_no+1} / 3`;
  $('ready').hidden=d.status!=='accepted';$('play').hidden=d.status!=='playing';$('result').hidden=!done;
- $('readyButton').disabled=!!a?.ready||queue.length>0;$('readyButton').textContent=a?.ready?'Ready · Waiting for opponent':"I'm ready";
+ $('readyButton').disabled=!!a?.ready||queue.length>0;$('readyButton').textContent=a?.ready?'Ready. Waiting for your opponent.':"I'm ready";
  $('target').textContent=active?'?':d.target_ms?`${d.target_ms/1000}s`:'';
  $('instruction').textContent=active?'Trust your sense of time':'Your target';
  $('tap').textContent=active?'Stop':a?.elapsed_ms!==null&&a?.elapsed_ms!==undefined||localResult!==null?'Saved':a?.abandoned?'Round lost':'Start';
@@ -53,7 +53,7 @@ function render(){
   const won=d.winner_id===args.member,both=d.status==='draw'&&!!d.boost_ends_at;
   $('resultTitle').textContent=won?'You won!':both?'An exact tie!':d.winner_id?'Opponent wins':d.status==='draw'?'A draw — no reward':'Duel '+d.status;
   $('reward').textContent=(won||both)?'×1.25 personal season points, active until '+new Date(d.boost_ends_at).toLocaleTimeString()+'. Territory points stay unchanged.':'No bonus earned from this duel.';
-  const scores=member=>{const rows=d.rounds.filter(r=>r.membership_id===member);return `${rows.filter(r=>r.abandoned).length} abandoned · ${(rows.reduce((sum,r)=>sum+(r.elapsed_ms===null?0:Math.abs(r.elapsed_ms-r.target_ms)),0)/1000).toFixed(3)}s total error`;};
+  const scores=member=>{const rows=d.rounds.filter(r=>r.membership_id===member);return `${rows.filter(r=>r.abandoned).length} abandoned, ${(rows.reduce((sum,r)=>sum+(r.elapsed_ms===null?0:Math.abs(r.elapsed_ms-r.target_ms)),0)/1000).toFixed(3)}s total error`;};
   $('summary').textContent=`You: ${scores(args.member)}. ${name}: ${scores(args.member===d.challenger_id?d.opponent_id:d.challenger_id)}.`;
   $('back').disabled=queue.length>0;
  }

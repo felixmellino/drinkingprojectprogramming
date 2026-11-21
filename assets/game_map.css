@@ -26,24 +26,6 @@
 .game-hud .game-theirs { color: var(--territory-theirs-ink); }
 .game-hud .game-free { color: var(--text); }
 
-/* Three separate frosted-white pills under the top bar, no outline: Lisbon and Nova stacked on the left,
-   Location on the right. The same white as the top bar and tab bar, brighter and more see-through
-   (the glass lightens the map behind it, so a lower opacity still reads as white). Dark type like the app. */
-.st-key-map_bar { position: absolute; z-index: 6; left: 12px; right: 12px; top: 60px; display: flex !important; flex-direction: row !important;
-  align-items: flex-start; justify-content: space-between; gap: 8px !important; pointer-events: none; }
-.st-key-map_bar > [data-testid="stElementContainer"], .st-key-map_bar > [data-testid="stLayoutWrapper"] { width: auto !important; margin: 0 !important; pointer-events: auto; }
-.stApp .st-key-map_areas button, .stApp .st-key-map_location {
-  background: rgba(255, 255, 255, .72); border: 0; box-shadow: 0 2px 10px rgba(20, 43, 61, .10);
-  backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); -webkit-backdrop-filter: blur(18px) brightness(2.2) saturate(1.15); }
-.st-key-map_areas { display: flex !important; flex-direction: column !important; align-items: flex-start; gap: 6px !important; width: max-content !important; }
-.st-key-map_areas [data-testid="stElementContainer"], .st-key-map_areas [data-testid="stButton"] { width: auto !important; margin: 0 !important; }
-.stApp .st-key-map_areas button { display: flex; justify-content: flex-start; align-items: center; gap: 7px; width: auto;
-  min-height: 34px; padding: 0 16px 0 11px; border-radius: 999px; color: var(--text); white-space: nowrap; }
-.stApp .st-key-map_areas button::before { content: ""; display: block; flex: 0 0 18px; width: 18px; height: 18px; margin: 0;
-  background-color: currentColor; -webkit-mask: none center / contain no-repeat; mask: none center / contain no-repeat; }
-.stApp .st-key-map_areas button p { margin: 0; font-size: .8rem; font-weight: inherit; line-height: 1; color: inherit; }
-.stApp .st-key-map_areas button:hover { background: rgba(236, 246, 252, .85); color: var(--text); }
-.stApp .st-key-map_areas button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* The map's own +/- buttons are hidden: pinch (phone) or scroll (laptop) to zoom. */
 .st-key-game_map .mapboxgl-ctrl-group { display: none !important; }
@@ -54,22 +36,26 @@
   border-radius: 16px; padding: 6px 12px 0; box-shadow: var(--shadow-card); gap: 0 !important; }
 .game-card { color: var(--text); }
 .game-card small { display: block; font-size: 0.58rem; letter-spacing: 0.1em; line-height: 1.2; color: var(--text-muted); text-transform: uppercase; }
-.game-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.02rem;
+.game-card h3 { margin: 0; font-family: var(--font-body); font-weight: 700; font-size: .98rem;
   color: var(--text); padding: 0; line-height: 1.15; }
 .game-card p { margin: 0; font-size: 0.74rem; line-height: 1.25; color: var(--text-muted); }
 .game-card .game-yours { color: var(--territory-yours-ink); }
 .game-card .game-theirs { color: var(--territory-theirs-ink); }
 /* Tug-of-war: big number and you-vs-rival bar for an owned territory you stand in. */
-.game-card .tug-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.game-card .tug-head h3 { min-width: 0; overflow-wrap: anywhere; }
-.game-card .tug-number { text-align: right; flex-shrink: 0; white-space: nowrap; }
-.game-card .tug-number b { display: inline; font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; line-height: 1; }
-.game-card .tug-number em { display: inline; margin-left: 4px; font-style: normal; font-size: 0.62rem; color: var(--text-muted); }
-.game-card .tug-bar { display: flex; height: 4px; margin-top: 5px; border-radius: var(--radius-pill); overflow: hidden; background: var(--border); }
+.game-card .tug-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.game-card .tug-title { min-width: 0; }
+.game-card .tug-title h3 { margin: 0; font-family: var(--font-body); font-weight: 700; font-size: .98rem; line-height: 1.2;
+  color: var(--text); overflow-wrap: anywhere; }
+.game-card .tug-sub { margin: 1px 0 0; font-size: .74rem; line-height: 1.25; color: var(--text-muted); }
+.game-card .tug-pill { flex-shrink: 0; white-space: nowrap; padding: 4px 10px; border-radius: var(--radius-pill);
+  font-size: .76rem; font-weight: 700; }
+.game-card .tug-pill-theirs { background: var(--brand-soft); color: var(--territory-theirs-ink); }
+.game-card .tug-pill-yours { background: var(--accent-soft); color: var(--territory-yours-ink); }
+.game-card .tug-bar { display: flex; height: 6px; margin-top: 8px; border-radius: var(--radius-pill); overflow: hidden; background: var(--border); }
 .game-card .tug-bar i { display: block; height: 100%; }
 .game-card .tug-you { background: var(--territory-yours); }
 .game-card .tug-rival { background: var(--territory-theirs); }
-.game-card .tug-labels { display: flex; justify-content: space-between; gap: 10px; margin: 3px 0 0; font-size: 0.66rem; font-weight: 600; }
+.game-card .tug-labels { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0 0; font-size: .7rem; font-weight: 700; }
 .game-card .tug-labels span:last-child { text-align: right; overflow-wrap: anywhere; }
 /* The territory list: a quiet row at the bottom of the sheet. */
 .stApp .st-key-game_card [data-testid="stExpander"] details { box-shadow: none; background: transparent; border: 0; }
@@ -92,12 +78,72 @@
     max-height: calc(100dvh - 220px); overflow-y: auto; }
 }
 
-/* Location switch: its own glass pill on the right (the glass is drawn here, not inside the transparent frame). */
-.stApp .st-key-map_location { position: static; width: 112px !important; height: 34px; margin: 0; padding: 0; border-radius: 999px;
-  display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.stApp .st-key-map_location [data-testid="stElementContainer"] { margin: 0 !important; width: 100% !important; height: 34px; }
-.stApp .st-key-map_location iframe { display: block; width: 100% !important; height: 34px !important; background: transparent; color-scheme: normal; }
+
+/* ---- Polished sheet (map-premium) ----------------------------------------
+   Every card state has the same shape: a small grab handle, then one row
+   (a coloured dot or the territory) with a title and one line. */
+.game-card .sheet-grab { width: 34px; height: 4px; margin: 2px auto 10px; border-radius: 2px; background: var(--border); }
+.game-card .status-row { display: flex; align-items: center; gap: 12px; }
+.game-card .status-dot { flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+.game-card .status-live { background: var(--accent); box-shadow: 0 0 0 0 rgba(44, 153, 214, .45); animation: status-pulse 1.6s ease-out infinite; }
+.game-card .status-grey { background: var(--territory-free); }
+.game-card .status-red { background: var(--brand); }
+.game-card .status-amber { background: var(--warning); }
+@keyframes status-pulse { 0% { box-shadow: 0 0 0 0 rgba(44, 153, 214, .45); } 100% { box-shadow: 0 0 0 10px rgba(44, 153, 214, 0); } }
+@media (prefers-reduced-motion: reduce) { .game-card .status-live { animation: none; box-shadow: 0 0 0 4px rgba(44, 153, 214, .2); } }
+.stApp .st-key-game_card { padding: 6px 14px 12px !important; border-radius: 20px !important; background: var(--surface) !important;
+  box-shadow: 0 8px 28px rgba(20, 43, 61, .16) !important; }
+/* "All territories (48)": one quiet full-width row, not an expander. */
+.stApp .st-key-map_all_territories { margin-top: 10px; }
+.stApp .st-key-map_all_territories button { min-height: 40px; height: 40px; border: 0; border-radius: 12px;
+  background: var(--bg); color: var(--text); justify-content: space-between; padding: 0 14px; box-shadow: none; }
+.stApp .st-key-map_all_territories button p { font-size: .85rem; font-weight: 600; color: var(--text); }
+.stApp .st-key-map_all_territories button > div { flex: 1; justify-content: flex-start; text-align: left; }
+.stApp .st-key-map_all_territories button::after { content: "›"; font-size: 1.2rem; color: var(--text-muted); }
+.game-card .tug-pill-free, .tug-pill-free { background: var(--bg); color: var(--text-muted); }
+
+/* Territory list sheet (st.dialog renders outside .stApp: no .stApp prefix). */
+.terr-list { list-style: none; margin: 0; padding: 0; }
+.terr-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.terr-row:first-child { border-top: 0; }
+.terr-avatar { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%;
+  font-size: .68rem; font-weight: 800; color: #fff; }
+.terr-avatar.terr-theirs { background: var(--territory-theirs); }
+.terr-avatar.terr-yours { background: var(--territory-yours); color: var(--on-accent); }
+.terr-avatar.terr-free { background: var(--bg); color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--border); }
+.terr-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.terr-text b { font-size: .9rem; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.terr-text span { font-size: .75rem; color: var(--text-muted); }
+.terr-row .tug-pill { flex-shrink: 0; white-space: nowrap; padding: 4px 10px; border-radius: var(--radius-pill); font-size: .74rem; font-weight: 700; }
+.terr-row .tug-pill-theirs { background: var(--brand-soft); color: var(--territory-theirs-ink); }
+.terr-row .tug-pill-yours { background: var(--accent-soft); color: var(--territory-yours-ink); }
+[data-testid="stDialog"]:has(.terr-list) > div { background: var(--surface) !important; }
 @media (max-width: 640px) {
-  /* The phone's top bar has no side padding, so the offsets shrink with it. */
-  .stApp .st-key-map_bar { left: 0; right: 0; top: 48px; }
+  [data-testid="stDialog"]:has(.terr-list) { align-items: flex-end !important; padding: 0 !important; }
+  [data-testid="stDialog"]:has(.terr-list) > div { margin: 0 !important; width: 100% !important; max-width: none !important;
+    max-height: 78dvh; overflow-y: auto; border-radius: 20px 20px 0 0 !important; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
+
+/* ---- Selection flow (map-select-flow) ------------------------------------
+   The card only shows for a selected territory. Its grey handle is a real
+   button: tapping it closes the card. */
+.stApp .st-key-map_card_close { display: flex; justify-content: center; margin: -2px 0 4px; }
+.stApp .st-key-map_card_close [data-testid="stElementContainer"], .stApp .st-key-map_card_close [data-testid="stButton"] {
+  width: auto !important; margin: 0 auto !important; display: flex; justify-content: center; }
+.stApp .st-key-map_card_close button { width: 64px; height: 18px; min-height: 18px; padding: 0; border: 0; background: transparent;
+  box-shadow: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.stApp .st-key-map_card_close button::before { content: ""; width: 36px; height: 5px; border-radius: 3px; background: var(--border); }
+.stApp .st-key-map_card_close button:hover::before { background: var(--text-muted); }
+.stApp .st-key-map_card_close button > div { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.stApp .st-key-map_card_close button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 9px; }
+/* A little tighter on phones. */
+.stApp .st-key-game_card { padding: 6px 12px 10px !important; }
+.stApp .st-key-game_card .tug-bar { margin-top: 6px; }
+.stApp .st-key-map_all_territories { margin-top: 8px; }
+.stApp .st-key-map_all_territories button { min-height: 38px; height: 38px; }
+/* Nothing selected: the card is just the "All territories" row. */
+.stApp .st-key-game_card:not(:has(.game-card)) .st-key-map_all_territories { margin-top: 0; }
+/* The territory sheet is its own frame drawn over the whole screen. */
+.stApp .st-key-territory_sheet_stage { position: fixed !important; inset: 0; z-index: 100000; width: 100vw !important;
+  max-width: none !important; margin: 0 !important; padding: 0 !important; }
+.stApp .st-key-territory_sheet_stage iframe { position: fixed; inset: 0; width: 100vw !important; height: 100dvh !important; border: 0; }

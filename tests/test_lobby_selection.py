@@ -1,4 +1,5 @@
 """Fresh Streamlit sessions share account preferences, never session context."""
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import Mock, call
 
@@ -7,7 +8,7 @@ import pytest
 
 import data.db as db
 from shared import require_login as real_require_login
-from tests.test_lobby_ui import ui, page, open_members, click
+from tests.test_lobby_ui import ui, page, choose_current
 
 real_save_choice = db.save_lobby_choice
 real_get_choice = db.get_lobby_choice
@@ -39,8 +40,7 @@ st.title('Ready: ' + st.session_state['current_lobby_name'])
 
 
 def test_explicit_choice_survives_fresh_sessions_and_other_player_is_separate(ui):
-    at = open_members(page(), 'old')
-    click(at, 'Close')
+    choose_current(page(), 'old')
     fresh = restored_page()
     assert not fresh.exception
     assert fresh.title[0].value == 'Ready: Older lobby'
@@ -58,6 +58,27 @@ def test_finished_choice_falls_back_to_newest_active_without_overwriting(ui):
     at = restored_page()
     assert not at.exception and at.session_state['current_lobby_id'] == 'new'
     assert ui['choices']['me'] == 'past'
+    ui['save_choice'].assert_not_called()
+
+
+def test_expiry_switches_within_an_existing_session(ui, monkeypatch):
+    from core.models import LobbyMembership
+
+    ui['choices']['me'] = 'old'
+    at = restored_page()
+    assert at.session_state['current_lobby_id'] == 'old'
+    end = at.session_state['_current_lobby_ends_at']
+    ui['seasons']['new'][0].ends_at = end + timedelta(days=1)
+    ui['seasons']['secret'][0].ends_at = end + timedelta(days=2)
+    ui['members'].append(LobbyMembership('m-secret', 'me', 'secret', end))
+    ui['choices']['me'] = 'new'  # A saved choice from another device applies on a fresh session.
+    clock = Mock(wraps=datetime)
+    clock.now.return_value = end
+    monkeypatch.setattr('lobby_selection.datetime', clock)
+    at.run()
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'secret'
+    assert ui['choices']['me'] == 'new'
     ui['save_choice'].assert_not_called()
 
 
@@ -85,7 +106,6 @@ def test_no_saved_choice_selects_newest_active(ui):
 
 
 def test_setup_and_upcoming_saved_lobbies_remain_selected(ui):
-    from datetime import datetime, timedelta, timezone
     ui['choices']['me'] = 'old'
     ui['seasons']['old'][0].starts_at = datetime.now(timezone.utc) + timedelta(hours=1)
     assert restored_page().session_state['current_lobby_id'] == 'old'
@@ -128,6 +148,19 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     assert invite_count.call_args_list == [call('me', ui['seasons']['old'][0].id)] * 2
 
 
+def test_ranks_does_not_show_another_lobby_when_current_setup_is_incomplete(ui, monkeypatch):
+    records = Mock(return_value=[])
+    monkeypatch.setattr(db, 'list_drink_entries', records)
+    at = AppTest.from_file(ROOT / 'pages/4_Standings.py')
+    at.session_state['current_membership_id'] = 'm-old'
+    at.session_state['current_lobby_name'] = 'Older lobby'
+    at.run()
+    assert not at.exception
+    assert any('Older lobby' in item.value for item in at.markdown)
+    assert any('Start or select a season' in item.value for item in at.info)
+    records.assert_not_called()
+
+
 @pytest.mark.parametrize(
     'choice, joined, expected',
     [('past', ('past',), 'past'), ('secret', ('old', 'past'), 'old'),
@@ -162,7 +195,7 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
         assert any(button.label == 'Open Lobby' for button in at.button)
     else:
         records.assert_called_once_with(ui['seasons'][expected][0].id)
-        assert any('No points logged yet' in item.value for item in at.info)
+        assert any('empty-state-title' in m.value and 'No points yet' in m.value for m in at.markdown)
     assert any('Final standings' in item.value for item in at.caption) == (expected == 'past')
     if (choice, expected) != ('past', 'old'):
         assert 'current_lobby_id' not in at.session_state

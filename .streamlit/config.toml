@@ -3,6 +3,13 @@ enableXsrfProtection = true
 enableCORS = true
 maxUploadSize = 10
 
+[client]
+# Players see a short error instead of a Python stack trace.
+showErrorDetails = "none"
+# No built-in sidebar page list: the app has its own bottom bar. Without this,
+# Streamlit shows the sidebar on every load until the page's CSS hides it.
+showSidebarNavigation = false
+
 [browser]
 gatherUsageStats = false
 

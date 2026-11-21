@@ -148,10 +148,12 @@ These presentation choices introduce no new scoring or database rules.
   Its frozen scoring window is Wednesday 08:00–Sunday 18:00 in the lobby
   timezone. Normal seasons keep Thursday 18:00–Sunday 18:00.
 - Photo history opens a newest-first gallery of the lobby's retained entries,
-  four per page, with username, territory, image, drink/size, base season and
-  territory awards, applicable owner income and photo-receipt/submission time.
-  Native Older/Newer controls make every retained entry reachable while limiting
-  image downloads. Each image download rechecks membership. Missing/removed
+  with username, territory, image, drink/size, base season and territory awards,
+  applicable owner income and photo-receipt/submission time. One continuous list shows
+  the newest 24 photos; **Load more** appends 24 more (with "24 of 57 photos" under it),
+  so every retained entry is reachable while the page stays light (20 November 2026,
+  replacing Older/Newer pages). Each image is fetched on its own and rechecks membership
+  and sharing on every load; photo bytes are never cached between loads. Missing/removed
   images retain their entry details and score.
 - View details opens that specific entry's full breakdown, exact timestamps,
   correction audit and permitted actions. A single-entry history opens its
@@ -164,6 +166,33 @@ These presentation choices introduce no new scoring or database rules.
 The shared navigation and Standings refresh below were explicitly requested
 as follow-ups. Account/lobby behavior and the map remain separate blocks. The
 broader screen proposal below remains a future design outline.
+
+## Dark mode (20 November 2026, team decision)
+
+Profile has a **Dark mode** switch under Location. The choice is remembered in
+this browser (like the Location switch), not in the database; it is off by
+default. When on, `assets/theme_dark.css` is loaded after `theme.css` and
+redefines the same tokens (navy-black background, dark blue cards, the
+palette's sky and scarlet slightly brighter), plus overrides for Streamlit's
+own inputs, selectboxes, alerts, expanders and dialogs. Components drawn in
+their own frame (switches, duel boards) get the dark tokens too through
+`theme.component_tokens()`. An invisible reader applies the saved choice once
+per visit, so the very first page of a visit can briefly show light.
+
+## Empty states (20 November 2026)
+
+When a screen has nothing yet, one card replaces the old blue info box
+(`theme.empty_state`): a Phosphor icon in a pale circle, a short title, one
+line, and a Check in button where that is the next step. A thin scarlet
+stripe on top is its only accent; buttons stay sky blue.
+
+- Ranks, no points: "No points yet · The first drink of the season takes the top spot." + Check in
+- Photos, nothing shared: "No photos yet · Every check-in adds one here." + Check in
+- Photos, Mine tab empty: "None of yours yet · Your check-in photos will show up here." + Check in
+- Lobby, none joined: "Start a lobby · Create one for your group or join with a code above." (the Create/Join buttons are right above)
+- Profile stats, no drinks: "No drinks yet · Your totals start with your first check-in." + Check in
+
+The Check in button opens the camera exactly like the + tab.
 
 ## Standings interface (implemented 17 November 2026, simplified 19 November 2026)
 
@@ -178,8 +207,14 @@ summary line (data reloads on every page visit).
   visible. Rows preserve the order from `core.leaderboard.season_leaderboard`;
   the UI never re-sorts or changes the tie rule. (The podium was replaced by a
   single list and brought back on 20 November 2026.)
-- The current player gets a YOU tag and their row an outline. The upper of two
-  tied rows gets a "reached first" tag (R-R01).
+- The current player gets a YOU tag (no outline since 20 November 2026). The
+  upper of two tied rows gets a "reached first" tag (R-R01).
+- Tap any podium place or row (20 November 2026): a bottom sheet (a centred
+  dialog on laptops) shows that player or team: rank and points, drinks this
+  season, territories owned, favourite drink type and the last check-in's
+  territory with "22 min ago" (never a location). Only scored check-ins count.
+  It uses the season already loaded on the page: the ranking is one fragment,
+  so a tap does not reload data.
 - Territory pills underneath: sky = yours, scarlet = someone else's,
   grey = unclaimed.
 - A finished or upcoming season shows a one-line status caption. Service
@@ -214,13 +249,13 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
   19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
-- Profile is a round icon button in the top-right corner of every page
-  (20 November 2026; it made room for Photos in the bar). On the phone Map the
-  top bar leaves room for it.
+- Profile and Lobbies are equally sized round icon buttons in the top-right
+  corner of signed-in pages, with Lobbies directly below Profile
+  (20 November 2026). The phone Map leaves room for both.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames, Photos the Photo history. Lobbies open
-  from the top of the Profile menu; hints that send a player to the Lobby page
-  carry an "Open Lobbies" button. The Lobby page lights up the Profile button.
+  the Leaderboard, Games the Minigames, Photos the Photo history. The Lobbies
+  button uses the people icon, shows a “Lobbies” tooltip, and lights up on the
+  Lobby page. Hints that send a player there carry an “Open Lobbies” button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
   filled for the active tab.
 - Native Streamlit page switching preserves the signed-in session and normal
@@ -308,10 +343,12 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   R-L01/R-L04); nothing is shown if location is blocked, stale or worse than
   50 m.
 - The bottom card names the territory you're in. For an owned territory it is
-  a tug-of-war (19 November 2026): one big number ("4 pts to take it" in
-  scarlet on a rival's area, "+2 your lead" in sky blue on yours) and a bar of
-  your territory points against the owner's (or your closest rival's). The
-  full sentence stays as screen-reader text. Unclaimed areas keep one line.
+  a tug-of-war (19 November 2026, made compact 20 November 2026): the name in
+  plain bold with "Owned by X" / "Yours" under it, a small pill on the right
+  ("+4 to take it" in scarlet, "+2 lead" in sky blue) and a slim bar of your
+  territory points against the owner's (or your closest rival's) with both
+  scores under it. The full sentence stays as screen-reader text. Unclaimed
+  areas keep one line.
 - Tap any territory (20 November 2026): the bottom card switches to that
   territory's tug-of-war ("Owned by X" / "Yours"; "You are in ·" only when you
   stand in it; unclaimed: "Your next drink here claims it."). Tapping empty map
@@ -327,6 +364,39 @@ current lobby's season only. Bars are not part of the game, so none are shown.
   "Lisbon", "Nova SBE", "Jamor Golf" or "All" (and "📍 Me" when your location is usable),
   so the map isn't mostly empty city. The map is the first big element.
 - A territory table below the map gives the same information.
+
+Map selection flow (20 November 2026, design session):
+
+- Nothing is selected by default, also not the territory you stand in: the
+  bottom card is just "All territories · 48". Tapping a territory selects it
+  (thicker outline in its own colour) and opens its compact tug-of-war card;
+  the grey handle on top of the card, or tapping empty map space, closes it.
+  (The map component does not report a second tap on an already selected
+  area, so tapping it again does not close the card.)
+- "All territories" opens a sheet over the whole map (its own component,
+  `components/territory_sheet`): swipe it down, tap the backdrop or press
+  Escape to close it; tap a name to select that territory and zoom the map
+  to it. The lobby name and the yours / rivals / free counts are in its header.
+- The Lisbon / Nova pills and the Location pill are gone from the map, and the
+  Map has no Back button (it is home). Location is switched on in Profile; the
+  map follows the phone with the same invisible tracker as Check-in.
+
+Map polish (20 November 2026, design session):
+
+- Basemap: Carto Positron without labels (quiet light grey); Dark Matter only
+  when the player turned on dark mode. Territories have a soft translucent
+  fill and a thin 1.5 px outline in their own colour (sky / scarlet / grey)
+  instead of thick white borders.
+- The Lisbon and Nova pills have the same width.
+- The bottom card is one calm sheet for every state: a small grab handle,
+  then one row (a coloured dot - pulsing while finding you, grey when off or
+  outside, red when blocked, amber when not precise - with a title and one
+  line), or the territory's tug-of-war. No uppercase eyebrow.
+- "All territories · 48" is one quiet row that opens a list sheet (bottom
+  sheet on phones): owner avatar, name, "owner · you X vs Y" and a pill,
+  sorted easiest to take first, then unclaimed, then yours (smallest lead
+  first). It replaces the table; each row keeps the full sentence for
+  screen readers.
 
 Map owner badge update (19 November 2026, contributor request):
 
@@ -372,8 +442,9 @@ Map owner badge update (19 November 2026, contributor request):
   2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
   grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
   2px gaps). Each tile shows the photo, the player's name and the points on a soft
-  shade at the bottom, and a dot (green = in a territory, grey = outside). Two nights
-  per page with Newer/Older nights; the night's photos download at the same time.
+  shade at the bottom, and a dot (green = in a territory, grey = outside). The list is
+  grouped by game night, newest first, 24 photos at a time with a **Load more** button;
+  the shown photos download at the same time (at most 8 in parallel).
   Retention and sharing notes sit in one quiet line at the bottom.
 - Selecting View details opens the corresponding check-in detail. Bars are not
   part of the location or scoring model.
@@ -390,13 +461,16 @@ See [P-S04/P-S14](SCORING_PROPOSAL.md#p-s04) for the historical discussion and [
 
 ## Profile menu (implemented 18 November 2026)
 
-The authenticated Profile is a vertical list: **Lobbies**, **Edit profile**, **Friends**,
-**My stats**, **Account & security**, a **Location** switch (R-L01, 20 November 2026), then
+The authenticated Profile lists **Edit profile**, **Friends**, **My stats**,
+**Account & security**, **FAQ / Help**, a **Location** switch (R-L01, 20 November 2026), then
 **Log out**. Photo history has no entry here any more (it is the Photos tab in the bar).
 Edit profile, Friends, My stats and Account & security each open a separate view with
 **Back to Profile**. Logout is immediate. The Location switch asks the browser for
 permission when turned on and shows Off / On with accuracy / Blocked.
 
+- FAQ / Help opens a dialog over Profile. Questions start collapsed and are
+  grouped by lobbies and teams, check-ins and points, map and rankings, and
+  games and photos. Tapping a question expands its answer in place.
 - Edit profile updates username, first name and surname. Names use the same
   required/100-character limits as registration. Usernames remain unique,
   ignoring case and surrounding whitespace. Player ID, email, credentials,

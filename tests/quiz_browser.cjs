@@ -5,7 +5,8 @@ const {chromium}=require(path.resolve(process.argv[2]));
 const output=path.resolve('.venv','quiz-browser-qa');fs.mkdirSync(output,{recursive:true});
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
- let f,server,app,browser,appOutput='';
+ let f,server,app,browser,appOutput='',a,b;
+ const pageErrors=[];
  try{
   f=await fixture();const l=await f.lobby(1,{test:true});for(let p=1;p<=6;p++)await l.add(p,2000+p);
   const base=Date.parse(f.now()),started=Date.now();let queue=Promise.resolve();
@@ -26,10 +27,15 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   app.stdout.on('data',d=>appOutput+=d);app.stderr.on('data',d=>appOutput+=d);
   for(let n=0;n<100;n++){try{if((await fetch('http://127.0.0.1:8772/_stcore/health')).ok)break;}catch{}await delay(200);}
   const launch={headless:true};if(!fs.existsSync(chromium.executablePath()))launch.channel='msedge';browser=await chromium.launch(launch);
-  const a=await browser.newPage({viewport:{width:390,height:844}}),b=await browser.newPage({viewport:{width:1280,height:900}});
+  a=await browser.newPage({viewport:{width:390,height:844}});b=await browser.newPage({viewport:{width:1280,height:900}});
+  assert.notEqual(a.context(),b.context(),'Players must have independent browser sessions');
+  for(const page of [a,b])page.on('pageerror',error=>pageErrors.push(error.message));
+  await a.context().tracing.start({screenshots:true,snapshots:true,sources:true});
   await Promise.all([a.goto('http://127.0.0.1:8772/?player=1'),b.goto('http://127.0.0.1:8772/?player=2')]);
-  await a.getByRole('button',{name:'Send quiz challenge',exact:true}).click();
-  await b.getByRole('button',{name:'Accept quiz',exact:true}).click();
+  // The pill UI hides the native radio input; click its visible text like a player.
+  await a.getByText('Player 2',{exact:true}).click();
+  await a.getByRole('button',{name:'Challenge',exact:true}).click();
+  await b.getByRole('button',{name:'Accept',exact:true}).click();
   const board=p=>p.frameLocator('iframe[title="quiz_duel_component.quiz_duel"]');
   const ab=board(a),bb=board(b);
   await Promise.all([ab.getByRole('button',{name:"I'm ready",exact:true}).waitFor(),bb.getByRole('button',{name:"I'm ready",exact:true}).waitFor()]);
@@ -49,7 +55,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
     const y=await a.evaluate(()=>scrollY);await a.mouse.wheel(0,500);await delay(100);assert.equal(await a.evaluate(()=>scrollY),y);
    }
    await ab.locator('#options button').nth(correct).click();
-   await ab.getByText('Answer locked · Waiting for the other player.',{exact:true}).waitFor();
+   await ab.getByText('Answer locked. Waiting for the other player.',{exact:true}).waitFor();
    if(round===0){
     await a.reload();await ab.locator('#question').waitFor({state:'visible'});
     assert(await ab.locator('#options button').nth(correct).isDisabled(),'Reload keeps first answer locked');
@@ -64,9 +70,18 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   await a.screenshot({path:path.join(output,'result-mobile.png')});await b.screenshot({path:path.join(output,'result-desktop.png')});
   assert.equal((await f.q('select count(*) n from quiz_transfers')).rows[0].n,1);
   await ab.getByRole('button',{name:'Back to quizzes',exact:true}).click();
-  await a.getByRole('button',{name:'Send quiz challenge',exact:true}).waitFor();
+  await a.getByRole('button',{name:'Challenge',exact:true}).waitFor();
   assert.equal(await a.getByTestId('stException').count(),0);assert.equal(await b.getByTestId('stException').count(),0);
+  assert.deepEqual(pageErrors,[],'No uncaught JavaScript errors');
   console.log('Quiz browser: two players, identical questions, countdown, locked answer after reload, 2:0, single transfer, fixed mobile screen passed');
- }catch(error){console.error(appOutput.slice(-3500));throw error;}
- finally{if(browser)await browser.close();if(app)app.kill();if(server)await new Promise(r=>server.close(r));if(f)await f.close();}
+ }catch(error){
+  if(a)await a.screenshot({path:path.join(output,'failure-player-one.png')}).catch(()=>{});
+  if(b)await b.screenshot({path:path.join(output,'failure-player-two.png')}).catch(()=>{});
+  console.error(appOutput.slice(-3500));throw error;
+ }
+ finally{
+  fs.writeFileSync(path.join(output,'streamlit.log'),appOutput);
+  if(a)await a.context().tracing.stop({path:path.join(output,'trace.zip')}).catch(()=>{});
+  if(browser)await browser.close();if(app)app.kill();if(server)await new Promise(r=>server.close(r));if(f)await f.close();
+ }
 })().catch(error=>{console.error(error);process.exitCode=1;});

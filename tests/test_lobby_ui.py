@@ -7,6 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import data.db as db
+from core.checkins import CheckinRejected
 from core.friends import transition
 from core.lobbies import create_season
 from core.models import Lobby, LobbyMembership
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def ui(monkeypatch):
+    monkeypatch.setattr(db, 'pending_lobby_invitations', lambda _: [])
     monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     now = datetime.now(timezone.utc)
     lobbies = [Lobby('old', 'Older lobby', 'OLDER'), Lobby('new', 'Newest lobby', 'NEWEST'),
@@ -67,13 +69,63 @@ def click(at, label):
     return next(b for b in at.button if b.label == label).click().run()
 
 
+def choose_current(at, lobby_id):
+    return at.button(key=f'make_current_{lobby_id}').click().run()
+
+
+@pytest.mark.parametrize('failure, expected', [
+    (CheckinRejected('invalid_timezone'), 'timezone is not supported'),
+    (RuntimeError('offline'), 'scoring season could not start'),
+])
+def test_failed_new_season_keeps_current_lobby_and_specific_recovery(ui, monkeypatch, failure, expected):
+    def insert_lobby(lobby):
+        ui['lobbies'].append(lobby)
+        ui['lobby_members'][lobby.id] = []
+
+    def insert_member(member):
+        ui['members'].append(member)
+        ui['lobby_members'][member.lobby_id].append(member)
+
+    monkeypatch.setattr(db, 'insert_lobby', insert_lobby)
+    monkeypatch.setattr(db, 'insert_membership', insert_member)
+    monkeypatch.setattr(db, 'start_scoring_season', Mock(side_effect=failure))
+    at = page()
+    original_season = at.session_state['current_season_id']
+    at.button(key='open_create_lobby').click().run()
+    next(field for field in at.text_input if field.label == 'Lobby name').input('Needs setup')
+    click(at, 'Create lobby')
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert at.session_state['current_season_id'] == original_season
+    assert at.session_state['_opened_lobby_id'] == ui['lobbies'][-1].id
+    assert any(expected in item.value for item in at.success)
+    assert any('Retry lobby setup' in item.value for item in at.success)
+    ui['save_choice'].assert_not_called()
+
+
+@pytest.mark.parametrize('failure', [
+    ValueError('This lobby is full. Join or create another lobby.'),
+    PermissionError('Your membership changed. Refresh lobbies before retrying.'),
+])
+def test_rejected_join_keeps_current_lobby_and_explains_exact_failure(ui, monkeypatch, failure):
+    monkeypatch.setattr(db, 'insert_membership', Mock(side_effect=failure))
+    at = page()
+    click(at, 'Join with a code')
+    next(field for field in at.text_input if field.label == 'Invite code').input('PRIVATE')
+    click(at, 'Join lobby')
+    assert not at.exception
+    assert any(item.value == str(failure) for item in at.error)
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert not any(member.lobby_id == 'secret' for member in ui['members'])
+
+
 def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     at = page()
     assert not at.exception
     shown = cards(at)
     assert 'Newest lobby' in shown[0] and 'Older lobby' in shown[1]
     assert 'lobby-past' in shown[2] and 'Finished lobby' in shown[2]
-    assert 'Finished ' in shown[2] and ' left ' in shown[0]
+    assert 'Finished ' in shown[2] and ' left, ends ' in shown[0]
     assert 'No Leader' in shown[2]
     assert all('Not joined' not in s and 'PRIVATE' not in s for s in shown)
     assert at.session_state['current_lobby_id'] == 'new'
@@ -84,6 +136,10 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert any(b.label == 'Join with a code' for b in at.button)
     assert not any(b.label == 'Start next scoring season' for b in at.button)
     assert len([b for b in at.button if b.label == 'View lobby →']) == 3
+    assert 'Current lobby' in shown[0] and all('Current lobby' not in card for card in shown[1:])
+    assert 'lobby-is-current' in shown[0] and all('lobby-is-current' not in card for card in shown[1:])
+    assert at.button(key='make_current_old').label == 'Make current'
+    assert not any(b.key == 'make_current_past' for b in at.button)
 
 
 def test_leader_uses_existing_tie_rule_public_name_and_private_photo_fallback(ui):
@@ -157,22 +213,24 @@ def test_join_invalid_code_keeps_lists_and_saves_nothing(ui, monkeypatch):
     save.assert_not_called()
 
 
-def test_opening_a_card_shows_members_then_navigates_to_standings(ui, monkeypatch):
-    nav = Mock()
-    monkeypatch.setattr('lobby_ui.st.switch_page', nav)
+def test_opening_another_lobby_shows_its_members_without_switching_current_lobby(ui, monkeypatch):
     at = page()
     next(b for b in at.button if b.key == 'open_lobby_old').click().run()
     assert not at.exception
-    assert at.session_state['current_lobby_id'] == 'old'
-    nav.assert_not_called()
+    assert at.session_state['current_lobby_id'] == 'new'
     assert {t.value for t in at.text} == {'MyUsername', 'Leo'}
     assert len([b for b in at.button if b.label == 'Add friend']) == 1
     assert len(cards(at)) == 3
     assert any(b.label == 'Create a lobby' for b in at.button)
     assert any(c.value == 'OLDER' for c in at.code)
     assert not any(h.value == 'Top 3 players' for h in at.subheader)
-    click(at, 'View leaderboard')
-    nav.assert_called_once_with('pages/4_Standings.py')
+    entries = Mock(return_value=[])
+    monkeypatch.setattr(db, 'list_drink_entries', entries)
+    at.toggle(key='preview_leaderboard_old').set_value(True).run()
+    assert any('No points logged yet' in i.value for i in at.info)
+    assert entries.call_args.args == (ui['seasons']['old'][0].id,)
+    assert at.session_state['current_lobby_id'] == 'new'
+    ui['save_choice'].assert_not_called()
 
 
 def test_past_only_and_incomplete_setup_have_no_invented_active_lobby(ui):
@@ -203,6 +261,7 @@ def test_joining_valid_code_updates_the_visible_list_once(ui, monkeypatch):
     monkeypatch.setattr(db, 'insert_membership', save)
     at = page()
     click(at, 'Join with a code')
+    assert any('will make this your current lobby' in i.value for i in at.info)
     next(v for v in at.text_input if v.label == 'Invite code').input('private')
     click(at, 'Join lobby')
     assert not at.exception
@@ -312,9 +371,9 @@ def test_concurrent_request_error_is_visible_without_crashing(ui):
 
 def test_switching_open_lobbies_shows_only_one_member_list(ui):
     at = open_members(page(), 'old')
-    assert at.session_state['current_lobby_id'] == 'old'
+    assert at.session_state['current_lobby_id'] == 'new'
     at.run()
-    assert at.session_state['current_lobby_id'] == 'old'
+    assert at.session_state['current_lobby_id'] == 'new'
     click(at, 'Close')
     open_members(at, 'new')
     assert not at.exception
@@ -350,6 +409,7 @@ def test_create_empty_name_keeps_dialog_open_and_writes_nothing(ui, monkeypatch)
     monkeypatch.setattr(db, 'insert_lobby', save)
     at = page()
     click(at, 'Create a lobby')
+    assert any('will make it your current lobby' in i.value for i in at.info)
     [b for b in at.button if b.label == 'Create lobby'][-1].click().run()
     assert not at.exception and any('name is required' in e.value for e in at.error)
     assert any(v.label == 'Lobby name' for v in at.text_input)
@@ -379,6 +439,8 @@ def test_create_success_opens_details_and_keeps_duration_timezone_and_test_mode(
     created = ui['lobbies'][-1]
     start_mock.assert_called_once_with('me', created.id, '3_months', 'America/New_York', test_mode=True)
     assert at.session_state['_opened_lobby_id'] == created.id
+    assert at.session_state['current_lobby_id'] == created.id
+    ui['save_choice'].assert_called_once_with('me', created.id)
     assert len(cards(at)) == 4 and any('My new lobby' in card for card in cards(at))
     assert any('Lobby created!' in e.value for e in at.success)
     assert not at.text_input and any(b.label == 'Close' for b in at.button)
@@ -485,7 +547,11 @@ def test_shared_create_dialog_opens_saved_team_lobby(ui, monkeypatch):
 
 
 def test_close_and_refresh_keep_explicit_choice_without_resaving(ui):
-    at = open_members(page(), 'old')
+    at = choose_current(page(), 'old')
+    assert sum('Current lobby' in card for card in cards(at)) == 1
+    assert 'Current lobby' in cards(at)[1]
+    assert at.button(key='make_current_new').label == 'Make current'
+    open_members(at, 'old')
     click(at, 'Close')
     at.run()
     assert not at.exception
@@ -497,21 +563,29 @@ def test_close_and_refresh_keep_explicit_choice_without_resaving(ui):
 
 def test_failed_preference_save_keeps_selection_and_can_retry(ui):
     ui['save_choice'].side_effect = RuntimeError('offline')
-    at = open_members(page(), 'old')
+    at = choose_current(page(), 'old')
     assert not at.exception and at.session_state['current_lobby_id'] == 'old'
-    assert any('could not be saved' in w.value for w in at.warning)
+    assert any('Use Save choice' in w.value for w in at.warning)
     ui['save_choice'].side_effect = lambda pid, lid: ui['choices'].__setitem__(pid, lid)
-    at.run()
+    click(at, 'Save choice')
     assert not at.exception and ui['choices']['me'] == 'old'
 
 
-def test_rechoosing_same_lobby_overrides_another_devices_choice(ui):
-    at = open_members(page(), 'old')
-    click(at, 'Close')
-    ui['choices']['me'] = 'new'  # Another device selected a different lobby.
-    open_members(at, 'old')
+def test_switch_rejected_after_membership_is_revoked(ui):
+    ui['save_choice'].side_effect = PermissionError('You are no longer a member of this lobby.')
+    at = choose_current(page(), 'old')
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert any('no longer a member' in error.value for error in at.error)
+    assert not ui['choices']
+
+
+def test_switches_back_to_previously_current_lobby(ui):
+    at = choose_current(page(), 'old')
+    choose_current(at, 'new')
+    choose_current(at, 'old')
     assert not at.exception and ui['choices']['me'] == 'old'
-    assert ui['save_choice'].call_count == 2
+    assert ui['save_choice'].call_count == 3
 
 
 def test_leave_confirmation_cancellation_and_retained_scores(ui, monkeypatch):

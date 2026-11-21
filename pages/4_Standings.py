@@ -14,15 +14,16 @@ from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
+from theme import empty_state
 
 player_id = require_login()
 show_logged_in_as()
 
-page_header("Ranks")
+page_header("Ranks", st.session_state.get("current_lobby_name", ""))
 standings_ui.load_styles()
 
 try:
-    if st.session_state.get("current_membership_id") and st.session_state.get("current_season_id"):
+    if st.session_state.get("current_membership_id"):
         membership_id, lobby_id, season_id = require_active_membership()
         lobby_mode = st.session_state.get("current_lobby_mode")
         season = st.session_state.get("_validated_season")
@@ -34,6 +35,7 @@ try:
                 st.switch_page("pages/2_Lobby.py")
             st.stop()
         lobby, member, season = fallback
+        st.text(lobby.name)
         membership_id, lobby_id, season_id = member.id, lobby.id, season.id
         member, season = db.membership_context(player_id, membership_id, lobby_id, season_id)
         if member is None or season is None:
@@ -66,7 +68,7 @@ snapshot = replay_season(entries, transfers) if transfers or any(e.rule_version 
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 status = lobby_status(season, current_time()) if season else "active"
 if status == "past":
-    st.caption("Finished season · Final standings")
+    st.caption("Finished season. Final standings")
 elif status == "upcoming":
     st.caption("Upcoming season")
 
@@ -83,10 +85,24 @@ except (APIError, RequestError, RuntimeError):
     territories_available = False
     territory_data = []
 
+owners = {territory.id: owner for territory, owner, _rows in territory_data} if territories_available else None
+territory_names = {territory.id: territory.name for territory, _owner, _rows in territory_data}
+
+
+@st.fragment
+def ranking():
+    """Tapping a place reruns only this part: the season was loaded above."""
+    tapped = standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+    if tapped is not None:
+        rank, points = next((i + 1, p) for i, (m, p) in enumerate(leaderboard) if m == tapped)
+        stats = standings_ui.player_stats(tapped, entries, owners, territory_names)
+        standings_ui.player_sheet(names.get(tapped, "Unknown player"), rank, points, stats, current_time())
+
+
 if not leaderboard:
-    st.info("No points logged yet this season.")
+    empty_state("ranks", "trophy", "No points yet", "The first drink of the season takes the top spot.", check_in=True)
 else:
-    standings_ui.leaderboard(leaderboard, names, membership_id, team_mode=team_mode)
+    ranking()
 
 if not territories_available:
     st.warning("Territory standings are unavailable. Reload the page to try again.")

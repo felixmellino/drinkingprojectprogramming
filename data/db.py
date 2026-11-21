@@ -182,6 +182,23 @@ def insert_membership(membership: LobbyMembership) -> None:
         raise
 
 
+def issue_lobby_invitation(player_id: str, lobby_id: str, friend_id: str) -> dict:
+    rows = get_client().rpc("issue_lobby_invitation", {
+        "actor_player": player_id, "target_lobby": lobby_id, "target_friend": friend_id,
+    }).execute().data
+    return rows[0]
+
+
+def pending_lobby_invitations(player_id: str) -> list[dict]:
+    return get_client().rpc("pending_lobby_invitations", {"actor_player": player_id}).execute().data
+
+
+def respond_to_lobby_invitation(player_id: str, invite_id: str, response: str) -> str:
+    return get_client().rpc("respond_to_lobby_invitation", {
+        "actor_player": player_id, "target_invite": invite_id, "response": response,
+    }).execute().data
+
+
 def leave_lobby(player_id: str, lobby_id: str) -> None:
     """Retain history; the database serializes departure with game actions."""
     _membership_rpc("leave_lobby", player_id, lobby_id)
@@ -575,6 +592,9 @@ def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> byte
     return _private_photo_bucket().download(photo_path)
 
 
+MAX_PHOTO_BATCH = 12  # one authorization snapshot covers at most this many photos
+
+
 def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[str, bytes | None]:
     """Authorize one visible gallery batch afresh; never reuse a previous listing.
 
@@ -586,7 +606,7 @@ def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[st
     from httpx import RequestError
     from storage3.utils import StorageException
     ids = list(dict.fromkeys(entry_ids))
-    if len(ids) > 12:
+    if len(ids) > MAX_PHOTO_BATCH:
         raise ValueError('Load at most twelve check-in photos at once.')
     if not ids:
         return {}

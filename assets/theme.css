@@ -22,7 +22,8 @@
   --border: rgb(20 43 61 / .12);  /* ink at low alpha, not a solid hex -- blends on any surface colour */
   --hud-bg: rgba(255, 255, 255, .92);
   --brand: #EB2F33;            /* wordmark only, large text */
-  --brand-ink: #C0242A;        /* subtle red: lobby countdowns -- never a fill */
+  --brand-ink: #C0242A;
+  --brand-soft: #FDECEC;       /* pale scarlet behind small scarlet text (pills, chips) */        /* subtle red: lobby countdowns -- never a fill */
   /* territory colours: yours = Sky, theirs = Scarlet, free = grey. Blue vs
      red stays distinct for red-green colour-blind players. Use the -ink
      shades whenever the colour is small text. */
@@ -65,12 +66,13 @@
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .stApp { background: var(--bg); color: var(--text); }
 [data-testid="stMainBlockContainer"] { max-width: 880px; padding-top: 2rem; }
-/* Invisible helpers (style blocks, the fixed tab bar, background location and
+/* Invisible helpers (style blocks, fixed navigation, background location and
    sign-in components) take no room, so pages don't start with an empty gap.
    They stay in the page and keep working. */
 .stApp [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style):not(:has([data-testid="stMarkdownContainer"] > :not(style))),
 .stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_bottom_nav),
-.stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission {
+.stApp [data-testid="stLayoutWrapper"]:has(> .st-key-wego_corner_nav),
+.stApp .st-key-remember_device, .stApp .st-key-live_location_tracker, .stApp .st-key-location_permission, .stApp .st-key-theme_reader {
   position: absolute !important; width: 0; height: 0; overflow: hidden; margin: 0; padding: 0;
 }
 /* No empty Streamlit header bar: it only held the app menu and took the
@@ -209,3 +211,21 @@
 @media (prefers-reduced-motion: reduce) {
   .stApp * { transition: none !important; animation: none !important; }
 }
+
+/* Empty-state card (theme.empty_state): icon, title, one line, optional
+   button. The thin scarlet stripe on top is its only accent. */
+.stApp [class*="st-key-empty_state_"] { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  border-top: 4px solid var(--brand); padding: 22px 16px 16px; text-align: center; gap: 0 !important; margin: 4px 0 12px; }
+.stApp [class*="st-key-empty_state_"] [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
+.stApp .empty-state-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft);
+  display: grid; place-items: center; margin: 0 auto 10px; }
+.stApp .empty-state-icon i { display: block; width: 26px; height: 26px; background-color: var(--accent-ink);
+  -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.stApp .empty-state-title { margin: 0; text-align: center; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.15; color: var(--text); }
+.stApp .empty-state-line { margin: 6px 0 14px !important; text-align: center; font-size: .9rem; color: var(--text-muted); }
+
+/* Streamlit adds a small link icon next to every heading (an anchor to copy
+   the section's URL). The app has no sections worth linking to, so it is
+   hidden everywhere, including in dialogs (they render outside .stApp). */
+[data-testid="stHeaderActionElements"] { display: none !important; }

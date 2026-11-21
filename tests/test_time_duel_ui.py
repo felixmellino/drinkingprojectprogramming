@@ -194,4 +194,4 @@ def test_recent_list_says_won_or_lost_against_whom(service):
     state, _, _ = service
     state['duels'] = [_finished('completed', 'b')]
     app = page()
-    assert any(w.value == 'Lost · vs Bob' for w in app.markdown)
+    assert any(w.value == 'Lost vs Bob' for w in app.markdown)

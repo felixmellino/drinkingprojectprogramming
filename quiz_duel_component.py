@@ -6,8 +6,8 @@ _board = declare_component("quiz_duel", path=str(Path(__file__).parent / "compon
 
 
 def quiz_board(duel, member, labels, acknowledgement=None):
-    css = (Path(__file__).parent / "assets" / "theme.css").read_text(encoding="utf-8")
-    tokens = css[css.index(":root {"):css.index("/* Base */")]
+    from theme import component_tokens
+    tokens = component_tokens()  # light, or light + dark when dark mode is on
     return _board(duel=duel, member=member,
         challenger=labels.get(duel["challenger_id"], "Challenger"),
         opponent=labels.get(duel["opponent_id"], "Opponent"), tokens=tokens,

@@ -18,7 +18,7 @@ ERRORS = (APIError, RequestError, RuntimeError, PermissionError, ValueError)
 
 def avatar(name, photo=None):
     content = (f'<img src="data:image/jpeg;base64,{escape(photo, quote=True)}" alt="Team picture" style="width:64px;height:64px;border-radius:50%;object-fit:cover">'
-               if photo else f'<span style="display:inline-grid;place-items:center;background:#d4e9de;border-radius:50%;width:64px;height:64px;font-size:24px">{escape(initials(name))}</span>')
+               if photo else f'<span style="display:inline-grid;place-items:center;background:#d4e9de;color:#142B3D;border-radius:50%;width:64px;height:64px;font-size:24px">{escape(initials(name))}</span>')
     st.markdown(content, unsafe_allow_html=True)
 
 
@@ -50,7 +50,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
     st.code(lobby.invite_code, language=None)
     locked = any(e.membership_id == me.id for e in entries)
     totals = dict(season_leaderboard(entries, transfers))
-    st.caption(f'{lobby.team_count} teams · {lobby.team_capacity} players per team · ' +
+    st.caption(f'{lobby.team_count} teams of up to {lobby.team_capacity} players. ' +
                ('Random assignment' if lobby.team_assignment == 'random' else 'Choose your team'))
     if not me.team_id:
         st.info('Join a team below before checking in. Your team locks after your first scored check-in.')
@@ -85,7 +85,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                             st.rerun()
             else:
                 st.text(team.name)
-            st.caption(f'Team {team.number} · {len(teammates)}/{lobby.team_capacity} members · {format_points(totals.get(team.id, 0))} points' + (' · YOUR TEAM' if own else ''))
+            st.caption(f'Team {team.number}: {len(teammates)}/{lobby.team_capacity} members, {format_points(totals.get(team.id, 0))} points' + (' (your team)' if own else ''))
             for member in teammates:
                 label = names.get(member.player_id, 'Lobby member')
                 try:
@@ -95,7 +95,7 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                 # Existing profile-picture privacy remains authoritative.
                 if picture:
                     st.markdown(f'<img src="data:image/jpeg;base64,{base64.b64encode(picture).decode("ascii")}" alt="Member picture" style="width:28px;height:28px;border-radius:50%">', unsafe_allow_html=True)
-                st.text((label if picture else f'{initials(label)} · {label}') + (' · Left (slot reserved)' if member.left_at else ''))
+                st.text((label if picture else f'{initials(label)}  {label}') + (' (left, slot reserved)' if member.left_at else ''))
             if not teammates:
                 st.caption('No members yet')
             if lobby.team_assignment == 'manual' and not own:
@@ -112,15 +112,13 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
                     else:
                         st.session_state['_team_notice'] = 'Team joined.'
                         st.rerun()
-    if season and st.button('View leaderboard', width='stretch'):
-        dismiss_lobby_dialog()
-        st.switch_page('pages/4_Standings.py')
+    from lobby_ui import leave_lobby_controls, lobby_leaderboard, retry_setup, show_lobby_management
     if season is None:
-        from lobby_ui import retry_setup
         retry_setup(player_id, lobby)
-    from lobby_ui import delete_lobby_controls, leave_lobby_controls
+    else:
+        lobby_leaderboard(player_id, lobby, me, season)
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season, members)
     if st.button('Close', key='close_lobby_teams'):
         dismiss_lobby_dialog()
         st.rerun()

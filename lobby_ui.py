@@ -12,7 +12,7 @@ from postgrest.exceptions import APIError
 
 import data.db as db
 from core.checkins import CheckinRejected
-from core.leaderboard import season_leader
+from core.leaderboard import season_leader, season_leaderboard
 from core.lobby_overview import latest_season, lobby_status, time_left
 from core.profile_photo import initials
 from core.scoring_v1 import utc
@@ -20,9 +20,11 @@ from profile_picture_ui import PICTURE_ERRORS, load_picture
 from friends_ui import friendship_action
 from parallel import run_parallel
 from core.lobbies import lobby_creator
-from theme import button_icons
+from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
+import standings_ui
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
 
@@ -41,12 +43,15 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
     label = 'Winner' if status == 'past' else 'Leader'
     result = (f'{label}: <strong>{name}</strong>' if leader_name else name) if ranking_available else 'Standings unavailable'
     meta = {'active': 'Running', 'past': 'Finished', 'setup': 'Setup incomplete', 'upcoming': 'Upcoming'}[status]
+    # The lobby you play in: tinted card with a pill above its name (option C).
+    current = st.session_state.get('current_lobby_id') == lobby.id
+    pill = '<span class="lobby-current-pill">✓ Current lobby</span>' if current else ''
     if season and season.scoring_rules and season.scoring_rules.get('test_mode'):
-        meta += ' · Test season (Wed 08:00–Sun 18:00)'
+        meta += ', test season (Wed 08:00 to Sun 18:00)'
     if lobby.game_mode == 'team':
-        meta += f' · Team mode · {lobby.team_count} × {lobby.team_capacity}'
+        meta += f', team mode with {lobby.team_count} teams of {lobby.team_capacity}'
     timing = (f'Finished {finish_label(season)}' if status == 'past' else
-              f'{time_left(season.ends_at, now)} left · Ends {finish_label(season)}' if status == 'active' else
+              f'{time_left(season.ends_at, now)} left, ends {finish_label(season)}' if status == 'active' else
               'Competition has not started yet' if status == 'upcoming' else 'No competition dates yet')
     progress = ''
     if status == 'active':
@@ -54,7 +59,8 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
         elapsed = (utc(now) - utc(season.starts_at)).total_seconds()
         fraction = max(0.0, min(1.0, elapsed / total)) if total > 0 else 1.0
         progress = f'<div class="lobby-progress"><span style="width:{fraction:.1%}"></span></div>'
-    st.markdown(f'<article class="lobby-card lobby-{status}"><p class="lobby-meta">{meta}</p>'
+    st.markdown(f'<article class="lobby-card lobby-{status}{" lobby-is-current" if current else ""}">'
+                f'{pill}<p class="lobby-meta">{meta}</p>'
                 f'<h3>{escape(lobby.name)}</h3><div class="lobby-person">{avatar}<span>{result}</span></div>'
                 f'<p class="lobby-countdown">{escape(timing)}</p>{progress}'
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
@@ -194,6 +200,7 @@ def retry_setup(player_id, lobby):
             except LOAD_ERRORS:
                 st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
             else:
+                st.session_state['_lobby_choice_pending'] = lobby.id
                 st.rerun()
 
 
@@ -213,10 +220,10 @@ def depart(player_id, lobby, key):
     else:
         dismiss_members()
         st.session_state.pop(key, None)
-        st.session_state.pop('_lobby_choice_pending', None)
-        st.session_state.pop('_saved_lobby_choice', None)
         if st.session_state.get('current_lobby_id') == lobby.id:
             clear_selection()
+        if st.session_state.get('_saved_lobby_choice') == lobby.id:
+            st.session_state.pop('_saved_lobby_choice')
         st.session_state['_left_lobby_notice'] = f'You left {lobby.name}. Your earned points are kept.'
         st.rerun()
 
@@ -268,15 +275,23 @@ def remove_lobby_confirm(player_id, lobby, key):
             st.rerun()
 
 
+def show_lobby_management(player_id, lobby, season, memberships=None):
+    """Creator controls shared by the individual and team lobby dialogs."""
+    if memberships is None:
+        try:
+            memberships = db.list_memberships_for_lobby(lobby.id, include_left=True)
+        except LOAD_ERRORS:
+            st.warning('Lobby management controls could not be loaded. Close this window and use Refresh lobbies to retry.')
+            return
+    if lobby_creator(memberships) != player_id:
+        return
+    if lobby_status(season, datetime.now(timezone.utc)) in ('active', 'upcoming'):
+        show_invite_player(player_id, lobby.id, memberships)
+    delete_lobby_controls(player_id, lobby)
+
+
 def delete_lobby_controls(player_id, lobby):
-    """Only the creator sees this; two deliberate clicks. Shared by both lobby dialogs."""
-    try:
-        creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
-    except LOAD_ERRORS:
-        st.warning('Lobby deletion controls could not be loaded. Close this window and use Refresh lobbies to retry.')
-        return
-    if creator != player_id:
-        return
+    """Confirm deletion before asking the database to recheck creator access."""
     key = f'confirm_delete_{lobby.id}'
     if st.button('Delete lobby', key=f'delete_{lobby.id}', icon=':material/delete:', width='stretch'):
         st.session_state[key] = True
@@ -296,10 +311,10 @@ def delete_lobby_controls(player_id, lobby):
             else:
                 dismiss_members()
                 st.session_state.pop(key, None)
-                st.session_state.pop('_lobby_choice_pending', None)
-                st.session_state.pop('_saved_lobby_choice', None)
                 if st.session_state.get('current_lobby_id') == lobby.id:
                     clear_selection()
+                if st.session_state.get('_saved_lobby_choice') == lobby.id:
+                    st.session_state.pop('_saved_lobby_choice')
                 st.session_state['_left_lobby_notice'] = f'{lobby.name} was deleted.'
                 st.rerun()
     with cancel:
@@ -314,11 +329,43 @@ def close_members_button():
         st.rerun()
 
 
+def lobby_leaderboard(player_id, lobby, membership, season):
+    if st.session_state.get('current_lobby_id') == lobby.id:
+        if st.button('View leaderboard', width='stretch'):
+            dismiss_members()
+            st.switch_page('pages/4_Standings.py')
+        return
+    if not st.toggle('Show leaderboard', key=f'preview_leaderboard_{lobby.id}'):
+        return
+    try:
+        entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
+                                          lambda: db.list_season_transfers(season.id))
+        rows = season_leaderboard(entries, transfers)
+        team_mode = lobby.game_mode == 'team'
+        if team_mode:
+            names = {team.id: team.name for team in db.list_lobby_teams(player_id, lobby.id)}
+            competitor = membership.team_id
+        else:
+            members = db.list_memberships_for_lobby(lobby.id, include_left=True)
+            users = {p['id']: p['display_name'] for p in db.list_public_usernames()}
+            names = {member.id: users.get(member.player_id, 'Unknown player') for member in members}
+            competitor = membership.id
+    except (PermissionError, *LOAD_ERRORS):
+        st.error('The leaderboard could not be loaded. Try again.')
+        return
+    if rows:
+        standings_ui.load_styles()
+        standings_ui.leaderboard(rows, names, competitor, team_mode=team_mode)
+    else:
+        st.info('No points logged yet this season.')
+
+
 @st.dialog('Lobby members', dismissible=True, on_dismiss=dismiss_members)
-def show_lobby_details(player_id, lobby, membership, season):
+def show_lobby_details(player_id, lobby, season):
     # Recheck on each dialog interaction, including friendship reruns.
     try:
-        if not any(m.player_id == player_id for m in db.list_memberships_for_lobby(lobby.id)):
+        membership = next((m for m in db.list_memberships_for_lobby(lobby.id) if m.player_id == player_id), None)
+        if membership is None:
             st.error('You are no longer a member of this lobby.')
             close_members_button()
             return
@@ -326,7 +373,6 @@ def show_lobby_details(player_id, lobby, membership, season):
         st.error('Lobby access could not be checked. Close and refresh lobbies to try again.')
         close_members_button()
         return
-    select_lobby(lobby, membership, season)
     notice = st.session_state.pop('_lobby_notice', None)
     if notice:
         st.success(notice)
@@ -337,15 +383,28 @@ def show_lobby_details(player_id, lobby, membership, season):
         show_lobby_members(player_id, lobby.id)
     st.divider()
     if season:
-        if st.button('View leaderboard', width='stretch'):
-            dismiss_members()
-            st.switch_page('pages/4_Standings.py')
+        lobby_leaderboard(player_id, lobby, membership, season)
     else:
         st.caption('The leaderboard will be available once lobby setup is complete.')
         retry_setup(player_id, lobby)
     leave_lobby_controls(player_id, lobby)
-    delete_lobby_controls(player_id, lobby)
+    show_lobby_management(player_id, lobby, season)
     close_members_button()
+
+
+def make_current(player_id, lobby, membership, season):
+    try:
+        remember_choice(player_id, lobby.id)
+    except PermissionError as error:
+        st.error(str(error))
+        return False
+    except LOAD_ERRORS:
+        st.session_state['_unsaved_lobby_choice'] = lobby.id
+    else:
+        st.session_state.pop('_unsaved_lobby_choice', None)
+    st.session_state.pop('_lobby_choice_required', None)
+    select_lobby(lobby, membership, season)
+    return True
 
 
 @st.fragment(run_every='60s')
@@ -364,11 +423,12 @@ def show_lobbies(player_id):
     notice = st.session_state.pop('_left_lobby_notice', None)
     if notice:
         st.success(notice)
+    show_pending_lobby_invites(player_id)
     show_overview_actions(player_id)
     st.button('Refresh lobbies')
     if not memberships:
         clear_selection()
-        st.info('You have not joined any lobbies yet. Create one or join with a code above.')
+        empty_state('lobbies', 'users-three', 'Start a lobby', 'Create one for your group or join with a code above.')
         return
     try:
         lobbies = {l.id: l for l in db.list_lobbies()}
@@ -391,26 +451,24 @@ def show_lobbies(player_id):
         groups[lobby_status(season, now)].append((lobby, membership, season))
     for status in ('active', 'past', 'upcoming'):
         groups[status].sort(key=lambda row: (utc(row[2].ends_at if status == 'past' else row[2].starts_at), row[0].id), reverse=True)
-    # Keep an explicitly opened lobby selected while refreshing its members.
     opened = next((row for rows in groups.values() for row in rows
                    if row[0].id == st.session_state.get('_opened_lobby_id')), None)
     selected = next((row for rows in groups.values() for row in rows
                      if row[0].id == st.session_state.get('current_lobby_id')
                      and lobby_status(row[2], now) != 'past'), None)
-    if opened:
-        st.session_state.pop('_lobby_choice_required', None)
-        select_lobby(*opened)
-        try:
-            remember_choice(player_id, opened[0].id)
-        except (PermissionError, *LOAD_ERRORS):
-            st.warning('This lobby is selected for this visit, but your choice could not be saved. Reopen it to retry.')
-    elif selected:
+    pending = st.session_state.pop('_lobby_choice_pending', None)
+    if opened and opened[0].id == pending and lobby_status(opened[2], now) != 'past' and make_current(player_id, *opened):
+        selected = opened
+    if selected:
         select_lobby(*selected)
     elif groups['active'] and not st.session_state.get('_lobby_choice_required'):
         select_lobby(*groups['active'][0])
         st.caption(f'Automatically selected: {groups["active"][0][0].name}')
     else:
         clear_selection()
+    if st.session_state.get('current_lobby_id') and (
+            st.session_state.get('_unsaved_lobby_choice') == st.session_state['current_lobby_id']):
+        st.warning('Your current lobby applies to this visit. Use Save choice to keep it for next time.')
     cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
     summaries = run_parallel(*[partial(load_summary, player_id, lobby, season, status)
                                for status, lobby, season in cards_to_load])
@@ -430,15 +488,23 @@ def show_lobbies(player_id):
                              help=f'Open {lobby.name}', width='stretch'):
                     dismiss_dialog()
                     st.session_state['_opened_lobby_id'] = lobby.id
-                    st.session_state['_lobby_choice_pending'] = lobby.id
                     st.rerun()
+                if status != 'past':
+                    current = st.session_state.get('current_lobby_id') == lobby.id
+                    unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
+                    if not current or unsaved:
+                        label = 'Save choice' if current else 'Make current'
+                        with st.container(key=f'lobby_select_{lobby.id}'):
+                            if st.button(label, key=f'make_current_{lobby.id}', help=f'Select {lobby.name} as your current lobby'):
+                                if make_current(player_id, lobby, membership, season):
+                                    st.rerun()
                 with st.container(key=f'trash_{lobby.id}'):   # top-right corner of the card
                     confirm_key = remove_lobby_button(player_id, lobby)
             remove_lobby_confirm(player_id, lobby, confirm_key)
     if opened and not st.session_state.get('_lobby_dialog'):
-        lobby, membership, season = opened
+        lobby, _, season = opened
         if lobby.game_mode == 'team':
             from team_ui import open_team_lobby
             open_team_lobby(player_id, lobby, season, finished=lobby_status(season, now) == 'past')
         else:
-            show_lobby_details(player_id, *opened)
+            show_lobby_details(player_id, lobby, season)

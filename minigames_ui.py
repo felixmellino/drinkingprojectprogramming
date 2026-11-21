@@ -98,21 +98,21 @@ def _game_cards(player, season, member, duels, *, service_available=True):
     elif active:
         chug_line = 'Duel open'
     else:
-        chug_line = '1 vs 1 · Race on one phone'
+        chug_line = '1 vs 1\u2003Race on one phone'
     with st.container(key='games_grid'):
         if _game_tile('chug', 'chug-duel', 'Chug Duel', chug_line,
                       invites=invites.get('chug', 0), alert=active, playable=service_available):
             st.session_state['minigame_selected'] = 'chug_duel'
             st.rerun()
-        if _game_tile('focus', 'reaction-test', 'Reaction Duel', '1 vs 1 · Stake 1–10 points',
+        if _game_tile('focus', 'reaction-test', 'Reaction Duel', '1 vs 1\u2003Stake 1–10 points',
                       invites=invites.get('reaction', 0)):
             st.session_state['minigame_selected'] = 'reaction'
             st.rerun()
-        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1 · Stake 3–10 points',
+        if _game_tile('quiz', 'quiz', 'Quiz Duel', '1 vs 1\u2003Stake 3–10 points',
                       invites=invites.get('quiz', 0)):
             st.session_state['minigame_selected'] = 'quiz'
             st.rerun()
-        if _game_tile('time', 'time-duel', 'Time Duel', '1 vs 1 · Win ×1.25 for an hour',
+        if _game_tile('time', 'time-duel', 'Time Duel', '1 vs 1\u2003Win ×1.25 for an hour',
                       invites=invites.get('time', 0)):
             st.session_state['minigame_selected'] = 'time'
             st.rerun()
@@ -249,7 +249,7 @@ def render_minigames(player, member, lobby, season):
     st.session_state['minigames_context'] = context
     if not st.session_state.get('minigame_selected'):   # a game screen has its own header
         page_header("Minigames", compact=True)
-        page_subtitle(lobby.name, "Test season · Unlimited plays" if unlimited else "Evening resets at 06:00")
+        page_subtitle(lobby.name, "Test season with unlimited plays" if unlimited else "Evening resets at 06:00")
     try:
         members, usernames = run_parallel(lambda: db.list_memberships_for_lobby(lobby.id), db.list_public_usernames)
         own = next((m for m in members if m.id == member and m.player_id == player), None)
@@ -311,9 +311,9 @@ def render_minigames(player, member, lobby, season):
                 points = base_points(duel["drink_type"], duel.get("size"), rules)
                 selection = DRINK_LABELS[duel["drink_type"]]
                 if duel.get("size"):
-                    selection += " · " + size_label(duel["drink_type"], duel["size"], rules)
+                    selection += ", " + size_label(duel["drink_type"], duel["size"], rules)
                 st.markdown(f'<p class="duel-vs">{escape(who(cid))} <span>vs</span> {escape(who(oid))}</p>'
-                            f'<p class="duel-what">{escape(selection)} · winner +{points * 2}</p>', unsafe_allow_html=True)
+                            f'<p class="duel-what">{escape(selection)}. The winner gets +{points * 2}.</p>', unsafe_allow_html=True)
                 status = duel["status"]
                 if status == "invited":
                     if host:
@@ -380,7 +380,7 @@ def render_minigames(player, member, lobby, season):
         for duel in history[:3]:
             if duel["status"] == "completed":
                 points = base_points(duel["drink_type"], duel.get("size"), rules)
-                st.success(f"{who(duel['winner_id'])} won · +{points * 2}")
+                st.success(f"{who(duel['winner_id'])} won +{points * 2}")
             else:
-                game_note(f"{who(duel['challenger_id'])} vs {who(duel['opponent_id'])} · {duel['status'].capitalize()}")
+                game_note(f"{who(duel['challenger_id'])} vs {who(duel['opponent_id'])}: {duel['status']}")
     live_duels()

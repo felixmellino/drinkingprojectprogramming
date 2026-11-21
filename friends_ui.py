@@ -191,8 +191,8 @@ def show_friends(player_id: str):
         for column, section in zip(st.columns(2), sections):
             title, icon = SECTIONS[section]
             count = "" if section == "search" else (
-                f" · {len(section_players(section, player_id, names, by_other))}"
-                if by_other is not None else " · Unavailable")
+                f"\u2003{len(section_players(section, player_id, names, by_other))}"
+                if by_other is not None else "\u2003Unavailable")
             with column, st.container(key=f"friends_card_{section}"):
                 if st.button(title + count, icon=icon, width="stretch", key=f"open_friends_{section}"):
                     dismiss_friends()

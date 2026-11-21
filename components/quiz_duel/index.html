@@ -11,9 +11,9 @@ button{font:600 16px var(--font-body,system-ui);border:1px solid var(--border,#c
 button:focus-visible{outline:3px solid var(--accent-ink,#236342);outline-offset:2px}button:disabled{opacity:.65;cursor:default}.primary{background:var(--accent,#bddf99);color:var(--on-accent,#183b30);border-color:transparent;width:100%}
 #options{display:grid;gap:10px}#options button{text-align:left;display:flex;align-items:center;gap:12px;min-height:60px}#options button.selected{border:2px solid var(--accent-ink,#236342);background:var(--accent-soft,#e8f2dc)}#options b{font-size:12px;border:1px solid var(--border,#ccd6cb);border-radius:7px;padding:5px 8px}#status{font-size:14px;color:var(--text-muted,#53655d);min-height:24px;margin:0}footer{display:flex;justify-content:center}footer button{font-size:12px;background:transparent;min-height:38px;padding:8px 16px}#confirm{border:1px solid var(--border,#ccd6cb);border-radius:16px;padding:16px;background:var(--surface,#fff)}#confirm div{display:flex;gap:10px}#review{font-size:14px;color:var(--text-muted,#53655d)}@media(max-height:650px){main{gap:8px;padding-top:12px}h1{font-size:22px;margin:8px 0 12px}#options button{min-height:48px;padding:10px}#options{gap:7px}}
 </style></head><body><main>
-<header><p class="eyebrow">WEGOPUB · QUIZ DUEL</p><strong id="score">0 : 0</strong><span id="time" role="timer"></span></header>
+<header><p class="eyebrow">QUIZ DUEL</p><strong id="score">0 : 0</strong><span id="time" role="timer"></span></header>
 <div id="names"><span id="challenger"></span><span id="opponent"></span></div><progress id="progress" value="20" max="20" aria-label="Time remaining"></progress>
-<section id="ready" class="center" hidden><p class="eyebrow">THREE ROUNDS · ONE SHARED QUIZ</p><h1>Ready for the challenge?</h1><p id="stake"></p><p>General knowledge, multiplication, then logic.<br>Pick one answer. The faster correct answer wins the round.</p><button id="readyButton" class="primary">I'm ready</button></section>
+<section id="ready" class="center" hidden><p class="eyebrow">THREE ROUNDS, ONE SHARED QUIZ</p><h1>Ready for the challenge?</h1><p id="stake"></p><p>General knowledge, multiplication, then logic.<br>Pick one answer. The faster correct answer wins the round.</p><button id="readyButton" class="primary">I'm ready</button></section>
 <section id="countdown" class="center" hidden><p id="roundLabel" class="eyebrow"></p><p id="count"></p><p>Same question. Four choices.</p></section>
 <section id="question" hidden><p id="category" class="eyebrow"></p><h1 id="prompt"></h1><div id="options"></div></section>
 <section id="result" class="center" hidden><p class="eyebrow" id="resultLabel"></p><h1 id="resultTitle"></h1><p id="resultText"></p><p id="review"></p><button id="back" class="primary" hidden>Back to quizzes</button></section>
@@ -39,18 +39,18 @@ function render(){
  $('score').textContent=game.challenger_score+' : '+game.opponent_score;
  $('quit').hidden=terminal;$('quit').textContent=accepted?'Cancel before start':'Forfeit quiz';
  $('confirm').hidden=!confirming;$('progress').hidden=game.status!=='playing';$('time').textContent='';
- $('status').textContent=pending?'Saving…':game.status==='playing'&&game.answered?'Answer locked · Waiting for the other player.':'';
+ $('status').textContent=pending?'Saving…':game.status==='playing'&&game.answered?'Answer locked. Waiting for the other player.':'';
  if(accepted){
   show('ready');$('stake').textContent='Stake: '+game.stake+' season points per side.';
   const ready=game[own+'_ready'];$('readyButton').disabled=ready||!!pending;
-  $('readyButton').textContent=ready?'Ready · Waiting for opponent':"I'm ready";return;
+  $('readyButton').textContent=ready?'Ready. Waiting for your opponent.':"I'm ready";return;
  }
  if(game.status==='playing'){
   const left=Date.parse(game.round_starts_at)-now();
   if(left>0){show('countdown');$('roundLabel').textContent=game.round_no<3?'ROUND '+(game.round_no+1):'DECIDING QUESTION '+(game.round_no-2);$('count').textContent=Math.ceil(left/1000);return;}
   show('question');const seconds=Math.max(0,(Date.parse(game.deadline)-now())/1000);
   $('time').textContent=Math.ceil(seconds)+'s';$('progress').value=seconds;
-  $('category').textContent=(game.round_no<3?'ROUND '+(game.round_no+1):'DECIDER '+(game.round_no-2))+' · '+game.question.category.toUpperCase();
+  $('category').textContent=(game.round_no<3?'ROUND '+(game.round_no+1):'DECIDER '+(game.round_no-2))+': '+game.question.category.toUpperCase();
   $('prompt').textContent=game.question.question;
   const key=game.id+':'+game.round_no;
   if(roundKey!==key){
@@ -58,7 +58,7 @@ function render(){
    game.question.options.forEach((option,i)=>{const button=document.createElement('button'),letter=document.createElement('b'),text=document.createElement('span');letter.textContent='ABCD'[i];text.textContent=option;button.append(letter,text);button.onclick=()=>answer(i);$('options').append(button);});
   }
   [...$('options').children].forEach((button,i)=>{button.disabled=!!pending||game.answered||seconds<=0;button.classList.toggle('selected',i===selected);});
-  if(seconds<=0)$('status').textContent='Time is up · Waiting for the saved result.';
+  if(seconds<=0)$('status').textContent='Time is up. Waiting for the saved result.';
   return;
  }
  show('result');const last=game.round_results.at(-1);
@@ -68,7 +68,7 @@ function render(){
   $('resultText').textContent='Next round in '+Math.max(0,Math.ceil((Date.parse(game.next_round_at)-now())/1000))+'s';$('back').hidden=true;
  }else{
   $('resultTitle').textContent=game.winner_id===args.member?'You won!':game.winner_id?'Opponent wins':game.status==='draw'?'It’s a draw':'Quiz '+game.status;
-  $('resultText').textContent=game.winner_id?(game.winner_id===args.member?'+':'−')+game.stake+' season points'+(game.reason==='forfeit'?' · Forfeit':''): 'No points transferred. Any reserved stake is released.';
+  $('resultText').textContent=game.winner_id?(game.winner_id===args.member?'+':'−')+game.stake+' season points'+(game.reason==='forfeit'?' by forfeit':''): 'No points transferred. Any reserved stake is released.';
   $('back').hidden=false;$('back').disabled=!!pending;
  }
  $('review').textContent=last?'Correct: '+last.options[last.correct_index]+'. '+last.explanation:'';
@@ -81,7 +81,7 @@ document.addEventListener('keydown',event=>{if(!event.repeat&&!confirming&&'abcd
 window.addEventListener('message',event=>{
  if(event.source!==window.parent||event.data?.type!=='streamlit:render')return;
  args=event.data.args;game=args.duel;epoch=Date.parse(game.server_now);mono=performance.now();
- $('tokens').textContent=args.tokens;$('challenger').textContent=args.challenger+ (game.challenger_id===args.member?' · You':'');$('opponent').textContent=args.opponent+(game.opponent_id===args.member?' · You':'');
+ $('tokens').textContent=args.tokens;$('challenger').textContent=args.challenger+ (game.challenger_id===args.member?' (you)':'');$('opponent').textContent=args.opponent+(game.opponent_id===args.member?' (you)':'');
  if(!pending){try{pending=JSON.parse(sessionStorage.getItem('quiz-event-'+game.id));}catch{}}
  if(pending&&(pending.duel_id!==game.id||pending.event_id===args.acknowledgement
  ||pending.action==='answer'&&(pending.round_no!==game.round_no||game.answered||game.status!=='playing')

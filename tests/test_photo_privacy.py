@@ -56,7 +56,7 @@ def test_off_hides_existing_cards_and_blocks_direct_download_without_changing_po
     assert db.list_checkin_photos("author", "lobby")[0]["is_owner"]
     assert db.download_checkin_photo("author", "lobby", "entry") == b"clean photo"
     page = photo_page(monkeypatch, "reader")
-    assert not page.exception and page.info and not page.get("html")
+    assert not page.exception and any('empty-state-title' in m.value and 'No photos yet' in m.value for m in page.markdown) and not page.get("html")
     store.preferences["author"] = {"player_id": "author", "share_checkin_photos": True}
     assert db.list_checkin_photos("reader", "lobby")
     assert db.download_checkin_photo("reader", "lobby", "entry") == b"clean photo"
