@@ -64,8 +64,23 @@ def activity_events(entries: list[DrinkEntry]) -> list[ActivityEvent]:
 
 
 def with_promotions(events: list[ActivityEvent], promotions: list[Promotion]) -> list[ActivityEvent]:
+    """Slot medal rows into the newest-first feed by time.
+
+    The check-ins and captures keep the replay order activity_events gave them;
+    re-sorting them by timestamp could move a capture away from its check-in.
+    A medal earned at the same moment as a check-in goes above it.
+    """
     if not promotions:
         return events
-    rows = [ActivityEvent(MEDAL, post.at, "", post.member, post.member, None, medals=post.medals)
-            for post in promotions]
-    return sorted(rows + events, key=lambda event: utc(event.at), reverse=True)
+    rows = sorted((ActivityEvent(MEDAL, post.at, "", post.member, post.member, None, medals=post.medals)
+                   for post in promotions), key=lambda row: utc(row.at), reverse=True)
+    merged, waiting = [], iter(rows)
+    row = next(waiting, None)
+    for event in events:
+        while row is not None and utc(row.at) >= utc(event.at):
+            merged.append(row)
+            row = next(waiting, None)
+        merged.append(event)
+    if row is not None:
+        merged += [row, *waiting]
+    return merged

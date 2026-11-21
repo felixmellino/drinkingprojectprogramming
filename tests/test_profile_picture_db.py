@@ -219,9 +219,20 @@ def test_membership_names_come_in_one_request_and_only_for_their_lobby(service):
     client.table.return_value.select.return_value.in_.assert_called_once_with('id', ['m1', 'm2', 'm3'])
 
 
-def test_membership_names_without_pairs_sends_nothing_and_caps_the_batch(service):
+def test_membership_names_without_pairs_sends_nothing(service):
     client, _, _, _ = service
     assert db.list_membership_names([]) == {}
     client.table.assert_not_called()
-    with pytest.raises(ValueError, match='Too many'):
-        db.list_membership_names([(f'm{i}', 'a') for i in range(51)])
+
+
+def test_membership_names_for_many_lobbies_come_in_batches_of_50(service):
+    """A player leading 51+ lobbies used to crash the Lobby page (ValueError)."""
+    client, query, _, _ = service
+    in_ = client.table.return_value.select.return_value.in_
+    in_.return_value = query
+    query.execute.side_effect = lambda: SimpleNamespace(data=[
+        {'id': i, 'lobby_id': 'a', 'player_id': f'p-{i}', 'players': {'display_name': i}}
+        for i in in_.call_args.args[1]])
+    names = db.list_membership_names([(f'm{i}', 'a') for i in range(120)])
+    assert [len(call.args[1]) for call in in_.call_args_list] == [50, 50, 20]
+    assert len(names) == 120 and names[('m119', 'a')]['display_name'] == 'm119'

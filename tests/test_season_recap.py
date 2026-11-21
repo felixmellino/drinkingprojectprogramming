@@ -116,3 +116,12 @@ def test_csv_matches_the_standings_and_blocks_formulas():
     assert [r[0] for r in rows[1:]] == ["1", "2", "3"]
     assert all(not r[1].startswith("=") for r in rows[1:])
     assert safe_cell("+1") == "'+1" and safe_cell("@x") == "'@x" and safe_cell("Mia") == "Mia"
+
+
+def test_legacy_tie_gives_the_same_mvp_as_the_lobby_winner():
+    from core.leaderboard import season_leader
+    entries = [replace(entry("1", "leo", "shot", None, 0, territory=None), rule_version="legacy", points_awarded=4),
+               replace(entry("2", "ana", "shot", None, 1, territory=None), rule_version="legacy", points_awarded=10),
+               replace(entry("3", "leo", "shot", None, 2, territory=None), rule_version="legacy", points_awarded=6)]
+    recap = build_recap(entries)
+    assert next(a for a in recap.awards if a.key == MVP).winner == season_leader(entries) == "ana"

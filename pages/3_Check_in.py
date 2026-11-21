@@ -231,7 +231,17 @@ if modern:
     except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
         pass  # The server applies any earned bonus on submission.
 suggestion = None
-if modern and capture is not None and drink_recognition.is_enabled():
+asked = False
+if modern and capture is not None and drink_recognition.is_enabled() and not closed and not waiting:
+    # R-C01: the photo leaves the app only after the player switches suggestions on, and only
+    # for a photo that can still be submitted. The choice is kept for this visit.
+    with st.container(key="drink_ui_suggest_consent"):
+        asked = st.toggle("Suggest my drink from the photo", value=st.session_state.get('checkin_suggest_ok', False),
+                          key=f"checkin_suggest_{photo_number}",
+                          help="Sends this photo, without location data and at most 1024 px, to Anthropic's "
+                               "Claude to preselect the drink and size. You always confirm the choice.")
+    st.session_state['checkin_suggest_ok'] = asked
+if asked:
     # Ask Claude once per photo; a failed call is remembered as None so it is not retried on every rerun.
     saved_suggestion = st.session_state.get('checkin_suggestion')
     if saved_suggestion is None or saved_suggestion[0] != capture[1]:
@@ -247,10 +257,11 @@ with st.container(key="drink_ui_panel_selection"):
                 st.caption(suggestion.message)
         drinks = list(DRINK_LABELS)
         with st.container(key="drink_ui_drinks"):
-            # Keyed per photo, so a new photo starts from its own suggestion.
+            # Keyed per photo and per suggestion, so a new photo, or switching suggestions
+            # on for this photo, starts from the suggested drink.
             drink_type = st.radio("Drink", options=drinks, format_func=DRINK_LABELS.get,
                                   index=drinks.index(suggestion.drink) if suggestion and suggestion.drink else 0,
-                                  key=f"checkin_drink_{photo_number}",
+                                  key=f"checkin_drink_{photo_number}{'_suggested' if suggestion else ''}",
                                   horizontal=True, width="stretch", label_visibility="collapsed")
         # A shot has no size, but its row keeps the same height (an invisible spacer in the same keyed
         # container, which has a minimum height, see drink_entries.css), so the photo above does not
@@ -263,7 +274,7 @@ with st.container(key="drink_ui_panel_selection"):
                 size = st.radio("Size", options=sizes,
                                 format_func=lambda value: size_label(drink_type, value, rules),
                                 index=sizes.index(suggestion.size) if suggestion and suggestion.size else 0,
-                                key=f"checkin_size_{photo_number}",
+                                key=f"checkin_size_{photo_number}{'_suggested' if suggestion else ''}",
                                 horizontal=True, width="stretch", label_visibility="collapsed")
         preview = base_points(drink_type, size, rules) * max(focus_multiplier, time_multiplier)
         point_word = "point" if preview == 1 else "points"
