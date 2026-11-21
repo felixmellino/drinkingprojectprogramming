@@ -1,14 +1,16 @@
 """Time Duel invitations and saved two-phone gameplay."""
 from uuid import uuid4
 from datetime import datetime
+from html import escape
 import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
-from action_feedback import action_button, explain, service_error
+from action_feedback import action_button, service_error
 from core.action_feedback import duel_closed_message, opponent_message, role_limit_message
 from core.time_duel import ACTIVE, FINAL, component_action, validate_pair
 from time_duel_component import time_board
+from duel_lobby_ui import game_header, game_setup, game_guide, recent_matches
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, ValueError, PermissionError)
 
@@ -36,32 +38,40 @@ def _render_invitations(player, member, state, labels):
     if confirmation not in {d['id'] for d in incoming}:
         st.session_state.pop('time_accept_confirmation', None)
     for duel in pending:
-        with st.container(border=True, key='time_invite_' + duel['id']):
+        with st.container(border=True, key='duel_invite_time_' + duel['id']):
+            challenger = escape(labels.get(duel['challenger_id'], 'Lobby member'))
+            opponent = escape(labels.get(duel['opponent_id'], 'Lobby member'))
+            st.markdown(f'<p class="duel-vs">{challenger} <span>vs</span> {opponent}</p>'
+                        '<p class="duel-what">3 rounds · Winner gets ×1.25 for an hour</p>', unsafe_allow_html=True)
             if member == duel['challenger_id']:
-                st.markdown('**Pending Challenge invite**')
-                st.write('Time Duel: waiting for ' + labels.get(duel['opponent_id'], 'Lobby member'))
-                if st.button('Cancel invitation', key='time_cancel_' + duel['id']):
+                st.caption('Waiting for ' + labels.get(duel['opponent_id'], 'Lobby member'))
+                if st.button('Cancel invitation', key='time_cancel_' + duel['id'], width='stretch'):
                     _act(player, duel, 'cancel')
             else:
-                st.markdown('**Time Duel invitation**')
-                st.write(labels.get(duel['challenger_id'], 'Lobby member') + ' challenged you.')
                 if len(incoming) > 1 and confirmation == duel['id']:
                     st.warning('If you accept this invite, the other invites for this minigame will be declined.')
-                    if action_button('Confirm acceptance', key='time_confirm_' + duel['id'],
-                                 type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
-                        _act(player, duel, 'accept')
-                    if st.button('Keep invitations', key='time_keep_' + duel['id']):
-                        st.session_state.pop('time_accept_confirmation', None)
-                        st.rerun()
-                elif action_button('Accept Time Duel', key='time_accept_' + duel['id'],
-                               type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
-                    if len(incoming) > 1:
-                        st.session_state['time_accept_confirmation'] = duel['id']
-                        st.rerun()
-                    else:
-                        _act(player, duel, 'accept')
-                if st.button('Decline', key='time_decline_' + duel['id']):
-                    _act(player, duel, 'decline')
+                    yes, keep = st.columns(2)
+                    with yes:
+                        if action_button('Confirm acceptance', key='time_confirm_' + duel['id'], width='stretch',
+                                     type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
+                            _act(player, duel, 'accept')
+                    with keep:
+                        if st.button('Keep invitations', key='time_keep_' + duel['id'], width='stretch'):
+                            st.session_state.pop('time_accept_confirmation', None)
+                            st.rerun()
+                accept, decline = st.columns(2)
+                with accept:
+                    if len(incoming) <= 1 or confirmation != duel['id']:
+                        if action_button('Accept Time Duel', key='time_accept_' + duel['id'], width='stretch',
+                                       type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
+                            if len(incoming) > 1:
+                                st.session_state['time_accept_confirmation'] = duel['id']
+                                st.rerun()
+                            else:
+                                _act(player, duel, 'accept')
+                with decline:
+                    if st.button('Decline', key='time_decline_' + duel['id'], width='stretch'):
+                        _act(player, duel, 'decline')
             # Compare server timestamps so a phone's clock cannot change expiry.
             remaining = max(0, int((datetime.fromisoformat(duel['expires_at']) -
                                    datetime.fromisoformat(duel['server_now'])).total_seconds()))
@@ -87,10 +97,8 @@ def render_time(player, member, lobby, season, members, labels):
     try:
         state = db.time_status(player, season.id)
     except SERVICE_ERRORS as error:
+        game_header('Time Duel', '', 'time_error_back')
         _error(error)
-        if st.button('All games', key='time_error_back'):
-            st.session_state.pop('minigame_selected', None)
-            st.rerun()
         return
     duels = state['duels']
     focused = next((d for d in duels if d['status'] in ACTIVE), None) or next(
@@ -117,23 +125,10 @@ def render_time(player, member, lobby, season, members, labels):
                     except SERVICE_ERRORS as error:
                         _error(error)
         return
-    if st.button('All games', key='time_back'):
-        st.session_state.pop('minigame_selected', None)
-        st.rerun()
-    st.subheader('Time Duel', anchor=False)
-    st.write('Feel the seconds. Tap to start, then stop without seeing a clock.')
-    st.caption('Three rounds with the same random 5–12 second target. Smallest total error wins. '
-               'Fewer abandoned rounds wins first. Leaving or reloading a running timer loses that round.')
-    st.info('Win ×1.25 personal season points on ordinary check-ins for one hour. '
-            'Territory points and owner income stay unchanged. The highest active boost applies.')
-    st.caption('Fairplay: no external clocks. A complete exact tie rewards both players.')
-    st.caption('Test season with unlimited sequential duels' if state['test_mode'] else
-               'One challenge and one acceptance per evening. Resets at 06:00 in ' + season.timezone_name)
+    game_header('Time Duel', '', 'time_back')
     if state.get('boost_ends_at'):
-        st.success('Your Time Duel boost is active. Check-in shows the applicable multiplier.')
-    cols = st.columns(2)
-    cols[0].caption('Challenge: ' + ('Available' if state['outgoing'] else 'Used / reserved'))
-    cols[1].caption('Accept: ' + ('Available' if state['incoming'] else 'Used / reserved'))
+        st.markdown('<p class="duel-boost">×1.25 boost active <span>See your multiplier at check-in</span></p>',
+                    unsafe_allow_html=True)
     pending = _render_invitations(player, member, state, labels)
     own = next(m for m in members if m.id == member)
     opponents = []
@@ -143,37 +138,43 @@ def render_time(player, member, lobby, season, members, labels):
             opponents.append(other.id)
         except ValueError:
             continue
-    if not state['open']:
-        st.info(duel_closed_message(season))
-    elif opponents:
-        with st.form('time_invitation'):
-            opponent = st.selectbox('Challenge player', opponents, format_func=lambda m: labels.get(m, 'Lobby member'))
-            sent = st.form_submit_button('Send Time Duel challenge', type='primary')
-        problems = [
-            "You already have an open invitation. Cancel it above or wait for its answer before sending another." if any(d['challenger_id'] == member for d in pending) else None,
-            role_limit_message('Time Duel', season.timezone_name, role='challenge') if not state['outgoing'] else None,
-        ]
-        if sent and any(problems):
-            explain(problems)
-            sent = False
-        if sent:
-            if st.session_state.get('time_invitation_target') != opponent:
-                st.session_state.pop('time_invitation_id', None)
-            st.session_state['time_invitation_target'] = opponent
-            request = st.session_state.setdefault('time_invitation_id', str(uuid4()))
-            try:
-                db.invite_time_duel(player, season.id, request, opponent)
-                st.session_state.pop('time_invitation_id', None)
-                st.rerun()
-            except SERVICE_ERRORS as error:
-                _error(error, popup=True)
-    else:
-        st.info(opponent_message(own, lobby))
-    with st.expander('Recent Time Duels'):
-        for duel in (d for d in duels if d['status'] in FINAL):
+    from minigames_ui import game_note
+    with game_setup('time', detail='Win ×1.25 for an hour'):
+        if not state['open']:
+            game_note(duel_closed_message(season))
+        elif opponents:
+            opponent = st.radio('Who', opponents, format_func=lambda m: labels.get(m, 'Lobby member'),
+                                horizontal=True, key='pill_radio_time_opponent')
+            problems = [
+                "You already have an open invitation. Cancel it above or wait for its answer before sending another." if any(d['challenger_id'] == member for d in pending) else None,
+                role_limit_message('Time Duel', season.timezone_name, role='challenge') if not state['outgoing'] else None,
+            ]
+            if action_button('Challenge', key='time_challenge', type='primary', width='stretch', problems=problems):
+                if st.session_state.get('time_invitation_target') != opponent:
+                    st.session_state.pop('time_invitation_id', None)
+                st.session_state['time_invitation_target'] = opponent
+                request = st.session_state.setdefault('time_invitation_id', str(uuid4()))
+                try:
+                    db.invite_time_duel(player, season.id, request, opponent)
+                    st.session_state.pop('time_invitation_id', None)
+                    st.rerun()
+                except SERVICE_ERRORS as error:
+                    _error(error, popup=True)
+        else:
+            game_note(opponent_message(own, lobby))
+    game_guide('time', rules='Targets are random, 5–12 seconds. No external clocks. '
+               'Leaving or reloading a running timer loses that round. Fewer abandoned rounds wins first, '
+               'then the smallest total error. A complete exact tie rewards both players. '
+               'The boost affects ordinary check-ins’ personal season points only; territory points and owner income stay unchanged. '
+               'Only the highest active boost applies. '
+               + ('Test season: unlimited sequential duels.' if state['test_mode'] else
+                  'One challenge and one acceptance per evening. Resets at 06:00 in ' + season.timezone_name + '.'))
+    recent = [d for d in duels if d['status'] in FINAL]
+    with recent_matches('time', recent):
+        for duel in recent:
             other = duel['opponent_id'] if duel['challenger_id'] == member else duel['challenger_id']
             verdict = ('Won' if duel.get('winner_id') == member else 'Lost') if duel.get('winner_id') else duel['status'].title()
             st.write(f"{verdict} vs {labels.get(other, 'Opponent')}")
-            if st.button('View result', key='time_result_' + duel['id']):
+            if st.button('View result', key='time_result_' + duel['id'], width='stretch'):
                 st.session_state['time_focused_id'] = duel['id']
                 st.rerun(scope='fragment')

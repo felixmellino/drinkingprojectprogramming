@@ -10,10 +10,16 @@ h1{font:650 clamp(22px,4.8vw,32px)/1.25 var(--font-display,system-ui);margin:12p
 button{font:600 16px var(--font-body,system-ui);border:1px solid var(--border,#ccd6cb);border-radius:16px;background:var(--surface,#fff);color:var(--text,#183b30);cursor:pointer;min-height:52px;padding:14px 18px;touch-action:manipulation}
 button:focus-visible{outline:3px solid var(--accent-ink,#236342);outline-offset:2px}button:disabled{opacity:.65;cursor:default}.primary{background:var(--accent,#bddf99);color:var(--on-accent,#183b30);border-color:transparent;width:100%}
 #options{display:grid;gap:10px}#options button{text-align:left;display:flex;align-items:center;gap:12px;min-height:60px}#options button.selected{border:2px solid var(--accent-ink,#236342);background:var(--accent-soft,#e8f2dc)}#options b{font-size:12px;border:1px solid var(--border,#ccd6cb);border-radius:7px;padding:5px 8px}#status{font-size:14px;color:var(--text-muted,#53655d);min-height:24px;margin:0}footer{display:flex;justify-content:center}footer button{font-size:12px;background:transparent;min-height:38px;padding:8px 16px}#confirm{border:1px solid var(--border,#ccd6cb);border-radius:16px;padding:16px;background:var(--surface,#fff)}#confirm div{display:flex;gap:10px}#review{font-size:14px;color:var(--text-muted,#53655d)}@media(max-height:650px){main{gap:8px;padding-top:12px}h1{font-size:22px;margin:8px 0 12px}#options button{min-height:48px;padding:10px}#options{gap:7px}}
+/* Keep short game headings playful and long questions easy to scan. */
+h1{font-weight:400}#prompt{font:700 clamp(22px,4.8vw,30px)/1.25 var(--font-body,system-ui)}
+#ready,#result{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 20px}
+#ready p:not(.eyebrow),#result p{font-size:14px;color:var(--text-muted)}
+#count{font-family:var(--font-display);font-weight:400;color:var(--accent-ink)}
+button{border-radius:var(--radius-btn)}
 </style></head><body><main>
 <header><p class="eyebrow">QUIZ DUEL</p><strong id="score">0 : 0</strong><span id="time" role="timer"></span></header>
 <div id="names"><span id="challenger"></span><span id="opponent"></span></div><progress id="progress" value="20" max="20" aria-label="Time remaining"></progress>
-<section id="ready" class="center" hidden><p class="eyebrow">THREE ROUNDS, ONE SHARED QUIZ</p><h1>Ready for the challenge?</h1><p id="stake"></p><p>General knowledge, multiplication, then logic.<br>Pick one answer. The faster correct answer wins the round.</p><button id="readyButton" class="primary">I'm ready</button></section>
+<section id="ready" class="center" hidden><p class="eyebrow">THREE ROUNDS, ONE SHARED QUIZ</p><h1>Ready to outsmart?</h1><p id="stake"></p><p>Knowledge. Multiplication. Logic.<br>The faster correct answer wins each round.</p><button id="readyButton" class="primary">I'm ready</button></section>
 <section id="countdown" class="center" hidden><p id="roundLabel" class="eyebrow"></p><p id="count"></p><p>Same question. Four choices.</p></section>
 <section id="question" hidden><p id="category" class="eyebrow"></p><h1 id="prompt"></h1><div id="options"></div></section>
 <section id="result" class="center" hidden><p class="eyebrow" id="resultLabel"></p><h1 id="resultTitle"></h1><p id="resultText"></p><p id="review"></p><button id="back" class="primary" hidden>Back to quizzes</button></section>

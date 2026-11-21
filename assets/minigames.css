@@ -99,41 +99,81 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 
 .game-tile-time {background:linear-gradient(150deg,#637CDC,#3A4592);}
 
-/* Game screens (Chug Duel, Reaction Test, Quiz Duel): big title, one line, big buttons, almost no text. */
-.game-title { margin: 6px 0 0; padding: 0; font-family: var(--font-display); font-weight: 400; font-size: 2rem; line-height: 1.1; color: var(--text); }
-.game-line { margin: 2px 0 14px; font-size: 1rem; color: var(--text-muted); }
-.game-note { margin: 4px 0 8px; font-size: 0.85rem; color: var(--text-muted); }
-.duel-vs { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text); }
-.duel-vs span { font-weight: 400; color: var(--text-muted); font-size: 0.9rem; margin: 0 4px; }
-.duel-what { margin: 2px 0 6px; font-size: 0.95rem; color: var(--text-muted); }
-.stApp [class*="st-key-chug_card_"], .stApp [data-testid="stVerticalBlockBorderWrapper"]:has(.duel-vs) {
-  border-radius: var(--radius-lg); background: var(--surface); }
-/* Pickers (who, drink, size, stake): big pills that wrap, one tap each. */
-.stApp [class*="st-key-pill_radio_chug"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_quiz"] [role="radiogroup"], .stApp [class*="st-key-pill_radio_reaction"] [role="radiogroup"],
-.stApp [class*="st-key-chug_drink"] [role="radiogroup"] {
-  display: flex; flex-wrap: wrap; gap: 6px; background: transparent; box-shadow: none; padding: 0; }
-.stApp [class*="st-key-pill_radio_chug"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_quiz"] [data-testid="stRadioOption"], .stApp [class*="st-key-pill_radio_reaction"] [data-testid="stRadioOption"],
-.stApp [class*="st-key-chug_drink"] [data-testid="stRadioOption"] {
-  background: var(--surface); box-shadow: var(--shadow-card); padding: 0.6rem 1rem; }
-.stApp .st-key-chug_invite button, .stApp .st-key-quiz_challenge button, .stApp .st-key-reaction_challenge button { min-height: 56px; font-size: 1.05rem; }
-/* A button that cannot be pressed yet stays recognisable (blue, faded) instead of turning into a white box. */
-.stApp .st-key-chug_invite button:disabled, .stApp .st-key-quiz_challenge button:disabled, .stApp .st-key-focus_start button:disabled, .stApp .st-key-reaction_challenge button:disabled {
-  background: var(--accent); color: var(--on-accent); opacity: .4; }
-
-/* Game screens: everything centred. */
-.stApp:has(.game-title) [data-testid="stMainBlockContainer"] { text-align: center; }
-.stApp:has(.game-title) [role="radiogroup"] { justify-content: center; }
-.stApp:has(.game-title) [data-testid="stWidgetLabel"], .stApp:has(.game-title) [data-testid="stWidgetLabel"] p { justify-content: center; text-align: center; width: 100%; }
-.stApp:has(.game-title) [class*="st-key-minigames_home"] [data-testid="stButton"], .stApp:has(.game-title) [class*="st-key-focus_home"] [data-testid="stButton"],
-.stApp:has(.game-title) [class*="st-key-quiz_back"] [data-testid="stButton"] { display: flex; justify-content: center; }
-.stApp:has(.game-title) [data-testid="stProgress"] p { text-align: center; width: 100%; }
-.stApp:has(.game-title) [data-testid="stAlertContainer"] { justify-content: center; text-align: center; }
-.stApp .game-title, .stApp .game-line, .stApp .game-note, .stApp .duel-vs, .stApp .duel-what { text-align: center; }
-.stApp:has(.game-title) [data-testid="stMarkdownContainer"], .stApp:has(.game-title) [data-testid="stMarkdownContainer"] p { text-align: center; }
-.stApp:has(.game-title) [data-testid="stElementContainer"]:has(> [data-testid="stButton"]) { display: flex; justify-content: center; }
-.stApp:has(.game-title) [data-testid="stElementContainer"]:has(> [data-testid="stButton"] button[kind="tertiary"]) [data-testid="stButton"] { width: auto; }
-.stApp:has(.game-title) [class*="st-key-minigames_home"], .stApp:has(.game-title) [class*="st-key-focus_home"],
-.stApp:has(.game-title) [class*="st-key-quiz_back"] { align-self: center; margin-inline: auto; }
+/* Opened games share the app's type, surfaces and sky accent. Catalogue styles stay above. */
+.stApp:has(.duel-heading) [data-testid="stMainBlockContainer"] { max-width:640px; padding-bottom:calc(120px + env(safe-area-inset-bottom,0px)); }
+.stApp [class*="st-key-duel_back_"] button { min-height:44px; padding:0; color:var(--text-muted); }
+.stApp [class*="st-key-duel_back_"] { margin-bottom:-8px; }
+.duel-heading { display:flex; align-items:center; gap:14px; }
+.stApp h1.game-title { margin:0; padding:0; font:400 clamp(2rem,5vw,2.6rem)/1.1 var(--font-display); color:var(--text); }
+.stApp .game-line { margin:8px 0 0; font-size:.95rem; line-height:1.4; color:var(--text-muted); }
+.duel-emblem { display:grid; place-items:center; order:-1; flex:0 0 64px; height:64px; border-radius:20px;
+  background:var(--accent-soft); color:var(--accent-ink); transform:rotate(7deg); }
+.duel-emblem i { display:block; width:34px; height:34px; background:currentColor; transform:rotate(-7deg); }
+.duel-tags { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 4px; }
+.duel-tags span { padding:4px 9px; border:1px solid var(--border); border-radius:var(--radius-pill);
+  font-size:.75rem; font-weight:600; line-height:1.4; color:var(--text-muted); }
+.stApp [class*="st-key-duel_setup_"] { background:var(--surface); border-color:var(--border);
+  border-radius:var(--radius-lg); padding:18px; gap:16px; box-shadow:var(--shadow-card); }
+.duel-setup-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; }
+.duel-setup-heading strong { font-size:1rem; color:var(--text); }
+.duel-setup-heading span { font-size:.8rem; font-weight:600; color:var(--accent-ink); }
+.stApp .game-note { margin:0; font-size:.85rem; line-height:1.5; color:var(--text-muted); }
+.stApp .duel-vs { margin:0; font-size:1.05rem; font-weight:700; color:var(--text); overflow-wrap:anywhere; }
+.duel-vs span, .duel-history-pair span { font-weight:400; color:var(--text-muted); font-size:.85rem; margin:0 5px; }
+.stApp .duel-what { margin:4px 0 8px; font-size:.85rem; line-height:1.5; color:var(--text-muted); }
+.stApp :is([class*="st-key-chug_card_"],[class*="st-key-duel_invite_"]) {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; }
+/* Large, wrapping options; left aligned with their field labels. */
+.stApp :is([class*="st-key-pill_radio_chug"],[class*="st-key-pill_radio_quiz"],
+  [class*="st-key-pill_radio_reaction"],[class*="st-key-pill_radio_time"],[class*="st-key-chug_drink"]) [role="radiogroup"] {
+  display:flex; flex-wrap:wrap; gap:8px; background:transparent; box-shadow:none; padding:0; border-radius:0; }
+.stApp :is([class*="st-key-pill_radio_chug"],[class*="st-key-pill_radio_quiz"],
+  [class*="st-key-pill_radio_reaction"],[class*="st-key-pill_radio_time"],[class*="st-key-chug_drink"]) [data-testid="stRadioOption"] {
+  background:var(--bg); border:1px solid var(--border); box-shadow:none; min-height:44px; padding:8px 15px;
+  border-radius:var(--radius-btn); min-width:44px; max-width:100%; white-space:normal; }
+.stApp [class*="st-key-duel_setup_"] [data-testid="stRadioOption"]:has(input:checked) {
+  background:var(--accent-soft); border-color:var(--accent-ink); }
+.stApp [class*="st-key-duel_setup_"] [data-testid="stRadioOption"]:has(input:checked) p { color:var(--accent-ink); }
+.stApp :is(.st-key-pill_radio_quiz_stake,.st-key-pill_radio_reaction_stake) [role="radiogroup"] {
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); width:100%; }
+.stApp .st-key-pill_radio_quiz_stake [role="radiogroup"] { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.stApp [class*="st-key-chug_drink_size_"] [role="radiogroup"] { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.stApp [class*="st-key-chug_drink_size_"] [role="radiogroup"] > div { position:relative; }
+.stApp [class*="st-key-chug_drink_size_"] [data-testid="stRadioOption"] { padding:8px 8px 30px; margin:0; min-height:64px; width:100%; }
+.stApp [class*="st-key-chug_drink_size_"] [data-testid="stRadioOption"] p { font-size:.85rem; }
+.stApp [class*="st-key-chug_drink_size_"] [data-testid="stRadioOption"] > div { justify-content:center; }
+.stApp [class*="st-key-chug_drink_size_"] [data-testid="stRadioCaption"] { position:absolute; left:8px; right:8px; bottom:8px; margin:0; opacity:1; pointer-events:none; }
+.stApp [class*="st-key-chug_drink_size_"] [data-testid="stCaptionContainer"] p { margin:0; font-size:.75rem; color:var(--text-muted); }
+.stApp [class*="st-key-chug_drink_size_"] [data-selected="true"] [data-testid="stCaptionContainer"] p { color:var(--accent-ink); }
+.stApp :is(.st-key-pill_radio_quiz_stake,.st-key-pill_radio_reaction_stake) [data-testid="stRadioOption"] {
+  padding:8px; margin:0; width:100%; display:flex; align-items:center; justify-content:center; }
+.stApp [class*="st-key-duel_setup_"] [data-testid="stWidgetLabel"] { margin-bottom:6px; }
+.stApp [class*="st-key-duel_setup_"] [data-testid="stWidgetLabel"] p { font-size:.85rem; color:var(--text-muted); }
+.stApp :is(.st-key-chug_invite,.st-key-quiz_challenge,.st-key-reaction_challenge,.st-key-time_challenge) button {
+  min-height:52px; font-size:1rem; }
+.stApp :is(.st-key-chug_invite,.st-key-quiz_challenge,.st-key-reaction_challenge,.st-key-time_challenge) button:disabled {
+  background:var(--accent); color:var(--on-accent); opacity:.4; }
+/* A short, scannable guide follows the action; detailed rules are disclosed on demand. */
+.duel-guide { margin:6px 0 0; }
+.stApp .duel-guide h2 { font:700 1rem var(--font-body); margin:0 0 16px; padding:0; }
+.stApp .duel-guide ol { list-style:none; padding:0; margin:0; display:grid; gap:14px; }
+.duel-guide li { display:flex; align-items:flex-start; gap:12px; padding:0; margin:0; }
+.duel-step { display:grid; place-items:center; flex:0 0 26px; height:26px; border-radius:50%;
+  background:var(--accent-soft); color:var(--accent-ink); font-size:.75rem; font-weight:700; }
+.duel-guide li div { display:grid; gap:2px; }
+.duel-guide li strong { color:var(--text); font-size:.85rem; font-weight:600; }
+.duel-guide li div > span { color:var(--text-muted); font-size:.85rem; line-height:1.45; }
+.stApp:has(.duel-heading) [data-testid="stExpander"] details { border:1px solid var(--border); box-shadow:none; }
+.stApp:has(.duel-heading) [data-testid="stExpander"] summary { min-height:48px; }
+.stApp:has(.duel-heading) [data-testid="stExpander"] summary p { font-size:.85rem; }
+.stApp [class*="st-key-duel_history_"] [data-testid="stExpander"] details { background:var(--surface); }
+.stApp .duel-history-empty { color:var(--text-muted); font-size:.85rem; margin:4px 0; }
+.stApp .duel-history-pair { font-size:.9rem; font-weight:600; margin:6px 0 0; }
+.stApp .duel-boost { padding:12px 14px; background:var(--accent-soft); border-radius:var(--radius-md);
+  color:var(--accent-ink); font-size:.9rem; font-weight:700; margin:0; }
+.duel-boost span { display:block; font-size:.8rem; font-weight:400; margin-top:2px; }
+@media(max-width:400px) { .duel-emblem { flex-basis:52px; height:52px; border-radius:16px; }
+  .duel-emblem i { width:28px; height:28px; } .stApp [class*="st-key-duel_setup_"] { padding:14px; } }
 
 /* Reaction Duel result: one line per round, the faster time in bold. */
 .reaction-rounds { width:100%; border-collapse:collapse; margin:4px 0 10px; font-variant-numeric:tabular-nums; }

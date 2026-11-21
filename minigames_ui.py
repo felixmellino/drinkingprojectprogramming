@@ -17,9 +17,10 @@ from chug_duel_component import duel_board
 from core.chug_duel import allowances, component_action, night_id, unlimited_plays, validate_pair, ERRORS
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
-from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label
+from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label, volume_for
 from drink_entry_ui import page_header
-from theme import button_icons, page_subtitle
+from theme import page_subtitle
+from duel_lobby_ui import game_header, game_setup, game_guide, recent_matches
 from parallel import run_parallel
 from phone_location import current_location, track_location
 from reaction_duel_ui import render_reaction
@@ -138,18 +139,8 @@ def _focused_duel(player, duel, labels):
                 _act(player, duel, *action)
 
 
-def game_header(title, line, back_key):
-    """Every game screen starts the same way: a quiet way back, the name, one short line."""
-    button_icons({back_key: 'caret-left'})
-    if st.button('All games', key=back_key, type='tertiary'):
-        st.session_state.pop('minigame_selected', None)
-        st.rerun()
-    line = f'<p class="game-line">{escape(line)}</p>' if line else ''
-    st.markdown(f'<h2 class="game-title">{escape(title)}</h2>{line}', unsafe_allow_html=True)
-
-
 def game_note(text):
-    """One small grey line; the only kind of explanation game screens show."""
+    """A compact status or contextual hint."""
     st.markdown(f'<p class="game-note">{escape(text)}</p>', unsafe_allow_html=True)
 
 
@@ -340,45 +331,54 @@ def render_minigames(player, member, lobby, season):
                     if st.button("End without winner", key=f"abort_{duel['id']}", width="stretch"):
                         _act(player, duel, "abort")
 
-        if not scoring_open(now, season):
-            game_note(duel_closed_message(season, now=now, allow_test_anytime=False))
-        elif outgoing and not active:   # one thing at a time: answer or finish the open duel first
-            opponents = []
-            for candidate in members:
-                try:
-                    validate_pair(own, candidate, lobby)
-                    opponents.append(candidate.id)
-                except ValueError:
-                    pass
-            if not opponents:
-                game_note(opponent_message(own, lobby))
-            else:
-                opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
-                                    format_func=lambda mid: labels[mid], horizontal=True, key="pill_radio_chug_opponent")
-                drink = st.radio("Drink", list(DRINK_LABELS), format_func=DRINK_LABELS.get, horizontal=True, key="chug_drink")
-                size = None if drink == "shot" else st.radio("Size", list(SIZE_LABELS),
-                    format_func=lambda s: size_label(drink, s, rules), horizontal=True, key=f"chug_drink_size_{drink}")
-                game_note(f"Winner +{base_points(drink, size, rules) * 2}")
-                request = (player, season.id, opponent, drink, size)
-                if st.session_state.get("chug_request") != request:
-                    st.session_state["chug_request"] = request
-                    st.session_state["chug_invitation_id"] = str(uuid4())
-                if action_button("Challenge", type="primary", key="chug_invite", width="stretch",
-                                 problems=["No opponent selected. Choose a player under Who, then try again." if opponent is None else None]):
-                    try:
-                        db.invite_chug_duel(player, season.id, st.session_state["chug_invitation_id"], opponent, drink, size)
-                        st.session_state.pop("chug_request", None)
-                        st.rerun()
-                    except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-                        _error(error, popup=True)
-        elif not outgoing and not active:
-            game_note(f"You already challenged tonight. {role_limit_message('Chug Duel', season.timezone_name, role='challenge')}")
+        if not active:
+            with game_setup("chug"):
+                if not scoring_open(now, season):
+                    game_note(duel_closed_message(season, now=now, allow_test_anytime=False))
+                elif outgoing and not active:   # one thing at a time: answer or finish the open duel first
+                    opponents = []
+                    for candidate in members:
+                        try:
+                            validate_pair(own, candidate, lobby)
+                            opponents.append(candidate.id)
+                        except ValueError:
+                            pass
+                    if not opponents:
+                        game_note(opponent_message(own, lobby))
+                    else:
+                        opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
+                                            format_func=lambda mid: labels[mid], horizontal=True, key="pill_radio_chug_opponent")
+                        drink = st.radio("Drink", list(DRINK_LABELS), format_func=DRINK_LABELS.get, horizontal=True, key="chug_drink")
+                        size = None if drink == "shot" else st.radio("Size", list(SIZE_LABELS),
+                            format_func=SIZE_LABELS.get, captions=[f"{volume_for(drink, s, rules)} ml" for s in SIZE_LABELS],
+                            horizontal=True, width="stretch", key=f"chug_drink_size_{drink}")
+                        game_note(f"Winner +{base_points(drink, size, rules) * 2}")
+                        request = (player, season.id, opponent, drink, size)
+                        if st.session_state.get("chug_request") != request:
+                            st.session_state["chug_request"] = request
+                            st.session_state["chug_invitation_id"] = str(uuid4())
+                        if action_button("Challenge", type="primary", key="chug_invite", width="stretch",
+                                         problems=["No opponent selected. Choose a player under Who, then try again." if opponent is None else None]):
+                            try:
+                                db.invite_chug_duel(player, season.id, st.session_state["chug_invitation_id"], opponent, drink, size)
+                                st.session_state.pop("chug_request", None)
+                                st.rerun()
+                            except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+                                _error(error, popup=True)
+                elif not outgoing and not active:
+                    game_note(f"You already challenged tonight. {role_limit_message('Chug Duel', season.timezone_name, role='challenge')}")
 
+        game_guide("chug", rules="Both drinks use the chosen type and size. A fresh shared photo and valid location are required. "
+                   "Ending without a winner keeps each player's normal drink points. "
+                   "One challenge and one acceptance per evening, resetting at 06:00. Test seasons allow replays.")
         history = [d for d in duels if d["status"] not in {"invited", "accepted", "started"}]
-        for duel in history[:3]:
-            if duel["status"] == "completed":
-                points = base_points(duel["drink_type"], duel.get("size"), rules)
-                st.success(f"{who(duel['winner_id'])} won +{points * 2}")
-            else:
-                game_note(f"{who(duel['challenger_id'])} vs {who(duel['opponent_id'])}: {duel['status']}")
+        with recent_matches("chug", history):
+            for duel in history[:10]:
+                st.markdown(f'<p class="duel-history-pair">{escape(who(duel["challenger_id"]))} '
+                            f'<span>vs</span> {escape(who(duel["opponent_id"]))}</p>', unsafe_allow_html=True)
+                if duel["status"] == "completed":
+                    points = base_points(duel["drink_type"], duel.get("size"), rules)
+                    st.success(f"{who(duel['winner_id'])} won +{points * 2}")
+                else:
+                    game_note(duel["status"].replace("_", " ").title())
     live_duels()

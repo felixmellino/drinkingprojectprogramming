@@ -62,7 +62,8 @@ def component_tokens() -> str:
     """The colour/type tokens for components drawn in their own frame (switches,
     duel boards): the light set, plus the dark one when dark mode is on."""
     css = _CSS.read_text(encoding="utf-8")
-    tokens = css[css.index(":root {"):css.index("/* Base */")]
+    # Components have their own document: load the same fonts as the app there too.
+    tokens = css[css.index("@import "):css.index("/* Base */")]
     if dark_mode():
         dark = _DARK_CSS.read_text(encoding="utf-8")
         tokens += dark[dark.index(":root {"):dark.index("}", dark.index(":root {")) + 1]

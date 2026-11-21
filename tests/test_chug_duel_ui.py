@@ -342,11 +342,16 @@ def test_quiz_stake_is_one_tap_and_too_little_points_explain_the_blocker(service
     assert not invite.called
 
 
-def test_quiz_screen_is_short(service, monkeypatch):
+def test_quiz_setup_stays_short_with_a_separate_compact_guide(service, monkeypatch):
     page, _ = open_quiz(service, monkeypatch)
     import re
-    visible = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown if "<style>" not in m.value).split()
-    assert len(visible) < 25, visible and not page.metric and not page.caption and not page.info
+    intro = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown
+                     if 'class="duel-heading"' in m.value or 'class="duel-setup-heading"' in m.value).split()
+    guide = next(m.value for m in page.markdown if 'class="duel-guide"' in m.value)
+    assert len(intro) < 30 and len(re.sub(r"<[^>]+>", " ", guide).split()) < 65
+    assert guide.count('<li>') == 3
+    assert [e.label for e in page.expander] == ['Rules & limits', 'Recent matches']
+    assert not page.metric and not page.caption and not page.info
 
 
 def test_quiz_used_tonight_hides_the_form(service, monkeypatch):
