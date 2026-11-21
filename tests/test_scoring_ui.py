@@ -34,6 +34,8 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     game = season()
     state = {"now": START, "entries": [], "lose_reply": False, "calls": 0, "photo": None, "location": None}
+    state["cooldown"] = Mock()
+    monkeypatch.setattr("drink_entry_ui.show_cooldown", state["cooldown"])
     camera = BytesIO()
     Image.new("RGB", (12, 6)).save(camera, "JPEG")
     camera.file_id = "fresh-camera-capture"
@@ -195,9 +197,12 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
-    assert not page.exception and camera.call_count == 1 and 'Next check-in in' in gate(page)
+    assert not page.exception and camera.call_count == 1
+    state["cooldown"].assert_called_once_with(START, START + timedelta(seconds=120), 120)
     state['now'] = state['now'] + timedelta(seconds=120)
-    button(page, 'Check again').click().run()
+    page.run()
+    assert camera.call_count == 1
+    button(page, 'Start check-in').click().run()
     assert not page.exception and camera.call_count == 2 and not page.radio
 
 
@@ -297,9 +302,15 @@ def test_cooldown_shows_countdown_instead_of_the_camera(ui, monkeypatch):
     state["entries"] = [entry("saved", "member", "shot", None, 0)]
     page = open_checkin()
     assert not page.exception and camera.call_count == 0
-    assert "1:00" in gate(page) and "every 2 minutes" in gate(page)
+    state["cooldown"].assert_called_once_with(START + timedelta(seconds=60), START + timedelta(seconds=120), 120)
+    assert not any(item.label == "Start check-in" for item in page.button)
+    state["now"] = START + timedelta(seconds=119, milliseconds=999)
+    page.run()
+    assert camera.call_count == 0 and not any(item.label == "Start check-in" for item in page.button)
     state["now"] = START + timedelta(seconds=120)
-    button(page, "Check again").click().run()
+    page.run()  # The browser timer triggers the page rerun when it expires.
+    assert not page.exception and camera.call_count == 0
+    button(page, "Start check-in").click().run()
     assert not page.exception and camera.call_count == 1
 
 
@@ -313,13 +324,15 @@ def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
     set_location(page, state)
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
-    assert_blocked(page, "Submit", "1:00", "wait")
-    assert any("Next check-in in 1:00" in item.value for item in page.warning)
+    assert button(page, "Submit").disabled
+    state["cooldown"].assert_called_with(START + timedelta(seconds=60), START + timedelta(seconds=120), 120, has_photo=True)
+    radio(page, "Size").set_value("large").run()
     assert page.session_state["checkin_capture"][1] == capture
     state["now"] = START + timedelta(seconds=120)
-    button(page, "Refresh remaining wait").click().run()
+    page.run()
     assert not button(page, "Submit").disabled
     assert radio(page, "Drink").value == "mixed"
+    assert radio(page, "Size").value == "large"
     assert page.session_state["checkin_capture"][1] == capture
     assert state["calls"] == 0
 
