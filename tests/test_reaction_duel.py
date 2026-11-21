@@ -157,3 +157,16 @@ def test_missing_migration_shows_one_clear_message(reaction, monkeypatch):
     page = open_page(selected='reaction')
     assert not page.exception and 'app organizer' in page.error[0].value
     assert any('migration 025' in item.value for item in page.markdown)
+
+
+def test_hidden_duel_keeps_guide_and_history_and_can_resume(reaction):
+    state, _, _ = reaction
+    run = dict(id='r1', revision=2, status='running', phase='reaction', step=0, reaction_ms=[])
+    state['duels'] = [_duel('accepted') | {'run': run}]
+    page = open_page(selected='reaction')
+    button(page, 'Back to games').click().run()
+    button(page, 'Open Reaction Duel').click().run()
+    assert not page.exception and button(page, 'Continue your duel')
+    assert any(e.label == 'Recent matches' for e in page.expander)
+    button(page, 'Continue your duel').click().run()
+    assert not page.exception and button(page, 'Back to games')
