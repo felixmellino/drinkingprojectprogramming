@@ -101,8 +101,12 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 
 /* Opened games share the app's type, surfaces and sky accent. Catalogue styles stay above. */
 .stApp:has(.duel-heading) [data-testid="stMainBlockContainer"] { max-width:640px; padding-bottom:calc(120px + env(safe-area-inset-bottom,0px)); }
+/* Streamlit subtracts a paragraph margin from Markdown blocks. These custom
+   blocks manage their own spacing, so that subtraction crowds the next element. */
+.stApp:has(.duel-heading) [data-testid="stMarkdownContainer"]:has(> :is(
+  .duel-heading,.duel-setup-heading,.duel-guide,.game-note,.duel-vs,
+  .duel-history-pair,.duel-history-empty,.duel-boost,.game-result)) { margin-bottom:0; }
 .stApp [class*="st-key-duel_back_"] button { min-height:44px; padding:0; color:var(--text-muted); }
-.stApp [class*="st-key-duel_back_"] { margin-bottom:-8px; }
 .duel-heading { display:flex; align-items:center; gap:14px; }
 .stApp h1.game-title { margin:0; padding:0; font:400 clamp(2rem,5vw,2.6rem)/1.1 var(--font-display); color:var(--text); }
 .stApp .game-line { margin:8px 0 0; font-size:.95rem; line-height:1.4; color:var(--text-muted); }
@@ -113,7 +117,7 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .duel-tags span { padding:4px 9px; border:1px solid var(--border); border-radius:var(--radius-pill);
   font-size:.75rem; font-weight:600; line-height:1.4; color:var(--text-muted); }
 .stApp [class*="st-key-duel_setup_"] { background:var(--surface); border-color:var(--border);
-  border-radius:var(--radius-lg); padding:18px; gap:16px; box-shadow:var(--shadow-card); }
+  border-radius:var(--radius-lg); padding:20px; gap:16px; box-shadow:var(--shadow-card); }
 .duel-setup-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; }
 .duel-setup-heading strong { font-size:1rem; color:var(--text); }
 .duel-setup-heading span { font-size:.8rem; font-weight:600; color:var(--accent-ink); }
@@ -154,9 +158,9 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .stApp :is(.st-key-chug_invite,.st-key-quiz_challenge,.st-key-reaction_challenge,.st-key-time_challenge) button:disabled {
   background:var(--accent); color:var(--on-accent); opacity:.4; }
 /* A short, scannable guide follows the action; detailed rules are disclosed on demand. */
-.duel-guide { margin:6px 0 0; }
+.duel-guide { margin:8px 0 0; }
 .stApp .duel-guide h2 { font:700 1rem var(--font-body); margin:0 0 16px; padding:0; }
-.stApp .duel-guide ol { list-style:none; padding:0; margin:0; display:grid; gap:14px; }
+.stApp .duel-guide ol { list-style:none; padding:0; margin:0; display:grid; gap:16px; }
 .duel-guide li { display:flex; align-items:flex-start; gap:12px; padding:0; margin:0; }
 .duel-step { display:grid; place-items:center; flex:0 0 26px; height:26px; border-radius:50%;
   background:var(--accent-soft); color:var(--accent-ink); font-size:.75rem; font-weight:700; }
@@ -173,7 +177,7 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
   color:var(--accent-ink); font-size:.9rem; font-weight:700; margin:0; }
 .duel-boost span { display:block; font-size:.8rem; font-weight:400; margin-top:2px; }
 @media(max-width:400px) { .duel-emblem { flex-basis:52px; height:52px; border-radius:16px; }
-  .duel-emblem i { width:28px; height:28px; } .stApp [class*="st-key-duel_setup_"] { padding:14px; } }
+  .duel-emblem i { width:28px; height:28px; } .stApp [class*="st-key-duel_setup_"] { padding:16px; } }
 
 /* Reaction Duel result: one line per round, the faster time in bold. */
 .reaction-rounds { width:100%; border-collapse:collapse; margin:4px 0 10px; font-variant-numeric:tabular-nums; }
