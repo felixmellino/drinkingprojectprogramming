@@ -285,8 +285,9 @@ a phone still needs the configured app; mocked tests do not grant permissions.
   do not disclose whether an email is registered. Show success/error clearly and
   offer Back to log in; a reset does not automatically authenticate. Codes expire
   after 15 minutes. No upgrade option is shown.
-- Login includes an optional Remember password checkbox, keeping the device
-  signed in for 30 days. Logout cancels remembered access on that device.
+- Login includes an optional Remember Me checkbox with an Info button that
+  explains how to stay signed in on this device for 30 days. Logout cancels
+  remembered access on that device.
 - All game pages require authentication. Account rules are in `RULES.md` (A1–A7).
 - A note explains that only the username is visible to other players;
   real names and other personal information remain private.
