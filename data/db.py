@@ -101,6 +101,17 @@ def insert_player(player: Player) -> None:
     ).execute()
 
 
+def profile_medal_launch() -> datetime | None:
+    """The rollout timestamp survives app restarts and migration retries."""
+    try:
+        rows = get_client().table("profile_medal_rollout").select("launched_at").execute().data
+    except APIError as error:
+        if error.code in {"42P01", "PGRST205"}:
+            return None
+        raise
+    return datetime.fromisoformat(rows[0]["launched_at"]) if rows else None
+
+
 # -- lobbies & memberships ------------------------------------------------
 
 def list_lobbies() -> list[Lobby]:
