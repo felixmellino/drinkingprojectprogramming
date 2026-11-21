@@ -59,16 +59,16 @@ def validate_password(password: str, confirmation: str) -> None:
     if len(password) > 1024:
         raise ValueError("Password must contain at most 1024 characters.")
     if password.isspace():
-        raise ValueError("Password cannot contain only spaces.")
+        raise ValueError("Password cannot contain only spaces. Include letters, numbers or other non-space characters.")
     if password != confirmation:
-        raise ValueError("Passwords do not match.")
+        raise ValueError("Passwords do not match. Enter the same password in both password fields.")
 
 
 def validate_profile_names(first_name, last_name, username):
     """Shared name rules for registration and subsequent profile edits."""
     first_name, last_name, username = (s.strip() for s in (first_name, last_name, username))
     if not first_name or not last_name or not username:
-        raise ValueError("First name, surname and username are required.")
+        raise ValueError("First name, surname and username are required. Fill in all three fields.")
     if max(len(first_name), len(last_name), len(username)) > 100:
         raise ValueError("Names and username must contain at most 100 characters each.")
     return first_name, last_name, username

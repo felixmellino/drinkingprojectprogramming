@@ -1,8 +1,7 @@
 """Shared reasons and recovery steps. These describe rules, never change them."""
 from core.constants import MAX_GPS_ACCURACY_M, MAX_GPS_AGE_SECONDS
-from core.scoring_v1 import format_points
-from core.scoring_v1 import current_time, next_opening, utc
 from zoneinfo import ZoneInfo
+from core.scoring_v1 import current_time, format_points, next_opening, rules_for, utc
 
 
 LOCATION_MESSAGES = {
@@ -17,6 +16,12 @@ LOCATION_MESSAGES = {
 }
 
 
+AMBIGUOUS_TERRITORY_MESSAGE = (
+    "Your position matches more than one game territory, so we cannot choose a territory safely. "
+    "Move away from the shared boundary and try again; if this persists, contact the app organizer."
+)
+
+
 def location_problem(problem, accuracy=None):
     if problem:
         return LOCATION_MESSAGES.get(problem, LOCATION_MESSAGES["invalid"])
@@ -26,24 +31,41 @@ def location_problem(problem, accuracy=None):
     return None
 
 
-def stake_problems(opponent, stake, available_points):
+def stake_problems(opponent, stake, available_points, *, min_stake=1):
+    if available_points < min_stake:
+        funds = (f"This game needs at least {min_stake} available points; you have {format_points(available_points)}. "
+                 "Earn more points with an accepted check-in, or finish a duel holding reserved points before trying again.")
+    elif available_points < stake:
+        funds = (f"This stake needs {stake} available points; you have {format_points(available_points)}. "
+                 "Choose a lower stake or earn more points with an accepted check-in. Points reserved for another duel cannot be reused.")
+    else:
+        funds = None
     return [
         "No opponent selected. Choose a player under Who, then try again." if opponent is None else None,
-        (f"This stake needs {stake} available points; you have {format_points(available_points)}. "
-         "Choose a lower stake or earn more points with an accepted check-in. Points reserved for another duel cannot be reused.")
-        if available_points < stake else None,
+        funds,
     ]
 
 
-def duel_closed_message(season):
-    now = current_time()
+def duel_closed_message(season, *, now=None, allow_test_anytime=True):
+    now = now or current_time()
     if utc(now) >= utc(season.ends_at):
         return "This season has ended. Create or join a new lobby to play another duel."
+    if allow_test_anytime and rules_for(season).get('test_mode'):
+        local = utc(season.starts_at).astimezone(ZoneInfo(season.timezone_name))
+        if utc(now) < utc(season.starts_at):
+            return f"This test season has not started. Return {local:%a %d %b at %H:%M} ({season.timezone_name}) to play."
+        return "This game is not available right now. Reopen it to check the current season and game status."
     opening = next_opening(now, season)
     if opening:
         local = opening.astimezone(ZoneInfo(season.timezone_name))
         return f"Duels are closed right now. Return {local:%a %d %b at %H:%M} ({season.timezone_name}) when scoring opens."
     return "Duels are closed right now. Open Check in to see the scoring schedule or choose another active lobby."
+
+
+def role_limit_message(game, timezone_name="the lobby timezone", *, role="challenge or acceptance"):
+    return (f"Your {game} {role} is used or reserved tonight. "
+            "Cancel an accepted duel before it starts to release its reservation. "
+            f"Once started, that role stays used until 06:00 in {timezone_name}; finishing the duel does not reset it.")
 
 
 def opponent_message(own, lobby):
@@ -65,7 +87,7 @@ CHECKIN_MESSAGES = {
     "missing_amount": "This drink needs an amount greater than zero. Enter its amount and try again.",
     "duplicate_check_in": "This drink was already logged recently. Check Photos for the saved entry before recording another drink.",
     "location_unavailable": "A current phone location is required. Open Profile → Location, allow access and turn tracking on, then retry.",
-    "location_uncertain": f"Your location could not be verified accurately enough (maximum {MAX_GPS_ACCURACY_M:.0f} m). Move outside and wait for a fresh reading before retrying.",
+    "location_uncertain": f"Your phone location could not be verified. Wait for a fresh reading accurate to {MAX_GPS_ACCURACY_M:.0f} m or better and retry. If an accurate reading still fails, contact the app organizer to check the territory boundaries.",
     "invalid_territory": "The territory could not be verified. Refresh the page for a fresh location and retry; if this continues, contact the app organizer.",
     "correction_closed": "The correction window has closed. Drinks can only be corrected within two minutes of submission and before the season ends. Refresh to view the saved entry.",
     "correction_conflict": "This entry changed in another session. Refresh and review the saved drink before trying another correction.",

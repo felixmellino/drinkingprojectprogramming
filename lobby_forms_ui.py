@@ -66,7 +66,7 @@ def create_dialog(player_id):
                 st.error(str(error))
                 return
             except (APIError, RequestError, RuntimeError):
-                st.error("Could not create the lobby. Refresh your lobbies before trying again.")
+                st.error(f"Could not confirm lobby creation. Refresh your lobbies before creating another. If the lobby was created but is missing from your list, try Join with a code using {lobby.invite_code}.")
                 return
             try:
                 db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
@@ -74,8 +74,11 @@ def create_dialog(player_id):
             except CheckinRejected as error:
                 open_joined_lobby(lobby.id, f"Lobby created. {checkin_message(error.reason)} Use Retry lobby setup below if needed.",
                                   make_current=False)
+            except PermissionError:
+                open_joined_lobby(lobby.id, "Lobby created, but your membership could not be confirmed for season setup. Close this window, refresh Lobbies, reopen this lobby and use Retry lobby setup.",
+                                  make_current=False)
             except (APIError, RequestError, RuntimeError):
-                open_joined_lobby(lobby.id, "Lobby created. Its scoring season could not start. Use Retry lobby setup below.",
+                open_joined_lobby(lobby.id, "Lobby created. Its season setup could not be confirmed. Reopen this lobby and check its season before using Retry lobby setup.",
                                   make_current=False)
 
             open_joined_lobby(lobby.id, f"Lobby created! Invite code: {lobby.invite_code}", make_current=True)

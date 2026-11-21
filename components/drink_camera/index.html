@@ -97,10 +97,10 @@ async function openCamera() {
     const messages = {
       NotAllowedError:'Camera access is blocked. Allow camera access for this site, then retry.',
       NotFoundError:'No camera was found. Open the app on a device with a camera.',
-      NotReadableError:'The camera is busy. Close other camera apps, then retry.',
+      NotReadableError:'The camera could not be read. Close other camera apps and retry. If this continues, check whether your camera works in the phone camera app.',
       UnsupportedCamera:'Open the app using its HTTPS address in Safari or Chrome to use the camera.'
     };
-    status.textContent = messages[error.name] || 'The camera could not start. Please retry.';
+    status.textContent = messages[error.name] || 'The camera could not start. Retry; if this continues, check camera access in your browser settings and reopen the app.';
     retry.hidden = false;
   } finally {
     opening = false;

@@ -5,9 +5,9 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
-from action_feedback import action_button, explain
-from core.action_feedback import duel_closed_message, opponent_message, stake_problems
-from core.quiz_duel import ACTIVE, FINAL, component_action, validate_pair
+from action_feedback import action_button, service_error
+from core.action_feedback import duel_closed_message, opponent_message, role_limit_message, stake_problems
+from core.quiz_duel import ACTIVE, FINAL, CONFIG, component_action, validate_pair
 from core.scoring_v1 import format_points
 from quiz_duel_component import quiz_board
 
@@ -19,8 +19,7 @@ def _action(player, duel, action, round_no=None, choice=None):
         db.quiz_action(player, duel["id"], action, round_no, choice)
         st.rerun(scope="fragment")
     except SERVICE_ERRORS as error:
-        explain(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-                 else "The quiz service is unavailable. Refresh to recover your saved game.")
+        service_error(error, "The quiz service is unavailable. Refresh to recover your saved game before retrying.", popup=True)
 
 
 def _stage(player, member, duel, labels):
@@ -43,16 +42,14 @@ def _stage(player, member, duel, labels):
             st.session_state[ack_key] = value["event_id"]
             st.rerun(scope="fragment")
         except SERVICE_ERRORS as error:
-            st.error(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-                     else "Connection interrupted. Your first answer will retry automatically.")
+            service_error(error, "Connection interrupted. Keep this page open: your first answer will retry automatically.")
 
 
 def render_quiz(player, member, lobby, season, members, labels):
     try:
         state = db.quiz_status(player, season.id)
     except SERVICE_ERRORS as error:
-        st.error(str(error) if isinstance(error, (ValueError, RuntimeError, PermissionError))
-                 else "Quiz Duel is temporarily unavailable. Refresh to retry.")
+        service_error(error, "Quiz Duel is temporarily unavailable. Refresh to retry.")
         if st.button("All games", key="quiz_error_back"):
             st.session_state.pop("minigame_selected", None)
             st.rerun()
@@ -98,22 +95,21 @@ def render_quiz(player, member, lobby, season, members, labels):
         game_note(duel_closed_message(season))
     elif opponents:
         if not state["outgoing"]:
-            game_note(f"You already challenged tonight. Finish any reserved quiz, or try after 06:00 ({season.timezone_name}) when the evening resets.")
+            game_note(f"You already challenged tonight. {role_limit_message('Quiz Duel', season.timezone_name, role='challenge')}")
         elif not any(d["challenger_id"] == member for d in pending):
             opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
                                 format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
                                 key="pill_radio_quiz_opponent")
             stake = st.radio("Stake", list(range(3, 11)), horizontal=True, key="pill_radio_quiz_stake")
             if action_button("Challenge", type="primary", key="quiz_challenge", width="stretch",
-                             problems=stake_problems(opponent, stake, state["available_points"])):
+                             problems=stake_problems(opponent, stake, state["available_points"], min_stake=CONFIG['min_stake'])):
                 request = st.session_state.setdefault("quiz_invitation_id", str(uuid4()))
                 try:
                     db.invite_quiz_duel(player, season.id, request, opponent, stake)
                     st.session_state.pop("quiz_invitation_id", None)
                     st.rerun(scope="fragment")
                 except SERVICE_ERRORS as error:
-                    explain(str(error) if isinstance(error, (ValueError, RuntimeError, PermissionError))
-                             else "Could not send. Try again.")
+                    service_error(error, "Could not confirm the invitation was sent. Reopen Quiz Duel and check pending invitations before retrying.", popup=True)
     else:
         game_note(opponent_message(own, lobby))
     recent = [d for d in duels if d["status"] in FINAL]

@@ -5,6 +5,36 @@ Background loading failures should keep their existing inline error instead.
 """
 import streamlit as st
 
+_SETUP_PREFIXES = (
+    "Scoring setup is required", "Chug Duel setup is not complete",
+    "Quiz Duel needs database migration", "Time Duel needs database migration",
+    "Reaction Duel needs database migration", "Profile pictures require a private storage bucket",
+    "Check-in photos require a private storage bucket",
+    "Lobby invitations need database migration",
+)
+
+
+def service_error(error, fallback, *, popup=False):
+    """Domain errors have safe messages; setup details are for the organizer.
+
+    Unexpected service/transport exceptions never display raw server details.
+    """
+    details = None
+    if isinstance(error, (ValueError, PermissionError)):
+        message = str(error)
+    elif isinstance(error, RuntimeError) and str(error).startswith(_SETUP_PREFIXES):
+        message = "This feature's setup is incomplete. Ask the app organizer to finish setup, then reopen this page."
+        details = str(error)
+    else:
+        message = fallback
+    if popup:
+        explain(message, details=details)
+    else:
+        st.error(message)
+        if details:
+            with st.expander("Details for the app organizer"):
+                st.write(details)
+
 
 @st.dialog("Action unavailable")
 def _problem_dialog(messages, details):

@@ -1,6 +1,7 @@
 """Quiz Duel rules. Database transactions independently enforce these boundaries."""
 from core.chug_duel import night_id, next_reset, validate_pair
 from core.scoring_v1 import scoring_open, utc
+from core.action_feedback import role_limit_message
 
 CONFIG = dict(version=1, min_stake=3, max_stake=10, round_seconds=20,
               countdown_seconds=3, result_seconds=3, invitation_seconds=600,
@@ -66,11 +67,11 @@ ERRORS = {
     'permission_denied': 'This quiz is not available to your account. Reopen your lobby and choose a quiz you participate in.',
     'quiz_stake': 'Choose an integer stake from 3 to 10 points.',
     'quiz_funds': 'Both accounts need the full available stake. Choose a lower stake or earn more points with an accepted check-in. Reserved points cannot be used twice.',
-    'quiz_reserved_points': 'These points are committed to a quiz. Finish the quiz before reducing them.',
+    'quiz_reserved_points': 'These points are reserved for an active Quiz or Reaction Duel. Finish the duel holding them before reducing these points.',
     'quiz_team': 'Choose a player from another team. Both players must join a team first.',
     'quiz_busy': 'A player already has an accepted or running minigame. Finish it first.',
     'quiz_pending': 'Cancel your open quiz invitation before sending another.',
-    'quiz_limit': 'A quiz challenge or acceptance is used or reserved. Finish the reserved quiz, or wait for 06:00 in the lobby timezone when the evening resets.',
+    'quiz_limit': role_limit_message('Quiz Duel'),
     'quiz_unavailable': 'The quiz has changed or expired. Refresh to recover its saved state.',
     'quiz_early': 'Wait for the countdown to finish.',
     'quiz_answer_locked': 'Your first answer is already locked for this round. Wait for the round result and next question; answers cannot be changed.',

@@ -10,7 +10,7 @@ from postgrest.exceptions import APIError
 
 import data.db as db
 from action_feedback import explain
-from core.action_feedback import location_problem
+from core.action_feedback import AMBIGUOUS_TERRITORY_MESSAGE, location_problem
 import map_ui
 from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
@@ -80,9 +80,12 @@ track_location()
 location, accuracy_m, problem = current_location()
 usable_location = location is not None and accuracy_m <= MAX_GPS_ACCURACY_M
 here = None
+territory_problem = None
 if usable_location:
     result, territory_id = evaluate_location(location, accuracy_m, territories)
     here = next((row for row in rows if row["id"] == territory_id), None) if result == "matched" else None
+    if result == "uncertain":
+        territory_problem = AMBIGUOUS_TERRITORY_MESSAGE
 
 # Selection lives in the session, so the map tap, the list and the close handle
 # all change the same thing. Nothing is selected by default.
@@ -137,8 +140,8 @@ def map_and_card():
             st.session_state.pop("map_selected", None)
             reset_map_selection()
             rerun_map()
-        if not usable_location and st.button("Location help", key="map_location_help", type="tertiary"):
-            explain(location_problem(problem, accuracy_m) or "Your position could not be verified. Turn Location off and on in Profile, then return to the map.")
+        if (not usable_location or territory_problem) and st.button("Location help", key="map_location_help", type="tertiary"):
+            explain(territory_problem or location_problem(problem, accuracy_m) or "Your position could not be verified. Turn Location off and on in Profile, then return to the map.")
         map_ui.all_territories_button(rows)
     picked = map_ui.territory_list(rows, lobby_name=st.session_state.get("current_lobby_name", ""),
                                    team_mode=team_mode)

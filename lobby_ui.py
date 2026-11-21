@@ -11,6 +11,7 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
+from action_feedback import service_error
 from core.checkins import CheckinRejected
 from core.leaderboard import season_leader, season_leaderboard
 from core.lobby_overview import latest_season, lobby_status, time_left
@@ -197,8 +198,8 @@ def retry_setup(player_id, lobby):
                 st.error(checkin_message(error.reason))
             except PermissionError:
                 st.error('Your lobby access could not be confirmed. Close this window, refresh your lobbies and reopen a lobby you belong to.')
-            except LOAD_ERRORS:
-                st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
+            except LOAD_ERRORS as error:
+                service_error(error, 'The season setup could not be confirmed. Close this window, refresh Lobbies and check whether its season started before trying again.')
             else:
                 st.session_state['_lobby_choice_pending'] = lobby.id
                 st.rerun()

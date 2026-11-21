@@ -8,6 +8,9 @@ import streamlit as st
 from streamlit.components.v1 import declare_component
 
 import data.db as db
+from action_feedback import explain
+from httpx import RequestError
+from postgrest.exceptions import APIError
 
 _browser_storage = declare_component(
     "remember_device", path=str(Path(__file__).parent / "components" / "remember_device")
@@ -69,7 +72,11 @@ def finish_login(player, remember: bool = False) -> None:
 def log_out() -> None:
     token = st.session_state.get("_device_token", "")
     if token:
-        db.revoke_remembered_session(token)
+        try:
+            db.revoke_remembered_session(token)
+        except (APIError, RequestError, RuntimeError, OSError):
+            explain("Sign-out could not be confirmed for this remembered device. You are still signed in. Check your connection and press Log out again.")
+            return
     st.session_state.clear()
     st.session_state["_remember_attempted"] = True
     queue_storage("clear")

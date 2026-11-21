@@ -5,8 +5,8 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
-from action_feedback import action_button, explain
-from core.action_feedback import duel_closed_message, opponent_message
+from action_feedback import action_button, explain, service_error
+from core.action_feedback import duel_closed_message, opponent_message, role_limit_message
 from core.time_duel import ACTIVE, FINAL, component_action, validate_pair
 from time_duel_component import time_board
 
@@ -14,9 +14,7 @@ SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, ValueError, Per
 
 
 def _error(error, *, popup=False):
-    show = explain if popup else st.error
-    show(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-             else 'Time Duel is temporarily unavailable. Reopen it to recover your saved game.')
+    service_error(error, 'Time Duel is temporarily unavailable. Reopen it to recover your saved game before you retry.', popup=popup)
 
 
 def _act(player, duel, action):
@@ -50,13 +48,13 @@ def _render_invitations(player, member, state, labels):
                 if len(incoming) > 1 and confirmation == duel['id']:
                     st.warning('If you accept this invite, the other invites for this minigame will be declined.')
                     if action_button('Confirm acceptance', key='time_confirm_' + duel['id'],
-                                 type='primary', problems=["Your acceptance is used or reserved. Finish your current Time Duel, or wait for the next evening at 06:00 in the lobby timezone." if not state['incoming'] else None]):
+                                 type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
                         _act(player, duel, 'accept')
                     if st.button('Keep invitations', key='time_keep_' + duel['id']):
                         st.session_state.pop('time_accept_confirmation', None)
                         st.rerun()
                 elif action_button('Accept Time Duel', key='time_accept_' + duel['id'],
-                               type='primary', problems=["Your acceptance is used or reserved. Finish your current Time Duel, or wait for the next evening at 06:00 in the lobby timezone." if not state['incoming'] else None]):
+                               type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
                     if len(incoming) > 1:
                         st.session_state['time_accept_confirmation'] = duel['id']
                         st.rerun()
@@ -153,7 +151,7 @@ def render_time(player, member, lobby, season, members, labels):
             sent = st.form_submit_button('Send Time Duel challenge', type='primary')
         problems = [
             "You already have an open invitation. Cancel it above or wait for its answer before sending another." if any(d['challenger_id'] == member for d in pending) else None,
-            "Your challenge is used or reserved. Finish your current Time Duel, or wait for the next evening at 06:00 in the lobby timezone." if not state['outgoing'] else None,
+            role_limit_message('Time Duel', season.timezone_name, role='challenge') if not state['outgoing'] else None,
         ]
         if sent and any(problems):
             explain(problems)

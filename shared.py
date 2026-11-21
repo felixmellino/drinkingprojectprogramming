@@ -154,7 +154,7 @@ def require_active_membership() -> tuple[str, str, str]:
         st.stop()
     st.session_state.pop("_validated_season", None)
     if not st.session_state.get("current_season_id"):
-        st.info("Start or select a season on the Lobby page first.")
+        st.info("Your selected lobby has no season ready. Open Lobbies, finish its setup with Retry lobby setup, or make another active lobby current.")
         lobby_button()
         st.stop()
     prefetched = st.session_state.pop("_membership_prefetch", None)
@@ -166,13 +166,16 @@ def require_active_membership() -> tuple[str, str, str]:
                 st.session_state["current_membership_id"], st.session_state.get("current_lobby_id"),
                 st.session_state["current_season_id"])
     except (APIError, RequestError, RuntimeError):
-        st.error("Lobby and season access could not be checked. Try again.")
+        st.error("Lobby and season access could not be checked. Reopen Lobbies and try again.")
+        lobby_button()
         st.stop()
     if selected is None:
         st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
+        lobby_button()
         st.stop()
     if season is None:
-        st.error("This season does not belong to the selected lobby. Choose a season again.")
+        st.error("This season does not belong to the selected lobby. Reopen Lobbies and make the intended lobby current again.")
+        lobby_button()
         st.stop()
     st.session_state["current_team_id"] = selected.team_id
     st.session_state["_validated_season"] = season

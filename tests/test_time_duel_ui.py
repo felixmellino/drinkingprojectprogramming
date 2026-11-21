@@ -71,7 +71,9 @@ def test_missing_migration_has_actionable_message_and_back_button(service,monkey
     def missing(*args):raise RuntimeError('Time Duel needs database migration 017 before it can open.')
     monkeypatch.setattr(db,'time_status',missing)
     app=page()
-    assert not app.exception and '017' in app.error[0].value
+    assert not app.exception and 'app organizer' in app.error[0].value
+    assert any('017' in item.value for item in app.markdown)
+    assert any(item.label == 'Details for the app organizer' for item in app.expander)
     assert any(b.label=='All games' for b in app.button)
 
 

@@ -18,8 +18,8 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
-from action_feedback import action_button, explain
-from core.action_feedback import checkin_message, location_problem as location_blocker
+from action_feedback import action_button, explain, service_error
+from core.action_feedback import AMBIGUOUS_TERRITORY_MESSAGE, checkin_message, location_problem as location_blocker
 from camera_capture import CameraCancelled, camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
@@ -38,7 +38,7 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 season = selected_season(lobby_id, season_id)
 if season is None:
-    st.info("Choose a season on the Lobby page first.")
+    st.info("Open Lobbies and finish the selected lobby's setup, or make another active lobby current before checking in.")
     lobby_button()
     st.stop()
 modern = season.scoring_version == "v1"
@@ -91,7 +91,7 @@ if photo is None and not st.session_state.get('checkin_posted') and (closed or w
     page_header("Check in", compact=True)
     zone = ZoneInfo(season.timezone_name)
     opening = next_opening(now, season) if closed and modern else None
-    if waiting:
+    if waiting and not closed:
         card = gate_card_html("Next check-in in", f"{waiting // 60}:{waiting % 60:02d}",
                               f"One drink every {rules['cooldown_seconds'] // 60} minutes.")
     elif opening:
@@ -102,7 +102,7 @@ if photo is None and not st.session_state.get('checkin_posted') and (closed or w
         local = season.starts_at.astimezone(zone)
         card = gate_card_html("Season starts", f"{local:%d %b}", f"{local:%A %d %B at %H:%M} ({season.timezone_name}).")
     else:
-        card = gate_card_html("Season over", "Done", "Start or choose a new season on the Lobby page.")
+        card = gate_card_html("Season over", "Done", "Create or join a new lobby on the Lobbies page and make it current to play again.")
     st.markdown(card, unsafe_allow_html=True)
     if closed and not opening and not utc(now) < utc(season.starts_at):
         lobby_button()
@@ -180,9 +180,10 @@ if closed:
     if opening:
         st.warning(f"Scoring is closed. Opens {opening:%a %d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     elif utc(now) < utc(season.starts_at):
-        st.warning(f"This season starts {season.starts_at:%d %b %Y at %H:%M:%S %Z}.")
+        local_start = season.starts_at.astimezone(ZoneInfo(season.timezone_name))
+        st.warning(f"This season starts {local_start:%d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     else:
-        st.warning("This season has ended. Start or choose a new season on the Lobby page.")
+        st.warning("This season has ended. Create or join a new lobby on the Lobbies page and make it current to play again.")
 if waiting:
     st.warning(f"Next check-in in {waiting // 60}:{waiting % 60:02d}.")
     st.button("Refresh remaining wait")
@@ -236,6 +237,7 @@ with st.container(key="drink_ui_panel_selection"):
         if drink_type in ("beer", "wine"):
             amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
 
+territory_problem = None
 with st.container(key="drink_ui_panel_location"):
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
@@ -267,6 +269,9 @@ with st.container(key="drink_ui_panel_location"):
                     place = " in " + next(t.name for t in territories if t.id == preview_territory)
                 elif preview_result == "outside":
                     place = ", outside the territories (season points only)"
+                elif preview_result == "uncertain":
+                    territory_problem = AMBIGUOUS_TERRITORY_MESSAGE
+                    place = ", territory could not be assigned"
             except (APIError, RequestError, RuntimeError):
                 pass  # The territory is checked again on submission.
         st.caption(f"Location found, accurate to {accuracy_m:.0f} m{place}")
@@ -279,6 +284,7 @@ if recovered is not None:
 
 blockers = [
     location_blocker(location_problem, accuracy_m),
+    territory_problem,
     checkin_message("scoring_closed") if closed else None,
     f"Your next check-in is available in {waiting // 60}:{waiting % 60:02d}. Wait, then press Refresh remaining wait and submit again." if waiting else None,
     checkin_message("missing_photo") if photo is None or capture is None else None,
@@ -317,12 +323,7 @@ if action_button("Submit", type="primary", width="stretch", problems=blockers,
         explain(checkin_message(rejected.reason), details="This submission was rejected. Your photo and selections are kept so you can fix the problem and retry.")
     except PermissionError:
         explain("Your lobby access could not be confirmed. Open the Lobby page and select a lobby you belong to, then retry.")
-    except RuntimeError as error:
-        if str(error).startswith("Scoring setup is required"):
-            explain(str(error))
-        else:
-            explain("We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.")
-    except (APIError, RequestError, StorageException):
-        explain("We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.")
+    except (RuntimeError, APIError, RequestError, StorageException, OSError) as error:
+        service_error(error, "We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.", popup=True)
     else:
         finish_checkin(entry)

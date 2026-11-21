@@ -232,6 +232,7 @@ else:
     with st.container(key="drink_ui_panel_details"):
         section_heading("02", "Drink & points", "Original details for this historical check-in.")
         photo_metadata(entry)
+        st.caption("Drink and size corrections are unavailable in historical seasons. You can still view the original details and delete your own saved photo.")
 
 # Keep deletion available even when the download failed, so partial deletions
 # can still be retried. This action never changes the scored entry.
@@ -249,3 +250,5 @@ if entry["is_owner"] and entry["has_photo"]:
             else:
                 st.session_state["photo_deleted"] = True
                 st.rerun()
+elif not entry['is_owner'] and entry['has_photo']:
+    st.caption("Only the person who owns this photo can delete it. Use the Mine filter to find photos you can manage.")

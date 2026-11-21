@@ -121,8 +121,7 @@ function stopFollowing() {
 // ---- visible switch in Profile ----------------------------------------------------------
 const $ = id => document.getElementById(id);
 const OFF = "Off. Turn it on to check in and see where you are on the map.";
-const BLOCKED = "Blocked. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using, " +
-  "then Settings → Safari → Location → Ask or Allow. Then turn this on again.";
+const BLOCKED = "Blocked. Turn on location services in your phone settings and allow location for this app in your browser's site settings. Then turn this switch on again.";
 function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
