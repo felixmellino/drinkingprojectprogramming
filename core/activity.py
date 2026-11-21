@@ -44,7 +44,7 @@ def activity_events(entries: list[DrinkEntry]) -> list[ActivityEvent]:
     if not entries:
         return []
     captures = {}
-    for entry_id, territory, new_owner, previous in replay_season(entries).captures:
+    for entry_id, territory, new_owner, previous, _beaten in replay_season(entries).captures:
         captures[entry_id] = (territory, new_owner, previous)
 
     events: list[ActivityEvent] = []

@@ -34,6 +34,9 @@ standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ## Hosting (deployed app)
 
+The season recap remembers who finished a season in a table from
+[migration 029](docs/MIGRATIONS.md); without it the app still runs but shows no recap banner.
+
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
 use the same Brevo settings as password recovery. In an active lobby, the
 creator can open **Invite player** and select an accepted friend. Invitees
@@ -322,6 +325,7 @@ project; the automated suite does not replace it.
 - `phone_location.py` and `components/phone_location/` — automatic phone GPS for Check-in and Map.
 - `map_ui.py` and `pages/5_Map.py` — territory map coloured by owner.
 - `core/activity.py`, `activity_ui.py` and `pages/8_Activity.py` — the Activity tab: check-ins and territory captures, rebuilt from saved entries; Photos is a view inside it.
+- `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py` and `components/season_recap/` — the end-of-season story, awards card and CSV export (needs migration 029).
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.

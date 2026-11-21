@@ -18,6 +18,7 @@ from httpx import RequestError
 from app_navigation import bottom_navigation, minigame_invite_badge
 from theme import apply_theme
 from lobby_selection import restore_selection
+from season_recap_ui import banner as season_recap_banner
 from parallel import run_parallel
 
 
@@ -86,6 +87,7 @@ def require_login() -> str:
     if not navigation_rendered:
         bottom_navigation()
     minigame_invite_badge()
+    season_recap_banner()
     return st.session_state["player_id"]
 
 

@@ -145,6 +145,37 @@ def save_lobby_choice(player_id: str, lobby_id: str) -> None:
     ).execute()
 
 
+def get_season(season_id: str) -> Season | None:
+    rows = get_client().table("seasons").select("*").eq("id", season_id).execute().data
+    return _row_to_season(rows[0]) if rows else None
+
+
+def recap_access(player_id: str, season_id: str) -> tuple[Season, LobbyMembership]:
+    """Who may open a season recap (R-S03): anyone who played in that lobby, also
+    after leaving it, once the season has ended. Checked on every read and write."""
+    season = get_season(season_id)
+    membership = season and next((m for m in list_memberships_for_player(player_id, include_left=True)
+                                  if m.lobby_id == season.lobby_id), None)
+    if not membership:
+        raise PermissionError("You did not play in this season.")
+    ends_at = season.ends_at if season.ends_at.tzinfo else season.ends_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) < ends_at:
+        raise ValueError("This season is still running.")
+    return season, membership
+
+
+def finished_recap_seasons(player_id: str) -> set[str]:
+    rows = get_client().table("season_recap_views").select("season_id").eq("player_id", player_id).execute().data
+    return {row["season_id"] for row in rows}
+
+
+def finish_season_recap(player_id: str, season_id: str) -> None:
+    recap_access(player_id, season_id)
+    get_client().table("season_recap_views").upsert(
+        {"player_id": player_id, "season_id": season_id}, on_conflict="player_id,season_id"
+    ).execute()
+
+
 def list_memberships_for_player(player_id: str, *, include_left: bool = False) -> list[LobbyMembership]:
     rows = get_client().table("lobby_memberships").select("*").eq("player_id", player_id).execute().data
     return [

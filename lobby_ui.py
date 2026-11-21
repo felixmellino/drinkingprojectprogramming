@@ -25,6 +25,7 @@ from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
 from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog, welcome_dialog
 from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
+import season_recap_ui
 import standings_ui
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
@@ -472,6 +473,8 @@ def show_lobbies(player_id):
     if st.session_state.get('current_lobby_id') and (
             st.session_state.get('_unsaved_lobby_choice') == st.session_state['current_lobby_id']):
         st.warning('Your current lobby applies to this visit. Use Save choice to keep it for next time.')
+    # Past lobbies offer Finish season until the player has seen the recap (R-S03).
+    finished_recaps = season_recap_ui.finished_or_empty(player_id) if groups['past'] else None
     cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
     summaries = run_parallel(*[partial(load_summary, player_id, lobby, season, status)
                                for status, lobby, season in cards_to_load])
@@ -492,7 +495,9 @@ def show_lobbies(player_id):
                     dismiss_dialog()
                     st.session_state['_opened_lobby_id'] = lobby.id
                     st.rerun()
-                if status != 'past':
+                if status == 'past':
+                    season_recap_ui.lobby_button(lobby, season, finished_recaps)
+                else:
                     current = st.session_state.get('current_lobby_id') == lobby.id
                     unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
                     if not current or unsaved:
