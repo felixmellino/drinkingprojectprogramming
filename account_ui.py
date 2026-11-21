@@ -7,6 +7,7 @@ from postgrest.exceptions import APIError
 from httpx import RequestError
 
 import data.db as db
+from action_feedback import explain
 import theme
 from core.password_recovery import RESET_MESSAGE
 from core.lobbies import create_player
@@ -17,11 +18,11 @@ _CSS = Path(__file__).parent / "assets" / "account.css"
 
 def show_error(error):
     if isinstance(error, ValueError):
-        st.error(str(error))
+        explain(str(error))
     elif isinstance(error, APIError) and error.code == "23505":
-        st.error("That username or email is already registered.")
+        explain("That username or email is already registered. Choose a different username or log in to your existing account; use Forgot password if needed.")
     else:
-        st.error("Account service is unavailable. Please try again later.")
+        explain("Account service is unavailable. Check your connection and try again; if this continues, contact the app organizer.")
 
 
 def show_accounts():
@@ -64,7 +65,7 @@ def show_accounts():
                     if player:
                         finish_login(player, remember)
                     else:
-                        st.error("Email or password is incorrect.")
+                        explain("Sign-in could not be completed. Check your email and password or use Forgot password. After repeated attempts, wait 15 minutes before retrying.")
                 except (ValueError, APIError, RuntimeError, OSError, RequestError) as exc:
                     show_error(exc)
             if st.button("Forgot password?"):

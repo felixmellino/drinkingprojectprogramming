@@ -16,6 +16,7 @@ import data.db as db
 import core.scoring_v1 as rules
 from tests.test_checkins import INSIDE, TERRITORY
 from tests.test_scoring_v1 import START, entry, season
+from tests.feedback_helpers import assert_blocked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -273,7 +274,8 @@ def test_window_closing_after_the_photo_still_blocks_submission(ui):
     set_location(page, state)
     state["now"] = START + timedelta(days=3)
     page.run()
-    assert not page.exception and button(page, "Submit").disabled
+    assert not page.exception
+    assert_blocked(page, "Submit", "Scoring is closed", "Refresh")
     assert any("Scoring is closed" in item.value and "Europe/Lisbon" in item.value for item in page.warning)
     assert state["entries"] == []
 
@@ -302,7 +304,7 @@ def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
     set_location(page, state)
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
-    assert button(page, "Submit").disabled
+    assert_blocked(page, "Submit", "1:00", "wait")
     assert any("Next check-in in 1:00" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture
     state["now"] = START + timedelta(seconds=120)
@@ -398,7 +400,8 @@ def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch)
     monkeypatch.setattr(db, "list_checkin_revisions", lambda *args: [{"revision": 1,"old_drink_type":"wine","old_size":"large",
         "new_drink_type":"wine","new_size":"small","corrected_at":state["now"].isoformat()}])
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
-    assert not page.exception and button(page, "Save correction").disabled
+    assert not page.exception
+    assert_blocked(page, "Save correction", "unchanged", "choose")
     assert any("+4 season" in item.value for item in page.text)
     radio(page, "Correct size").set_value("small").run()
     button(page, "Save correction").click().run()
@@ -511,7 +514,7 @@ def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monk
     assert markup.count("Game night") == 2
     tiles = "\n".join(item.value for item in page.get("html"))
     assert "&lt;img" in tiles and photos[0]["username"] not in tiles
-    assert button(page, "Newer photos").disabled
+    assert_blocked(page, "Newer photos", "newest", "Older photos")
     assert not button(page, "Older photos").disabled
 
     button(page, "Older photos").click().run()
@@ -521,7 +524,7 @@ def test_history_memories_group_by_game_night_and_open_the_tapped_entry(ui, monk
     # is asserted here -- see the identical pattern this replaced.
     assert sorted(downloads[-2:]) == ["photo-0", "photo-1"]
     assert not button(page, "Newer photos").disabled
-    assert button(page, "Older photos").disabled
+    assert_blocked(page, "Older photos", "oldest", "Newer photos")
 
     next(b for b in page.button if b.key == "memory_tile_photo-0_open").click().run()
     assert not page.exception
@@ -599,7 +602,7 @@ def test_busy_history_is_bounded_and_navigation_downloads_only_the_destination(u
 def test_submit_needs_the_phone_location_first(ui):
     state, _ = ui
     page = open_checkin()
-    assert button(page, "Submit").disabled
+    assert_blocked(page, "Submit", "location", "allow")
     assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
@@ -612,7 +615,7 @@ def test_inaccurate_phone_location_warns_and_saves_nothing(ui):
     set_location(page, state, accuracy_m=80)
     assert any("only accurate to about 80 m" in item.value for item in page.warning)
     button(page, "Submit").click().run()
-    assert not page.exception and any("isn't accurate enough" in item.value for item in page.error)
+    assert not page.exception and any("80 m" in item.value and "50 m" in item.value for item in page.error)
     assert state["calls"] == 0 and state["entries"] == []
 
 
@@ -624,7 +627,8 @@ def test_phone_permission_retry_keeps_photo_and_selection_and_accepts_50m(ui):
     radio(page, "Size").set_value("large").run()
     state["location"] = {"error": "denied"}
     page.run()
-    assert not page.exception and button(page, "Submit").disabled
+    assert not page.exception
+    assert_blocked(page, "Submit", "blocked", "browser settings")
     assert any("Location is blocked" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture_id
     assert radio(page, "Drink").value == "wine" and radio(page, "Size").value == "large"
@@ -641,7 +645,7 @@ def test_location_older_than_60_seconds_is_not_used(ui):
     state, _ = ui
     page = open_checkin()
     set_location(page, state, age_seconds=61)
-    assert button(page, "Submit").disabled
+    assert_blocked(page, "Submit", "60 seconds", "fresh reading")
     assert any("Updating your location" in item.value for item in page.caption)
     set_location(page, state, age_seconds=59)
     assert not button(page, "Submit").disabled

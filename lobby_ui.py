@@ -186,7 +186,12 @@ def retry_setup(player_id, lobby):
             try:
                 db.start_scoring_season(player_id, lobby.id, duration, zone,
                                         **({'test_mode': True} if test_mode else {}))
-            except (PermissionError, CheckinRejected, *LOAD_ERRORS):
+            except CheckinRejected as error:
+                from core.action_feedback import checkin_message
+                st.error(checkin_message(error.reason))
+            except PermissionError:
+                st.error('Your lobby access could not be confirmed. Close this window, refresh your lobbies and reopen a lobby you belong to.')
+            except LOAD_ERRORS:
                 st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
             else:
                 st.rerun()
@@ -268,6 +273,7 @@ def delete_lobby_controls(player_id, lobby):
     try:
         creator = lobby_creator(db.list_memberships_for_lobby(lobby.id, include_left=True))
     except LOAD_ERRORS:
+        st.warning('Lobby deletion controls could not be loaded. Close this window and use Refresh lobbies to retry.')
         return
     if creator != player_id:
         return

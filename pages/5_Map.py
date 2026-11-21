@@ -8,6 +8,8 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
+from action_feedback import explain
+from core.action_feedback import location_problem
 import map_ui
 from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
@@ -108,6 +110,8 @@ def map_and_card():
     # Checking in is the + tab.
     with st.container(key="game_card"):
         map_ui.location_card(here, status, accuracy_m, selected)
+        if not usable_location and st.button("Location help", key="map_location_help", type="tertiary"):
+            explain(location_problem(problem, accuracy_m) or "Your position could not be verified. Turn Location off and on in Profile, then return to the map.")
         with st.expander("All territories"):
             if team_mode:
                 st.caption("Team territories · Points and capture gaps combine all team members’ drinks.")

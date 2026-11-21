@@ -134,7 +134,13 @@ async function showSwitch(compact, followToo) {
   started = true;
   if (compact) document.body.classList.add("compact");
   $("row").classList.add("show");
-  if (!navigator.geolocation) {show(false, "This browser can't share its location.", true); $("switch").disabled = true; return;}
+  if (!navigator.geolocation) {
+    const help = "This browser can't share its location. Open the app's HTTPS address in Safari or Chrome and allow location access.";
+    show(false, help, true);
+    $("switch").addEventListener("click", () => window.alert(help));
+    if (followToo) sendValue({error: "unsupported"});
+    return;
+  }
   const state = await permission();
   if (state === "denied") {   // tapping still retries: the browser may ask again
     show(false, BLOCKED, true);

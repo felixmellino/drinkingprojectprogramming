@@ -6,13 +6,13 @@ from core.auth import hash_password, validate_password, validate_profile_names, 
 def edit_profile(player, first_name, last_name, username, users):
     first_name, last_name, username = validate_profile_names(first_name, last_name, username)
     if any(u["id"] != player.id and u["display_name"].strip().lower() == username.lower() for u in users):
-        raise ValueError("That username is already taken.")
+        raise ValueError("That username is already taken. Enter a different username.")
     return replace(player, first_name=first_name, last_name=last_name, display_name=username)
 
 
 def change_password(player, current, password, confirmation):
     if not verify_password(current, player.pin_hash):
-        raise ValueError("Current password is incorrect.")
+        raise ValueError("Current password is incorrect. Re-enter your current password; if you have forgotten it, log out and use Forgot password on the login screen.")
     validate_password(password, confirmation)
     if verify_password(password, player.pin_hash):
         raise ValueError("Choose a different password from your current password.")

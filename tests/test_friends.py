@@ -60,7 +60,7 @@ def test_self_unknown_and_nonparticipant_actions_rejected():
     for action in ("accept", "decline", "cancel", "remove"):
         with pytest.raises(ValueError):
             transition("a", "b", action, None, NOW)
-    with pytest.raises(ValueError, match="Unknown"):
+    with pytest.raises(ValueError, match="not available. Refresh friends"):
         transition("a", "b", "invalid", relationship(), NOW)
     with pytest.raises(ValueError):
         transition("b", "a", "accept", relationship("accepted"), NOW)

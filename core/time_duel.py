@@ -7,14 +7,15 @@ CONFIG = dict(version=1, rounds=3, min_seconds=5, max_seconds=12,
 ACTIVE = {'accepted', 'playing'}
 FINAL = {'completed', 'draw', 'cancelled', 'declined', 'expired'}
 ERRORS = {
-    'permission_denied': 'This Time Duel is not available to your account.',
+    'permission_denied': 'This Time Duel is not available to your account. Reopen your lobby and choose a duel you participate in.',
     'time_busy': 'Finish the accepted or running minigame first.',
-    'time_limit': 'This Time Duel challenge or acceptance is already used or reserved tonight.',
+    'time_limit': 'This Time Duel challenge or acceptance is used or reserved tonight. Finish the reserved duel, or wait for 06:00 in the lobby timezone when the evening resets.',
     'time_pending': 'Cancel your existing Time Duel invitation first.',
     'time_action': 'This action is unavailable. Reopen the saved duel.',
-    'time_evidence': 'The timing result could not be accepted.',
-    'scoring_closed': 'Time Duel opens during the scoring window; test seasons can play while active.',
+    'time_evidence': 'The timing result could not be accepted for this round. Reopen the saved duel to see the current round. A timer interrupted by leaving or reloading cannot be restarted.',
+    'scoring_closed': 'Time Duel is closed right now. Open Check in to see the next scoring opening; choose a new lobby if this season ended. Test seasons can play throughout an active season.',
     'duel_team': 'Choose a member of an opposing team. Both players must join a team first.',
+    'scoring_setup_required': 'This season is not ready for Time Duel. Ask the app organizer to finish its setup, then reopen the lobby.',
 }
 
 

@@ -63,18 +63,18 @@ def component_action(value, duel):
 
 
 ERRORS = {
-    'permission_denied': 'This quiz is not available to your account.',
+    'permission_denied': 'This quiz is not available to your account. Reopen your lobby and choose a quiz you participate in.',
     'quiz_stake': 'Choose an integer stake from 3 to 10 points.',
-    'quiz_funds': 'Both accounts need the full available stake. Reserved points cannot be used twice.',
+    'quiz_funds': 'Both accounts need the full available stake. Choose a lower stake or earn more points with an accepted check-in. Reserved points cannot be used twice.',
     'quiz_reserved_points': 'These points are committed to a quiz. Finish the quiz before reducing them.',
     'quiz_team': 'Choose a player from another team. Both players must join a team first.',
     'quiz_busy': 'A player already has an accepted or running minigame. Finish it first.',
     'quiz_pending': 'Cancel your open quiz invitation before sending another.',
-    'quiz_limit': 'A quiz challenge or acceptance is already used or reserved for this evening.',
+    'quiz_limit': 'A quiz challenge or acceptance is used or reserved. Finish the reserved quiz, or wait for 06:00 in the lobby timezone when the evening resets.',
     'quiz_unavailable': 'The quiz has changed or expired. Refresh to recover its saved state.',
     'quiz_early': 'Wait for the countdown to finish.',
-    'quiz_answer_locked': 'Your first answer is already locked for this round.',
+    'quiz_answer_locked': 'Your first answer is already locked for this round. Wait for the round result and next question; answers cannot be changed.',
     'quiz_invalid_answer': 'Choose one of the four answers for the current round.',
     'quiz_questions': 'The shared question pack could not be accepted. Refresh and try again.',
-    'scoring_closed': 'Quizzes are available during the season scoring window; test seasons can play while active.',
+    'scoring_closed': 'Quizzes are closed right now. Open Check in to see the next scoring opening; choose a new lobby if this season ended. Test seasons can play throughout an active season.',
 }

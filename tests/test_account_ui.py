@@ -98,7 +98,7 @@ def test_incorrect_password_does_not_authenticate_or_change_account():
         at.text_input(key="login_password").input("wrong-password")
         form(at, "Log in").click().run()
         assert not at.exception
-        assert any("Email or password is incorrect" in msg.value for msg in at.error)
+        assert any("Sign-in could not be completed" in msg.value for msg in at.error)
         assert "player_id" not in at.session_state
         assert player.pin_hash == original_hash
         insert.assert_not_called()
@@ -128,7 +128,7 @@ def test_throttled_login_does_not_authenticate():
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
         form(at, "Log in").click().run()
-        assert [msg.value for msg in at.error] == ["Email or password is incorrect."]
+        assert [msg.value for msg in at.error] == ["Sign-in could not be completed. Check your email and password or use Forgot password. After repeated attempts, wait 15 minutes before retrying."]
         assert "player_id" not in at.session_state
 
 
@@ -144,7 +144,7 @@ def test_unknown_login_shares_generic_error_and_never_loads_player_list(allowed)
         at.text_input(key="login_password").input("password8")
         form(at, "Log in").click().run()
         assert not at.exception
-        assert [msg.value for msg in at.error] == ["Email or password is incorrect."]
+        assert [msg.value for msg in at.error] == ["Sign-in could not be completed. Check your email and password or use Forgot password. After repeated attempts, wait 15 minutes before retrying."]
         assert "player_id" not in at.session_state
         lookup.assert_called_once_with("unknown@example.com")
         allow.assert_called_once_with()

@@ -57,15 +57,15 @@ def time_label(ms):
 
 
 ERRORS = {
-    'permission_denied': 'This duel is not available to your account.',
+    'permission_denied': 'This duel is not available to your account. Reopen your lobby and choose a duel you participate in.',
     'reaction_stake': 'Choose a stake from 1 to 10 points.',
-    'reaction_funds': 'Both players need the full stake. Reserved points cannot be used twice.',
-    'reaction_team': 'Choose a player from another team.',
+    'reaction_funds': 'Both players need the full stake. Choose a lower stake or earn more points with an accepted check-in. Reserved points cannot be used twice.',
+    'reaction_team': 'Choose a player from another team. Both players must join a team on the Lobby page first.',
     'reaction_busy': 'One of you is already in a Reaction Duel. Finish it first.',
     'reaction_pending': 'Cancel your open invitation before sending another.',
     'reaction_limit': 'You already played a Reaction Duel in this role tonight. Resets at 06:00.',
     'reaction_unavailable': 'The duel has changed. It reloads by itself.',
-    'reaction_invalid': 'That tap could not be counted.',
+    'reaction_invalid': 'That tap could not be counted for the current try. Wait for the saved screen to reload, then follow the current prompt; completed tries cannot be changed.',
     'quiz_reserved_points': 'These points are reserved for a duel. Finish it first.',
-    'scoring_closed': 'Reaction Duels open with the scoring window; test seasons can play any time.',
+    'scoring_closed': 'Reaction Duels are closed right now. Open Check in to see the next scoring opening; choose a new lobby if the season ended. Test seasons can play throughout an active season.',
 }

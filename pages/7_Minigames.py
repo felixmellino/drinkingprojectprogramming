@@ -13,7 +13,8 @@ try:
         st.info("Choose a lobby and season on the Lobby page.")
         lobby_button()
     elif season.scoring_version != "v1":
-        st.info("Chug Duel requires a lobby with v1 scoring. Historical seasons keep their original rules.")
+        st.info("Minigames are unavailable in this historical season. Create or join a new lobby on the Lobby page to play with the current rules. Your old scores are kept.")
+        lobby_button()
     else:
         render_minigames(player, member, lobby, season)
 except (ValueError, PermissionError) + SERVICE_ERRORS as error:

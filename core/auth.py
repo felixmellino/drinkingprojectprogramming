@@ -83,9 +83,9 @@ def validate_account(first_name, last_name, username, email, password, confirmat
         if player.id == player_id:
             continue
         if player.display_name.strip().lower() == username.lower():
-            raise ValueError("That username is already taken.")
+            raise ValueError("That username is already taken. Enter a different username.")
         if player.email and player.email.strip().lower() == email:
-            raise ValueError("That email is already registered.")
+            raise ValueError("That email is already registered. Log in to your existing account or use Forgot password.")
     return first_name, last_name, username, email
 
 

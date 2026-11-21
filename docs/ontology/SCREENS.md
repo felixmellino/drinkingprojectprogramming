@@ -1,5 +1,26 @@
 # Screens
 
+## Rejected actions and recovery (21 November 2026)
+
+Contributor decision: keep action buttons clickable. On an attempted action
+with missing prerequisites or a rejected submission, show an English popup
+with the specific reason and the next step. Keep messages short; optional
+technical/context details belong in an expander. Show all current blockers
+when more than one prerequisite is missing. Within an existing dialog (teams,
+lobby forms, friendship requests, password/privacy), show the explanation in
+that dialog because Streamlit cannot nest dialogs.
+
+Keep useful status information (location status, countdowns, season opening,
+saved results) visible. A missing workflow must have an explanation too:
+expired corrections, unavailable opponents, used evening roles, ended seasons
+and restricted editing must not silently disappear. Background loading errors
+stay inline rather than opening a popup on every automatic refresh. During
+camera initialization or an answer being saved, a temporarily disabled control
+must have a visible status explaining what to wait for.
+
+These changes explain existing rules; they do not change eligibility, limits,
+scoring, privacy or server authorization. See [the verification matrix](../ERROR_FEEDBACK.md).
+
 ## Minigames catalogue (19 November 2026)
 
 The Minigames page is a colourful grid of square tiles, three rows of two on

@@ -7,6 +7,7 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
+from action_feedback import action_button
 from core.profile_photo import initials
 from core.scoring_v1 import format_points
 from core.leaderboard import season_leaderboard
@@ -98,8 +99,12 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
             if not teammates:
                 st.caption('No members yet')
             if lobby.team_assignment == 'manual' and not own:
-                if st.button('Team full' if len(teammates) >= lobby.team_capacity else 'Join team', key=f'join_team_{team.id}',
-                             disabled=finished or locked or len(teammates) >= lobby.team_capacity):
+                if action_button('Team full' if len(teammates) >= lobby.team_capacity else 'Join team', key=f'join_team_{team.id}',
+                             inline=True, problems=[
+                                 'This competition has ended. Create or join a new lobby to play on a team.' if finished else None,
+                                 'Your team is locked after your first scored check-in. Continue with your current team; choose a different team in a new lobby.' if locked else None,
+                                 f'This team is full ({lobby.team_capacity} players). Choose another team with a free place. Departed members keep their reserved places.' if len(teammates) >= lobby.team_capacity else None,
+                             ]):
                     try:
                         db.choose_lobby_team(player_id, lobby.id, team.id)
                     except ERRORS as error:
