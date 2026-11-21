@@ -15,7 +15,7 @@ import data.db as db
 from action_feedback import explain
 from core.action_feedback import AMBIGUOUS_TERRITORY_MESSAGE, location_problem
 import map_ui
-from profile_picture_ui import load_pictures, PICTURE_ERRORS
+from profile_picture_ui import load_pictures, picture_access, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from core.scoring_v1 import TERRITORY_MULTIPLIER, current_time
@@ -32,12 +32,16 @@ boost_enabled = season is not None and (season.scoring_rules or {}).get("territo
 map_ui.load_styles()
 track_location()
 
+# The owners' pictures need a permission check; it does not depend on the map
+# data, so it runs in the same first round (a team lobby uses team photos instead).
+wants_pictures = st.session_state.get("current_lobby_mode") != "team"
 try:
-    territories, entries, memberships, players = run_parallel(
+    territories, entries, memberships, players, *access = run_parallel(
         get_territories,
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_public_usernames)
+        db.list_public_usernames,
+        *([lambda: picture_access(player_id)] if wants_pictures else []))
     players_by_id = {p['id']: p['display_name'] for p in players}
 except (APIError, RequestError, RuntimeError):
     st.error("We couldn't load the map. Reload the page to try again.")
@@ -71,7 +75,8 @@ else:
     if st.session_state.get("credential_version"):
         owners = [m for m in memberships if m.id in owner_ids]
         try:
-            fetched = load_pictures(player_id, [m.player_id for m in owners])
+            fetched = load_pictures(player_id, [m.player_id for m in owners],
+                                    relationships=access[0] if access else None)
             pictures = {m.id: fetched[m.player_id] for m in owners if m.player_id in fetched}
         except (*PICTURE_ERRORS, PermissionError, ValueError):
             pass  # An unavailable picture still has the existing initials badge.

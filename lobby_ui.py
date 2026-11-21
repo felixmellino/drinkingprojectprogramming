@@ -17,7 +17,7 @@ from core.leaderboard import season_leader, season_leaderboard
 from core.lobby_overview import latest_season, lobby_status, time_left
 from core.profile_photo import initials
 from core.scoring_v1 import utc
-from profile_picture_ui import PICTURE_ERRORS, load_picture
+from profile_picture_ui import PICTURE_ERRORS, load_pictures, picture_access
 from friends_ui import friendship_action
 from parallel import run_parallel
 from core.lobbies import lobby_creator
@@ -146,36 +146,97 @@ def show_overview_actions(player_id):
         join_dialog(player_id)
 
 
-def load_summary(player_id, lobby, season, status):
-    """Fetch a card's independent data without rendering from a worker thread."""
-    leader_name, photo, available = None, None, True
-    entries = []
-    if season:
+def _season_scores(season):
+    """One card's entries and stake transfers, and whether they loaded."""
+    if not season:
+        return [], [], True
+    try:
+        entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
+                                          lambda: db.list_season_transfers(season.id))
+        return entries, transfers, True
+    except LOAD_ERRORS:
+        return [], [], False
+
+
+def _guarded(call):
+    """Run one read; return its error instead of raising, so other cards still load."""
+    try:
+        return call()
+    except LOAD_ERRORS as error:
+        return error
+
+
+def _team_leader(player_id, lobby, leader):
+    teams = db.list_lobby_teams(player_id, lobby.id)
+    winning = next((team for team in teams if team.id == leader), None)
+    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
+    return (winning.name if winning else 'Team'), photo
+
+
+def load_summaries(player_id, cards):
+    """Every card's data in three rounds instead of one chain of reads per card.
+
+    Round 1: each card's entries and transfers, together with the profile
+    picture permission check. Round 2: all individual leaders' names in one
+    request, plus each team card's teams. Round 3: the active leaders' pictures
+    in one batch. `cards` is a list of (lobby, season, status); the result is
+    (entries, available, leader_name, photo) for each card, in the same order.
+    """
+    wants_pictures = any(status == 'active' and lobby.game_mode == 'individual' and season
+                         for lobby, season, status in cards)
+    loads = [partial(_season_scores, season) for _, season, _ in cards]
+    if wants_pictures:
+        loads.append(partial(picture_access, player_id))
+    loaded = run_parallel(*loads) if loads else []
+    scores = loaded[:len(cards)]
+    access = loaded[len(cards)] if wants_pictures else None
+    leaders = [season_leader(entries, transfers) if available else None
+               for entries, transfers, available in scores]
+
+    individual = [(leader, lobby.id) for (lobby, _, _), leader in zip(cards, leaders)
+                  if leader and lobby.game_mode == 'individual']
+    team_cards = [index for index, ((lobby, _, _), leader) in enumerate(zip(cards, leaders))
+                  if leader and lobby.game_mode == 'team']
+    round_two = run_parallel(
+        partial(_guarded, lambda: db.list_membership_names(individual)),
+        *[partial(_guarded, partial(_team_leader, player_id, cards[i][0], leaders[i])) for i in team_cards])
+    names, team_results = round_two[0], dict(zip(team_cards, round_two[1:]))
+
+    owners = {}
+    if not isinstance(names, LOAD_ERRORS):
+        owners = {lobby.id: names[(leader, lobby.id)]['player_id']
+                  for (lobby, _, status), leader in zip(cards, leaders)
+                  if leader and status == 'active' and lobby.game_mode == 'individual'
+                  and (leader, lobby.id) in names}
+    pictures = {}
+    if owners:
         try:
-            entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
-                                              lambda: db.list_season_transfers(season.id))
-            leader = season_leader(entries, transfers)
-            if leader:
-                if lobby.game_mode == 'team':
-                    teams = db.list_lobby_teams(player_id, lobby.id)
-                    winning = next((team for team in teams if team.id == leader), None)
-                    leader_name = winning.name if winning else 'Team'
-                    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
-                if status == 'active' and lobby.game_mode == 'individual':
-                    leader_name, members = run_parallel(
-                        lambda: db.membership_display_name(leader, lobby.id),
-                        lambda: db.list_memberships_for_lobby(lobby.id))
-                    owner = next((m.player_id for m in members if m.id == leader), None)
-                    if owner:
-                        try:
-                            photo = load_picture(player_id, owner)
-                        except PICTURE_ERRORS:
-                            pass
-                elif lobby.game_mode == 'individual':
-                    leader_name = db.membership_display_name(leader, lobby.id)
-        except LOAD_ERRORS:
-            available = False
-    return entries, available, leader_name, photo
+            pictures = load_pictures(player_id, sorted(set(owners.values())), relationships=access)
+        except (*PICTURE_ERRORS, PermissionError, ValueError, KeyError):
+            pass  # The card keeps its initials badge.
+
+    summaries = []
+    for index, ((lobby, _, _), leader, (entries, _, available)) in enumerate(zip(cards, leaders, scores)):
+        leader_name, photo = None, None
+        if available and leader and lobby.game_mode == 'team':
+            result = team_results[index]
+            if isinstance(result, LOAD_ERRORS):
+                available = False
+            else:
+                leader_name, photo = result
+        elif available and leader:
+            if isinstance(names, LOAD_ERRORS):
+                available = False
+            else:
+                leader_name = names.get((leader, lobby.id), {}).get('display_name', 'Lobby member')
+                photo = pictures.get(owners.get(lobby.id))
+        summaries.append((entries, available, leader_name, photo))
+    return summaries
+
+
+def load_summary(player_id, lobby, season, status):
+    """One card's data; see load_summaries."""
+    return load_summaries(player_id, [(lobby, season, status)])[0]
 
 
 def show_summary(player_id, lobby, season, status, now, *, loaded=None):
@@ -500,8 +561,7 @@ def show_lobbies(player_id):
     # Past lobbies offer Finish season until the player has seen the recap (R-S03).
     finished_recaps = season_recap_ui.finished_or_empty(player_id) if groups['past'] else None
     cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
-    summaries = run_parallel(*[partial(load_summary, player_id, lobby, season, status)
-                               for status, lobby, season in cards_to_load])
+    summaries = load_summaries(player_id, [(lobby, season, status) for status, lobby, season in cards_to_load])
     summaries_by_lobby = {lobby.id: summary for (_, lobby, _), summary in zip(cards_to_load, summaries)}
     for status, heading in (('active', 'Active Lobbies'), ('past', 'Past Lobbies'),
                             ('upcoming', 'Upcoming Lobbies'), ('setup', 'Incomplete setup')):

@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 from threading import Lock
+from time import monotonic
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
@@ -291,6 +292,25 @@ def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
         raise
 
 
+def list_membership_names(pairs) -> dict[tuple[str, str], dict]:
+    """Player id and public username for several (membership id, lobby id) pairs in one request.
+
+    A pair whose membership is not in that lobby is left out, like
+    membership_display_name, so a caller never shows a name from another lobby.
+    """
+    pairs = list(dict.fromkeys(pairs))
+    if not pairs:
+        return {}
+    if len(pairs) > 50:
+        raise ValueError("Too many lobby members requested at once.")
+    rows = (get_client().table("lobby_memberships").select("id,lobby_id,player_id,players(display_name)")
+            .in_("id", [membership_id for membership_id, _ in pairs]).execute().data)
+    wanted = set(pairs)
+    return {(row["id"], row["lobby_id"]): {"player_id": row["player_id"],
+                                           "display_name": (row.get("players") or {}).get("display_name") or "Lobby member"}
+            for row in rows if (row["id"], row["lobby_id"]) in wanted}
+
+
 def membership_display_name(membership_id: str, lobby_id: str) -> str:
     rows = get_client().table("lobby_memberships").select("players(display_name)").eq(
         "id", membership_id).eq("lobby_id", lobby_id).execute().data
@@ -530,11 +550,26 @@ def _checkin_photo_path(lobby_id: str, entry_id: str) -> str:
     return f"{lobby_id}/{entry_id}.jpg"
 
 
-def _private_photo_bucket():
+# Checking that a photo bucket is still private costs one request. It is done
+# once per bucket every PRIVATE_BUCKET_RECHECK_SECONDS per server process instead
+# of before every photo; a bucket made public is refused again within that time.
+PRIVATE_BUCKET_RECHECK_SECONDS = 600
+_private_bucket_checked_at: dict[str, float] = {}
+
+
+def _private_bucket(name: str, message: str):
     storage = get_client().storage
-    if storage.get_bucket(CHECKIN_PHOTO_BUCKET).public is not False:
-        raise RuntimeError("Check-in photos require a private storage bucket.")
-    return storage.from_(CHECKIN_PHOTO_BUCKET)
+    checked = _private_bucket_checked_at.get(name)
+    if checked is None or monotonic() - checked >= PRIVATE_BUCKET_RECHECK_SECONDS:
+        if storage.get_bucket(name).public is not False:
+            _private_bucket_checked_at.pop(name, None)
+            raise RuntimeError(message)
+        _private_bucket_checked_at[name] = monotonic()
+    return storage.from_(name)
+
+
+def _private_photo_bucket():
+    return _private_bucket(CHECKIN_PHOTO_BUCKET, "Check-in photos require a private storage bucket.")
 
 
 def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, photo: bytes) -> DrinkEntry:
@@ -1225,10 +1260,7 @@ PROFILE_PICTURE_BUCKET = "profile-pictures"
 
 
 def _profile_picture_bucket():
-    storage = get_client().storage
-    if storage.get_bucket(PROFILE_PICTURE_BUCKET).public is not False:
-        raise RuntimeError("Profile pictures require a private storage bucket.")
-    return storage.from_(PROFILE_PICTURE_BUCKET)
+    return _private_bucket(PROFILE_PICTURE_BUCKET, "Profile pictures require a private storage bucket.")
 
 
 def _profile_picture_row(player_id: str):
@@ -1263,8 +1295,26 @@ def download_profile_picture(viewer_id: str, credential_version: str, owner_id: 
     return _profile_picture_bucket().download(path)
 
 
-def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids) -> dict[str, bytes]:
-    """Freshly authorize one map's avatars together; never retain permissions/bytes."""
+def profile_picture_access(viewer_id: str, credential_version: str) -> list[dict]:
+    """The fresh credential and friendship check for one page render's pictures.
+
+    A page can start it together with its other first reads and pass the result
+    to download_profile_pictures in the same render. Never keep it longer.
+    """
+    from parallel import run_parallel
+
+    _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
+                                    lambda: list_friendships(viewer_id))
+    return relationships
+
+
+def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids, *,
+                              relationships: list[dict] | None = None) -> dict[str, bytes]:
+    """Freshly authorize one map's avatars together; never retain permissions/bytes.
+
+    `relationships` is the result of profile_picture_access from this same render;
+    without it the credential and friendship check runs here.
+    """
     from parallel import run_parallel
     from core.profile_photo import can_view_profile_photo
     from httpx import RequestError
@@ -1277,8 +1327,9 @@ def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids
         raise ValueError('Too many profile pictures requested at once.')
     # The membership page has already validated login; downloads still perform
     # their own fresh credential and friendship checks, once for this batch.
-    _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
-        lambda: list_friendships(viewer_id) if any(owner != viewer_id for owner in owners) else [])
+    if relationships is None:
+        _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
+            lambda: list_friendships(viewer_id) if any(owner != viewer_id for owner in owners) else [])
     allowed = [owner for owner in owners if can_view_profile_photo(viewer_id, owner, relationships)]
     if not allowed:
         return {}
@@ -1292,7 +1343,7 @@ def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids
         paths[row['player_id']] = row['photo_ref']
     if not paths:
         return {}
-    bucket = _profile_picture_bucket()  # Private-bucket check once per fresh batch.
+    bucket = _profile_picture_bucket()  # Private-bucket check (repeated every 10 minutes).
     def fetch(owner, path):
         try:
             return owner, bucket.download(path)

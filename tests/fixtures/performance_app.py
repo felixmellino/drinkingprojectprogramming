@@ -69,6 +69,8 @@ db.pending_minigame_invites=delayed({})
 db.download_profile_picture=delayed(None)
 db.download_profile_pictures=delayed({})
 db.membership_display_name=delayed('Mia')
+db.list_membership_names=lambda pairs:(sleep(0.05),{pair:{'player_id':player.id,'display_name':'Mia'} for pair in pairs})[1]
+db.profile_picture_access=delayed([])
 db.list_checkin_photos=delayed(lambda:[dict(id=e.id,username='Mia',player_id=player.id,
     captured_at=None,submitted_at=e.submitted_at.isoformat(),is_owner=False,has_photo=True,
     timezone_name=game.timezone_name,rule_version='v1',entry=e,season=game,

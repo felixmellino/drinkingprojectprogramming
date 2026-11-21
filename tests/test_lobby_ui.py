@@ -40,6 +40,14 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))
+
+    def membership_names(pairs):
+        # Every lobby in this fixture has the members listed in state['lobby_members'].
+        state['name_requests'].append(list(pairs))
+        return {(mid, lid): {'player_id': next((m.player_id for m in state['lobby_members'][lid] if m.id == mid), mid),
+                             'display_name': state['names'].get(mid, mid)} for mid, lid in pairs}
+    state['name_requests'] = []
+    monkeypatch.setattr(db, 'list_membership_names', membership_names)
     state['lobby_members'] = {l.id: [m for m in members if m.lobby_id == l.id] + [Obj(id='leo', player_id='leo-id', joined_at=now + timedelta(seconds=5))] for l in lobbies}
     state['users'] = [{'id': 'me', 'display_name': 'MyUsername'}, {'id': 'leo-id', 'display_name': 'Leo'}]
     state['relationships'] = []
@@ -54,8 +62,8 @@ def ui(monkeypatch):
         state['relationships'].append({**row, 'updated_at': datetime.now(timezone.utc).isoformat()})
     state['change'] = Mock(side_effect=change)
     monkeypatch.setattr(db, 'change_friendship', state['change'])
-    state['picture'] = Mock(return_value=None)
-    monkeypatch.setattr('lobby_ui.load_picture', state['picture'])
+    state['picture'] = Mock(return_value={})
+    monkeypatch.setattr('lobby_ui.load_pictures', state['picture'])
     return state
 
 
@@ -169,8 +177,9 @@ def test_leader_uses_existing_tie_rule_public_name_and_private_photo_fallback(ui
     assert 'Winner: <strong>Leo</strong>' in cards(at)[2]
     assert 'lobby-avatar' in cards(at)[0] and '>LE</span>' in cards(at)[0]
     assert 'data:image' not in cards(at)[0]
-    assert ui['picture'].call_args.args == ('me', 'leo-id')
-    ui['picture'].return_value = b'synthetic-picture'
+    assert ui['picture'].call_args.args == ('me', ['leo-id'])
+    assert len(ui['name_requests'][-1]) == 3, 'all three cards ask for their leader in one request'
+    ui['picture'].return_value = {'leo-id': b'synthetic-picture'}
     at.run()
     assert 'data:image/jpeg;base64,' in cards(at)[0]
 

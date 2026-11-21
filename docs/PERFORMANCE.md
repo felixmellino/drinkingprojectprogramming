@@ -1,5 +1,35 @@
 # WeGoPub performance audits
 
+## Fewer waiting rounds on Lobby and Map — 21 November 2026
+
+Live tab switches (deployed app, signed in): Lobby 3.0–3.5 s, Map 2.6–3.4 s,
+Games 1.5–2.0 s, Activity 1.55 s, Ranks 0.95–1.7 s, Profile 1.1–1.35 s. Python
+work is under 0.1 s per page; the time is database round trips that wait for
+each other, each costing about 0.3 s from Streamlit Cloud. Every tab switch
+also has about 1 s of fixed cost (switch round trip, login check, navigation).
+
+Changes, measured locally against the live database with the real pages
+(read-only, writes blocked; median of warm runs; same rendered output):
+
+| Page | Requests | Time |
+| --- | ---: | ---: |
+| Lobby (9 lobbies) | 44 → 20 | 1,308 → 775 ms |
+| Map | 9 → 8, 5 → 3 waiting rounds | 512 → 290 ms |
+
+- Lobby cards load in three rounds for all cards together (`lobby_ui.load_summaries`):
+  scores plus the picture permission check, then all leader names in one
+  request (`db.list_membership_names`), then one picture batch. Before, each
+  card ran its own chain of name, roster, credential, friendship, picture row,
+  bucket and download reads.
+- Map starts the picture permission check (`db.profile_picture_access`) in its
+  first round of reads.
+- The private-bucket check runs once per bucket every 10 minutes per server
+  process instead of before every photo (see SECURITY.md).
+
+Not changed yet: bottom navigation still uses a button plus `st.switch_page`
+(an extra round trip per tab switch; `st.page_link` would avoid it), and the
+Lobby page reads pending invitations after the memberships instead of together.
+
 ## Follow-up audit — 21 November 2026
 
 The measurements below distinguish live service requests, synthetic Streamlit
