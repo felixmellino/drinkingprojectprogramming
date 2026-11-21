@@ -112,9 +112,14 @@ def next_opening(now: datetime, season: Season) -> datetime | None:
     return candidate.astimezone(ZoneInfo(season.timezone_name)) if candidate < utc(season.ends_at) else None
 
 
+def cooldown_deadline(membership_id: str, entries: list[DrinkEntry], seconds: int = 120) -> datetime | None:
+    latest = max((utc(entry.submitted_at) for entry in entries if entry.membership_id == membership_id), default=None)
+    return latest + timedelta(seconds=seconds) if latest is not None else None
+
+
 def cooldown_remaining(membership_id: str, now: datetime, entries: list[DrinkEntry], seconds: int = 120) -> int:
-    times = [utc(entry.submitted_at) for entry in entries if entry.membership_id == membership_id]
-    return max(0, ceil((max(times) + timedelta(seconds=seconds) - utc(now)).total_seconds())) if times else 0
+    deadline = cooldown_deadline(membership_id, entries, seconds)
+    return max(0, ceil((deadline - utc(now)).total_seconds())) if deadline is not None else 0
 
 
 def can_correct(entry: DrinkEntry, season: Season, now: datetime) -> bool:
