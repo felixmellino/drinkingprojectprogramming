@@ -113,7 +113,7 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .duel-emblem { display:grid; place-items:center; order:-1; flex:0 0 64px; height:64px; border-radius:20px;
   background:var(--accent-soft); color:var(--accent-ink); transform:rotate(7deg); }
 .duel-emblem i { display:block; width:34px; height:34px; background:currentColor; transform:rotate(-7deg); }
-.duel-tags { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 4px; }
+.duel-tags { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 20px; }
 .duel-tags span { padding:4px 9px; border:1px solid var(--border); border-radius:var(--radius-pill);
   font-size:.75rem; font-weight:600; line-height:1.4; color:var(--text-muted); }
 .stApp [class*="st-key-duel_setup_"] { background:var(--surface); border-color:var(--border);
@@ -158,7 +158,7 @@ body:has(.st-key-time_stage) .st-key-wego_bottom_nav {display:none!important;}
 .stApp :is(.st-key-chug_invite,.st-key-quiz_challenge,.st-key-reaction_challenge,.st-key-time_challenge) button:disabled {
   background:var(--accent); color:var(--on-accent); opacity:.4; }
 /* A short, scannable guide follows the action; detailed rules are disclosed on demand. */
-.duel-guide { margin:8px 0 0; }
+.duel-guide { margin:8px 0 20px; }
 .stApp .duel-guide h2 { font:700 1rem var(--font-body); margin:0 0 16px; padding:0; }
 .stApp .duel-guide ol { list-style:none; padding:0; margin:0; display:grid; gap:16px; }
 .duel-guide li { display:flex; align-items:flex-start; gap:12px; padding:0; margin:0; }

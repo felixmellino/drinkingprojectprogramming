@@ -18,7 +18,8 @@ async function checkSpacing(page) {
       cardToGuide: guide.top - setup.bottom, guideToRules: rules.top - guide.bottom};
   });
   for (const [name, gap] of Object.entries(gaps)) {
-    assert(gap >= 11, `${name} needs a clear gap, got ${gap}px`);
+    const minimum = name === 'tagsToCard' || name === 'guideToRules' ? 31 : 11;
+    assert(gap >= minimum, `${name} needs at least ${minimum}px, got ${gap}px`);
   }
 }
 
