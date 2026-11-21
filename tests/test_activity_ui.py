@@ -50,9 +50,10 @@ def test_feed_shows_checkins_and_captures_newest_first(ui):
     at = page()
     assert not at.exception
     visible = feed(at)
-    assert visible.index("Leo took Bairro Alto from you") < visible.index("Leo · Shot") \
-        < visible.index("You claimed Bairro Alto") < visible.index("You · Beer · large")
-    assert "+4" in visible and "+3" in visible and "9 min ago" in visible
+    assert visible.index("Leo took Bairro Alto from you") < visible.index("Leo shot") \
+        < visible.index("You claimed Bairro Alto") < visible.index("You large beer")
+    assert "+4" in visible and "+3" in visible and "Bairro Alto, 9 min ago" in visible
+    assert "·" not in visible
     assert "Game night" in visible
 
 
@@ -107,15 +108,15 @@ def test_team_mode_names_the_team(ui, monkeypatch):
     at.session_state["current_team_id"] = "red"
     visible = feed(at.run())
     assert "Blue Sharks took Bairro Alto from you" in visible
-    assert "Leo (Blue Sharks) · Shot" in visible
+    assert "Leo (Blue Sharks) shot" in visible
 
 
 def test_load_more_adds_older_events(ui):
     ui["entries"] = [entry(f"e{i}", "member", "shot", None, i * 3, territory=None) for i in range(35)]
     at = page()
-    assert feed(at).count("Shot") == 30
+    assert feed(at).count(" shot") == 30
     next(b for b in at.button if b.label == "Load more").click().run()
-    assert feed(at).count("Shot") == 35
+    assert feed(at).count(" shot") == 35
     assert not any(b.label == "Load more" for b in at.button)
 
 

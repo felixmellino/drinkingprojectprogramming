@@ -423,8 +423,9 @@ Map owner badge update (19 November 2026, contributor request):
   Feed is the selected lobby's season timeline, newest first, grouped under
   "Game night …" headings, 30 events at a time with **Load more**.
 - Version 1 shows two kinds of event (`core/activity.py`):
-  - **Check-in**: one card per accepted drink: avatar, "Name · Drink · size",
-    the territory (or "Outside territories") and how long ago, and "+points".
+  - **Check-in**: one card per accepted drink: avatar, the name in bold and then
+    size and drink ("**Ana** large beer"), the territory (or "Outside territories")
+    and how long ago ("Bairro Alto, 9 min ago"), and "+points".
     Your own cards have a sky outline. In team lobbies the team follows the name.
   - **Capture**: a banner directly above the drink that caused it: "Ben took
     **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
@@ -433,7 +434,7 @@ Map owner badge update (19 November 2026, contributor request):
 - Nothing is stored for the feed: it is rebuilt from the saved drink entries
   with the same replay as Ranks and the Map, so a correction also corrects the
   feed. Rejected or unscored entries never appear.
-- Empty: "No activity yet · The first drink of the season starts the feed." + Check in.
+- Empty: "No activity yet. The first drink of the season starts the feed." + Check in.
 - Later event kinds (achievements, duel results, joins) are planned but not built.
 
 ## Memories

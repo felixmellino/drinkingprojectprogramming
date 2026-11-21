@@ -36,9 +36,10 @@ def view_switch(current: str) -> None:
 
 
 def drink_label(event: ActivityEvent) -> str:
-    drink = DRINK_LABELS.get(event.drink_type, "Drink")
+    """'large beer', 'shot': size first, all lower case, to follow the bold name."""
+    drink = DRINK_LABELS.get(event.drink_type, "Drink").lower()
     size = SIZE_LABELS.get(event.size)
-    return f"{drink} · {size.lower()}" if size else drink
+    return f"{size.lower()} {drink}" if size else drink
 
 
 def _name(competitor: str | None, names: dict, me: str) -> str:
@@ -80,8 +81,8 @@ def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, ter
         f'<div class="activity-row{" activity-row-you" if you else ""}">'
         f'<span class="activity-avatar" style="{avatar}" aria-hidden="true">'
         f'{escape(initials(member_names.get(event.member, "?")))}</span>'
-        f'<span class="activity-main"><span class="activity-title">{escape(name)} · {escape(drink_label(event))}</span>'
-        f'<span class="activity-meta">{escape(where)} · {escape(ago(event.at, now))}</span></span>'
+        f'<span class="activity-main"><span class="activity-title"><strong>{escape(name)}</strong> {escape(drink_label(event))}</span>'
+        f'<span class="activity-meta">{escape(where)}, {escape(ago(event.at, now))}</span></span>'
         f'<span class="activity-points">+{escape(format_points(event.points))}</span></div>'
     )
 
