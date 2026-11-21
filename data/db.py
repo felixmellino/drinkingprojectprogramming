@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 from core.auth import allow_unknown_login_attempt, authenticate, new_token, token_hash
-from core.checkin_photo import photo_expires_at
+from core.checkin_photo import photo_expires_at, photo_thumbnail
 from core.photo_privacy import can_view_photo
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
 from core.teams import ERRORS as TEAM_ERRORS
@@ -117,10 +117,23 @@ def profile_medal_launch() -> datetime | None:
 def list_lobbies() -> list[Lobby]:
     rows = get_client().table("lobbies").select("*").execute().data
     # Deleted lobbies are hidden for everyone (r.get: works before migration 017 too).
-    return [Lobby(id=r["id"], name=r["name"], invite_code=r["invite_code"],
-                  game_mode=r.get("game_mode", "individual"), team_count=r.get("team_count"),
-                  team_capacity=r.get("team_capacity"), team_assignment=r.get("team_assignment"))
-            for r in rows if not r.get("deleted_at")]
+    return [_row_to_lobby(row) for row in rows if not row.get("deleted_at")]
+
+
+def get_lobby(lobby_id: str) -> Lobby | None:
+    rows = get_client().table("lobbies").select("*").eq("id", lobby_id).execute().data
+    return _row_to_lobby(rows[0]) if rows and not rows[0].get("deleted_at") else None
+
+
+def list_lobbies_for_ids(lobby_ids) -> list[Lobby]:
+    rows = _rows_for_ids("lobbies", "id", lobby_ids, "id")
+    return [_row_to_lobby(row) for row in rows if not row.get("deleted_at")]
+
+
+def _row_to_lobby(row: dict) -> Lobby:
+    return Lobby(id=row["id"], name=row["name"], invite_code=row["invite_code"],
+                 game_mode=row.get("game_mode", "individual"), team_count=row.get("team_count"),
+                 team_capacity=row.get("team_capacity"), team_assignment=row.get("team_assignment"))
 
 
 def insert_lobby(lobby: Lobby) -> None:
@@ -178,17 +191,21 @@ def finish_season_recap(player_id: str, season_id: str) -> None:
 
 def list_memberships_for_player(player_id: str, *, include_left: bool = False) -> list[LobbyMembership]:
     rows = get_client().table("lobby_memberships").select("*").eq("player_id", player_id).execute().data
-    return [
-        LobbyMembership(
-            id=r["id"],
-            player_id=r["player_id"],
-            lobby_id=r["lobby_id"],
-            joined_at=datetime.fromisoformat(r["joined_at"]),
-            team_id=r.get("team_id"),
-            left_at=datetime.fromisoformat(r["left_at"]) if r.get("left_at") else None,
-        )
-        for r in rows if include_left or not r.get("left_at")
-    ]
+    return [_row_to_membership(r) for r in rows if include_left or not r.get("left_at")]
+
+
+def list_membership_history_for_players(player_ids) -> list[LobbyMembership]:
+    """Include departed memberships for the selected players' lifetime medals."""
+    rows = _rows_for_ids("lobby_memberships", "player_id", player_ids, "id")
+    return [_row_to_membership(row) for row in rows]
+
+
+def _row_to_membership(row: dict) -> LobbyMembership:
+    return LobbyMembership(
+        id=row["id"], player_id=row["player_id"], lobby_id=row["lobby_id"],
+        joined_at=datetime.fromisoformat(row["joined_at"]), team_id=row.get("team_id"),
+        left_at=datetime.fromisoformat(row["left_at"]) if row.get("left_at") else None,
+    )
 
 
 def list_memberships_for_lobby(lobby_id: str, *, include_left: bool = False) -> list[LobbyMembership]:
@@ -287,11 +304,17 @@ def list_seasons_for_lobby(lobby_id: str) -> list[Season]:
     return sorted([_row_to_season(r) for r in rows], key=lambda s: s.starts_at, reverse=True)
 
 
+def list_seasons_for_lobbies(lobby_ids) -> list[Season]:
+    rows = _rows_for_ids("seasons", "lobby_id", lobby_ids, "id")
+    return [_row_to_season(row) for row in rows]
+
+
 def membership_context(player_id: str, membership_id: str, lobby_id: str, season_id: str) -> tuple[LobbyMembership | None, Season | None]:
-    """Fresh membership and its lobby's seasons in one scoped database read."""
+    """Fresh membership and the requested season in one scoped database read."""
     rows = (get_client().table("lobby_memberships")
         .select("*,lobbies!inner(seasons(*))")
-        .eq("id", membership_id).eq("player_id", player_id).eq("lobby_id", lobby_id).execute().data)
+        .eq("id", membership_id).eq("player_id", player_id).eq("lobby_id", lobby_id)
+        .eq("lobbies.seasons.id", season_id).execute().data)
     if not rows or rows[0].get("left_at"):
         return None, None
     row = rows[0]
@@ -386,15 +409,46 @@ def _all_rows(build_query) -> list[dict]:
             return rows
 
 
+def _rows_for_ids(table, column, ids, *order) -> list[dict]:
+    """Page deterministic reads and cap the size of each PostgREST filter."""
+    ids = list(dict.fromkeys(ids))
+    rows = []
+    for start in range(0, len(ids), 50):
+        batch = ids[start:start + 50]
+
+        def query():
+            builder = get_client().table(table).select("*").in_(column, batch)
+            for field in order:
+                builder = builder.order(field)
+            return builder
+
+        rows.extend(_all_rows(query))
+    return rows
+
+
 def list_drink_entries(season_id: str) -> list[DrinkEntry]:
     rows = _all_rows(lambda: get_client().table("drink_entries").select("*")
                      .eq("season_id", season_id).order("submitted_at").order("id"))
     return [_row_to_drink_entry(r) for r in rows]
 
 
-def list_drink_entries_for_membership(membership_id: str) -> list[DrinkEntry]:
-    rows = _all_rows(lambda: get_client().table("drink_entries").select("*")
-                     .eq("membership_id", membership_id).order("submitted_at").order("id"))
+def list_drink_entries_for_seasons(season_ids) -> list[DrinkEntry]:
+    rows = _rows_for_ids("drink_entries", "season_id", season_ids, "submitted_at", "id")
+    return [_row_to_drink_entry(row) for row in rows]
+
+
+def list_drink_entries_for_membership(membership_id: str, *, since=None, capture_id=None) -> list[DrinkEntry]:
+    def query():
+        builder = get_client().table("drink_entries").select("*").eq("membership_id", membership_id)
+        if since is not None:
+            if capture_id:
+                # Include a committed capture even if its confirmation was lost long ago.
+                builder = builder.or_(f"submitted_at.gte.{since.isoformat()},id.eq.{capture_id}")
+            else:
+                builder = builder.gte("submitted_at", since.isoformat())
+        return builder.order("submitted_at").order("id")
+
+    rows = _all_rows(query)
     return [_row_to_drink_entry(r) for r in rows]
 
 
@@ -549,14 +603,17 @@ def _lobby_photo_query(player_id: str, lobby_id: str):
     return _photo_rows_query(lobby_id)
 
 
-def _photo_rows_query(lobby_id: str):
+def _photo_rows_query(lobby_id: str, *, details=True):
     """Scoped query builder; callers must freshly check membership first."""
+    if details:
+        columns = ("*,territories(name),seasons!inner(*),"
+                   "lobby_memberships!drink_entries_membership_id_fkey!inner(lobby_id,player_id,players(display_name))")
+    else:
+        columns = ("id,photo_ref,team_id,seasons!inner(ends_at),"
+                   "lobby_memberships!drink_entries_membership_id_fkey!inner(player_id)")
     return (
         get_client().table("drink_entries")
-        .select(
-            "*,territories(name),seasons!inner(*),"
-            "lobby_memberships!drink_entries_membership_id_fkey!inner(lobby_id,player_id,players(display_name))"
-        )
+        .select(columns)
         .eq("seasons.lobby_id", lobby_id)
         .eq("lobby_memberships.lobby_id", lobby_id)
     )
@@ -638,13 +695,16 @@ def list_checkin_revisions(player_id: str, lobby_id: str, entry_id: str) -> list
 
 
 def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> bytes | None:
-    rows = _lobby_photo_query(player_id, lobby_id).eq("id", entry_id).execute().data
+    members = list_memberships_for_lobby(lobby_id)
+    if not any(member.player_id == player_id for member in members):
+        raise PermissionError("Only members of this lobby can view its check-in photos.")
+    rows = _photo_rows_query(lobby_id, details=False).eq("id", entry_id).execute().data
     photo_path = _checkin_photo_path(lobby_id, entry_id)
     if not rows or rows[0]["photo_ref"] != photo_path:
         return None
     if datetime.now(timezone.utc) >= photo_expires_at(datetime.fromisoformat(rows[0]["seasons"]["ends_at"])):
         return None
-    if not _photo_audience(player_id, lobby_id, rows)(rows[0]):
+    if not _photo_audience(player_id, lobby_id, rows, members=members)(rows[0]):
         raise PermissionError("This photo is private.")
     return _private_photo_bucket().download(photo_path)
 
@@ -652,12 +712,15 @@ def download_checkin_photo(player_id: str, lobby_id: str, entry_id: str) -> byte
 MAX_PHOTO_BATCH = 12  # one authorization snapshot covers at most this many photos
 
 
-def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[str, bytes | None]:
+def download_checkin_photos(player_id: str, lobby_id: str, entry_ids, *,
+                            cached_thumbnails: dict[str, bytes] | None = None) -> dict[str, bytes | None]:
     """Authorize one visible gallery batch afresh; never reuse a previous listing.
 
     Share current roster, consent, scoped entry metadata and bucket validation
     within this invocation only. All permissions are checked before any image
-    download, and originals are unchanged. Direct single-image access stays fresh.
+    download. When given session thumbnails, reuse the bytes only after verifying
+    the current audience, retention date and stored object reference. Direct
+    single-image access always reads the original.
     """
     from parallel import run_parallel
     from httpx import RequestError
@@ -670,7 +733,7 @@ def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[st
     members = list_memberships_for_lobby(lobby_id)
     if not any(m.player_id == player_id for m in members):
         raise PermissionError('Only members of this lobby can view its check-in photos.')
-    rows = _photo_rows_query(lobby_id).in_('id', ids).execute().data
+    rows = _photo_rows_query(lobby_id, details=False).in_('id', ids).execute().data
     allowed = _photo_audience(player_id, lobby_id, rows, members=members)
     result = dict.fromkeys(ids)
     paths = {}
@@ -683,13 +746,20 @@ def download_checkin_photos(player_id: str, lobby_id: str, entry_ids) -> dict[st
             continue
         if not allowed(row):
             raise PermissionError('This photo is private.')
-        paths[row['id']] = path
+        thumbnail = cached_thumbnails.get(row['id']) if cached_thumbnails is not None else None
+        if thumbnail is not None:
+            result[row['id']] = thumbnail
+        else:
+            paths[row['id']] = path
     if not paths:
         return result
     bucket = _private_photo_bucket()
     def fetch(entry_id, path):
         try:
-            return entry_id, bucket.download(path)
+            raw = bucket.download(path)
+            if cached_thumbnails is not None:
+                raw = photo_thumbnail(raw)
+            return entry_id, raw
         except (APIError, StorageException, RequestError, RuntimeError, OSError):
             return entry_id, None
     result.update(run_parallel(*[lambda eid=eid,path=path:fetch(eid,path) for eid,path in paths.items()]))
@@ -1412,10 +1482,13 @@ def reaction_action(player_id, duel_id, action, revision=None, elapsed_ms=None):
 
 
 def list_season_transfers(season_id):
+    return list_transfers_for_seasons([season_id])
+
+
+def list_transfers_for_seasons(season_ids):
     from core.models import SeasonTransfer
     try:
-        rows = (get_client().table("quiz_transfers").select("*").eq("season_id", season_id)
-                .order("event_order").execute().data)
+        rows = _rows_for_ids("quiz_transfers", "season_id", season_ids, "event_order", "id")
     except APIError as error:
         # Additive deployment: ordinary standings still work before migration 016.
         if error.code in {"42P01", "PGRST205"}:

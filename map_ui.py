@@ -256,13 +256,13 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             get_line_color=COLOURS[next(r["status"] for r in rows if r["id"] == selected)] + [255],
             line_width_min_pixels=3.5))
     markers = owner_markers(rows, pictures or {}, COLOURS)
-    for marker in markers:
-        marker["name"] = escape(marker["name"])  # never rendered as HTML, escaped anyway
+    icons = [{key: marker[key] for key in ("position", "icon", "size")} for marker in markers]
+    initials = [{key: marker[key] for key in ("position", "initials", "text_size")} for marker in markers]
     layers += [
-        pdk.Layer("IconLayer", markers, id="owner-badges", get_position="position", get_icon="icon",
+        pdk.Layer("IconLayer", icons, id="owner-badges", get_position="position", get_icon="icon",
                   get_size="size", size_units="meters", size_min_pixels=12, size_max_pixels=52,
                   pickable=False, billboard=True),
-        pdk.Layer("TextLayer", markers, id="owner-initials", get_position="position", get_text="initials",
+        pdk.Layer("TextLayer", initials, id="owner-initials", get_position="position", get_text="initials",
                   get_size="text_size", size_units="meters", size_min_pixels=6, size_max_pixels=16,
                   get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
                   get_text_anchor="'middle'", get_alignment_baseline="'center'", pickable=False),

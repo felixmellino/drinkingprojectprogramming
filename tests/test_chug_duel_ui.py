@@ -35,7 +35,7 @@ def service(monkeypatch):
     members = [LobbyMembership("a", "pa", "lobby", START), LobbyMembership("b", "pb", "lobby", START)]
     state = {"duels": [], "board": None, "photo": None, "location": ((38.7, -9.1), 10, None), "starts": 0}
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
-    monkeypatch.setattr(db, "list_lobbies", lambda: [lobby])
+    monkeypatch.setattr(db, "get_lobby", lambda _: lobby)
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: members)
     monkeypatch.setattr(db, "list_public_usernames", lambda: [{"id": "pa", "display_name": "Alice"}, {"id": "pb", "display_name": "Bob"}])
     monkeypatch.setattr(db, "list_chug_duels", lambda *args: deepcopy(state["duels"]))

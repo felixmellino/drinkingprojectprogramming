@@ -1,5 +1,7 @@
 """Compare page work without writing data. Use --database for live read timings."""
 import argparse
+from hashlib import sha256
+import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -75,10 +77,31 @@ def benchmark_database():
           f'median {median(old_times):.0f} ms -> {median(new_times):.0f} ms')
 
 
+def benchmark_markers():
+    from data.territory_file import load_territories
+    from map_markers import owner_markers
+    from map_ui import COLOURS
+
+    rows = [{"id": place.id, "boundary": place.boundary, "owner_id": "example",
+             "owner": "Example Player", "status": "yours"} for place in load_territories()]
+    markers, first_ms = elapsed(lambda: owner_markers(rows, {}, COLOURS))
+    warm = []
+    for _ in range(3):
+        repeated, timing = elapsed(lambda: owner_markers(rows, {}, COLOURS))
+        assert repeated == markers
+        warm.append(timing)
+    fingerprint = sha256(json.dumps(markers, sort_keys=True).encode()).hexdigest()[:12]
+    print(f'Map markers: {len(rows)} owned areas, {len(markers)} badges; '
+          f'first {first_ms:.1f} ms, warm median {median(warm):.1f} ms; output {fingerprint}')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--database', action='store_true', help='Make read-only requests using configured Supabase credentials')
+    parser.add_argument('--map-markers', action='store_true', help='Measure drawing badges across the configured map')
     options = parser.parse_args()
     benchmark_replay()
     if options.database:
         benchmark_database()
+    if options.map_markers:
+        benchmark_markers()

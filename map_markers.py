@@ -27,6 +27,15 @@ def area(boundary):
 
 def interior_anchor(boundary):
     """Choose an inside point with room for a badge, even in a concave area."""
+    ring = tuple(tuple(point) for point in boundary["coordinates"][0])
+    position, clearance = _interior_anchor(ring)
+    return list(position), clearance
+
+
+@lru_cache(maxsize=128)
+def _interior_anchor(coordinates):
+    # Borders are static between edits. Cache geometry only, never owner or photo data.
+    boundary = {"coordinates": [coordinates]}
     ring = projected_ring(boundary)
     left, right = min(p[0] for p in ring), max(p[0] for p in ring)
     bottom, top = min(p[1] for p in ring), max(p[1] for p in ring)
@@ -35,7 +44,7 @@ def interior_anchor(boundary):
                   for x in range(20) for y in range(20)]
     best, clearance = None, -1
     for x, y in candidates:
-        if not point_in_polygon(y / LAT_M, x / LNG_M, boundary["coordinates"][0]):
+        if not point_in_polygon(y / LAT_M, x / LNG_M, coordinates):
             continue
         distance = math.inf
         for a, b in zip(ring, ring[1:]):
@@ -50,7 +59,7 @@ def interior_anchor(boundary):
         a, b = max(zip(ring, ring[1:]), key=lambda edge: math.dist(*edge))
         best = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
         clearance = 0
-    return [best[0] / LNG_M, best[1] / LAT_M], clearance
+    return (best[0] / LNG_M, best[1] / LAT_M), clearance
 
 
 def badge_image(photo, colour):

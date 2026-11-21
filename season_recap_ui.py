@@ -165,5 +165,3 @@ def lobby_button(lobby, season, finished: set[str] | None) -> None:
 def mark_finished(season_id: str) -> None:
     st.session_state["_unfinished_recaps"] = [row for row in st.session_state.get("_unfinished_recaps") or []
                                               if row[2] != season_id]
-
-

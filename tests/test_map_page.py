@@ -176,6 +176,8 @@ def test_map_sends_only_territory_ids_and_selects_on_tap(phone, monkeypatch):
     assert chart.selection_mode and not chart.tooltip                # a tap selects; no white tooltip
     layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
     assert layers["owner-badges"]["pickable"] is False             # taps reach the territory under a badge
+    assert all(set(marker) == {"position", "icon", "size"} for marker in layers["owner-badges"]["data"])
+    assert all(set(marker) == {"position", "initials", "text_size"} for marker in layers["owner-initials"]["data"])
     props = layers["territories"]["data"]["features"][0]["properties"]
     assert props["id"] == TERRITORY.id
     assert "<b>rival</b>" not in chart.json and "rival" not in str(props)  # names stay server-side

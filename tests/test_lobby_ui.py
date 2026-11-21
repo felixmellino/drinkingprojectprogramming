@@ -35,6 +35,8 @@ def ui(monkeypatch):
     monkeypatch.setattr('shared.show_logged_in_as', lambda: None)
     monkeypatch.setattr(db, 'list_memberships_for_player', lambda _, **kwargs: state['members'])
     monkeypatch.setattr(db, 'list_lobbies', lambda: state['lobbies'])
+    monkeypatch.setattr(db, 'list_lobbies_for_ids', lambda ids: [l for l in state['lobbies'] if l.id in ids])
+    monkeypatch.setattr(db, 'list_seasons_for_lobbies', lambda ids: [s for lid in ids for s in state['seasons'].get(lid, [])])
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))
@@ -71,6 +73,20 @@ def click(at, label):
 
 def choose_current(at, lobby_id):
     return at.button(key=f'make_current_{lobby_id}').click().run()
+
+
+def test_past_card_keeps_lobby_details_and_opens_its_season_recap(ui, monkeypatch):
+    import season_recap_ui
+
+    open_recap = Mock()
+    monkeypatch.setattr(season_recap_ui, 'open_recap', open_recap)
+    at = page()
+    assert not at.exception
+    assert at.button(key='open_lobby_past').label == 'View lobby →'
+    assert at.button(key='season_recap_past').label == 'Finish season'
+    assert not any(button.key in {'make_current_past', 'season_recap_new'} for button in at.button)
+    at.button(key='season_recap_past').click().run()
+    open_recap.assert_called_once_with('past', 'Finished lobby', ui['seasons']['past'][0].id, animate=True)
 
 
 @pytest.mark.parametrize('failure, expected', [

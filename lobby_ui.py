@@ -68,11 +68,12 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
 
 
-def show_lobby_members(player_id, lobby_id):
+def show_lobby_members(player_id, lobby_id, *, members=None):
     """Show public usernames and only the viewer's own friendship state."""
     st.subheader('Lobby members')
     try:
-        members = db.list_memberships_for_lobby(lobby_id)
+        if members is None:
+            members = db.list_memberships_for_lobby(lobby_id)
         if not any(m.player_id == player_id for m in members):
             st.error('You are no longer a member of this lobby.')
             return
@@ -368,7 +369,8 @@ def lobby_leaderboard(player_id, lobby, membership, season):
 def show_lobby_details(player_id, lobby, season):
     # Recheck on each dialog interaction, including friendship reruns.
     try:
-        membership = next((m for m in db.list_memberships_for_lobby(lobby.id) if m.player_id == player_id), None)
+        members = db.list_memberships_for_lobby(lobby.id)
+        membership = next((m for m in members if m.player_id == player_id), None)
         if membership is None:
             st.error('You are no longer a member of this lobby.')
             close_members_button()
@@ -384,7 +386,7 @@ def show_lobby_details(player_id, lobby, season):
     st.caption('Invite code')
     st.code(lobby.invite_code, language=None)
     with st.container(key='lobby_members', border=False):
-        show_lobby_members(player_id, lobby.id)
+        show_lobby_members(player_id, lobby.id, members=members)
     st.divider()
     if season:
         lobby_leaderboard(player_id, lobby, membership, season)
@@ -411,6 +413,22 @@ def make_current(player_id, lobby, membership, season):
     return True
 
 
+def open_lobby(lobby_id):
+    dismiss_dialog()
+    st.session_state['_opened_lobby_id'] = lobby_id
+
+
+def load_lobby_seasons(lobby_ids):
+    try:
+        seasons = db.list_seasons_for_lobbies(lobby_ids)
+    except LOAD_ERRORS:
+        return None  # Let the overview retry per lobby so a partial outage stays visible.
+    by_lobby = {lobby_id: [] for lobby_id in lobby_ids}
+    for season in seasons:
+        by_lobby[season.lobby_id].append(season)
+    return {lobby_id: latest_season(items) for lobby_id, items in by_lobby.items()}
+
+
 @st.fragment(run_every='60s')
 def show_lobbies(player_id):
     css = (Path(__file__).parent / 'assets/lobbies.css').read_text()
@@ -434,8 +452,13 @@ def show_lobbies(player_id):
         clear_selection()
         empty_state('lobbies', 'users-three', 'Start a lobby', 'Create one for your group or join with a code above.')
         return
+    lobby_ids = list(dict.fromkeys(membership.lobby_id for membership in memberships))
     try:
-        lobbies = {l.id: l for l in db.list_lobbies()}
+        lobby_rows, seasons_by_lobby = run_parallel(
+            lambda: db.list_lobbies_for_ids(lobby_ids),
+            lambda: load_lobby_seasons(lobby_ids),
+        )
+        lobbies = {lobby.id: lobby for lobby in lobby_rows}
     except LOAD_ERRORS:
         st.error('Your lobbies could not be loaded. Use Refresh lobbies to try again.')
         return
@@ -447,8 +470,9 @@ def show_lobbies(player_id):
         except LOAD_ERRORS as error:
             return error
     shown = [(membership, lobbies[membership.lobby_id]) for membership in memberships if membership.lobby_id in lobbies]
-    # One request per lobby, all at the same time.
-    for (membership, lobby), season in zip(shown, run_parallel(*[partial(fetch_season, lobby.id) for _, lobby in shown])):
+    seasons = (run_parallel(*(partial(fetch_season, lobby.id) for _, lobby in shown))
+               if seasons_by_lobby is None else [seasons_by_lobby[lobby.id] for _, lobby in shown])
+    for (membership, lobby), season in zip(shown, seasons):
         if isinstance(season, LOAD_ERRORS):
             st.warning(f'Dates for {lobby.name} are unavailable. Use Refresh lobbies to try again.')
             continue
@@ -490,11 +514,8 @@ def show_lobbies(player_id):
         for lobby, membership, season in rows:
             with st.container(key=f'lobby_card_{lobby.id}', gap=None):
                 show_summary(player_id, lobby, season, status, now, loaded=summaries_by_lobby[lobby.id])
-                if st.button('View lobby →', key=f'open_lobby_{lobby.id}',
-                             help=f'Open {lobby.name}', width='stretch'):
-                    dismiss_dialog()
-                    st.session_state['_opened_lobby_id'] = lobby.id
-                    st.rerun()
+                st.button('View lobby →', key=f'open_lobby_{lobby.id}', help=f'Open {lobby.name}',
+                          width='stretch', on_click=open_lobby, args=(lobby.id,))
                 if status == 'past':
                     season_recap_ui.lobby_button(lobby, season, finished_recaps)
                 else:

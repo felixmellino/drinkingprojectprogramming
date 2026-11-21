@@ -30,10 +30,11 @@ season = st.session_state.get("_validated_season")
 boost_enabled = season is not None and (season.scoring_rules or {}).get("territory_boost") is True
 
 map_ui.load_styles()
+track_location()
 
 try:
-    territories = get_territories()
-    entries, memberships, players = run_parallel(
+    territories, entries, memberships, players = run_parallel(
+        get_territories,
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
         db.list_public_usernames)
@@ -80,7 +81,6 @@ else:
 # same as on Check-in), before current_location() reads the newest reading.
 with st.container(key="game_hud"):
     map_ui.hud(st.session_state.get("current_lobby_name", "Your lobby"), rows)
-track_location()
 
 # Where am I? Decides where the map starts and the "You are here" note.
 location, accuracy_m, problem = current_location()

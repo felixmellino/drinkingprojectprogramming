@@ -20,7 +20,7 @@ def click(at, label):
 
 @pytest.fixture
 def repo(monkeypatch):
-    monkeypatch.setattr('data.db.list_season_transfers', lambda _: [])
+    monkeypatch.setattr('data.db.list_transfers_for_seasons', lambda _: [])
     # Profile fixtures have no lobby repository; restoration has its own tests.
     monkeypatch.setattr('shared.restore_selection', lambda player_id: None)
     monkeypatch.setattr('data.db.download_profile_picture', lambda *args: None)
@@ -124,11 +124,11 @@ def test_stats_all_lobbies_without_selection_and_fresh_session(repo, monkeypatch
     def seasons(lid):
         end = now + timedelta(days=1) if lid == 'l5' else now - timedelta(days=1)
         return [SimpleNamespace(id=lid, ends_at=end)]
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', seasons)
+    monkeypatch.setattr('data.db.list_seasons_for_lobbies', lambda ids: [s for lid in ids for s in seasons(lid)])
     def entries(sid):
         i = int(sid[1:])
         return [replace(entry(sid, f'm{i}', 'beer', 'small', 0), season_id=sid, points_awarded=11)]
-    monkeypatch.setattr('data.db.list_drink_entries', entries)
+    monkeypatch.setattr('data.db.list_drink_entries_for_seasons', lambda ids: [e for sid in ids for e in entries(sid)])
     at = page(repo)
     click(at, 'My stats')
     text = stats_text(at)
@@ -153,12 +153,12 @@ def test_stats_empty_and_load_failure(repo, monkeypatch):
     assert 'Total points 0' in stats_text(at) and 'Total Wins 0' in stats_text(at)
     assert any('empty-state-title' in m.value and 'No drinks yet' in m.value for m in at.markdown)
     monkeypatch.setattr('data.db.list_memberships_for_player', lambda _, **kwargs: [SimpleNamespace(id='me', lobby_id='lobby')])
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [])
+    monkeypatch.setattr('data.db.list_seasons_for_lobbies', lambda _: [])
     at.run()
     assert 'Total points 0' in stats_text(at)
     def unavailable(_):
         raise RuntimeError('offline')
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', unavailable)
+    monkeypatch.setattr('data.db.list_seasons_for_lobbies', unavailable)
     at.run()
     assert not at.exception and at.error and not stats_text(at)
 
@@ -173,8 +173,8 @@ def test_stats_reads_new_accepted_checkins_and_rejects_invalid_attempts(repo, mo
     saved = []
     monkeypatch.setattr('data.db.list_memberships_for_player',
                         lambda _, **kwargs: [SimpleNamespace(id='me', lobby_id=game.lobby_id)])
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [game])
-    monkeypatch.setattr('data.db.list_drink_entries', lambda _: list(saved))
+    monkeypatch.setattr('data.db.list_seasons_for_lobbies', lambda _: [game])
+    monkeypatch.setattr('data.db.list_drink_entries_for_seasons', lambda _: list(saved))
     at = page(repo)
     click(at, 'My stats')
     assert 'Total points 0' in stats_text(at) and 'Drinks 0' in stats_text(at)
@@ -259,8 +259,8 @@ def test_stats_keep_departed_lobby_in_a_fresh_session(repo, monkeypatch):
         assert include_left, 'Personal statistics must request historical memberships'
         return [departed]
     monkeypatch.setattr('data.db.list_memberships_for_player', read)
-    monkeypatch.setattr('data.db.list_seasons_for_lobby', lambda _: [SimpleNamespace(id='season', ends_at=datetime.now(timezone.utc)+timedelta(days=1))])
-    monkeypatch.setattr('data.db.list_drink_entries', lambda _: [entry('a', 'me', 'beer', 'large', 0)])
+    monkeypatch.setattr('data.db.list_seasons_for_lobbies', lambda _: [SimpleNamespace(id='season', ends_at=datetime.now(timezone.utc)+timedelta(days=1))])
+    monkeypatch.setattr('data.db.list_drink_entries_for_seasons', lambda _: [entry('a', 'me', 'beer', 'large', 0)])
     at = page(repo)
     click(at, 'My stats')
     assert 'Total points 3' in stats_text(at) and 'Lobbies played 1' in stats_text(at)

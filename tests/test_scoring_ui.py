@@ -50,14 +50,14 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'time_status', lambda *args: {'boost_ends_at': None})
     # UI service double; authorization/batching itself is tested against the
     # stateful database double in test_photo_lifecycle/test_photo_privacy.
-    def batch(p, l, ids):
+    def batch(p, l, ids, **kwargs):
         # Like the real function: one authorization batch holds at most MAX_PHOTO_BATCH photos.
         if len(list(dict.fromkeys(ids))) > db.MAX_PHOTO_BATCH:
             raise ValueError('Load at most twelve check-in photos at once.')
         return {eid: db.download_checkin_photo(p, l, eid) for eid in ids}
     monkeypatch.setattr(db, 'download_checkin_photos', batch)
-    monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _: list(state["entries"]))
-    monkeypatch.setattr(db, "list_drink_entries", lambda _: list(state["entries"]))
+    monkeypatch.setattr(db, "list_drink_entries_for_membership", lambda _, **kwargs: list(state["entries"]))
+    monkeypatch.setattr(db, "list_drink_entries", lambda _, **kwargs: list(state["entries"]))
     monkeypatch.setattr('camera_capture.camera_photo', lambda key: state["photo"] if key.endswith("_0") else None)
     # The automatic location tracker is a browser component AppTest can't run;
     # this returns what the phone would send (None = no reading yet).
@@ -485,6 +485,9 @@ def test_new_lobby_starts_versioned_season_in_chosen_timezone(monkeypatch, test_
     monkeypatch.setattr(db,"list_memberships_for_player",lambda _, **kwargs: list(members))
     monkeypatch.setattr(db,"insert_lobby",lobbies.append)
     monkeypatch.setattr(db,"list_lobbies",lambda:list(lobbies))
+    monkeypatch.setattr(db,"list_lobbies_for_ids",lambda ids:[lobby for lobby in lobbies if lobby.id in ids])
+    monkeypatch.setattr(db,"list_seasons_for_lobbies",lambda ids:[game for game in games if game.lobby_id in ids])
+    monkeypatch.setattr(db,"list_season_transfers",lambda _:[])
     monkeypatch.setattr(db,"list_drink_entries",lambda _:[])
     monkeypatch.setattr(db,"insert_membership",members.append)
     monkeypatch.setattr(db,"list_seasons_for_lobby",lambda _:list(games))
@@ -644,7 +647,7 @@ def test_more_photos_than_one_batch_are_fetched_in_slices_of_twelve(ui,monkeypat
         for m in reversed(models)]
     sizes=[]
     monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
-    def batch(p,l,ids):
+    def batch(p,l,ids, **kwargs):
         sizes.append(len(ids))
         assert p=='player' and l=='lobby'
         if len(ids)>12:
@@ -667,7 +670,7 @@ def test_a_failed_batch_only_hides_its_own_photos_and_lost_access_stops_the_page
         entry=m,season=game,corrected_at=None,income_recipient=None,location='matched',territory=TERRITORY.name)
         for m in reversed(models)]
     monkeypatch.setattr(db,'list_checkin_photos',lambda *args:photos)
-    def flaky(p,l,ids):
+    def flaky(p,l,ids, **kwargs):
         if 'f-19' in ids:                      # the newest slice fails
             raise RuntimeError('storage unavailable')
         return {i:state['photo'].getvalue() for i in ids}
@@ -675,7 +678,7 @@ def test_a_failed_batch_only_hides_its_own_photos_and_lost_access_stops_the_page
     page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()
     assert not page.exception and any('could not be loaded' in w.value for w in page.warning)
     assert sum('base64' in h.value for h in page.get('html'))==8, 'The 8 photos of the other slice still show'
-    def revoked(p,l,ids):
+    def revoked(p,l,ids, **kwargs):
         raise PermissionError('Membership revoked')
     monkeypatch.setattr(db,'download_checkin_photos',revoked)
     page=AppTest.from_file(ROOT/'pages/6_Check_in_photos.py').run()

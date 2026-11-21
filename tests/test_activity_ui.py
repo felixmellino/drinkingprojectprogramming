@@ -142,10 +142,10 @@ def test_first_checkin_posts_three_medals_in_one_feed_row_after_reload(ui, monke
     members = [LobbyMembership(member, player, "lobby", game.starts_at)
                for member, player in (("member", "mia"), ("other", "leo"))]
     monkeypatch.setattr(db, "profile_medal_launch", lambda: START + timedelta(seconds=1))
-    monkeypatch.setattr(db, "list_memberships_for_player",
-                        lambda player, **_: [member for member in members if member.player_id == player])
-    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
-    monkeypatch.setattr(db, "list_season_transfers", lambda _: [])
+    monkeypatch.setattr(db, "list_membership_history_for_players",
+                        lambda players: list(members) if set(players) == {"mia", "leo"} else [])
+    monkeypatch.setattr(db, "list_seasons_for_lobbies", lambda _: [game])
+    monkeypatch.setattr(db, "list_transfers_for_seasons", lambda _: [])
 
     for at in (page(), page()):
         assert not at.exception
@@ -165,11 +165,13 @@ def test_previous_season_win_stays_visible_in_current_lobby_feed(ui, monkeypatch
                for member, player in (("member", "mia"), ("other", "leo"))]
     ui["entries"] = []
     monkeypatch.setattr(db, "profile_medal_launch", lambda: old_end - timedelta(hours=1))
-    monkeypatch.setattr(db, "list_memberships_for_player",
-                        lambda player, **_: [member for member in members if member.player_id == player])
-    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [current, previous])
+    monkeypatch.setattr(db, "list_membership_history_for_players",
+                        lambda players: list(members) if set(players) == {"mia", "leo"} else [])
+    monkeypatch.setattr(db, "list_seasons_for_lobbies", lambda _: [current, previous])
     monkeypatch.setattr(db, "list_drink_entries", lambda season_id: saved if season_id == previous.id else [])
-    monkeypatch.setattr(db, "list_season_transfers", lambda _: [])
+    monkeypatch.setattr(db, "list_drink_entries_for_seasons",
+                        lambda ids: saved if list(ids) == [previous.id] else [])
+    monkeypatch.setattr(db, "list_transfers_for_seasons", lambda _: [])
 
     at = page()
     assert not at.exception
