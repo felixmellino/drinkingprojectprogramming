@@ -5,6 +5,8 @@ from io import BytesIO
 from PIL import Image
 
 from core.location import point_in_polygon
+from core.models import Territory
+from core.territory_geometry import boost_candidates
 from map_markers import adjacent, area, badge_image, interior_anchor, owner_markers
 from map_ui import COLOURS
 
@@ -40,6 +42,13 @@ def test_adjacency_rejects_corner_contact_and_street_gaps():
     split = polygon(.001)
     split["coordinates"][0].insert(-1, [-9.139, 38.7105])
     assert adjacent(polygon(), split)
+
+
+def test_boost_candidates_stop_after_two_shared_borders():
+    areas = [Territory(name, name, polygon(offset))
+             for name, offset in [("a", 0), ("b", .001), ("c", .002), ("d", .003)]]
+    areas.append(Territory("corner", "corner", polygon(-.001, .001)))
+    assert boost_candidates(areas, "a") == ["a", "b", "c"]
 
 
 def test_smaller_areas_have_smaller_badges_and_large_ones_are_capped():

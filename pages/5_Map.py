@@ -5,6 +5,9 @@ Only the current lobby's season counts."""
 import streamlit as st
 from streamlit.errors import StreamlitInvalidLayoutContextError
 import base64
+from html import escape
+from math import ceil
+from time import monotonic
 from httpx import RequestError
 from postgrest.exceptions import APIError
 
@@ -15,6 +18,7 @@ import map_ui
 from profile_picture_ui import load_pictures, PICTURE_ERRORS
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
+from core.scoring_v1 import TERRITORY_MULTIPLIER, current_time
 from parallel import run_parallel
 from phone_location import current_location, track_location
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
@@ -22,6 +26,8 @@ from shared import get_territories, require_active_membership, require_login, sh
 player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
+season = st.session_state.get("_validated_season")
+boost_enabled = season is not None and (season.scoring_rules or {}).get("territory_boost") is True
 
 map_ui.load_styles()
 
@@ -110,16 +116,41 @@ def reset_map_selection():
     st.session_state["map_last_tap"] = None
 
 
-# Map and bottom card are one fragment: a tap reruns only this part (no
-# database reads or score replay), so the card switches quickly.
-@st.fragment
+def current_map_boost():
+    if not boost_enabled:
+        return None
+    context = (player_id, season_id)
+    saved_context, checked_at, active_boost = st.session_state.get("map_territory_boost", (None, 0, None))
+    polled_at = monotonic()
+    if context != saved_context or polled_at - checked_at >= 9:
+        try:
+            active_boost = db.active_territory_boost(player_id, season_id)
+        except (APIError, RequestError, PermissionError, RuntimeError):
+            active_boost = None
+        st.session_state["map_territory_boost"] = (context, polled_at, active_boost)
+    if active_boost and active_boost[0] in known:
+        territory_id, ends_at = active_boost
+        remaining = ceil((ends_at - current_time()).total_seconds())
+        if remaining > 0:
+            minutes, seconds = divmod(remaining, 60)
+            return territory_id, f"{TERRITORY_MULTIPLIER:g}x\n{minutes:02d}:{seconds:02d}"
+    return None
+
+
+initial_boost = current_map_boost()
+
+# Taps and clock ticks reuse the existing rows without replaying the scores.
+@st.fragment(run_every=(1 if initial_boost else 10) if boost_enabled else None)
 def map_and_card():
     selected_id = st.session_state.get("map_selected")
-    # The map starts on a territory picked from the list, else on you, else on Lisbon.
-    focus = st.session_state.get("map_focus") or (map_ui.ME if usable_location else "Lisbon")
+    boost = current_map_boost()
+    if bool(boost) != bool(initial_boost):
+        st.rerun()  # Switch between idle polling and the live countdown.
+    default_focus = map_ui.ME if usable_location else (boost[0] if boost else "Lisbon")
+    focus = st.session_state.get("map_focus") or default_focus
     with st.container(key="game_map"):
         tapped = map_ui.render_map(rows, location if usable_location else None, accuracy_m, focus,
-                                   pictures=pictures, selected=selected_id,
+                                   pictures=pictures, selected=selected_id, boost=boost,
                                    context=f"{lobby_id}:{season_id}:{membership_id}:{focus}:"
                                            f"{st.session_state.get('map_reset', 0)}")
     # A new tap on the map (or on empty space) changes the selection; tapping
@@ -133,6 +164,11 @@ def map_and_card():
 
     selected = next((row for row in rows if row["id"] == selected_id), None)
     with st.container(key="game_card"):
+        if boost:
+            boosted_name = next(row["name"] for row in rows if row["id"] == boost[0])
+            multiplier, time_left = boost[1].splitlines()
+            st.html(f'<span class="sr-only" role="timer">{escape(boosted_name)} '
+                    f'{multiplier} boost expires in {time_left}</span>')
         if map_ui.selection_card(selected, here):       # the grey handle closes the card
             st.session_state.pop("map_selected", None)
             reset_map_selection()

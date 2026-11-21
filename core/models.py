@@ -97,6 +97,7 @@ class DrinkEntry:
     time_bonus: int | float = 0  # excludes territory, owner income and lifetime points
     absent_member_ids: tuple[str, ...] = ()  # membership state at acceptance; retained for replay
     focus_multiplier: float | None = None  # saved 1/1.25/1.5; None supports historical records
+    territory_boost_id: str | None = None  # saved at receipt, retained through corrections
 
 
 @dataclass

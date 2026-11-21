@@ -18,6 +18,8 @@ assert.equal(order[0],'schema.sql');
   create table storage.objects(bucket_id text,name text,owner uuid);
   alter table storage.objects enable row level security;`);
  for(const file of order){
+  // The shared project can have 026 with the original Focus scoring schema.
+  if(process.env.VERIFY_LEGACY_FOCUS==='1' && file==='022_focus_complete_all_games.sql') continue;
   const sql=fs.readFileSync(file==='schema.sql'?file:'migrations/'+file,'utf8').replace('create extension if not exists pgcrypto;','');
   try{await pg.exec(sql);}catch(error){console.error('FAILED at '+file+': '+error.message);process.exit(1);}
  }
@@ -36,10 +38,11 @@ assert.equal(order[0],'schema.sql');
  // Both public API roles must be denied, even after the complete migration chain.
  const privateTables=['players','remembered_sessions','password_resets','login_attempts',
   'lobbies','lobby_memberships','seasons','drink_entries','friendships',
-  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations'];
+  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations','territory_boosts'];
  const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
   'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action',
-  'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation'];
+  'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation',
+  'accept_territory_scoring_checkin','active_territory_boost'];
  for(const fn of privateFunctions)assert(have.has(fn),'missing protected function '+fn);
  for(const role of ['anon','authenticated']){
   for(const t of privateTables){
@@ -58,6 +61,14 @@ assert.equal(order[0],'schema.sql');
   await pg.exec('reset role');
  }
  await pg.exec(fs.readFileSync('tests/lobby_invitations_postgres.sql','utf8'));
+ const focusColumn = (await pg.query("select 1 from information_schema.columns where table_schema='public' and table_name='drink_entries' and column_name='focus_multiplier'")).rows;
+ assert.equal(focusColumn.length, process.env.VERIFY_LEGACY_FOCUS==='1' ? 0 : 1);
+ await pg.exec(fs.readFileSync('tests/territory_boosts_postgres.sql','utf8'));
+ const snapshot = await pg.dumpDataDir();
+ const reopened = new PGlite({loadDataDir: snapshot});
+ const {rows} = await reopened.query('select points_awarded,owner_bonus_quarters from drink_entries where territory_boost_id is not null');
+ assert.deepEqual(rows, [{points_awarded:'1.250',owner_bonus_quarters:'1.250'}]);
+ await reopened.close();
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();
 })().catch(e=>{console.error(e);process.exit(1);});

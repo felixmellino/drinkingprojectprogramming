@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 
 from core.models import Territory
+from core.territory_geometry import boost_candidates
 from core.territories import parse_territories
 
 TERRITORY_FILE = Path(__file__).resolve().parent / "territories.geojson"
@@ -26,3 +28,9 @@ def territory_file_version(path: Path = TERRITORY_FILE) -> str:
 def load_territories(path: Path = TERRITORY_FILE) -> list[Territory]:
     with open(path, encoding="utf-8") as f:
         return parse_territories(json.load(f))
+
+
+@lru_cache(maxsize=96)
+def boost_candidate_ids(origin: str, file_version: str) -> list[str]:
+    """The file fingerprint invalidates draws when the map is edited."""
+    return boost_candidates(load_territories(), origin)

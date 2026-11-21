@@ -422,10 +422,15 @@ def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch)
     assert fresh.table and "100 ml" in next(item.value for item in fresh.text if "Wine" in item.value)
 
 
-def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
+@pytest.mark.parametrize("boost_enabled", [False, True])
+def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch, boost_enabled):
     model = replace(entry("capture", "member", "beer", "large", 0), photo_captured_at=START)
+    game = season()
+    if not boost_enabled:
+        game.scoring_rules.pop("territory_boost")
     monkeypatch.setattr(db, "list_memberships_for_player", lambda _: [type("M",(),{"id":"member","lobby_id":"lobby"})()])
-    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [season()])
+    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
+    monkeypatch.setattr("data.territory_file.boost_candidate_ids", lambda origin, _: [origin, "neighbor"])
     client = Mock()
     client.storage.get_bucket.return_value.public = False
     query = client.table.return_value.select.return_value
@@ -437,7 +442,12 @@ def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
     saved = db.save_drink_entry_photo("player","lobby",replace(model,points_awarded=999),b"clean")
     assert saved.points_awarded == 3
     name, parameters = client.rpc.call_args.args
-    assert name == "accept_scoring_checkin"
+    if boost_enabled:
+        assert name == "accept_territory_scoring_checkin"
+        assert parameters["reachable_territories"] == [model.territory_id, "neighbor"]
+    else:
+        assert name == "accept_scoring_checkin"
+        assert "reachable_territories" not in parameters
     assert parameters["selected_size"] == "large"
     assert not any("points" in key or "bonus" in key for key in parameters)
     client.table.return_value.upsert.assert_not_called()
