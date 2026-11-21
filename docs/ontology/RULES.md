@@ -526,6 +526,7 @@ verify that the selected drink type/size is accurate or that it was consumed.
 | A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
 | A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade controls; Log in offers Forgot password. |
 | A7 | Login has an optional Remember Me checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
+| A8 | Successful registration opens Lobbies with a one-time WeGoPub welcome. | Join a lobby and Create a lobby have equal prominence and open the existing forms. Dismissing the welcome or choosing either action ends it. Ordinary sign-in keeps its usual destination, including for accounts with no lobby. |
 
 Login throttling (ten attempts per account per 15 minutes) is a security
 implementation setting, not a scoring rule. Recovery requests and reset attempts

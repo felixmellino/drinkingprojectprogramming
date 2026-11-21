@@ -1,7 +1,7 @@
-"""WeGoPub entry point: log in, then open on the Map -- no rules, no DB calls.
+"""WeGoPub entry point: returning players open on the Map.
 
-Actual login/account creation lives in account_ui.py, to keep this
-file small and avoid everyone colliding on it as the team adds pages.
+Account forms live in account_ui.py. Successful registration goes directly
+to Lobbies during sign-in.
 """
 
 import streamlit as st
