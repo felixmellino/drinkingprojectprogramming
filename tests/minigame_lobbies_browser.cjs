@@ -6,6 +6,23 @@ const {chromium} = require(path.resolve(process.argv[2]));
 const output = path.resolve('.venv/minigame-previews');
 fs.mkdirSync(output, {recursive: true});
 
+async function checkSpacing(page) {
+  const gaps = await page.evaluate(() => {
+    const tags = document.querySelector('.duel-tags').getBoundingClientRect();
+    const setup = document.querySelector('[class*="st-key-duel_setup_"]').getBoundingClientRect();
+    const heading = document.querySelector('.duel-setup-heading').getBoundingClientRect();
+    const firstField = document.querySelector('[class*="st-key-duel_setup_"] [data-testid="stRadio"]').getBoundingClientRect();
+    const guide = document.querySelector('.duel-guide').getBoundingClientRect();
+    const rules = document.querySelector('[data-testid="stExpander"]').getBoundingClientRect();
+    return {tagsToCard: setup.top - tags.bottom, headingToField: firstField.top - heading.bottom,
+      cardToGuide: guide.top - setup.bottom, guideToRules: rules.top - guide.bottom};
+  });
+  for (const [name, gap] of Object.entries(gaps)) {
+    const minimum = name === 'tagsToCard' || name === 'guideToRules' ? 31 : 11;
+    assert(gap >= minimum, `${name} needs at least ${minimum}px, got ${gap}px`);
+  }
+}
+
 (async () => {
   const launch = {headless: true};
   if (process.env.MINIGAME_BROWSER_CHANNEL) launch.channel = process.env.MINIGAME_BROWSER_CHANNEL;
@@ -17,8 +34,12 @@ fs.mkdirSync(output, {recursive: true});
         const page = await browser.newPage({viewport: {width: 390, height: 844}});
         await page.goto(`http://127.0.0.1:8790/?game=${game}&dark=${dark ? 1 : 0}`);
         await page.getByRole('button', {name: 'Challenge', exact: true}).waitFor();
+        await page.getByRole('radio', {name: 'Jamie', exact: true}).waitFor();
+        if (game === 'chug_duel') await page.getByRole('radio', {name: 'Large', exact: true}).waitFor();
+        if (game === 'reaction' || game === 'quiz') await page.getByRole('radio', {name: '10', exact: true}).waitFor();
         await page.locator('.duel-guide').waitFor();
         await page.evaluate(() => document.fonts.ready);
+        await checkSpacing(page);
         assert.equal(await page.locator('.duel-guide li').count(), 3);
         assert.equal(await page.getByText('Recent matches', {exact: true}).count(), 1);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -44,6 +65,7 @@ fs.mkdirSync(output, {recursive: true});
         await page.screenshot({path: path.join(output, `${game}-${dark ? 'dark' : 'light'}-guide.png`), animations: 'disabled'});
         await page.setViewportSize({width: 1280, height: 900});
         await page.locator('[data-testid="stMain"]').evaluate(el => el.scrollTo(0, 0));
+        await checkSpacing(page);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await page.screenshot({path: path.join(output, `${game}-${dark ? 'dark' : 'light'}-desktop.png`), fullPage: true, animations: 'disabled'});
         await page.close();
@@ -98,7 +120,7 @@ fs.mkdirSync(output, {recursive: true});
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
     await page.close();
-    console.log('PASS: all four lobbies, mobile/desktop, light/dark, empty histories; Time Duel Ready/Start/Stop and hidden timer.');
+    console.log('PASS: all four lobbies, mobile/desktop spacing, light/dark, empty histories; Time Duel Ready/Start/Stop and hidden timer.');
   } finally {
     await browser.close();
   }
