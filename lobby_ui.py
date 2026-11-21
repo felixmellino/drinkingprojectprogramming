@@ -23,7 +23,7 @@ from parallel import run_parallel
 from core.lobbies import lobby_creator
 from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
-from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog, welcome_dialog
 from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
 import standings_ui
 
@@ -136,7 +136,9 @@ def show_overview_actions(player_id):
             dismiss_members()
             st.session_state['_lobby_dialog'] = 'join'
 
-    if st.session_state.get('_lobby_dialog') == 'create':
+    if st.session_state.get('_lobby_dialog') == 'welcome':
+        welcome_dialog()
+    elif st.session_state.get('_lobby_dialog') == 'create':
         create_dialog(player_id)
     elif st.session_state.get('_lobby_dialog') == 'join':
         join_dialog(player_id)

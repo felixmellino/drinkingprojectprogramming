@@ -85,7 +85,7 @@ def show_accounts():
                 try:
                     player = create_player(username, first, last, email, password, confirmation, db.list_players())
                     db.insert_player(player)
-                    finish_login(player)
+                    finish_login(player, new_account=True)
                 except (ValueError, APIError, RuntimeError, OSError, RequestError) as exc:
                     show_error(exc)
 

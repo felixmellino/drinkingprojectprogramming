@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from streamlit.proto.WidgetStates_pb2 import WidgetStates
 from streamlit.testing.v1 import AppTest
 
 from core.lobbies import create_player
@@ -59,16 +60,23 @@ def test_first_visit_and_direct_game_page_require_account():
         assert not any(button.label == "Create lobby" for button in at.button)
 
 
-def test_registration_login_logout_and_progress_identity():
+@pytest.mark.parametrize("welcome_action, next_field", [
+    ("welcome_join_lobby", "Invite code"),
+    ("welcome_create_lobby", "Lobby name"),
+    (None, None),
+])
+def test_registration_login_logout_and_progress_identity(welcome_action, next_field):
     players = []
     with patch("data.db.list_players", side_effect=lambda: players), \
          patch("data.db._login_player_by_email", side_effect=lambda email: next(
              (p for p in players if p.email == email), None)), \
          patch("data.db.insert_player", side_effect=players.append), \
-         patch("data.db.get_player", side_effect=lambda pid: next((p for p in players if p.id == pid), None)):
+         patch("data.db.get_player", side_effect=lambda pid: next((p for p in players if p.id == pid), None)), \
+         patch("data.db.list_memberships_for_player", return_value=[]), \
+         patch("data.db.pending_lobby_invitations", return_value=[]):
         # Cold imports plus real password hashing can exceed AppTest's 3 s
         # default on Windows with branch coverage; these are functional checks.
-        at = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"), default_timeout=10)).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"), default_timeout=10)).run()
         for label, value in [("First name", "Mia"), ("Surname", "Silva"), ("Username", "mia"),
                              ("Email", "MIA@example.com"), ("Password", "password8"), ("Confirm password", "password8")]:
             fill(at, label, value)
@@ -76,15 +84,36 @@ def test_registration_login_logout_and_progress_identity():
         assert not at.exception
         pid = at.session_state["player_id"]
         assert players[0].id == pid
+        assert at.title[0].value == "Lobby"
+        assert at.button(key="welcome_join_lobby").proto.type == "primary"
+        assert at.button(key="welcome_create_lobby").proto.type == "primary"
+        at.switch_page("pages/2_Lobby.py")
+        if welcome_action is None:
+            # AppTest has no close-button helper. Send the native dialog dismiss event.
+            dialog, = at.get("dialog")
+            event = WidgetStates()
+            event.widgets.add(id=dialog.proto.dialog.id, trigger_value=True)
+            at._run(event)
+        else:
+            at.button(key=welcome_action).click().run()
+            assert not at.exception
+            assert any(field.label == next_field for field in at.text_input)
+            form(at, "Cancel").click().run()
+        assert not at.exception
+        assert not any(button.key == "welcome_join_lobby" for button in at.button)
+        assert at.button(key="open_join_lobby")
+        at.switch_page("pages/1_Profile.py").run()
         form(at, "Log out").click().run()
         # New Streamlit process/session still signs into the stored player ID.
-        at = _past_start(AppTest.from_file(str(ROOT / "pages/1_Profile.py"))).run()
+        at = _past_start(AppTest.from_file(str(ROOT / "app.py"), default_timeout=10)).run()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(" MIA@EXAMPLE.COM ")
         at.text_input(key="login_password").input("password8")
         form(at, "Log in").click().run()
         assert not at.exception
         assert at.session_state["player_id"] == pid
+        assert "_lobby_dialog" not in at.session_state
+        assert any("Choose a lobby on the Lobby page to continue." == info.value for info in at.info)
 
 
 def test_invalid_registration_creates_nothing():
@@ -94,6 +123,7 @@ def test_invalid_registration_creates_nothing():
         assert at.error
         insert.assert_not_called()
         assert "player_id" not in at.session_state
+        assert "_lobby_dialog" not in at.session_state
 
 
 @pytest.mark.parametrize("path", ["app.py", "pages/1_Profile.py", "pages/2_Lobby.py"])

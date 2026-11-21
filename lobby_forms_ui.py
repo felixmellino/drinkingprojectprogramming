@@ -17,6 +17,18 @@ def dismiss_dialog():
     st.session_state.pop('_lobby_dialog', None)
 
 
+@st.dialog('Welcome to WeGoPub!', on_dismiss=dismiss_dialog)
+def welcome_dialog():
+    st.write('Join a lobby with an invite code, or create one and invite your friends.')
+    join, create = st.columns(2)
+    if join.button('Join a lobby', key='welcome_join_lobby', type='primary', width='stretch'):
+        st.session_state['_lobby_dialog'] = 'join'
+        st.rerun()
+    if create.button('Create a lobby', key='welcome_create_lobby', type='primary', width='stretch'):
+        st.session_state['_lobby_dialog'] = 'create'
+        st.rerun()
+
+
 def open_joined_lobby(lobby_id, message, *, make_current):
     dismiss_dialog()
     st.session_state['_opened_lobby_id'] = lobby_id
