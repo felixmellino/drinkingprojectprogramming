@@ -8,7 +8,7 @@ player = require_login()
 member, lobby_id, season_id = require_active_membership()
 try:
     season = selected_season(lobby_id, season_id)
-    lobby = next((l for l in db.list_lobbies() if l.id == lobby_id), None)
+    lobby = db.get_lobby(lobby_id)
     if not season or not lobby:
         st.info("Choose a lobby and season on the Lobby page.")
         lobby_button()

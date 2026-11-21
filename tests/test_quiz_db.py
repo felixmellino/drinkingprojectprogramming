@@ -44,6 +44,6 @@ def test_missing_migration_has_clear_setup_message(client):
 
 
 def test_transfers_do_not_hide_unexpected_database_failures(client):
-    client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.side_effect=APIError(
+    client.table.return_value.select.return_value.in_.return_value.order.return_value.order.return_value.range.return_value.execute.side_effect=APIError(
         dict(code='XX000',message='failure',details='',hint=''))
     with pytest.raises(APIError):db.list_season_transfers('s')

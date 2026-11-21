@@ -67,3 +67,21 @@ def prepare_checkin_photo(camera_bytes: bytes) -> tuple[tuple[float, float] | No
     except (OSError, ValueError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning) as error:
         raise InvalidCheckinPhoto("Take a new photo. This image could not be read.") from error
     return gps, output.getvalue()
+
+
+def photo_thumbnail(photo: bytes | None) -> bytes | None:
+    """Small display-only JPEG; the stored original and detail view stay intact."""
+    if photo is None:
+        return None
+    try:
+        with Image.open(BytesIO(photo), formats=('JPEG',)) as image:
+            if image.width * image.height > MAX_PHOTO_PIXELS:
+                return None
+            if image.width <= 360 and image.height <= 480:
+                return photo
+            image.thumbnail((360, 480))
+            output = BytesIO()
+            image.convert('RGB').save(output, 'JPEG', quality=80, optimize=True)
+            return output.getvalue()
+    except (OSError, ValueError, Image.DecompressionBombError):
+        return None

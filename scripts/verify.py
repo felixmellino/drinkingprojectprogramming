@@ -13,7 +13,7 @@ import sys
 from time import monotonic
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPONENTS = ("camera_component", "location_component", "reaction_component")
+COMPONENTS = ("camera_component", "location_component", "reaction_component", "theme_component")
 DATABASE = (
     "migration_chain", "scoring_postgres", "chug_duel_postgres",
     "quiz_postgres", "focus_postgres", "focus_complete_postgres",

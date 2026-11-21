@@ -18,7 +18,7 @@ from streamlit.testing.v1 import AppTest
 def main():
     fixture=Path(__file__).resolve().parents[1]/'tests/fixtures/performance_app.py'
     report={}
-    for route in ('profile','lobby','check_in_photos','standings','map'):
+    for route in ('profile','lobby','check_in_photos','standings','map','check_in','minigames','activity'):
         page=AppTest.from_file(fixture,default_timeout=15)
         page.query_params['qa_page']=route
         start=perf_counter()

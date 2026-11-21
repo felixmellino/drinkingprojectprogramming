@@ -8,9 +8,11 @@ for writes and email delivery. Timings are from this machine, not Cloud internal
 import argparse
 from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
+from math import asinh, radians, tan
 from pathlib import Path
+import re
 from statistics import median
 import sys
 from threading import Lock
@@ -95,16 +97,41 @@ def main():
             measure('Membership and season',lambda:db.membership_context(pid,m['id'],lid,sid))
             measure('Public username directory',db.list_public_usernames)
             measure('Lobby directory',db.list_lobbies)
+            measure('Selected lobby only',lambda:db.get_lobby(lid))
             measure('Season history',lambda:db.list_drink_entries(sid))
+            measure('Full member drink history',lambda:db.list_drink_entries_for_membership(m['id']))
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+            measure('Recent check-in window',lambda:db.list_drink_entries_for_membership(m['id'], since=cutoff))
             measure('Season stake ledger',lambda:db.list_season_transfers(sid))
             measure('Invitation badge',lambda:db.pending_minigame_invite_count(pid,sid))
+            measure('Per-game invitation counters',lambda:db.pending_minigame_invites(pid,sid))
+            measure('Chug Duel history',lambda:db.list_chug_duels(pid,sid))
+            from parallel import run_parallel
+            from data.profile_history import load_stat_history
+            active_counts = Counter(member['player_id'] for member in candidates)
+            history_player = active_counts.most_common(1)[0][0]
+            lobby_ids = list(dict.fromkeys(member.lobby_id for member in
+                                          db.list_memberships_for_player(history_player, include_left=True)))
+
+            def previous_history():
+                groups = run_parallel(*(lambda lid=lid: db.list_seasons_for_lobby(lid) for lid in lobby_ids))
+                seasons = [season for group in groups for season in group]
+                reads = run_parallel(*(lambda s=s: db.list_drink_entries(s.id) for s in seasons),
+                                     *(lambda s=s: db.list_season_transfers(s.id) for s in seasons))
+                return [(s, reads[i], reads[i + len(seasons)]) for i, s in enumerate(seasons)]
+
+            old_history = measure('Lifetime history per lobby and season',previous_history)
+            new_history = measure('Lifetime history batched',lambda:load_stat_history(lobby_ids))
+            if old_history is not None and new_history is not None:
+                assert sorted(old_history,key=lambda row:row[0].id) == sorted(new_history,key=lambda row:row[0].id)
+                report['history_sample'] = {'lobbies': len(lobby_ids), 'seasons': len(new_history),
+                                            'identical_results': True}
             photos=measure('Photo history metadata',lambda:db.list_checkin_photos(pid,lid))
             measure('Photo bucket metadata',db._private_photo_bucket)
             if photos:
                 chosen=next((p for p in photos if p['has_photo']),None)
                 if chosen:
                     measure('Authorized photo download',lambda:len(db.download_checkin_photo(pid,lid,chosen['id']) or b''),3)
-                from parallel import run_parallel
                 visible=[p['id'] for p in photos[:12]]
                 measure('Visible gallery individual downloads',lambda:run_parallel(
                     *[lambda eid=eid:len(db.download_checkin_photo(pid,lid,eid) or b'') for eid in visible]),3)
@@ -112,11 +139,17 @@ def main():
                     downloaded=measure('Visible gallery batched downloads',lambda:db.download_checkin_photos(pid,lid,visible),3)
                     if downloaded:
                         report['gallery_result']={'requested':len(visible),'available':sum(raw is not None for raw in downloaded.values())}
-                        from photo_history_ui import photo_thumbnail
+                        from core.checkin_photo import photo_thumbnail
                         full=next((raw for raw in downloaded.values() if raw),None)
                         if full:
                             small=photo_thumbnail(full)
                             report['media_sample']={'original_bytes':len(full),'thumbnail_bytes':len(small or b'')}
+                    thumbnails = measure('Visible gallery cold previews', lambda:db.download_checkin_photos(
+                        pid,lid,visible,cached_thumbnails={}),3)
+                    if thumbnails:
+                        cache = {eid: raw for eid, raw in thumbnails.items() if raw is not None}
+                        measure('Visible gallery warm previews', lambda:db.download_checkin_photos(
+                            pid,lid,visible,cached_thumbnails=cache),3)
             measure('Own profile picture',lambda:len(db.download_profile_picture(pid,player.pin_hash,pid) or b''),3)
             report['dataset']={'selected_season_entries':counts[sid],'visible_photos':len(photos or []),
                                'current_memberships_sampled':len(candidates)}
@@ -133,10 +166,29 @@ def main():
                     report['operations'][label]['http_status']=response.status_code
                     if label=='CARTO map style' and response.status_code==200:
                         style=response.json()
-                        source=next((s.get('url') for s in style.get('sources',{}).values() if s.get('url')),None)
+                        source=next((s['url'] for s in style.get('sources',{}).values()
+                                     if s.get('url','').startswith('https://')),None)
                         if source:
                             tiles=measure('CARTO tile manifest',lambda:client.get(source),3)
-                            report['operations']['CARTO tile manifest']['http_status']=tiles.status_code
+                            if tiles is not None:
+                                report['operations']['CARTO tile manifest']['http_status']=tiles.status_code
+                        template = next((url for item in style.get('sources', {}).values()
+                                         for url in item.get('tiles', []) if url.startswith('https://')), None)
+                        if template:
+                            zoom, lat, lon = 13, 38.72, -9.14  # Lisbon, never a player's location.
+                            scale = 2 ** zoom
+                            x = int((lon + 180) / 360 * scale)
+                            y = int((1 - asinh(tan(radians(lat))) / radians(180)) / 2 * scale)
+                            tile_url = template.replace('{z}', str(zoom)).replace('{x}', str(x)).replace('{y}', str(y))
+                            tile = measure('CARTO Lisbon vector tile', lambda: client.get(tile_url), 3)
+                            if tile is not None:
+                                report['operations']['CARTO Lisbon vector tile']['http_status'] = tile.status_code
+                    if label == 'Google Fonts CSS' and response.status_code == 200:
+                        urls = re.findall(r'url\((https://fonts\.gstatic\.com/[^)]+)\)', response.text)
+                        if urls:
+                            font = measure('Google Fonts font file', lambda: client.get(urls[-1]), 3)
+                            if font is not None:
+                                report['operations']['Google Fonts font file']['http_status'] = font.status_code
     report['notes'] += ['No writes, email sends or permission changes performed.',
         'Five warm operation samples unless stated otherwise; this is not a phone or deployed WebSocket benchmark.',
         'Brevo 401 only verifies reachability; email delivery must be tested with mocked transport or a separately approved recipient.']

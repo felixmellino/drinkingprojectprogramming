@@ -82,13 +82,23 @@ def _game_tile(key, art, title, line, *, invites=0, alert=False, playable=True, 
 COMING_SOON = [(f"soon_{n}", "coming-soon", "New game") for n in (1, 2)]
 
 
-def _game_cards(player, season, member, duels, *, service_available=True):
+def _game_invites(player, season_id):
+    try:
+        return db.pending_minigame_invites(player, season_id)
+    except SERVICE_ERRORS:
+        return {}  # The next refresh retries. Players can still open each game.
+
+
+def _chug_status(player, season_id):
+    try:
+        return db.list_chug_duels(player, season_id), None
+    except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+        return [], error
+
+
+def _game_cards(member, duels, invites, *, service_available=True):
     """Six colourful tiles (3 rows of 2): the playable games first, then what is coming.
     The Reaction Duel replaced the solo Reaction Test (Focus Challenge) on 19 November 2026."""
-    try:
-        invites = db.pending_minigame_invites(player, season.id)
-    except SERVICE_ERRORS:
-        invites = {}  # The next refresh retries. Players can still open each game.
     active = any(d['status'] in {'accepted', 'started'}
                  or (d['status'] == 'invited' and d['challenger_id'] == member) for d in duels)
     if not service_available:
@@ -240,6 +250,8 @@ def render_minigames(player, member, lobby, season):
         st.session_state.pop('focus_start_request', None)
         st.session_state.pop('quiz_focused_id', None)
         st.session_state.pop('quiz_invitation_id', None)
+        st.session_state.pop('reaction_focused_id', None)
+        st.session_state.pop('reaction_invitation_id', None)
         st.session_state.pop('time_focused_id', None)
         st.session_state.pop('time_invitation_id', None)
         st.session_state.pop('time_invitation_target', None)
@@ -271,14 +283,21 @@ def render_minigames(player, member, lobby, season):
         if st.session_state.get('minigame_selected') == 'reaction':
             render_reaction(player, member, lobby, season, members, labels)
             return
-        try:
-            duels = db.list_chug_duels(player, season.id)
-        except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-            if st.session_state.get('minigame_selected') == 'chug_duel':
+        chug_open = st.session_state.get('minigame_selected') == 'chug_duel'
+        if chug_open:
+            duels, error = _chug_status(player, season.id)
+            invites = {}
+        else:
+            (duels, error), invites = run_parallel(
+                lambda: _chug_status(player, season.id),
+                lambda: _game_invites(player, season.id),
+            )
+        if error is not None:
+            if chug_open:
                 game_header('Chug Duel', '', 'minigames_home')
                 _error(error)
             else:
-                _game_cards(player, season, member, [], service_available=False)
+                _game_cards(member, [], invites, service_available=False)
             return
         running = next((d for d in duels if d["status"] == "started" and d["challenger_id"] == member), None)
         if running:
@@ -290,9 +309,9 @@ def render_minigames(player, member, lobby, season):
             _focused_duel(player, focused, labels)
             return
         st.session_state.pop("chug_focused_duel", None)
-        if st.session_state.get('minigame_selected') != 'chug_duel':
+        if not chug_open:
             # The game list; an opened game replaces it, like a page on a phone.
-            _game_cards(player, season, member, duels)
+            _game_cards(member, duels, invites)
             return
         game_header('Chug Duel', '', 'minigames_home')
         track_location()

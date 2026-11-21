@@ -94,7 +94,7 @@ def test_membership_query_scopes_actor_member_lobby_and_embedded_season(monkeypa
     monkeypatch.setattr(db, 'get_client', lambda: client)
     member, selected = db.membership_context('player', 'member', 'lobby', 'season')
     assert member.team_id == 'team' and selected.id == 'season'
-    assert [c.args for c in query.eq.call_args_list] == [('id','member'),('player_id','player'),('lobby_id','lobby')]
+    assert [c.args for c in query.eq.call_args_list] == [('id','member'),('player_id','player'),('lobby_id','lobby'), ('lobbies.seasons.id','season')]
     query.execute.assert_called_once()
     assert db.membership_context('player', 'member', 'lobby', 'foreign-season')[1] is None
     query.execute.return_value = SimpleNamespace(data=[])

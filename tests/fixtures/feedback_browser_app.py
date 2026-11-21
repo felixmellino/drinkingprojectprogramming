@@ -41,7 +41,7 @@ photo.file_id = "synthetic-feedback-photo"
 saved = st.session_state.setdefault("qa_entries", [])
 
 db.get_client = lambda: (_ for _ in ()).throw(RuntimeError("Shared database disabled in feedback QA"))
-db.list_drink_entries_for_membership = lambda _: list(saved)
+db.list_drink_entries_for_membership = lambda _, **kwargs: list(saved)
 db.list_drink_entries = lambda _: list(saved)
 db.list_seasons_for_lobby = lambda _: [game]
 db.time_status = lambda *_: {"boost_ends_at": None}

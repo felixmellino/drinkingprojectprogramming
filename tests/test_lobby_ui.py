@@ -35,6 +35,8 @@ def ui(monkeypatch):
     monkeypatch.setattr('shared.show_logged_in_as', lambda: None)
     monkeypatch.setattr(db, 'list_memberships_for_player', lambda _, **kwargs: state['members'])
     monkeypatch.setattr(db, 'list_lobbies', lambda: state['lobbies'])
+    monkeypatch.setattr(db, 'list_lobbies_for_ids', lambda ids: [l for l in state['lobbies'] if l.id in ids])
+    monkeypatch.setattr(db, 'list_seasons_for_lobbies', lambda ids: [s for lid in ids for s in state['seasons'].get(lid, [])])
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))

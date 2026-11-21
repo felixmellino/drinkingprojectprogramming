@@ -7,7 +7,7 @@ The location is followed automatically while the page is open
 
 from base64 import b64encode
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 from uuid import uuid4
@@ -26,7 +26,7 @@ from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, cooldown_deadline,
     create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
-from core.constants import MAX_GPS_ACCURACY_M
+from core.constants import DUPLICATE_WINDOW_SECONDS, MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from drink_entry_ui import gate_card_html, page_header, reward_card_html, show_cooldown
 from phone_location import current_location, track_location
@@ -49,15 +49,6 @@ if team_mode and not competitor_id:
     st.info("Open this lobby on the Lobby page and join a team before checking in.")
     lobby_button()
     st.stop()
-try:
-    recent_entries = db.list_drink_entries_for_membership(membership_id)
-except (APIError, RequestError, RuntimeError, OSError):
-    st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
-    st.stop()
-track_location()
-now = current_time()
-
-
 def reset_camera():
     """Forget an unsaved capture; a new component key opens a fresh stream."""
     for key in ('checkin_pending_photo', 'checkin_capture', 'checkin_posted', 'checkin_saved_result',
@@ -74,6 +65,13 @@ def finish_checkin(entry):
     st.rerun()
 
 
+def read_recent_entries(at, capture_id=None):
+    window = rules["cooldown_seconds"] if modern else DUPLICATE_WINDOW_SECONDS
+    return db.list_drink_entries_for_membership(
+        membership_id, since=utc(at) - timedelta(seconds=window), capture_id=capture_id,
+    )
+
+
 context = (player_id, membership_id, season_id)
 if st.session_state.get('checkin_context') != context:
     reset_camera()
@@ -82,11 +80,22 @@ if st.session_state.pop('checkin_open_camera', False):
     reset_camera()
 photo_number = st.session_state.get('checkin_photo_number', 0)
 photo = st.session_state.get('checkin_pending_photo')
+capture = st.session_state.get('checkin_capture')
 
 # Check the window and the cooldown before the camera opens, so nobody takes
 # a photo that can't count. A photo already taken keeps the warnings below.
+now = current_time()
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
 closed = period_closed or (modern and not scoring_open(now, season))
+if (not closed or photo is not None) and not st.session_state.get('checkin_posted'):
+    track_location()
+recent_entries = []
+if not st.session_state.get('checkin_posted') and (capture or (modern and not closed)):
+    try:
+        recent_entries = read_recent_entries(now, capture[1] if capture else None)
+    except (APIError, RequestError, RuntimeError, OSError):
+        st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
+        st.stop()
 deadline = cooldown_deadline(membership_id, recent_entries, rules["cooldown_seconds"]) if modern else None
 waiting = deadline is not None and utc(now) < deadline
 if photo is None and not st.session_state.get('checkin_posted'):
@@ -198,7 +207,6 @@ if closed:
         st.warning(f"This season starts {local_start:%d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     else:
         st.warning("This season has ended. Create or join a new lobby on the Lobbies page and make it current to play again.")
-capture = st.session_state.get('checkin_capture')
 with st.container(key='checkin_photo'):
     # The photo fills all the space the controls leave free; Retake is a small round button on it.
     # Keep the preview inside the authenticated session, not a public media URL.
@@ -306,7 +314,7 @@ if action_button("Submit", type="primary", width="stretch", disabled=waiting, pr
     _, capture_id, captured_at = capture
 
     try:
-        recent_entries = db.list_drink_entries_for_membership(membership_id)
+        recent_entries = read_recent_entries(submitted_at, capture_id)
         entry = next((saved for saved in recent_entries if saved.id == capture_id), None)
         if entry is None:
             _photo_gps, clean_photo = prepare_checkin_photo(photo.getvalue())  # photo GPS is not used (R-L01)

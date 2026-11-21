@@ -22,20 +22,31 @@ def load_more(count):
     st.session_state["activity_shown"] = count + STEP
 
 
+def medal_launch():
+    try:
+        return db.profile_medal_launch(), False
+    except (APIError, RequestError, RuntimeError, OSError):
+        return None, True
+
+
 player_id = require_login()
 show_logged_in_as()
 membership_id, lobby_id, season_id = require_active_membership()
 season = st.session_state.get("_validated_season")
+scope = (player_id, lobby_id, season_id)
+if st.session_state.get("activity_scope") != scope:
+    st.session_state["activity_scope"] = scope
+    st.session_state["activity_shown"] = STEP
 
 page_header("Activity", st.session_state.get("current_lobby_name", ""))
 activity_ui.load_styles()
 activity_ui.view_switch("Feed")
 
 try:
-    entries, memberships, players = run_parallel(
+    entries, memberships, players, (launched_at, medals_unavailable) = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_public_usernames)
+        db.list_public_usernames, medal_launch)
     team_mode = st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries)
     teams = db.list_lobby_teams(player_id, lobby_id) if team_mode else []
 except (APIError, RequestError, RuntimeError, PermissionError):
@@ -50,18 +61,15 @@ except (APIError, RequestError, RuntimeError):
 now = current_time()
 events = activity_events(entries)
 try:
-    launched_at = db.profile_medal_launch()
     if launched_at is not None and launched_at <= now and memberships:
-        members_by_player = run_parallel(*(
-            lambda pid=pid: db.list_memberships_for_player(pid, include_left=True)
-            for pid in dict.fromkeys(member.player_id for member in memberships)
-        ))
-        all_members = [member for group in members_by_player for member in group]
+        all_members = db.list_membership_history_for_players(member.player_id for member in memberships)
         history = load_stat_history((member.lobby_id for member in all_members),
                                     known_entries={season_id: entries})
         events = with_promotions(events, lobby_promotions(lobby_id, all_members, history,
                                                            launched_at=launched_at, now=now))
-except (APIError, RequestError, RuntimeError, PermissionError):
+except (APIError, RequestError, RuntimeError, OSError):
+    medals_unavailable = True
+if medals_unavailable:
     st.warning("Medal promotions are temporarily unavailable.")
 if not events:
     empty_state("activity", "list-bullets", "No activity yet",

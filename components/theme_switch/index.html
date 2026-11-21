@@ -25,7 +25,7 @@ body{padding:2px 2px 12px}
 <button id="switch" role="switch" aria-checked="false" aria-label="Dark mode"></button></div>
 <script>
 // Dark mode on/off, remembered in this browser (same idea as the Location switch).
-//  * mode="reader": invisible; tells the page the saved choice ("dark" / "light", or null if never set).
+//  * mode="reader": invisible; tells the page about a saved "dark" or "light" choice.
 //  * mode="switch": the visible switch in Profile; a tap saves the choice and tells the page.
 const KEY = "wegopub-theme";
 const $ = id => document.getElementById(id);
@@ -54,7 +54,9 @@ window.addEventListener("message", event => {
     });
   } else {
     send("streamlit:setFrameHeight", {height: 0});
-    sendValue(saved());
+    // Light is already the default. An unset preference needs no app rerun.
+    const choice = saved();
+    if (choice === "dark" || choice === "light") sendValue(choice);
   }
 });
 send("streamlit:componentReady", {apiVersion: 1});

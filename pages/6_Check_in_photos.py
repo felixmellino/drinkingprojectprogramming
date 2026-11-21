@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -17,7 +18,7 @@ from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import page_header, section_heading
-from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata, photo_thumbnail
+from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata
 from shared import require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
 
@@ -34,6 +35,8 @@ def show_time(timestamp: str, zone_name: str) -> str:
 
 
 STEP = 24  # photos shown at first and added by each "Load more"
+THUMBNAIL_TTL = 45
+THUMBNAIL_LIMIT = 48
 
 
 def load_more(count):
@@ -55,6 +58,7 @@ _, lobby_id, _ = require_active_membership()
 page_header("Activity")
 activity_ui.view_switch("Photos")  # Feed | Photos: this gallery is a view of the Activity tab
 if st.session_state.pop("photo_deleted", False):
+    st.session_state.pop("_gallery_thumbnails", None)
     st.success("Photo deleted. Your score is unchanged.")
 if st.session_state.pop("checkin_corrected", False):
     st.success("Correction saved. Ownership and all affected owner income have been recalculated.")
@@ -99,21 +103,37 @@ if len(entries) > 1 and detail_id is None:
 
     visible = [item for _, _, items in visible_nights for item in items]
     ids = [item['id'] for item in visible]
-    photos = {}
+    scope = (player_id, lobby_id)
+    previous_scope, cache = st.session_state.get("_gallery_thumbnails", (None, {}))
+    now = monotonic()
+    cache = {entry_id: (fetched_at, image) for entry_id, (fetched_at, image) in cache.items()
+             if previous_scope == scope and now - fetched_at < THUMBNAIL_TTL
+             and entries_by_id.get(entry_id, {}).get("has_photo")}
+    thumbnails = {entry_id: image for entry_id, (_, image) in cache.items()}
+    photos = dict.fromkeys(ids)
     try:
         # The list can hold more photos than one authorization batch allows: every slice of at most
         # MAX_PHOTO_BATCH photos gets its own fresh audience snapshot, never a cached listing.
         for start in range(0, len(ids), db.MAX_PHOTO_BATCH):
             batch = ids[start:start + db.MAX_PHOTO_BATCH]
             try:
-                originals = db.download_checkin_photos(player_id, lobby_id, batch)
-                # Decode one thumbnail at a time and drop the originals, to bound memory for large camera images.
-                photos.update({entry_id: photo_thumbnail(originals.get(entry_id)) for entry_id in batch})
+                fetched = db.download_checkin_photos(player_id, lobby_id, batch, cached_thumbnails=thumbnails)
+                photos.update(fetched)
+                for entry_id, image in fetched.items():
+                    if image is None:
+                        cache.pop(entry_id, None)
+                    elif entry_id not in cache:
+                        cache[entry_id] = (now, image)
             except (APIError, RequestError, RuntimeError, StorageException):
-                photos.update(dict.fromkeys(batch))   # this slice failed; the others still show
+                continue  # this slice failed; the others still show
     except PermissionError:
+        st.session_state.pop("_gallery_thumbnails", None)
         st.warning("Photo access changed. Refresh to load the current photo history.")
         st.stop()
+    # Keep the newest visible previews when a player loads a very long gallery.
+    st.session_state["_gallery_thumbnails"] = (
+        scope, {entry_id: cache[entry_id] for entry_id in ids[:THUMBNAIL_LIMIT] if entry_id in cache},
+    )
     if any(photos.get(item['id']) is None and item.get('has_photo',True) for item in visible):
         st.warning('Some photos could not be loaded. Their details are still available.')
 
@@ -121,7 +141,7 @@ if len(entries) > 1 and detail_id is None:
         label = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
         st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
                     f'<span>{label}</span></div>', unsafe_allow_html=True)
-        with st.container(key=f"memory_grid_{start.date().isoformat()}"):
+        with st.container(key=f"memory_grid_{night_entries[0]['id']}"):
             for item in night_entries:
                 with st.container(key=f"memory_tile_{item['id']}"):
                     photo = photos[item['id']]
@@ -167,7 +187,7 @@ if entry.get("rule_version") == "v1":
         territory_points = model.points_awarded if model.location_check_result == "matched" else 0
         st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points and +{format_points(territory_points)} territory points")
         if model.focus_attempt_id:
-            st.caption('Focus boost ×1.5. This check-in keeps its earned multiplier after the boost ends.')
+            st.caption(f'Focus boost ×{model.focus_multiplier or 1.5:g}. This check-in keeps its earned multiplier after the boost ends.')
         if model.owner_bonus_quarters:
             income = format_points(Decimal(model.owner_bonus_quarters) / 4)
             st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")

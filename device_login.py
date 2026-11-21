@@ -24,7 +24,11 @@ def queue_storage(action: str, token: str = "") -> None:
 
 
 def sync_storage() -> str | None:
-    """Mount the browser bridge; None means its first read has not returned yet."""
+    """Read on session start and synchronize writes or clears when requested."""
+    if st.session_state.get("_remember_attempted") and "_device_command" not in st.session_state:
+        if st.session_state.get("_device_storage_blocked"):
+            st.caption("This browser blocks device storage. You can still log in for this visit.")
+        return ""
     # The iframe can outlive the server session (for example after reconnecting).
     # A constant read ID would be ignored by its lastRequest deduplication after
     # Python has lost the previous result. Keep a fresh ID for each session,
@@ -41,7 +45,8 @@ def sync_storage() -> str | None:
             st.stop()
         return None
     st.session_state.pop("_device_command", None)
-    if not result.get("available"):
+    st.session_state["_device_storage_blocked"] = not result.get("available")
+    if st.session_state["_device_storage_blocked"]:
         st.caption("This browser blocks device storage. You can still log in for this visit.")
     token = result.get("token", "")
     return token if isinstance(token, str) else ""

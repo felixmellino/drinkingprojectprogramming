@@ -18,6 +18,10 @@ def adjacent(first, second):
     different numbers of vertices in the two hand-drawn polygons.
     """
     first_ring, second_ring = projected_ring(first), projected_ring(second)
+    for first_axis, second_axis in zip(zip(*first_ring), zip(*second_ring)):
+        if (max(first_axis) + BORDER_TOLERANCE_M < min(second_axis)
+                or max(second_axis) + BORDER_TOLERANCE_M < min(first_axis)):
+            return False
     for a, b in zip(first_ring, first_ring[1:]):
         dx, dy = b[0] - a[0], b[1] - a[1]
         length = math.hypot(dx, dy)

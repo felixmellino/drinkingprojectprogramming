@@ -241,6 +241,27 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
         assert [field.label for field in fresh.text_input] == ["Search usernames"]
 
 
+def test_device_bridge_reads_once_then_remounts_only_for_queued_storage_commands():
+    def browser(**command):
+        return {"request_id": command["request_id"], "token": "", "available": True}
+
+    script = """
+import streamlit as st
+from device_login import queue_storage, sync_storage
+if st.button("Clear device"):
+    queue_storage("clear")
+if sync_storage() is not None:
+    st.session_state["_remember_attempted"] = True
+"""
+    with patch("device_login._browser_storage", side_effect=browser) as bridge:
+        at = AppTest.from_string(script).run()
+        at.run()
+        form(at, "Clear device").click().run()
+        at.run()
+        assert not at.exception
+        assert [call.kwargs["action"] for call in bridge.call_args_list] == ["read", "clear"]
+
+
 def test_unchecked_remember_does_not_create_persistent_access():
     player = create_player("mia", "Mia", "Silva", "mia@example.com", "password8", "password8", [])
     with patch("data.db._login_player_by_email", return_value=player), \

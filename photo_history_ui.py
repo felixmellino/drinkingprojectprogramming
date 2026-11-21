@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from base64 import b64encode
-from io import BytesIO
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from html import escape
@@ -10,28 +9,8 @@ from hashlib import sha256
 from zoneinfo import ZoneInfo
 
 import streamlit as st
-from PIL import Image
 
-from core.checkin_photo import MAX_PHOTO_PIXELS
 from core.scoring_v1 import DRINK_LABELS, format_points, size_label, utc, window_bounds
-
-
-def photo_thumbnail(photo: bytes | None) -> bytes | None:
-    """Small display-only JPEG; the stored original and detail view stay intact."""
-    if photo is None:
-        return None
-    try:
-        with Image.open(BytesIO(photo), formats=('JPEG',)) as image:
-            if image.width * image.height > MAX_PHOTO_PIXELS:
-                return None
-            if image.width <= 360 and image.height <= 480:
-                return photo
-            image.thumbnail((360, 480))
-            output = BytesIO()
-            image.convert('RGB').save(output, 'JPEG', quality=80, optimize=True)
-            return output.getvalue()
-    except (OSError, ValueError, Image.DecompressionBombError):
-        return None
 
 
 def _entry_time(entry: dict) -> datetime:

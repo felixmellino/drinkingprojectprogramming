@@ -8,7 +8,7 @@ from PIL import Image
 import pytest
 
 import data.db as db
-from photo_history_ui import photo_thumbnail
+from core.checkin_photo import photo_thumbnail
 from scripts.audit_app_performance import requests_trace, route
 
 
@@ -108,3 +108,40 @@ def test_audit_never_records_ids_query_values_headers_or_response_content():
     assert trace[0][0]=='Supabase Storage object' and trace[0][1]==200
     assert 'secret' not in str(trace) and 'user-id' not in str(trace)
     assert route(httpx.URL('https://project.supabase.co/rest/v1/rpc/accept_scoring_checkin?actor=id'))=='Supabase RPC: accept_scoring_checkin'
+
+
+def test_batched_history_keeps_pagination_and_bounds_each_id_filter(monkeypatch):
+    from types import SimpleNamespace
+
+    client = Mock()
+    query = client.table.return_value.select.return_value
+    selected = query.in_.return_value
+    ordered = selected.order.return_value.order.return_value
+    paged = ordered.range.return_value
+    paged.execute.side_effect = [SimpleNamespace(data=[{"id": i} for i in range(500)]),
+                                 SimpleNamespace(data=[{"id": 500}]),
+                                 SimpleNamespace(data=[{"id": 501}])]
+    monkeypatch.setattr(db, "get_client", lambda: client)
+    ids = [f"season-{i}" for i in range(51)]
+    rows = db._rows_for_ids("drink_entries", "season_id", ids + [ids[0]], "submitted_at", "id")
+
+    assert [row["id"] for row in rows] == list(range(502))
+    assert [call.args[1] for call in query.in_.call_args_list] == [ids[:50], ids[:50], ids[50:]]
+    assert [call.args for call in ordered.range.call_args_list] == [(0, 499), (500, 999), (0, 499)]
+
+
+def test_recent_checkin_query_includes_a_capture_older_than_the_cooldown(monkeypatch):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    client = Mock()
+    account = client.table.return_value.select.return_value.eq.return_value
+    recent_or_saved = account.or_.return_value
+    recent_or_saved.order.return_value.order.return_value.range.return_value.execute.return_value = (
+        SimpleNamespace(data=[])
+    )
+    monkeypatch.setattr(db, "get_client", lambda: client)
+    since = datetime(2026, 11, 21, 18, tzinfo=timezone.utc)
+    assert db.list_drink_entries_for_membership("member", since=since, capture_id="previous") == []
+    client.table.return_value.select.return_value.eq.assert_called_once_with("membership_id", "member")
+    account.or_.assert_called_once_with(f"submitted_at.gte.{since.isoformat()},id.eq.previous")
