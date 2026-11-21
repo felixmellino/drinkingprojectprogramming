@@ -91,20 +91,13 @@
 .profile-medal-face::before { content: "★"; }
 
 .profile-medal-0 {
+  --medal-light: var(--surface-raised);
+  --medal-base: color-mix(in srgb, var(--surface-raised) 86%, var(--text-muted));
   --medal-edge: var(--text-muted);
-  --medal-ribbon: var(--text-muted);
+  --medal-ribbon: color-mix(in srgb, var(--text-muted) 75%, var(--surface-raised));
   --medal-stripe: var(--surface-raised);
 }
-.profile-medal-0 .profile-medal {
-  filter: none;
-  opacity: .66;
-}
-.profile-medal-0 .profile-medal-face {
-  border-color: var(--text-muted);
-  box-shadow: none;
-  background: var(--surface-raised);
-}
-.profile-medal-0 .profile-medal-face::before { content: none; }
+.profile-medal-0 .profile-medal-face::before { content: "☆"; }
 .profile-medal-2 { --medal-light: #f7e0ce; --medal-base: #d39b79; --medal-edge: #804a37; --medal-ribbon: #a04547; }
 .profile-medal-3 { --medal-light: #eff7ff; --medal-base: #a9c0d1; --medal-edge: #42617a; --medal-ribbon: #526f96; --medal-stripe: #d8e7f4; }
 .profile-medal-4 { --medal-light: #f8f8ff; --medal-base: #c6bade; --medal-edge: #574d7c; --medal-ribbon: #71558e; --medal-stripe: #e9dbff; }
