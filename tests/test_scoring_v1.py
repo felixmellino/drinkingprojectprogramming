@@ -97,6 +97,28 @@ def test_next_opening_after_sunday_close_is_next_thursday():
     assert next_opening(START + timedelta(days=3), season()) == START + timedelta(days=7)
 
 
+def test_drink_after_midnight_counts_for_the_same_game_night():
+    """Pre-submission checklist: a drink after midnight. The window runs Thursday
+    18:00 to Sunday 18:00 lobby time, so the small hours of Friday, Saturday and
+    Sunday belong to the game night that started on Thursday."""
+    game = season()  # Europe/Lisbon, which is UTC in November
+    thursday_evening = START + timedelta(hours=4)               # Thu 22:00
+    friday_small_hours = START + timedelta(hours=6, minutes=30)  # Fri 00:30
+    sunday_small_hours = START + timedelta(days=2, hours=7, minutes=30)  # Sun 01:30
+    monday_small_hours = START + timedelta(days=3, hours=6, minutes=30)  # Mon 00:30
+    for moment in (friday_small_hours, sunday_small_hours):
+        assert scoring_open(moment, game)
+        assert window_bounds(moment, game) == window_bounds(thursday_evening, game)
+    after_midnight = create_scored_entry("A", game, "beer", "large", "photo", INSIDE, 10.0,
+                                         friday_small_hours, [TERRITORY], [], entry_id="late-night")
+    assert after_midnight.points_awarded == 3
+    # Sunday night after 18:00 is closed, so its small hours are closed too.
+    assert not scoring_open(monday_small_hours, game)
+    with pytest.raises(CheckinRejected, match="scoring_closed"):
+        create_scored_entry("A", game, "beer", "large", "photo", INSIDE, 10.0,
+                            monday_small_hours, [TERRITORY], [], entry_id="monday")
+
+
 def test_new_entry_checks_window_cooldown_and_location_and_discards_gps():
     game = season()
     accepted = create_scored_entry("A", game, "beer", "small", "photo", INSIDE, 10.0,

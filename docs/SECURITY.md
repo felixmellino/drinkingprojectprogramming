@@ -131,11 +131,23 @@ or security issue has been detected. See `PERFORMANCE.md` for test boundaries.
 
 The security review on 17 November 2026 found advisories affecting the old
 Streamlit, Pillow and pytest pins. Their replacements require Python 3.11
-or newer. Run the full test suite after installing `requirements.txt` and
+or newer. Run the full test suite after installing `requirements-verification.txt` and
 check the resolved packages with `pip-audit` before deployment.
 The updated environment audit checked 70 installed packages and reported no
 known advisories. This is a dated check; repeat it before deployment and after
 dependency changes.
+
+Check of 21 November 2026, on Python 3.11.18:
+- `pip-audit==2.10.1` over all 63 packages installed from
+  `requirements-verification.txt` reported no known vulnerabilities. Only the
+  environment's own outdated `pip` and `setuptools` were flagged; they were
+  upgraded, and CI already installs `pip==26.3`.
+- `pytest` moved from `requirements.txt` to `requirements-verification.txt`, so
+  the deployed app no longer installs test tools.
+- A scan of every commit on every branch for Supabase keys (JWT and
+  `sb_secret_`), Brevo keys and filled-in `SUPABASE_KEY`/`SMTP_PASSWORD`
+  values found none. No secrets file is tracked, and `.streamlit/secrets.toml`
+  is ignored by git.
 
 ## Team decisions and deployment verification
 

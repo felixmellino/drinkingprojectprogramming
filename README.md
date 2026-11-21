@@ -241,8 +241,11 @@ streamlit run app.py
 
 ### Run the tests
 
+The test tools are kept out of the app's own requirements, so install them once:
+
 ```bash
-pytest
+python -m pip install -r requirements-verification.txt
+python -m pytest -q
 ```
 
 The test suite covers pure logic and Streamlit forms with mocked database
