@@ -81,7 +81,8 @@ function it called, not in the page itself.
 | File / folder | What it means |
 | --- | --- |
 | `schema.sql` | The blueprint for the real database tables — run once inside Supabase to create them. |
-| `requirements.txt` | The outside tools the app needs installed (Streamlit, Supabase, Pillow, pytest). |
+| `requirements.txt` | The outside tools the deployed app needs (Streamlit, Supabase, Pillow), each pinned to one version. |
+| `requirements-verification.txt` | Those plus the test tools (pytest, coverage, psycopg); install it to run the tests. |
 | `tests/` | One file per `core/` file, same name, each proving that file's rules behave correctly. |
 | `docs/ontology/` | The actual game design, written in plain English by the team — the source of truth the code is built from. |
 | `AGENTS.md` | Course requirements, grading criteria, and the team's own workflow rules. |

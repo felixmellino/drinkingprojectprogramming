@@ -68,7 +68,7 @@ territory totals and standings change together or not at all.
 
 ## 6. Tests: what they cover and what they do not
 
-- `pytest` (about 1,100 tests, no live database): accepted, rejected and
+- `pytest` (about 1,230 tests, no live database): accepted, rejected and
   boundary cases for scoring, windows (Thursday 18:00 to Sunday 18:00), GPS
   accuracy and borders, duplicates and cooldowns, ties, duels, access checks,
   password reset and API failures (Brevo/Supabase errors are faked).
