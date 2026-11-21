@@ -300,15 +300,19 @@ and preselects the drink and size it suggests. It is only a suggestion.
 | Case | Outcome |
 | --- | --- |
 | Drink and size recognised with high or medium confidence | Both are preselected; the page says "Looks like a large beer. Change it if that's wrong." |
-| Drink sure, size unsure (or a shot) | Only the drink is preselected. |
-| Unsure drink, several drinks, or no drink visible | Nothing is preselected; the page says so. Check-in is not blocked. |
+| Low confidence in drink or size (revised 21 November 2026: always the best guess) | Claude's most likely drink and size are still preselected; the page says "Best guess: a large beer. Check it before you submit." Claude has no "unknown" answer. |
+| Several drinks visible | The drink in front is preselected; the page says so and asks the player to check. |
+| A shot, or no size given | Only the drink is preselected (a shot has no size). |
+| No drink visible | Nothing is preselected; the page says so. Check-in is not blocked. |
 | No key, timeout (12 s), API error, refusal or malformed answer | Normal form, no message. Asked once per photo, not on every rerun. |
 | More than 10 recognitions by one player in a rolling hour | The 11th photo is not sent; the page says suggestions are paused. A call exactly one hour old no longer counts. Failed calls count too. The count lives in the server process and resets on restart. |
 
 The player always confirms or changes the selection, and points come only
 from the selected drink and size (R3, SCORING_V1). The suggestion never
 blocks a check-in, never changes points, and is not anti-cheat evidence.
-Legacy seasons do not use it. Code: `core/drink_recognition.py` (rules),
+Legacy seasons do not use it. The server log records Claude's answer
+(drink, size, confidence, several drinks) without the photo or the player.
+Code: `core/drink_recognition.py` (rules),
 `drink_recognition.py` (API call), `pages/3_Check_in.py`.
 
 ## Ranking
