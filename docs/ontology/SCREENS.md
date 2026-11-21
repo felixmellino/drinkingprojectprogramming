@@ -227,12 +227,14 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 ## Bottom navigation (requested 17 November 2026)
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
-  19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
+  19 November 2026): **Map | Ranks | + Check in | Games | Activity**.
+  Activity replaced the Photos tab on 21 November 2026; the photo gallery is
+  now the Photos view inside it (see "Activity feed" below).
 - Profile and Lobbies are equally sized round icon buttons in the top-right
   corner of signed-in pages, with Lobbies directly below Profile
   (20 November 2026). The phone Map leaves room for both.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames, Photos the Photo history. The Lobbies
+  the Leaderboard, Games the Minigames, Activity the activity feed. The Lobbies
   button uses the people icon, shows a “Lobbies” tooltip, and lights up on the
   Lobby page. Hints that send a player there carry an “Open Lobbies” button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
@@ -415,9 +417,28 @@ Map owner badge update (19 November 2026, contributor request):
   or scroll to zoom). On a laptop the map stays a rounded panel with the same
   bar, chips and sheet on top.
 
+## Activity feed (21 November 2026)
+
+- The **Activity** tab (`pages/8_Activity.py`) opens with a pill switch **Feed | Photos**.
+  Feed is the selected lobby's season timeline, newest first, grouped under
+  "Game night …" headings, 30 events at a time with **Load more**.
+- Version 1 shows two kinds of event (`core/activity.py`):
+  - **Check-in**: one card per accepted drink: avatar, "Name · Drink · size",
+    the territory (or "Outside territories") and how long ago, and "+points".
+    Your own cards have a sky outline. In team lobbies the team follows the name.
+  - **Capture**: a banner directly above the drink that caused it: "Ben took
+    **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
+    territory, scarlet when you lose one, neutral when two rivals trade it.
+    Ties never capture (R-R01); team lobbies name the team.
+- Nothing is stored for the feed: it is rebuilt from the saved drink entries
+  with the same replay as Ranks and the Map, so a correction also corrects the
+  feed. Rejected or unscored entries never appear.
+- Empty: "No activity yet · The first drink of the season starts the feed." + Check in.
+- Later event kinds (achievements, duel results, joins) are planned but not built.
+
 ## Memories
 
-- Implemented as Photo history, the **Photos** tab (gallery look since 20 November
+- Implemented as Photo history, now the **Photos** view of the Activity tab (gallery look since 20 November
   2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
   grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
   2px gaps). Each tile shows the photo, the player's name and the points on a soft

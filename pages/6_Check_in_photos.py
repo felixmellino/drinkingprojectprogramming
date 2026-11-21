@@ -9,6 +9,7 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
+import activity_ui
 import data.db as db
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
@@ -49,7 +50,8 @@ player_id = require_login()
 show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
-page_header("Photos")
+page_header("Activity")
+activity_ui.view_switch("Photos")  # Feed | Photos: this gallery is a view of the Activity tab
 if st.session_state.pop("photo_deleted", False):
     st.success("Photo deleted. Your score is unchanged.")
 if st.session_state.pop("checkin_corrected", False):

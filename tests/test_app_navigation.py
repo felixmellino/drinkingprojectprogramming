@@ -11,7 +11,7 @@ from streamlit.testing.v1 import AppTest
 
 @pytest.mark.parametrize("label,target", [
     ("Map", "5_Map.py"), ("Ranks", "4_Standings.py"), ("Check in", "3_Check_in.py"),
-    ("Games", "7_Minigames.py"), ("Photos", "6_Check_in_photos.py"), ("Profile", "1_Profile.py"),
+    ("Games", "7_Minigames.py"), ("Activity", "8_Activity.py"), ("Profile", "1_Profile.py"),
     ("Lobbies", "2_Lobby.py"),
 ])
 def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, target):
@@ -20,7 +20,7 @@ def test_bottom_navigation_switches_to_the_requested_page(monkeypatch, label, ta
     at = AppTest.from_string("from app_navigation import bottom_navigation\nbottom_navigation('leaderboard')").run()
     assert not at.exception
     assert [button.label for button in at.button] == [
-        "Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos",
+        "Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Activity",
     ]
     at.session_state["player_id"] = "signed-in-player"
     next(button for button in at.button if button.label == label).click().run()
@@ -36,13 +36,13 @@ def test_check_in_plus_sits_in_the_middle_of_five_tabs():
     from app_navigation import CORNER_DESTINATIONS, DESTINATIONS
     assert len(DESTINATIONS) == 5
     assert DESTINATIONS[2][0] == "checkin"
-    assert DESTINATIONS[4][:3] == ("photos", "Photos", "pages/6_Check_in_photos.py")
+    assert DESTINATIONS[4][:3] == ("activity", "Activity", "pages/8_Activity.py")
     assert [item[0] for item in CORNER_DESTINATIONS] == ["profile", "lobby"]
     assert all(item not in DESTINATIONS for item in CORNER_DESTINATIONS)
 
 
 @pytest.mark.parametrize("page,lit", [
-    ("check_in_photos", "photos"), ("profile", "profile"), ("map", "map"), ("lobby", "lobby"),
+    ("check_in_photos", "activity"), ("activity", "activity"), ("profile", "profile"), ("map", "map"), ("lobby", "lobby"),
 ])
 def test_the_open_page_lights_up_its_navigation_button(page, lit):
     from app_navigation import ROUTES, _styles
@@ -127,7 +127,7 @@ def test_back_returns_to_the_previous_page_then_to_the_map(monkeypatch, where):
 def test_back_is_on_every_page_and_falls_back_to_the_map(monkeypatch, where):
     switch = Mock()
     monkeypatch.setattr(st, "switch_page", switch)
-    for page in ["profile", "lobby", "check_in", "standings", "check_in_photos", "minigames"]:
+    for page in ["profile", "lobby", "check_in", "standings", "check_in_photos", "activity", "minigames"]:
         where.page = page
         at = AppTest.from_string(SCRIPT).run()       # fresh session: no history yet
         assert len(back_buttons(at)) == 1, page

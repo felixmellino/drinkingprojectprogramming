@@ -321,6 +321,7 @@ project; the automated suite does not replace it.
 - `device_login.py` and `components/remember_device/` — persistent device login.
 - `phone_location.py` and `components/phone_location/` — automatic phone GPS for Check-in and Map.
 - `map_ui.py` and `pages/5_Map.py` — territory map coloured by owner.
+- `core/activity.py`, `activity_ui.py` and `pages/8_Activity.py` — the Activity tab: check-ins and territory captures, rebuilt from saved entries; Photos is a view inside it.
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.

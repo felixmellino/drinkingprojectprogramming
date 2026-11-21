@@ -188,6 +188,9 @@ class Replay:
     awards: dict[str, tuple[str | None, int | float]] = field(default_factory=dict)
     reached: dict[str, tuple[int, int]] = field(default_factory=dict)
     territory_reached: dict[str, dict[str, int]] = field(default_factory=dict)
+    # Every ownership change in replay order: (entry_id, territory_id, new_owner, previous_owner).
+    # previous_owner is None when the territory was free. Read by core/activity.py.
+    captures: list[tuple[str, str, str, str | None]] = field(default_factory=list)
 
     def season_rows(self) -> list[tuple[str, Decimal]]:
         order = sorted(self.season_quarters, key=lambda m: (-self.season_quarters[m], self.reached[m], m))
@@ -254,6 +257,8 @@ def replay_season(entries: list[DrinkEntry], transfers=()) -> Replay:
             state.territory_reached.setdefault(territory, {})[member] = index
             if owner is None or totals[member] > totals[owner]:
                 state.owners[territory] = member
+                if owner != member:
+                    state.captures.append((entry.id, territory, member, owner))
     return state
 
 
