@@ -21,6 +21,13 @@ from core.drink_recognition import (ANSWER_SCHEMA, LIMIT_REACHED, DrinkSuggestio
                                     within_limit)
 
 log = logging.getLogger(__name__)
+if not log.handlers:
+    # Streamlit Cloud shows stderr under Manage app -> Logs. Without a handler
+    # only warnings would appear there; the answer summary is logged as info.
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    log.addHandler(_handler)
+    log.setLevel(logging.INFO)
 
 MODEL = "claude-opus-5-5"
 MAX_SIDE_PX = 1024      # smaller image: fewer tokens, faster answer, still enough detail
@@ -120,4 +127,9 @@ def suggest_drink(jpeg: bytes, rules: dict | None = None, *, player_id: str, cli
     suggestion = suggestion_from_answer(answer)
     if suggestion is None:
         log.warning("Drink recognition answer did not match the expected fields.")
+    else:
+        # Only Claude's classification: no photo, no player, no key.
+        log.info("Drink recognition answer: drink=%s (%s) size=%s (%s) several=%s visible=%s",
+                 answer["drink"], answer["drink_confidence"], answer["size"], answer["size_confidence"],
+                 answer["several_drinks"], answer["drink_visible"])
     return suggestion

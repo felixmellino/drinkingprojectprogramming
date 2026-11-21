@@ -17,7 +17,7 @@ from PIL import Image
 
 import drink_recognition
 from core.drink_recognition import (ANSWER_SCHEMA, DRINKS, LIMIT_PER_HOUR, LIMIT_REACHED, LIMIT_WINDOW_SECONDS, NO_DRINK,
-                                    SIZES, UNSURE, DrinkSuggestion, prompt_for, suggestion_from_answer, within_limit)
+                                    SIZES, DrinkSuggestion, prompt_for, suggestion_from_answer, within_limit)
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, rules_for
 from tests.test_scoring_v1 import season
 
@@ -67,14 +67,31 @@ def test_shot_never_preselects_a_size():
         "shot", None, "Looks like a shot. Change it if that's wrong.")
 
 
-@pytest.mark.parametrize("changes", [{"size_confidence": "low"}, {"size": "none"}])
-def test_unsure_size_preselects_only_the_drink(changes):
-    assert suggestion_from_answer(answer(**changes)) == DrinkSuggestion("beer", None, "Looks like beer. Check the size.")
+def test_size_none_preselects_only_the_drink():
+    assert suggestion_from_answer(answer(size="none")) == DrinkSuggestion("beer", None, "Looks like beer. Check the size.")
 
 
-@pytest.mark.parametrize("changes", [{"drink_confidence": "low"}, {"several_drinks": True}, {"drink": "unknown"}])
-def test_unsure_drink_preselects_nothing(changes):
-    assert suggestion_from_answer(answer(**changes)) == DrinkSuggestion(None, None, UNSURE)
+@pytest.mark.parametrize("changes, label", [
+    ({"size_confidence": "low"}, "a large beer"),
+    ({"drink_confidence": "low"}, "a large beer"),
+    ({"drink_confidence": "low", "size_confidence": "low"}, "a large beer"),
+    ({"drink_confidence": "low", "size": "none"}, "beer"),
+])
+def test_low_confidence_still_preselects_the_best_guess(changes, label):
+    result = suggestion_from_answer(answer(**changes))
+    assert result.drink == "beer" and result.size == (None if changes.get("size") == "none" else "large")
+    assert result.message == f"Best guess: {label}. Check it before you submit."
+
+
+def test_low_size_confidence_does_not_matter_for_a_shot():
+    assert suggestion_from_answer(answer(drink="shot", size="none", size_confidence="low")).message == \
+        "Looks like a shot. Change it if that's wrong."
+
+
+def test_several_drinks_preselects_the_one_in_front():
+    assert suggestion_from_answer(answer(several_drinks=True, drink="mixed", size="medium")) == DrinkSuggestion(
+        "mixed", "medium",
+        "Several drinks in the photo. Best guess for the one in front: a medium mixed drink. Check it before you submit.")
 
 
 def test_no_drink_in_the_photo_preselects_nothing():
@@ -85,7 +102,7 @@ def test_no_drink_in_the_photo_preselects_nothing():
     None, "beer", [], {},
     {k: v for k, v in answer().items() if k != "size"},  # missing field
     {**answer(), "points": 99},                          # extra field
-    answer(drink="cider"), answer(size="huge"), answer(drink_confidence="certain"),
+    answer(drink="cider"), answer(drink="unknown"), answer(size="huge"), answer(drink_confidence="certain"),
     answer(size_confidence=None), answer(drink_visible="yes"), answer(several_drinks=1),
 ])
 def test_malformed_answer_gives_no_suggestion(bad):
@@ -95,7 +112,7 @@ def test_malformed_answer_gives_no_suggestion(bad):
 def test_schema_uses_the_scoring_rules_drinks_and_sizes():
     """Drinks and sizes come from one place: the scoring rules."""
     assert DRINKS == tuple(DRINK_LABELS) and SIZES == tuple(SIZE_LABELS)
-    assert ANSWER_SCHEMA["properties"]["drink"]["enum"] == [*DRINK_LABELS, "unknown"]
+    assert ANSWER_SCHEMA["properties"]["drink"]["enum"] == list(DRINK_LABELS), "no unknown: always a best guess"
     assert set(ANSWER_SCHEMA["required"]) == set(ANSWER_SCHEMA["properties"])
     assert ANSWER_SCHEMA["additionalProperties"] is False
 
@@ -302,3 +319,11 @@ def test_success_logs_nothing(caplog):
     with caplog.at_level("WARNING", logger="drink_recognition"):
         drink_recognition.suggest_drink(jpeg(), player_id="p1", client=FakeClient(reply(json.dumps(answer()))))
     assert caplog.text == ""
+
+
+def test_claudes_answer_is_logged_without_photo_or_player(caplog):
+    client = FakeClient(reply(json.dumps(answer(drink_confidence="low", several_drinks=True))))
+    with caplog.at_level("INFO", logger="drink_recognition"):
+        drink_recognition.suggest_drink(jpeg(), player_id="player-42", client=client)
+    assert "Drink recognition answer: drink=beer (low) size=large (high) several=True visible=True" in caplog.text
+    assert "player-42" not in caplog.text and "base64" not in caplog.text
