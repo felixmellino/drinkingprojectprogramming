@@ -24,7 +24,7 @@ from camera_capture import CameraCancelled, camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
-from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
+from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, cooldown_remaining,
     create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
@@ -150,6 +150,7 @@ if saved_result is not None:
     with st.container(key="checkin_result"):
         points, location, owner_income, *saved_ids = saved_result
         territory_name, captured, unavailable = None, False, False
+        saved = None
         if saved_ids:
             try:
                 entries = db.list_drink_entries(season_id)
@@ -167,6 +168,8 @@ if saved_result is not None:
         st.markdown(reward_card_html(format_points(points), location, territory=territory_name, captured=captured,
                                      team_mode=team_mode, owner_income=income, ownership_unavailable=unavailable),
                     unsafe_allow_html=True)
+        if saved and saved.territory_boost_id and (saved.focus_multiplier or 1) <= TERRITORY_MULTIPLIER:
+            st.caption(f"Territory boost ×{TERRITORY_MULTIPLIER:g} applied.")
 
 if st.session_state.get('checkin_posted'):
     # The one button after a check-in. (The + tab in the bar starts the next one.)

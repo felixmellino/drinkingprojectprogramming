@@ -387,6 +387,7 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         focus_multiplier=_score_number(r['focus_multiplier']) if r.get('focus_multiplier') is not None else None,
         time_duel_id=r.get('time_duel_id'), time_bonus=_score_number(r.get('time_bonus', 0)),
         absent_member_ids=tuple(r.get('absent_member_ids') or ()),
+        territory_boost_id=r.get("territory_boost_id"),
     )
 
 
@@ -464,13 +465,20 @@ def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, pho
     photo_path = _checkin_photo_path(lobby_id, entry.id)
     _private_photo_bucket().upload(photo_path, photo, {"content-type": "image/jpeg", "upsert": "true"})
     if entry.rule_version == "v1":
-        saved = _scoring_rpc("accept_scoring_checkin", {
+        params = {
             "actor_player": player_id, "capture_id": entry.id, "member_id": entry.membership_id,
             "target_season": entry.season_id, "selected_drink": entry.drink_type,
             "selected_size": entry.size, "verified_territory": entry.territory_id,
             "location_result": entry.location_check_result, "stored_photo": photo_path,
             "photo_received_at": entry.photo_captured_at.isoformat() if entry.photo_captured_at else entry.submitted_at.isoformat(),
-        })
+        }
+        rpc = "accept_scoring_checkin"
+        if entry.territory_id and (getattr(selected_season, "scoring_rules", None) or {}).get("territory_boost") is True:
+            from data.territory_file import boost_candidate_ids, territory_file_version
+
+            rpc = "accept_territory_scoring_checkin"
+            params["reachable_territories"] = boost_candidate_ids(entry.territory_id, territory_file_version())
+        saved = _scoring_rpc(rpc, params)
         return _row_to_drink_entry(saved[0])
     # Retrying the same capture uses the same object path and primary key.
     saved = table.upsert(
@@ -483,6 +491,13 @@ def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, pho
     if not saved:
         raise RuntimeError("Could not confirm the check-in was saved.")
     return _row_to_drink_entry(saved[0])
+
+
+def active_territory_boost(player_id: str, season_id: str) -> tuple[str, datetime] | None:
+    rows = _scoring_rpc("active_territory_boost", {"actor_player": player_id, "target_season": season_id})
+    if rows:
+        return rows[0]["territory_id"], datetime.fromisoformat(rows[0]["ends_at"])
+    return None
 
 
 def _lobby_photo_query(player_id: str, lobby_id: str):

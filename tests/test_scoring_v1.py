@@ -51,6 +51,17 @@ def test_frozen_snapshot_is_independent_of_new_seasons_and_mutable_defaults():
     assert new_rules()["points"]["beer"]["small"] == 1
 
 
+@pytest.mark.parametrize("focus,expected", [(None, 2.5), (1.25, 2.5), (1.5, 3)])
+def test_correction_keeps_territory_boost_without_stacking(focus, expected):
+    saved = replace(entry("boosted", "me", "beer", "large", 0), territory_boost_id="boost",
+                    focus_attempt_id="focus" if focus else None, focus_multiplier=focus,
+                    time_duel_id="time")
+    updated = corrected_entry(saved, season(), "beer", "medium", START)
+    assert updated.territory_boost_id == saved.territory_boost_id
+    assert updated.points_awarded == expected
+    assert updated.time_bonus == 0
+
+
 @pytest.mark.parametrize("offset,opened", [(-1, False), (0, True), (3600, True),
     (3 * 86400 - 1, True), (3 * 86400, False), (4 * 86400, False)])
 def test_weekly_boundaries(offset, opened):

@@ -367,6 +367,29 @@ allowed. A drink in a gap counts as outside every Territory (see R1).
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
 
+### R-T03 Random territory boost
+
+Contributor-selected 21 November 2026. Migration 027 and the Map and Check-in
+pages implement this rule for newly created competitions with the boost in
+their frozen scoring rules. Team review and deployment are tracked in D-21.
+
+- A verified ordinary check-in starts a boost if another competitor had a
+  verified ordinary check-in in the same territory within the preceding 30
+  minutes, inclusive. Competitors are distinct players or opposing teams.
+- The lobby draws uniformly from the triggering territory and territories
+  up to two shared borders away in the current map. The draw uses the map's
+  shared-border test with its 0.5 m drawing tolerance. Corner contact alone
+  does not count. The map highlights the drawn territory with a clock pin.
+- Boosts start at least 150 minutes apart in each lobby. A boost lasts 15
+  minutes and starts only if that whole duration fits before the scoring
+  window and season close. The triggering check-in earns its usual points.
+- Subsequent ordinary check-ins received in the boosted territory before
+  expiry earn ×1.25 territory and season points. When another boost also
+  applies, use the highest applicable multiplier for each account. Eligible
+  prior owners get 25% of the territory award as additional season income.
+  The original boost is retained when correcting a saved drink or size.
+  Chug Duel entries neither trigger the draw nor receive the boost.
+
 ## Location
 
 ### R-L01 Location source
