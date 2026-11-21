@@ -6,7 +6,8 @@ _board = declare_component('time_duel', path=str(Path(__file__).parent / 'compon
 
 
 def time_board(duel, member, labels, acknowledgement=None):
+    from theme import component_tokens
     return _board(duel=duel, member=member,
         challenger=labels.get(duel['challenger_id'], 'Challenger'),
-        opponent=labels.get(duel['opponent_id'], 'Opponent'),
+        opponent=labels.get(duel['opponent_id'], 'Opponent'), tokens=component_tokens(),
         acknowledgement=acknowledgement, key=f"time_board_{duel['id']}", default=None)

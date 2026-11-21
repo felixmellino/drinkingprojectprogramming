@@ -23,6 +23,7 @@ of every file, see [`WORKING_GUIDE.md`](WORKING_GUIDE.md).
 | Database rules | `schema.sql`, `migrations/*.sql` | Tables, access restrictions and atomic RPCs; install order in [`MIGRATIONS.md`](MIGRATIONS.md). |
 | Browser parts | `components/*/index.html` | Camera, phone GPS, remembered device, duel games. |
 | Email | `password_email.py` | Only file that calls Brevo. |
+| Drink suggestion | `drink_recognition.py`, `core/drink_recognition.py` | Only file that calls Claude (Anthropic API); the core file checks the answer. |
 | Tests | `tests/` | `pytest` for Python, `*.cjs` for components and in-memory Postgres. |
 
 One check-in, end to end: `pages/3_Check_in.py` collects drink, size, photo
@@ -65,6 +66,7 @@ territory totals and standings change together or not at all.
 | Brevo | password reset emails | 10 s timeout; the player sees the same neutral message as for an unknown address; no crash. |
 | Carto basemap (map tiles) | map background | Territories still draw; only the background is missing. |
 | Phone GPS / camera (browser) | check-in | Check-in is refused with a message saying what to allow or retry. |
+| Anthropic API (Claude) | suggesting drink and size from the photo | 12 s timeout, no retry; the normal form is shown and the player picks the drink. Points never depend on it. |
 
 ## 6. Tests: what they cover and what they do not
 
@@ -88,6 +90,9 @@ territory totals and standings change together or not at all.
 - **Database RPCs for writes:** two players acting at once cannot corrupt
   points or territory ownership.
 - **Automatic GPS instead of a buddy confirmation:** fewer steps for players.
+- **Claude only suggests the drink:** a photo cannot reliably show the size
+  (no scale, mixed drinks look alike), so the player confirms and the points
+  stay rule-based and testable. Structured outputs force a fixed JSON answer.
 
 ## 8. Known limits and how it could change
 

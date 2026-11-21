@@ -224,6 +224,15 @@ def test_checkin_form_is_one_screen_the_photo_fills_the_free_space(ui):
     assert not any("Territory" == m.value for m in page.markdown)
 
 
+def test_retake_button_is_clear_of_the_corner_buttons_and_shows_its_icon():
+    """Top-right of the photo is under the fixed Profile/Lobbies buttons, so Retake sits bottom-right."""
+    css = (ROOT / "assets" / "drink_entries.css").read_text(encoding="utf-8")
+    rule = next(line for line in css.splitlines() if line.startswith(".stApp .st-key-checkin_retake {"))
+    assert "bottom: 8px" in rule and "top:" not in rule
+    assert "checkin_retake button > div {" not in css, "hiding the whole content also hides the camera icon"
+    assert '.st-key-checkin_retake button [data-testid="stMarkdownContainer"] { position: absolute' in css
+
+
 def test_go_to_map_is_the_one_button_after_a_checkin_and_leaves_a_clean_checkin_page(ui, monkeypatch):
     from unittest.mock import Mock
     import streamlit as st

@@ -42,6 +42,35 @@ base commit; local uncommitted edits are also tested. Without Git, the commit
 and working-tree fields are null. Provenance is captured before checks start.
 The individual assertions and failure tracebacks appear in the terminal/CI log.
 
+## Minigame interface checks (21 November 2026)
+
+The four opened games share their heading, setup card, three-step guide and
+collapsed match history in `duel_lobby_ui.py`. Their actions and rule modules
+stay separate. Time Duel also receives the app's light/dark component tokens.
+
+Run the relevant UI and gameplay regressions:
+
+```bash
+python -m pytest tests/test_chug_duel_ui.py tests/test_time_duel_ui.py tests/test_reaction_duel.py tests/test_minigames_ui.py tests/test_dark_mode.py tests/test_time_duel.py tests/test_quiz_duel.py tests/test_chug_duel.py -q
+```
+
+For visual checks, start this synthetic app in a separate terminal, then run
+the browser check (after installing the development dependencies above):
+
+```bash
+python -m streamlit run tests/fixtures/minigame_lobbies_app.py --server.headless true --server.port 8790 --server.address 127.0.0.1 --browser.gatherUsageStats false
+node tests/minigame_lobbies_browser.cjs node_modules/playwright
+node tests/chug_duel_browser.cjs node_modules/playwright
+node tests/reaction_component.cjs
+```
+
+The fixture uses synthetic players and no database connection. Screenshots go
+to `.venv/minigame-previews/`. Checks cover all four lobbies on phone and desktop,
+light and dark themes, readable history, touch target widths and the Time Duel
+Ready/Start/Stop bridge. The Chug and Reaction checks cover existing controls,
+countdown, early taps, saved results and missed tries. These local checks do
+not replace the public deployment/two-phone checks below.
+
 ## What each layer proves
 
 | Layer | Accepted actions | Rejected actions | Boundaries and recovery |

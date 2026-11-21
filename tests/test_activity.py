@@ -85,3 +85,5 @@ def test_captures_match_the_replay_ownership():
     feed = [e for e in activity_events(events) if e.kind == CAPTURE]
     assert feed[0].competitor == replay.owners[A]  # newest capture = current owner
     assert [(c[0], c[2], c[3]) for c in replay.captures] == [("1", "Mia", None), ("2", "Leo", "Mia"), ("3", "Mia", "Leo")]
+    # What each capture beat: nothing (free), Mia's 3, then Leo's 4.
+    assert [c[4] for c in replay.captures] == [0, 3, 4]

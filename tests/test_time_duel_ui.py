@@ -42,7 +42,7 @@ def test_invite_retry_reuses_request_id_and_keeps_form(service,monkeypatch):
     monkeypatch.setattr(db,'invite_time_duel',invite)
     app=page()
     for _ in range(2):
-        next(b for b in app.button if b.label=='Send Time Duel challenge').click().run()
+        next(b for b in app.button if b.label=='Challenge').click().run()
         assert not app.exception and 'retry' in app.error[0].value
     assert len(calls)==2 and calls[0][2]==calls[1][2]
 
@@ -93,15 +93,15 @@ def test_pending_box_explains_blocked_send_and_survives_new_session(service, mon
     monkeypatch.setattr(db, 'invite_time_duel', send)
     for app in (page(), page()):
         assert not app.exception
-        assert any('Pending Challenge invite' in m.value for m in app.markdown)
+        assert any('Waiting for Bob' in c.value for c in app.caption)
         assert any('Expires in 10:00' in c.value for c in app.caption)
-        assert_blocked(app, 'Send Time Duel challenge', 'open invitation', 'Cancel')
+        assert_blocked(app, 'Challenge', 'open invitation', 'Cancel')
     send.assert_not_called()
     action.side_effect = lambda *args: state.update(duels=[]) or dict(status='cancelled')
     app = click(app, 'Cancel invitation')
     assert not app.exception
     action.assert_called_once_with('pa', 'invite', 'cancel')
-    assert not next(b for b in app.button if b.label == 'Send Time Duel challenge').disabled
+    assert not next(b for b in app.button if b.label == 'Challenge').disabled
 
 
 def test_multiple_incoming_requires_confirmation_and_can_back_out(service):
@@ -138,8 +138,8 @@ def test_expired_invite_disappears_on_refresh(service):
     state['duels'][0]['status'] = 'expired'
     app.run()
     assert not app.exception
-    assert not any('Pending Challenge invite' in m.value for m in app.markdown)
-    assert not next(b for b in app.button if b.label == 'Send Time Duel challenge').disabled
+    assert not any('Waiting for Bob' in c.value for c in app.caption)
+    assert not next(b for b in app.button if b.label == 'Challenge').disabled
     action.assert_not_called()
 
 
@@ -156,7 +156,7 @@ def test_used_challenge_explains_reset_without_sending(service, monkeypatch):
     state['outgoing'] = False
     invite = Mock()
     monkeypatch.setattr(db, 'invite_time_duel', invite)
-    assert_blocked(page(), 'Send Time Duel challenge', 'used or reserved', '06:00')
+    assert_blocked(page(), 'Challenge', 'used or reserved', '06:00')
     invite.assert_not_called()
 
 

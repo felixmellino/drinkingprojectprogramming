@@ -289,6 +289,28 @@ remain legacy; the new rules apply to new v1 seasons. The earlier
 [planning proposal](SCORING_PROPOSAL.md) and three-page PDF are historical
 review records, not a claim of current deployment.
 
+## Check-in
+
+### R-C01 Drink suggestion from the photo (21 November 2026)
+
+When the server has an Anthropic API key, the Check in page sends the
+check-in photo (metadata removed, scaled to at most 1024 px) to Claude once
+and preselects the drink and size it suggests. It is only a suggestion.
+
+| Case | Outcome |
+| --- | --- |
+| Drink and size recognised with high or medium confidence | Both are preselected; the page says "Looks like a large beer. Change it if that's wrong." |
+| Drink sure, size unsure (or a shot) | Only the drink is preselected. |
+| Unsure drink, several drinks, or no drink visible | Nothing is preselected; the page says so. Check-in is not blocked. |
+| No key, timeout (12 s), API error, refusal or malformed answer | Normal form, no message. Asked once per photo, not on every rerun. |
+| More than 10 recognitions by one player in a rolling hour | The 11th photo is not sent; the page says suggestions are paused. A call exactly one hour old no longer counts. Failed calls count too. The count lives in the server process and resets on restart. |
+
+The player always confirms or changes the selection, and points come only
+from the selected drink and size (R3, SCORING_V1). The suggestion never
+blocks a check-in, never changes points, and is not anti-cheat evidence.
+Legacy seasons do not use it. Code: `core/drink_recognition.py` (rules),
+`drink_recognition.py` (API call), `pages/3_Check_in.py`.
+
 ## Ranking
 
 ### R-R01 Ties
@@ -318,6 +340,47 @@ The database serializes season inserts per lobby to reject concurrent renewals.
 
 Source: contributor decision, 2026-11-18; supersedes same-lobby renewal in the
 earlier scoring contract. Photo access and ranking rules are unchanged.
+
+## Season awards (21 November 2026)
+
+### R-S01 Awards and what they mean
+When a season has ended, every player of that lobby can open its recap. It
+shows the podium (top three of the final ranking) and these awards:
+
+- **MVP**: rank 1 of the final ranking (R-R01 decides ties).
+- **Most territories held**: the most territories owned at the season's end.
+- **Biggest takeover**: the takeover (a territory taken from another owner, not
+  a first claim of a free one) where the previous owner had the most points in
+  that territory at that moment.
+- **Most captures**: the most times a player gained a territory, first claims
+  included.
+- **Most drinks**: the most accepted check-ins.
+- **Your season**: the viewer's rank, points, drinks, territories held and captures.
+
+Awards are derived from the saved entries and duel transfers with the same
+replay as Ranks and the Map (`core/season_recap.py`). They are not points and
+change nothing in the ranking. An award without a winner (for example no
+takeovers) is left out. Team lobbies award teams. Seasons scored before v1
+(legacy) show MVP and Most drinks only.
+
+### R-S02 Award ties
+A tie for most territories, captures or drinks goes to the better final rank.
+Two equally big takeovers: the earlier one wins.
+
+### R-S03 Finishing a season
+After the season ends, a banner on every page ("Your season in X is over")
+offers **Finish season** for two weeks; the past lobby on the Lobby page keeps
+the button. It plays the recap story and ends on the awards card; **Close**
+saves that this player finished the season (migration 029,
+`season_recap_views`), so the banner stays gone after a restart. Afterwards
+the past lobby shows **Season awards**, which reopens the card. The final
+standings can be downloaded as CSV from the recap.
+
+Allowed: players of that lobby, also after they left it. Rejected: anyone else
+(no data shown) and a season that is still running. Boundary: `now == ends_at`
+counts as ended (R-R03). Finishing twice saves once.
+
+Source: Niklas, 21 November 2026.
 
 ## Territories
 

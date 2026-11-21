@@ -445,8 +445,11 @@ Map owner badge update (19 November 2026, contributor request):
   Feed is the selected lobby's season timeline, newest first, grouped under
   "Game night …" headings, 30 events at a time with **Load more**.
 - Version 1 shows two kinds of event (`core/activity.py`):
-  - **Check-in**: one card per accepted drink: avatar, "Name · Drink · size",
-    the territory (or "Outside territories") and how long ago, and "+points".
+  - **Check-in**: one card per accepted drink: avatar and a sentence with the
+    name in bold, a verb and size and drink ("**Ana** knocked back a large beer").
+    The verb varies (drank, downed, chugged, polished off, ...; list in
+    `activity_ui.VERBS`) but stays the same for a check-in on every reload.
+    Below it the territory (or "Outside territories") and how long ago ("Bairro Alto, 9 min ago"), and "+points".
     Your own cards have a sky outline. In team lobbies the team follows the name.
   - **Capture**: a banner directly above the drink that caused it: "Ben took
     **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
@@ -455,8 +458,26 @@ Map owner badge update (19 November 2026, contributor request):
 - Nothing is stored for the feed: it is rebuilt from the saved drink entries
   with the same replay as Ranks and the Map, so a correction also corrects the
   feed. Rejected or unscored entries never appear.
-- Empty: "No activity yet · The first drink of the season starts the feed." + Check in.
+- Empty: "No activity yet. The first drink of the season starts the feed." + Check in.
 - Later event kinds (achievements, duel results, joins) are planned but not built.
+
+## Season recap (21 November 2026)
+
+- **Banner** at the top of every page while a season the player was in has
+  ended in the last two weeks and is not finished: "Your season in X is over.
+  See who won and collect the awards." + **Finish season** (oldest first).
+- **Story** (`components/season_recap`): full-width slides that advance on
+  their own with progress bars at the top. Tap for the next slide, **Skip**
+  for the card. Slides: "Season over" with confetti, the podium (2-1-3 bars
+  rising), one slide per award (icon, title, winner, detail), "Your season".
+  Reduced motion skips straight to the card.
+- **Awards card**: lobby and dates, top three, one row per award, your line,
+  **Replay** and **Close**. **Download standings (CSV)** sits below the card.
+  Close saves the season as finished and returns to the Lobby page.
+- **Lobby page**: a past lobby shows **Finish season** until then, and
+  **Season awards** (the static card) afterwards.
+- Errors: a stranger sees "You can only see the awards of a season you played
+  in."; a running season says its awards appear when it ends.
 
 ## Memories
 

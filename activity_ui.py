@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from html import escape
+from zlib import crc32
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,11 @@ from standings_ui import ago
 
 VIEWS = ["Feed", "Photos"]
 VIEW_PAGES = {"Feed": "pages/8_Activity.py", "Photos": "pages/6_Check_in_photos.py"}
+
+# Ways to say "drank". Each check-in keeps the same one on every reload.
+VERBS = ["drank", "downed", "sank", "knocked back", "polished off", "put away", "chugged",
+         "inhaled", "demolished", "sipped", "threw back", "made short work of", "said cheers to",
+         "disposed of", "got through"]
 
 
 def load_styles() -> None:
@@ -37,9 +43,16 @@ def view_switch(current: str) -> None:
 
 
 def drink_label(event: ActivityEvent) -> str:
-    drink = DRINK_LABELS.get(event.drink_type, "Drink")
+    """'large beer', 'shot': size first, all lower case, to follow the bold name."""
+    drink = DRINK_LABELS.get(event.drink_type, "Drink").lower()
     size = SIZE_LABELS.get(event.size)
-    return f"{drink} · {size.lower()}" if size else drink
+    return f"{size.lower()} {drink}" if size else drink
+
+
+def drink_verb(entry_id: str) -> str:
+    """Picked from the entry id, so the same check-in reads the same every time
+    (Python's own hash() changes between restarts; crc32 does not)."""
+    return VERBS[crc32(entry_id.encode()) % len(VERBS)]
 
 
 def _name(competitor: str | None, names: dict, me: str) -> str:
@@ -81,8 +94,9 @@ def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, ter
         f'<div class="activity-row{" activity-row-you" if you else ""}">'
         f'<span class="activity-avatar" style="{avatar}" aria-hidden="true">'
         f'{escape(initials(member_names.get(event.member, "?")))}</span>'
-        f'<span class="activity-main"><span class="activity-title">{escape(name)} · {escape(drink_label(event))}</span>'
-        f'<span class="activity-meta">{escape(where)} · {escape(ago(event.at, now))}</span></span>'
+        f'<span class="activity-main"><span class="activity-title"><strong>{escape(name)}</strong> '
+        f'{escape(drink_verb(event.entry_id))} a {escape(drink_label(event))}</span>'
+        f'<span class="activity-meta">{escape(where)}, {escape(ago(event.at, now))}</span></span>'
         f'<span class="activity-points">+{escape(format_points(event.points))}</span></div>'
     )
 

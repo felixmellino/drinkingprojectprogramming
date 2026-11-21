@@ -34,6 +34,9 @@ standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ## Hosting (deployed app)
 
+The season recap remembers who finished a season in a table from
+[migration 029](docs/MIGRATIONS.md); without it the app still runs but shows no recap banner.
+
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
 use the same Brevo settings as password recovery. In an active lobby, the
 creator can open **Invite player** and select an accepted friend. Invitees
@@ -141,6 +144,11 @@ out of Git. With an Outlook sender, Brevo substitutes an `@brevosend.com` domain
 The team's configured key expires 18 February 2027 (and may expire after 90 days
 of inactivity); replace it in Secrets before expiry. No Brevo dashboard template
 is required: `password_email.py` sends HTML and plain text versions directly.
+
+Optional drink suggestion (R-C01): with `ANTHROPIC_API_KEY = "..."` in the same
+Secrets, the Check in page asks Claude once per photo which drink and size it
+shows and preselects them; the player confirms. At most 10 recognitions per
+player per hour. Without the key the feature is off. Set a monthly spend limit for the key in the Anthropic console.
 
 On Log in, choose **Forgot password?**, request a code and enter it with a new
 password. Codes expire after 15 minutes, work once, and a new request replaces
@@ -322,6 +330,7 @@ project; the automated suite does not replace it.
 - `phone_location.py` and `components/phone_location/` — automatic phone GPS for Check-in and Map.
 - `map_ui.py` and `pages/5_Map.py` — territory map coloured by owner.
 - `core/activity.py`, `activity_ui.py` and `pages/8_Activity.py` — the Activity tab: check-ins and territory captures, rebuilt from saved entries; Photos is a view inside it.
+- `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py` and `components/season_recap/` — the end-of-season story, awards card and CSV export (needs migration 029).
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.
