@@ -18,6 +18,8 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from action_feedback import action_button, explain
+from core.action_feedback import checkin_message, location_problem as location_blocker
 from camera_capture import CameraCancelled, camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
@@ -48,7 +50,11 @@ if team_mode and not competitor_id:
     lobby_button()
     st.stop()
 now = current_time()
-recent_entries = db.list_drink_entries_for_membership(membership_id)
+try:
+    recent_entries = db.list_drink_entries_for_membership(membership_id)
+except (APIError, RequestError, RuntimeError, OSError):
+    st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
+    st.stop()
 track_location()
 
 
@@ -260,7 +266,7 @@ with st.container(key="drink_ui_panel_location"):
                 if preview_result == "matched":
                     place = " in " + next(t.name for t in territories if t.id == preview_territory)
                 elif preview_result == "outside":
-                    place = ", outside the territories"
+                    place = ", outside the territories (season points only)"
             except (APIError, RequestError, RuntimeError):
                 pass  # The territory is checked again on submission.
         st.caption(f"Location found, accurate to {accuracy_m:.0f} m{place}")
@@ -271,7 +277,14 @@ recovered = next((item for item in recent_entries if capture and item.id == capt
 if recovered is not None:
     finish_checkin(recovered)
 
-if st.button("Submit", type="primary", width="stretch", disabled=photo is None or device_gps is None or closed or bool(waiting)) and photo is not None and capture is not None:
+blockers = [
+    location_blocker(location_problem, accuracy_m),
+    checkin_message("scoring_closed") if closed else None,
+    f"Your next check-in is available in {waiting // 60}:{waiting % 60:02d}. Wait, then press Refresh remaining wait and submit again." if waiting else None,
+    checkin_message("missing_photo") if photo is None or capture is None else None,
+]
+if action_button("Submit", type="primary", width="stretch", problems=blockers,
+                 details="A blocked submission awards no points. Your photo and drink selection stay on this page while you fix the requirements. Location is checked again when you submit."):
     submitted_at = current_time() if modern else datetime.now().astimezone()
     _, capture_id, captured_at = capture
 
@@ -299,31 +312,17 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
             entry = replace(entry, id=capture_id, photo_captured_at=captured_at)
             entry = db.save_drink_entry_photo(player_id, lobby_id, entry, clean_photo)
     except InvalidCheckinPhoto as error:
-        st.error(str(error))
+        explain(str(error))
     except CheckinRejected as rejected:
-        messages = {
-            "team_required": "Open your lobby and join a team before checking in.",
-            "scoring_closed": "Scoring has closed. Refresh to see the next opening.",
-            "cooldown": "Wait two minutes between check-ins. Your photo and selections are kept; refresh the remaining wait.",
-            "invalid_selection": "Choose a supported drink and size.",
-            "invalid_photo": "Take a fresh camera photo and try again.",
-            "invalid_territory": "We could not confirm the territory. Refresh and try again.",
-            "missing_photo": "A photo is required.",
-            "unknown_drink_type": "Unrecognized drink type.",
-            "missing_amount": "Enter an amount for this drink.",
-            "duplicate_check_in": "You already logged this drink a moment ago.",
-            "location_unavailable": "We need your location. Wait until it's found, then submit again.",
-            "location_uncertain": "Your location isn't accurate enough yet. Wait a moment, then submit again.",
-        }
-        st.error(messages.get(rejected.reason, rejected.reason))
+        explain(checkin_message(rejected.reason), details="This submission was rejected. Your photo and selections are kept so you can fix the problem and retry.")
     except PermissionError:
-        st.error("Choose a lobby you belong to before checking in.")
+        explain("Your lobby access could not be confirmed. Open the Lobby page and select a lobby you belong to, then retry.")
     except RuntimeError as error:
         if str(error).startswith("Scoring setup is required"):
-            st.error(str(error))
+            explain(str(error))
         else:
-            st.error("We couldn't confirm the check-in was saved. Try submitting again.")
+            explain("We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.")
     except (APIError, RequestError, StorageException):
-        st.error("We couldn't confirm the check-in was saved. Try submitting again.")
+        explain("We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.")
     else:
         finish_checkin(entry)

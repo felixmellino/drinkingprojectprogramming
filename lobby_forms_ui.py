@@ -6,6 +6,7 @@ import streamlit as st
 
 import data.db as db
 from core.checkins import CheckinRejected
+from core.action_feedback import checkin_message
 from core.lobbies import create_lobby, join_lobby
 from core.lobby_overview import latest_season, lobby_status
 from httpx import RequestError
@@ -61,13 +62,19 @@ def create_dialog(player_id):
                 db.insert_lobby(lobby)
                 membership = join_lobby(player_id, lobby.invite_code, [lobby], [])
                 db.insert_membership(membership)
-            except (APIError, RequestError, RuntimeError, ValueError):
+            except ValueError as error:
+                st.error(str(error))
+                return
+            except (APIError, RequestError, RuntimeError):
                 st.error("Could not create the lobby. Refresh your lobbies before trying again.")
                 return
             try:
                 db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
                                                  **({"test_mode": True} if test_mode else {}))
-            except (APIError, RequestError, RuntimeError, CheckinRejected):
+            except CheckinRejected as error:
+                open_joined_lobby(lobby.id, f"Lobby created. {checkin_message(error.reason)} Use Retry lobby setup below if needed.",
+                                  make_current=False)
+            except (APIError, RequestError, RuntimeError):
                 open_joined_lobby(lobby.id, "Lobby created. Its scoring season could not start. Use Retry lobby setup below.",
                                   make_current=False)
 
@@ -93,7 +100,7 @@ def join_dialog(player_id):
         except (APIError, RequestError, RuntimeError):
             st.error("Could not load lobbies. Please try again.")
         except ValueError:
-            st.error("That invite code doesn't match any lobby.")
+            st.error("That invite code doesn't match any lobby. Check the code with the person who invited you and enter it again.")
         else:
             is_new = membership.id not in {m.id for m in memberships}
             lobby = next(l for l in lobbies if l.id == membership.lobby_id)
@@ -103,7 +110,10 @@ def join_dialog(player_id):
                     db.insert_membership(membership)
                 elif membership.left_at is not None:
                     db.rejoin_lobby(player_id, membership.lobby_id)
-            except (APIError, RequestError, RuntimeError, PermissionError, ValueError):
+            except (PermissionError, ValueError) as error:
+                st.error(str(error))
+                return
+            except (APIError, RequestError, RuntimeError):
                 st.error("Could not finish joining the lobby. Refresh your lobbies before trying again.")
                 return
 

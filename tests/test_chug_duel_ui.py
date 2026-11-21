@@ -14,6 +14,7 @@ import data.db as db
 import minigames_ui as ui
 from core.models import Lobby, LobbyMembership
 from tests.test_scoring_v1 import START, season
+from tests.feedback_helpers import assert_blocked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -188,7 +189,7 @@ def test_invite_accept_on_other_session_shared_capture_and_result(service):
     assert not host.exception and button(host, "Start duel")
     service["location"] = (None, None, "denied")
     host.run()
-    assert button(host, "Start duel").disabled
+    assert_blocked(host, "Start duel", "blocked", "browser settings")
     assert service["starts"] == 0
     service["location"] = ((38.7, -9.1), 10, None)
     host.run()
@@ -333,11 +334,11 @@ def test_quiz_screen_challenges_the_only_opponent_in_one_tap(service, monkeypatc
     assert invite.call_args.args[0] == "pa" and invite.call_args.args[3:] == ("b", 3)
 
 
-def test_quiz_stake_is_one_tap_and_too_little_points_disable_the_button(service, monkeypatch):
+def test_quiz_stake_is_one_tap_and_too_little_points_explain_the_blocker(service, monkeypatch):
     page, invite = open_quiz(service, monkeypatch, available_points=4)
     assert not button(page, "Challenge").disabled
     page.radio(key="pill_radio_quiz_stake").set_value(7).run()
-    assert button(page, "Challenge").disabled
+    assert_blocked(page, "Challenge", "7", "4", "lower stake")
     assert not invite.called
 
 
@@ -352,3 +353,25 @@ def test_quiz_used_tonight_hides_the_form(service, monkeypatch):
     page, _ = open_quiz(service, monkeypatch, outgoing=False)
     assert not any(b.label == "Challenge" for b in page.button)
     assert "already challenged" in notes(page)
+
+
+def test_quiz_missing_opponent_does_not_send_an_invitation(service, monkeypatch):
+    service['members'].append(LobbyMembership('c', 'pc', 'lobby', START))
+    page, invite = open_quiz(service, monkeypatch)
+    assert_blocked(page, 'Challenge', 'No opponent selected', 'Choose a player')
+    invite.assert_not_called()
+
+
+@pytest.mark.parametrize('accuracy', [51, 120])
+def test_chug_inaccurate_location_explains_limit_before_start(service, accuracy):
+    host = open_page()
+    button(host, 'Challenge').click().run()
+    guest = open_page('pb', 'b')
+    button(guest, 'Accept').click().run()
+    photo = BytesIO()
+    Image.new('RGB', (4, 4)).save(photo, 'JPEG')
+    service['photo'] = photo
+    service['location'] = ((38.7, -9.1), accuracy, None)
+    host.run()
+    assert_blocked(host, 'Start duel', str(accuracy), '50 m', 'outside')
+    assert service['starts'] == 0

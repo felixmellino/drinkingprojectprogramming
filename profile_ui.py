@@ -6,6 +6,7 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
+from action_feedback import explain
 from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
@@ -68,10 +69,12 @@ def show_profile(player):
         elif view == "security":
             show_security(player)
     except ValueError as exc:
-        st.error(str(exc))
+        explain(str(exc))
     except APIError as exc:
-        st.error("That username is already taken." if exc.code == "23505"
-                 else "We couldn't save or load your details. Please try again.")
+        if exc.code == "23505":
+            explain("That username is already taken. Enter a different username.")
+        else:
+            st.error("We couldn't save or load your details. Refresh Profile to check your saved details before retrying.")
     except (RequestError, RuntimeError, OSError):
         st.error("We couldn't save or load your details. Please try again.")
 

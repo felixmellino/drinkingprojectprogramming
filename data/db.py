@@ -19,6 +19,7 @@ from core.auth import allow_unknown_login_attempt, authenticate, new_token, toke
 from core.checkin_photo import photo_expires_at
 from core.photo_privacy import can_view_photo
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
+from core.teams import ERRORS as TEAM_ERRORS
 
 from supabase import Client, create_client
 from postgrest.exceptions import APIError
@@ -164,14 +165,21 @@ def list_memberships_for_lobby(lobby_id: str, *, include_left: bool = False) -> 
 
 
 def insert_membership(membership: LobbyMembership) -> None:
-    get_client().table("lobby_memberships").insert(
-        {
-            "id": membership.id,
-            "player_id": membership.player_id,
-            "lobby_id": membership.lobby_id,
-            "joined_at": membership.joined_at.isoformat(),
-        }
-    ).execute()
+    try:
+        get_client().table("lobby_memberships").insert(
+            {
+                "id": membership.id,
+                "player_id": membership.player_id,
+                "lobby_id": membership.lobby_id,
+                "joined_at": membership.joined_at.isoformat(),
+            }
+        ).execute()
+    except APIError as error:
+        if error.message in TEAM_ERRORS:
+            raise ValueError(TEAM_ERRORS[error.message]) from None
+        if error.code == "23505":
+            raise ValueError("This membership changed while joining. Refresh lobbies to check whether you have already joined before trying again.") from None
+        raise
 
 
 def issue_lobby_invitation(player_id: str, lobby_id: str, friend_id: str) -> dict:
@@ -216,9 +224,11 @@ def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
     except APIError as error:
         reason = getattr(error, "message", "")
         if reason == "permission_denied":
-            raise PermissionError("This account cannot change that lobby membership.") from None
+            raise PermissionError("This account cannot change that lobby membership. Refresh lobbies and reopen a lobby you belong to.") from None
         if reason in {"minigame_active", "time_busy"}:
             raise ValueError("Finish your active minigame before leaving, or wait for it to expire.") from None
+        if reason in TEAM_ERRORS:
+            raise ValueError(TEAM_ERRORS[reason]) from None
         raise
 
 
@@ -267,8 +277,8 @@ def _scoring_rpc(name: str, parameters: dict):
             raise ValueError(ERRORS[reason]) from None
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby or entry.") from None
-        if reason in {"invalid_selection", "scoring_closed", "cooldown", "correction_closed", "correction_conflict",
-                      "team_required", "invalid_territory", "invalid_photo", "season_still_active", "lobby_already_started", "invalid_timezone", "invalid_rules"}:
+        from core.action_feedback import CHECKIN_MESSAGES
+        if reason in CHECKIN_MESSAGES:
             raise CheckinRejected(reason) from None
         if reason == "scoring_setup_required" or error.code in {"42703", "PGRST202", "PGRST204"}:
             raise RuntimeError("Scoring setup is required. Ask the Data owner to apply migration 005.") from None
@@ -1248,16 +1258,7 @@ def list_lobby_teams(player_id: str, lobby_id: str) -> list[Team]:
 
 def _team_rpc(name: str, parameters: dict):
     from core.quiz_duel import ERRORS as QUIZ_ERRORS
-    messages = {
-        "team_full": "That team is full. Choose another team.",
-        "lobby_full": "This lobby is full.",
-        "team_locked": "Your team is locked after your first scored check-in.",
-        "random_team_locked": "Teams are assigned at random in this lobby.",
-        "lobby_finished": "This lobby has finished. Teams are frozen.",
-        "invalid_team": "Choose a team in this lobby.",
-        "invalid_team_name": "Use a team name of 1–40 characters.",
-        "permission_denied": "Only members of this team can edit it.",
-    }
+    messages = TEAM_ERRORS
     try:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
@@ -1270,7 +1271,7 @@ def _team_rpc(name: str, parameters: dict):
         if reason in messages:
             raise ValueError(messages[reason]) from None
         if error.code == "23505":
-            raise ValueError("Another team in this lobby already uses that name.") from None
+            raise ValueError("Another team in this lobby already uses that name. Enter a different team name.") from None
         raise
 
 

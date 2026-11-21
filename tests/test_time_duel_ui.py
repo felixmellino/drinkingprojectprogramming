@@ -5,6 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 import data.db as db
 import time_duel_ui as ui
+from tests.feedback_helpers import assert_blocked
 
 
 @pytest.fixture
@@ -83,7 +84,7 @@ def click(app, label):
     return next(b for b in app.button if b.label == label).click().run()
 
 
-def test_pending_box_disables_send_and_survives_new_session(service, monkeypatch):
+def test_pending_box_explains_blocked_send_and_survives_new_session(service, monkeypatch):
     state, action, _ = service
     state['duels'] = [invitation()]
     send = Mock()
@@ -92,7 +93,7 @@ def test_pending_box_disables_send_and_survives_new_session(service, monkeypatch
         assert not app.exception
         assert any('Pending Challenge invite' in m.value for m in app.markdown)
         assert any('Expires in 10:00' in c.value for c in app.caption)
-        assert next(b for b in app.button if b.label == 'Send Time Duel challenge').disabled
+        assert_blocked(app, 'Send Time Duel challenge', 'open invitation', 'Cancel')
     send.assert_not_called()
     action.side_effect = lambda *args: state.update(duels=[]) or dict(status='cancelled')
     app = click(app, 'Cancel invitation')
@@ -138,6 +139,23 @@ def test_expired_invite_disappears_on_refresh(service):
     assert not any('Pending Challenge invite' in m.value for m in app.markdown)
     assert not next(b for b in app.button if b.label == 'Send Time Duel challenge').disabled
     action.assert_not_called()
+
+
+def test_used_acceptance_explains_reset_without_calling_service(service):
+    state, action, _ = service
+    state.update(incoming=False, duels=[invitation('one', 'b', 'a')])
+    app = page()
+    assert_blocked(app, 'Accept Time Duel', 'used or reserved', '06:00')
+    action.assert_not_called()
+
+
+def test_used_challenge_explains_reset_without_sending(service, monkeypatch):
+    state, _, _ = service
+    state['outgoing'] = False
+    invite = Mock()
+    monkeypatch.setattr(db, 'invite_time_duel', invite)
+    assert_blocked(page(), 'Send Time Duel challenge', 'used or reserved', '06:00')
+    invite.assert_not_called()
 
 
 # -- Shared result card (minigames_ui.result_card) ---------------------------

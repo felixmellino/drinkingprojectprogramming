@@ -20,32 +20,32 @@ def search_usernames(query: str, usernames: list[dict], player_id: str) -> list[
 def transition(actor: str, other: str, action: str, current: dict | None, now: datetime) -> dict:
     """Validate an action and return the next relationship, without saving it."""
     if actor == other:
-        raise ValueError("You cannot send yourself a friend request.")
+        raise ValueError("You cannot send yourself a friend request. Search for another player's username.")
     if current and {actor, other} != {current["sender_id"], current["recipient_id"]}:
-        raise ValueError("This friendship belongs to other players.")
+        raise ValueError("This friendship belongs to other players. Refresh friends and choose one of your own requests.")
     status = current["status"] if current else None
     if action == "request":
         if status == "pending":
             raise ValueError("A request is already pending. Check incoming or outgoing requests.")
         if status == "accepted":
-            raise ValueError("You are already friends.")
+            raise ValueError("You are already friends. Open Current Friends to view or remove the friendship.")
         if status == "declined" and now < datetime.fromisoformat(current["updated_at"]) + DECLINE_WAIT:
             raise ValueError("Wait 10 minutes after a declined request before requesting again.")
         return {"sender_id": actor, "recipient_id": other, "status": "pending"}
     if not current:
-        raise ValueError("No friendship request exists.")
+        raise ValueError("No friendship request exists. Refresh friends and send a new request if needed.")
     if action in ("accept", "decline"):
         if status != "pending" or actor != current["recipient_id"]:
-            raise ValueError("Only the recipient can accept or decline a pending request.")
+            raise ValueError("Only the recipient can accept or decline a pending request. Refresh Incoming requests to see requests you can answer.")
         next_status = "accepted" if action == "accept" else "declined"
     elif action == "cancel":
         if status != "pending" or actor != current["sender_id"]:
-            raise ValueError("Only the sender can cancel a pending request.")
+            raise ValueError("Only the sender can cancel a pending request. Refresh Outgoing requests to see requests you can cancel.")
         next_status = "cancelled"
     elif action == "remove":
         if status != "accepted":
-            raise ValueError("Only an accepted friend can be removed.")
+            raise ValueError("Only an accepted friend can be removed. Refresh Current Friends to see your active friendships.")
         next_status = "removed"
     else:
-        raise ValueError("Unknown friendship action.")
+        raise ValueError("This friendship action is not available. Refresh friends and use the controls for the current request.")
     return {"sender_id": current["sender_id"], "recipient_id": current["recipient_id"], "status": next_status}

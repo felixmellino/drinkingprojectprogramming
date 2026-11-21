@@ -10,6 +10,8 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from action_feedback import action_button, explain
+from core.action_feedback import checkin_message
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
@@ -203,21 +205,28 @@ if entry.get("rule_version") == "v1":
                         horizontal=True, width="stretch", key=f"{key}_size")
             st.info(f"Corrected base award: {base_points(chosen_drink, chosen_size, season.scoring_rules)} points")
             unchanged = chosen_drink == model.drink_type and chosen_size == model.size
-            if st.button("Save correction", key=f"{key}_save", type="primary", width="stretch", disabled=unchanged):
+            if action_button("Save correction", key=f"{key}_save", type="primary", width="stretch",
+                             problems=["The drink and size are unchanged. Choose a different drink or size before saving a correction." if unchanged else None]):
                 try:
                     db.correct_checkin(player_id, lobby_id, model.id, chosen_drink, chosen_size, model.revision)
                 except PermissionError:
-                    st.error("Only the submitter can correct this entry.")
+                    explain("Only the person who submitted this drink can correct it. Open one of your own check-ins to make a correction.")
                 except CheckinRejected as error:
-                    if error.reason == "correction_conflict":
-                        st.error("This entry changed in another session. Refresh and review it before retrying.")
-                    else:
-                        st.error("The correction window has closed or this selection is invalid. Refresh to see the saved result.")
+                    explain(checkin_message(error.reason))
+                except ValueError as error:
+                    explain(str(error))
                 except (APIError, RequestError, RuntimeError):
-                    st.error("The correction result is uncertain. Refresh and check the saved entry before retrying.")
+                    explain("The correction result is uncertain. Refresh and check the saved entry before retrying.")
                 else:
                     st.session_state["checkin_corrected"] = True
                     st.rerun()
+    elif entry["is_owner"]:
+        if model.duel_id:
+            st.caption(checkin_message("duel_entry_locked"))
+        else:
+            st.caption(checkin_message("correction_closed"))
+    else:
+        st.caption("Only the person who submitted this drink can correct it. Open one of your own check-ins to make a correction.")
 
 else:
     with st.container(key="drink_ui_panel_details"):
@@ -230,13 +239,13 @@ if entry["is_owner"] and entry["has_photo"]:
     with st.expander("Manage your photo"):
         st.caption("Permanently remove the image. Your check-in, points and owner income stay.")
         confirmed = st.checkbox("Permanently delete this photo", key=f"confirm_delete_{entry['id']}")
-        if st.button("Delete my photo", disabled=not confirmed):
+        if action_button("Delete my photo", problems=["Deletion has not been confirmed. Tick Permanently delete this photo, then press Delete my photo again. Your points will be kept." if not confirmed else None]):
             try:
                 db.delete_checkin_photo(player_id, lobby_id, entry["id"])
             except PermissionError:
-                st.error("Only the photo's owner can delete it.")
+                explain("Only the photo's owner can delete it. Open one of your own photos to delete it.")
             except (APIError, RequestError, RuntimeError, StorageException):
-                st.error("We couldn't finish deleting the photo. Try again.")
+                explain("We couldn't confirm deletion. Refresh Photos to check whether the image remains, then retry if needed.")
             else:
                 st.session_state["photo_deleted"] = True
                 st.rerun()

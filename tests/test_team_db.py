@@ -44,10 +44,23 @@ def test_nonmember_cannot_load_private_team_pictures(monkeypatch):
 
 @pytest.mark.parametrize('reason,code,message',[
     ('team_full','P0001','full'),('team_locked','P0001','locked'),
-    ('permission_denied','P0001','Only members'),('duplicate key','23505','already uses')])
+    ('permission_denied','P0001','not allowed for your membership'),('duplicate key','23505','already uses')])
 def test_team_errors_are_actionable(monkeypatch,reason,code,message):
     client=Mock()
     client.rpc.return_value.execute.side_effect=APIError({'message':reason,'code':code,'details':None,'hint':None})
     monkeypatch.setattr(db,'get_client',lambda:client)
     with pytest.raises(ValueError,match=message):
         db.choose_lobby_team('actor','lobby','team')
+
+
+@pytest.mark.parametrize('reason,expected', [('lobby_full', 'Join or create another lobby'),
+                                          ('lobby_finished', 'Create or join a new lobby'),
+                                          ('team_full', 'reserved places')])
+def test_new_membership_surfaces_the_actual_team_rejection(monkeypatch, reason, expected):
+    from core.models import LobbyMembership
+    from tests.test_scoring_v1 import START
+    client = Mock()
+    client.table.return_value.insert.return_value.execute.side_effect = APIError({'message': reason, 'code': 'P0001', 'details': None, 'hint': None})
+    monkeypatch.setattr(db, 'get_client', lambda: client)
+    with pytest.raises(ValueError, match=expected):
+        db.insert_membership(LobbyMembership('member', 'actor', 'lobby', START))

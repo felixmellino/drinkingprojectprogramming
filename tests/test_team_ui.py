@@ -11,6 +11,7 @@ import data.db as db
 from core.lobbies import create_season
 from core.models import Lobby, LobbyMembership, Team
 from tests.test_teams import drink
+from tests.feedback_helpers import assert_blocked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -89,14 +90,19 @@ def test_manual_cards_join_and_only_own_team_editable(ui,monkeypatch):
     edit.assert_called_once_with('me','t1','Winners',None,remove_photo=False)
 
 
-def test_full_team_and_scoring_lock_disable_join(ui):
+def test_full_team_and_scoring_lock_explain_why_joining_is_blocked(ui, monkeypatch):
+    join = Mock()
+    monkeypatch.setattr(db, 'choose_lobby_team', join)
     ui['members'].append(LobbyMembership('m3','third','lobby',datetime.now(timezone.utc),'t1'))
     at=open_lobby(page())
-    assert at.button(key='join_team_t1').disabled
+    assert_blocked(at, 'Team full', 'full', 'another team', inline=True)
+    join.assert_not_called()
     ui['me'].team_id='t2'
     ui['entries']=[replace(drink('d','m1','t2',4,1),season_id=ui['season'].id)]
     at.run()
-    assert not at.exception and at.button(key='join_team_t1').disabled
+    assert not at.exception
+    assert_blocked(at, 'Team full', 'locked', 'full', inline=True)
+    join.assert_not_called()
 
 
 def test_random_assignment_has_no_manual_join_buttons(ui):
@@ -209,5 +215,5 @@ def test_departed_teammate_slot_is_visible_and_full(ui):
     open_lobby(at)
     assert not at.exception
     assert any('(left, slot reserved)' in text.value for text in at.text)
-    assert at.button(key='join_team_t1').disabled
+    assert_blocked(at, 'Team full', 'reserved places', inline=True)
     assert any(b.label == 'Leave lobby' for b in at.button)

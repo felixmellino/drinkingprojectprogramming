@@ -7,6 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import data.db as db
+from core.checkins import CheckinRejected
 from core.friends import transition
 from core.lobbies import create_season
 from core.models import Lobby, LobbyMembership
@@ -70,6 +71,52 @@ def click(at, label):
 
 def choose_current(at, lobby_id):
     return at.button(key=f'make_current_{lobby_id}').click().run()
+
+
+@pytest.mark.parametrize('failure, expected', [
+    (CheckinRejected('invalid_timezone'), 'timezone is not supported'),
+    (RuntimeError('offline'), 'scoring season could not start'),
+])
+def test_failed_new_season_keeps_current_lobby_and_specific_recovery(ui, monkeypatch, failure, expected):
+    def insert_lobby(lobby):
+        ui['lobbies'].append(lobby)
+        ui['lobby_members'][lobby.id] = []
+
+    def insert_member(member):
+        ui['members'].append(member)
+        ui['lobby_members'][member.lobby_id].append(member)
+
+    monkeypatch.setattr(db, 'insert_lobby', insert_lobby)
+    monkeypatch.setattr(db, 'insert_membership', insert_member)
+    monkeypatch.setattr(db, 'start_scoring_season', Mock(side_effect=failure))
+    at = page()
+    original_season = at.session_state['current_season_id']
+    at.button(key='open_create_lobby').click().run()
+    next(field for field in at.text_input if field.label == 'Lobby name').input('Needs setup')
+    click(at, 'Create lobby')
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert at.session_state['current_season_id'] == original_season
+    assert at.session_state['_opened_lobby_id'] == ui['lobbies'][-1].id
+    assert any(expected in item.value for item in at.success)
+    assert any('Retry lobby setup' in item.value for item in at.success)
+    ui['save_choice'].assert_not_called()
+
+
+@pytest.mark.parametrize('failure', [
+    ValueError('This lobby is full. Join or create another lobby.'),
+    PermissionError('Your membership changed. Refresh lobbies before retrying.'),
+])
+def test_rejected_join_keeps_current_lobby_and_explains_exact_failure(ui, monkeypatch, failure):
+    monkeypatch.setattr(db, 'insert_membership', Mock(side_effect=failure))
+    at = page()
+    click(at, 'Join with a code')
+    next(field for field in at.text_input if field.label == 'Invite code').input('PRIVATE')
+    click(at, 'Join lobby')
+    assert not at.exception
+    assert any(item.value == str(failure) for item in at.error)
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert not any(member.lobby_id == 'secret' for member in ui['members'])
 
 
 def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):

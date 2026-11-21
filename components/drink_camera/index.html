@@ -87,7 +87,7 @@ async function openCamera() {
     if (attempt !== generation || captured || disposed || document.hidden) return;
     shutter.disabled = !video.videoWidth;
     flip.disabled = false;
-    status.textContent = 'Frame your drink';
+    status.textContent = video.videoWidth ? 'Frame your drink' : 'Loading your camera image… Wait for the preview before taking a photo.';
   } catch (error) {
     if (attempt !== generation) {
       restart = !document.hidden && !captured && !disposed;
@@ -108,7 +108,10 @@ async function openCamera() {
     if (restart) openCamera();
   }
 }
-video.addEventListener('loadeddata', () => { shutter.disabled = !stream || !video.videoWidth; });
+video.addEventListener('loadeddata', () => {
+  shutter.disabled = !stream || !video.videoWidth;
+  if (!shutter.disabled) status.textContent = 'Frame your drink';
+});
 shutter.addEventListener('click', () => {
   if (!stream || !video.videoWidth || captured || opening) return;
   const canvas = document.createElement('canvas');

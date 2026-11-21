@@ -47,6 +47,17 @@ def open_map():
     return AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10).run()
 
 
+@pytest.mark.parametrize('problem, words', [('denied', ['blocked', 'browser settings']),
+                                         ('unsupported', ['cannot share', 'HTTPS']),
+                                         ('timeout', ['too long', 'off and on'])])
+def test_location_help_explains_the_actual_failure_on_tap(phone, problem, words):
+    from tests.feedback_helpers import assert_blocked
+    phone['location'] = {'error': problem}
+    page = open_map()
+    assert not page.error
+    assert_blocked(page, 'Location help', *words)
+
+
 def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
     from unittest.mock import Mock
     from core.scoring_v1 import replay_season

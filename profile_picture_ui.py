@@ -2,6 +2,7 @@
 import base64
 from html import escape
 import streamlit as st
+from action_feedback import explain
 from httpx import RequestError
 from postgrest.exceptions import APIError
 from storage3.utils import StorageException
@@ -75,9 +76,9 @@ def show_picture_editor(player, *, saved_photo=_NOT_LOADED):
                 try:
                     db.save_profile_picture(player.id, st.session_state['credential_version'], selected.getvalue())
                 except ValueError as exc:
-                    st.error(str(exc))
+                    explain(str(exc))
                 except PICTURE_ERRORS:
-                    st.error("Your picture couldn't be saved. Please try again later.")
+                    explain("Your picture couldn't be saved. Refresh Profile to check the saved picture, then select your image again and retry.")
                 else:
                     st.session_state['_picture_input_version'] = version + 1
                     st.session_state['_picture_saved'] = True
@@ -94,7 +95,7 @@ def show_picture_editor(player, *, saved_photo=_NOT_LOADED):
         try:
             db.remove_profile_picture(player.id, st.session_state['credential_version'])
         except PICTURE_ERRORS:
-            st.error("Your picture couldn't be removed. Please try again.")
+            explain("Your picture couldn't be removed. Refresh Profile to check whether it remains, then try Remove picture again if needed.")
         else:
             st.session_state['_picture_input_version'] = version + 1
             st.session_state['_picture_removed'] = True

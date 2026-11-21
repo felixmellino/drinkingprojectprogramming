@@ -11,6 +11,7 @@ import reaction_duel_ui as reaction_ui
 from core.reaction_duel import CONFIG, STAKES, component_action, outcome, time_label, validate_stake
 from tests.test_chug_duel_ui import service, open_page, button  # noqa: F401  (pytest fixture)
 from tests.test_scoring_v1 import START
+from tests.feedback_helpers import assert_blocked
 
 
 def test_python_and_sql_share_the_same_rules():
@@ -108,7 +109,8 @@ def test_stake_above_the_available_points_cannot_be_sent(reaction):
     state['available_points'] = 2
     page = open_page(selected='reaction')
     page.radio(key='pill_radio_reaction_stake').set_value(3).run()
-    assert button(page, 'Challenge').disabled and not invite.called
+    assert_blocked(page, 'Challenge', '3', '2', 'lower stake')
+    invite.assert_not_called()
 
 
 def test_opponent_accepts_and_a_tap_is_sent_with_the_saved_revision(reaction):
