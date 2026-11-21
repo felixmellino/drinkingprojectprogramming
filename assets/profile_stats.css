@@ -1,10 +1,123 @@
-.profile-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 12px 0 22px; }
-.profile-stat { display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 24px; background: var(--surface-raised); box-shadow: var(--shadow-card); color: var(--text); min-width: 0; }
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px 12px;
+  margin: 23px 0 22px;
+}
+
+.profile-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 50px 24px 24px;
+  border-radius: 24px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+}
+
 .profile-stat > span { font-size: 0.9rem; font-weight: 650; color: var(--text-muted); }
 .profile-stat > strong { font-size: 2.5rem; line-height: 1.15; overflow-wrap: anywhere; }
 .profile-stat > small { margin-top: auto; font-size: 0.8rem; color: var(--text-muted); }
 .profile-stat:first-child { background: var(--accent-soft); }
-.profile-stat:first-child > span, .profile-stat:first-child > small { color: var(--text-muted); }
 .profile-stat:first-child > strong { color: var(--accent-ink); }
-@media (max-width: 900px) { .profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 380px) { .profile-stat { padding: 16px; border-radius: 20px; } .profile-stat > strong { font-size: 2rem; } }
+
+.profile-rank-badge {
+  --medal-light: #ffdbad;
+  --medal-base: #cc874e;
+  --medal-edge: #7c492a;
+  --medal-ribbon: #8c4839;
+  --medal-stripe: #ffdbad;
+  position: absolute;
+  inset-block-start: -10px;
+  inset-inline-end: 13px;
+  display: flex;
+  align-items: end;
+  height: 50px;
+}
+
+.profile-stat-rank {
+  margin-inline-end: -13px;
+  padding: 5px 21px 5px 10px;
+  border: 1px solid var(--medal-edge);
+  border-radius: 10px 0 0 10px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.profile-stat-rank > span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.profile-medal {
+  position: relative;
+  width: 38px;
+  height: 100%;
+  filter: drop-shadow(0 3px 3px #132b3d38);
+}
+
+.profile-medal::before {
+  position: absolute;
+  inset: 0 4px auto;
+  height: 26px;
+  background: linear-gradient(90deg, var(--medal-ribbon) 38%, var(--medal-stripe) 38% 62%, var(--medal-ribbon) 62%);
+  clip-path: polygon(0 0, 100% 0, 81% 74%, 50% 100%, 19% 74%);
+  content: "";
+}
+
+.profile-medal-face {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  place-items: center;
+  height: 38px;
+  border: 2px solid var(--medal-edge);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--medal-light), inset 0 0 0 3px var(--medal-edge);
+  background: linear-gradient(145deg, var(--medal-light), var(--medal-base));
+  color: var(--medal-edge);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.profile-medal-face::before { content: "★"; }
+
+.profile-medal-0 {
+  --medal-edge: var(--text-muted);
+  --medal-ribbon: var(--text-muted);
+  --medal-stripe: var(--surface-raised);
+}
+.profile-medal-0 .profile-medal {
+  filter: none;
+  opacity: .66;
+}
+.profile-medal-0 .profile-medal-face {
+  border-color: var(--text-muted);
+  box-shadow: none;
+  background: var(--surface-raised);
+}
+.profile-medal-0 .profile-medal-face::before { content: none; }
+.profile-medal-2 { --medal-light: #f7e0ce; --medal-base: #d39b79; --medal-edge: #804a37; --medal-ribbon: #a04547; }
+.profile-medal-3 { --medal-light: #eff7ff; --medal-base: #a9c0d1; --medal-edge: #42617a; --medal-ribbon: #526f96; --medal-stripe: #d8e7f4; }
+.profile-medal-4 { --medal-light: #f8f8ff; --medal-base: #c6bade; --medal-edge: #574d7c; --medal-ribbon: #71558e; --medal-stripe: #e9dbff; }
+.profile-medal-5 { --medal-light: #fff2af; --medal-base: #eab74e; --medal-edge: #785219; --medal-ribbon: #216a61; --medal-stripe: #f9e8a2; }
+.profile-medal-6 { --medal-light: #e9fffd; --medal-base: #83c5bd; --medal-edge: #24595b; --medal-ribbon: #265975; --medal-stripe: #b5eae3; }
+.profile-medal-7 { --medal-light: #fff4c9; --medal-base: #ebbb5b; --medal-edge: #744819; --medal-ribbon: #552f73; --medal-stripe: #f8d46a; }
+
+@media (max-width: 900px) {
+  .profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 380px) {
+  .profile-stat { padding: 49px 14px 18px; border-radius: 20px; }
+  .profile-stat > strong { font-size: 2rem; }
+  .profile-rank-badge { inset-inline-end: 8px; scale: .9; transform-origin: top right; }
+}

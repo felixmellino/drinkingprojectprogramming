@@ -134,6 +134,10 @@ def test_stats_all_lobbies_without_selection_and_fresh_session(repo, monkeypatch
     text = stats_text(at)
     assert 'Total points 66' in text and 'Drinks 6' in text
     assert 'Lobbies played 6' in text and 'Total Wins 5' in text
+    assert 'Expert Total points 66 66 / 100 toward Veteran' in text
+    assert 'Regular Drinks 6 6 / 10 toward Contender' in text
+    assert 'Expert Lobbies played 6 6 / 8 toward Veteran' in text
+    assert 'Veteran Total Wins 5 5 / 8 toward Master' in text
     at.session_state['current_lobby_id'] = 'l5'
     at.run()
     assert stats_text(at) == text

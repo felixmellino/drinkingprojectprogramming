@@ -38,6 +38,7 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 25. `025_reaction_duel.sql`
 26. `026_lobby_invitations.sql`
 27. `027_territory_boosts.sql`
+28. `028_profile_medals.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -46,13 +47,16 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest migration:** `027_territory_boosts.sql`. Apply it before deploying the app version that enables boosts for newly created seasons. The quick check
+**Newest migration:** `028_profile_medals.sql`. Apply it when rolling out medal
+announcements. It records the cutoff used to suppress historical promotions.
+The profile cards use existing season data and can display medals before this step.
 
 ```sql
-select count(*) from public.territory_boosts;
+select launched_at from public.profile_medal_rollout;
 ```
 
-returns a number once 027 is installed.
+The query returns the saved cutoff. Reapplying 028 preserves that timestamp.
+Apply 027 before deploying territory boosts for newly created seasons.
 
 ## Files that are not part of a fresh install
 
@@ -67,6 +71,6 @@ because earlier boosts remain part of the scoring history.
 
 ## Writing a new migration
 
-Give it the next free number (`028_…`), start the file with one comment line saying what
+Give it the next free number (`029_…`), start the file with one comment line saying what
 it needs, and add it to the end of the list above. The chain test fails
 until you do.

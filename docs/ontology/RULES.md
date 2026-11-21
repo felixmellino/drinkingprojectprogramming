@@ -710,6 +710,35 @@ shows an error rather than a partial total. No scores or entities are changed.
 Source: contributor request and clarified answers, 18 November 2026;
 active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.
 
+### R-P02 Lifetime stat medals and lobby promotions
+
+Each of the four My stats cards displays its current medal and progress toward
+the next rank. Rank thresholds are inclusive and independent per category.
+
+| Rank | Total points | Drinks | Lobbies played | Total wins |
+| --- | ---: | ---: | ---: | ---: |
+| Newcomer | 0 | 0 | 0 | 0 |
+| Beginner | 1 | 1 | 1 | 1 |
+| Regular | 10 | 5 | 2 | 2 |
+| Contender | 25 | 10 | 3 | 3 |
+| Expert | 50 | 20 | 5 | 4 |
+| Veteran | 100 | 35 | 8 | 5 |
+| Master | 250 | 60 | 12 | 8 |
+| Legend | 500 | 100 | 20 | 12 |
+
+Existing history immediately qualifies for profile medals. Feed promotions begin
+at the database rollout cutoff (migration 028). A promotion is shown only to
+viewers of the lobby where the relevant credit happened, including wins at the
+season end and personal owner income or stake transfers that cross a threshold.
+One action advancing multiple categories shows one post, naming the highest new
+rank in each and omitting totals. An earlier rank crossing suppresses a repeat
+announcement after a score drop and recovery. Like check-ins and captures, the
+feed is rebuilt from retained, corrected records. Corrections are replayed at
+the original check-in position and can change the ranks or posts in that history.
+Past-season promotions remain in the lobby feed when another season is selected.
+
+Source: contributor's profile medal thresholds and feed choices, 21 November 2026.
+
 ## Leaving and rejoining a lobby
 
 ### R-LB01 Departure preserves history

@@ -1,32 +1,23 @@
-"""The lobby activity feed, derived from saved drink entries. No database or UI imports.
-
-Nothing is stored for the feed: every event is rebuilt from the season's
-accepted entries with the same replay that decides ownership on Ranks and
-the Map (core/scoring_v1.replay_season). So the feed always agrees with the
-standings, also after a correction changes history.
-
-Version 1 has two kinds of event:
-- "checkin": an accepted, scored drink entry;
-- "capture": a territory changing owner (or a free territory being taken).
-Later kinds (achievements, duel results, ...) add a new `kind` value.
-"""
+"""Build lobby activity from retained check-ins, captures and medal promotions."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
 
+from core.medals import Promotion
 from core.models import DrinkEntry
-from core.scoring_v1 import entry_order, replay_season
+from core.scoring_v1 import entry_order, replay_season, utc
 from core.teams import competitor
 
 CHECKIN = "checkin"
 CAPTURE = "capture"
+MEDAL = "medal"
 
 
 @dataclass(frozen=True)
 class ActivityEvent:
-    kind: str                     # CHECKIN or CAPTURE
+    kind: str
     at: datetime                  # when the drink entry was submitted
     entry_id: str                 # the drink entry behind the event
     member: str                   # membership id of the player who drank
@@ -36,6 +27,7 @@ class ActivityEvent:
     drink_type: str | None = None
     size: str | None = None
     previous_owner: str | None = None  # captures only: None when the territory was free
+    medals: tuple[str, ...] = ()
 
 
 def accepted(entry: DrinkEntry) -> bool:
@@ -69,3 +61,11 @@ def activity_events(entries: list[DrinkEntry]) -> list[ActivityEvent]:
                                         new_owner, territory, previous_owner=previous))
     events.reverse()
     return events
+
+
+def with_promotions(events: list[ActivityEvent], promotions: list[Promotion]) -> list[ActivityEvent]:
+    if not promotions:
+        return events
+    rows = [ActivityEvent(MEDAL, post.at, "", post.member, post.member, None, medals=post.medals)
+            for post in promotions]
+    return sorted(rows + events, key=lambda event: utc(event.at), reverse=True)

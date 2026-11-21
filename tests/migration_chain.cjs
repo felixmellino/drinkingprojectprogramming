@@ -38,7 +38,7 @@ assert.equal(order[0],'schema.sql');
  // Both public API roles must be denied, even after the complete migration chain.
  const privateTables=['players','remembered_sessions','password_resets','login_attempts',
   'lobbies','lobby_memberships','seasons','drink_entries','friendships',
-  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations','territory_boosts'];
+  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations','territory_boosts','profile_medal_rollout'];
  const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
   'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action',
   'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation',
@@ -64,10 +64,15 @@ assert.equal(order[0],'schema.sql');
  const focusColumn = (await pg.query("select 1 from information_schema.columns where table_schema='public' and table_name='drink_entries' and column_name='focus_multiplier'")).rows;
  assert.equal(focusColumn.length, process.env.VERIFY_LEGACY_FOCUS==='1' ? 0 : 1);
  await pg.exec(fs.readFileSync('tests/territory_boosts_postgres.sql','utf8'));
+ const medalCutoff = (await pg.query('select launched_at from public.profile_medal_rollout')).rows;
+ assert.equal(medalCutoff.length, 1);
+ await pg.exec(fs.readFileSync('migrations/028_profile_medals.sql', 'utf8'));
+ assert.deepEqual((await pg.query('select launched_at from public.profile_medal_rollout')).rows, medalCutoff);
  const snapshot = await pg.dumpDataDir();
  const reopened = new PGlite({loadDataDir: snapshot});
  const {rows} = await reopened.query('select points_awarded,owner_bonus_quarters from drink_entries where territory_boost_id is not null');
  assert.deepEqual(rows, [{points_awarded:'1.250',owner_bonus_quarters:'1.250'}]);
+ assert.deepEqual((await reopened.query('select launched_at from public.profile_medal_rollout')).rows, medalCutoff);
  await reopened.close();
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();

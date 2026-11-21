@@ -1,10 +1,11 @@
-"""Personal lifetime totals, with each season's ownership replay kept separate."""
+"""Personal lifetime totals, with ownership and winners replayed per season."""
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
-from core.scoring_v1 import replay_season, utc
 from core.leaderboard import season_leader
+from core.scoring_v1 import replay_season, utc
 
 
 @dataclass(frozen=True)
@@ -15,57 +16,72 @@ class ProfileStats:
     wins: int
 
 
+@dataclass(frozen=True)
+class Credit:
+    member: str
+    at: datetime
+    points: Decimal
+    drink: bool = False
+
+
 def season_finished(season, now):
     """Only completed seasons can award a lifetime win."""
     return utc(season.ends_at) <= utc(now)
 
 
-def all_time_stats(memberships, entries, *, finished_season_ids=(), transfers=()):
-    """Count personal drinks plus individual owner income, never teammates' scores.
+def season_credits(entries, transfers, *, finished):
+    """Personal credits and the optional winner from the same season replay."""
+    accepted = [entry for entry in {entry.id: entry for entry in entries}.values()
+                if entry.points_awarded > 0 and entry.location_check_result in ("matched", "outside")]
+    moves = list({transfer.id: transfer for transfer in transfers}.values())
+    modern = any(entry.rule_version == "v1" for entry in accepted)
+    snapshot = replay_season(accepted, moves) if modern else None
+    credits = []
+    for entry in accepted:
+        credits.append(Credit(entry.membership_id, utc(entry.submitted_at),
+                              Decimal(str(entry.points_awarded)), drink=True))
+        if snapshot is not None:
+            recipient, quarters = snapshot.awards[entry.id]
+            if recipient:
+                credits.append(Credit(recipient, utc(entry.submitted_at), Decimal(str(quarters)) / 4))
+    for move in moves:
+        if move.source_id == move.source_membership_id:
+            credits.append(Credit(move.source_id, utc(move.created_at), Decimal(-move.points)))
+        if move.target_id == move.target_membership_id:
+            credits.append(Credit(move.target_id, utc(move.created_at), Decimal(move.points)))
+    winner = None
+    if finished:
+        if snapshot is None:
+            winner = season_leader(accepted, moves)
+        else:
+            rows = snapshot.season_rows()
+            winner = rows[0][0] if rows else None
+    return credits, winner
 
-    Full season entries are needed: somebody else's drink can pay the player
-    owner income. Replay also keeps corrections consistent with standings.
-    Points and drinks count immediately; wins require a completed season.
-    """
+
+def all_time_stats(memberships, entries, *, finished_season_ids=(), transfers=()):
+    """Count personal drinks plus individual owner income, with wins from finished seasons."""
     member_lobbies = {member.id: member.lobby_id for member in memberships}
     identities = {getattr(member, "team_id", None) or member.id for member in memberships}
-    seasons = defaultdict(list)
-    for entry in {entry.id: entry for entry in entries}.values():
-        if entry.points_awarded > 0 and entry.location_check_result in ("matched", "outside"):
-            seasons[entry.season_id].append(entry)
+    entries_by_season = defaultdict(list)
+    moves_by_season = defaultdict(list)
+    for entry in entries:
+        entries_by_season[entry.season_id].append(entry)
+    for move in transfers:
+        moves_by_season[move.season_id].append(move)
+
     points = Decimal(0)
-    drinks = 0
-    wins = 0
+    drinks = wins = 0
     played = set()
-    unique_transfers = {t.id: t for t in transfers}.values()
-    for transfer in unique_transfers:
-        seasons.setdefault(transfer.season_id, [])
-        if transfer.source_id == transfer.source_membership_id and transfer.source_id in member_lobbies:
-            points -= transfer.points
-        if transfer.target_id == transfer.target_membership_id and transfer.target_id in member_lobbies:
-            points += transfer.points
-    for season_id, season_entries in seasons.items():
-        season_transfers = [t for t in unique_transfers if t.season_id == season_id]
-        modern = any(entry.rule_version == 'v1' for entry in season_entries)
-        snapshot = replay_season(season_entries, season_transfers) if modern else None
-        if season_id in finished_season_ids:
-            if snapshot is None:
-                winner = season_leader(season_entries, season_transfers)
-            else:
-                rows = snapshot.season_rows()
-                winner = rows[0][0] if rows else None
-        else:
-            winner = None
+    for season_id in entries_by_season.keys() | moves_by_season.keys():
+        credits, winner = season_credits(entries_by_season[season_id], moves_by_season[season_id],
+                                         finished=season_id in finished_season_ids)
         if winner in identities:
             wins += 1
-        for entry in season_entries:
-            if (entry.membership_id in member_lobbies and entry.points_awarded > 0
-                    and entry.location_check_result in ("matched", "outside")):
-                points += Decimal(str(entry.points_awarded))
-                drinks += 1
-                played.add(member_lobbies[entry.membership_id])
-        if snapshot is not None:
-            for recipient, quarters in snapshot.awards.values():
-                if recipient in member_lobbies:
-                    points += Decimal(quarters) / 4
+        for credit in credits:
+            if credit.member in member_lobbies:
+                points += credit.points
+                if credit.drink:
+                    drinks += 1
+                    played.add(member_lobbies[credit.member])
     return ProfileStats(points, drinks, len(played), wins)
