@@ -10,6 +10,7 @@ import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 import data.db as db
+from activity_ui import VERBS, drink_verb
 from tests.test_checkins import TERRITORY
 from tests.test_scoring_v1 import START, entry, season
 from tests.test_standings_ui import text
@@ -50,8 +51,8 @@ def test_feed_shows_checkins_and_captures_newest_first(ui):
     at = page()
     assert not at.exception
     visible = feed(at)
-    assert visible.index("Leo took Bairro Alto from you") < visible.index("Leo shot") \
-        < visible.index("You claimed Bairro Alto") < visible.index("You large beer")
+    assert visible.index("Leo took Bairro Alto from you") < visible.index(f"Leo {drink_verb('l1')} a shot") \
+        < visible.index("You claimed Bairro Alto") < visible.index(f"You {drink_verb('m1')} a large beer")
     assert "+4" in visible and "+3" in visible and "Bairro Alto, 9 min ago" in visible
     assert "·" not in visible
     assert "Game night" in visible
@@ -108,15 +109,15 @@ def test_team_mode_names_the_team(ui, monkeypatch):
     at.session_state["current_team_id"] = "red"
     visible = feed(at.run())
     assert "Blue Sharks took Bairro Alto from you" in visible
-    assert "Leo (Blue Sharks) shot" in visible
+    assert f"Leo (Blue Sharks) {drink_verb('l1')} a shot" in visible
 
 
 def test_load_more_adds_older_events(ui):
     ui["entries"] = [entry(f"e{i}", "member", "shot", None, i * 3, territory=None) for i in range(35)]
     at = page()
-    assert feed(at).count(" shot") == 30
+    assert feed(at).count(" a shot") == 30
     next(b for b in at.button if b.label == "Load more").click().run()
-    assert feed(at).count(" shot") == 35
+    assert feed(at).count(" a shot") == 35
     assert not any(b.label == "Load more" for b in at.button)
 
 
@@ -126,3 +127,9 @@ def test_photos_switch_opens_the_gallery(ui, monkeypatch):
     at = page()
     at.radio(key="pill_radio_activity_view_feed").set_value("Photos").run()
     assert switch.call_args.args[0] == "pages/6_Check_in_photos.py"
+
+
+def test_each_checkin_keeps_its_verb_but_the_feed_varies():
+    assert drink_verb("m1") == drink_verb("m1")  # same wording on every reload and restart
+    assert drink_verb("m1") in VERBS
+    assert len({drink_verb(f"e{i}") for i in range(50)}) > 5  # not always "drank"

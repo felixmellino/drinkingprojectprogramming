@@ -423,9 +423,11 @@ Map owner badge update (19 November 2026, contributor request):
   Feed is the selected lobby's season timeline, newest first, grouped under
   "Game night …" headings, 30 events at a time with **Load more**.
 - Version 1 shows two kinds of event (`core/activity.py`):
-  - **Check-in**: one card per accepted drink: avatar, the name in bold and then
-    size and drink ("**Ana** large beer"), the territory (or "Outside territories")
-    and how long ago ("Bairro Alto, 9 min ago"), and "+points".
+  - **Check-in**: one card per accepted drink: avatar and a sentence with the
+    name in bold, a verb and size and drink ("**Ana** knocked back a large beer").
+    The verb varies (drank, downed, chugged, polished off, ...; list in
+    `activity_ui.VERBS`) but stays the same for a check-in on every reload.
+    Below it the territory (or "Outside territories") and how long ago ("Bairro Alto, 9 min ago"), and "+points".
     Your own cards have a sky outline. In team lobbies the team follows the name.
   - **Capture**: a banner directly above the drink that caused it: "Ben took
     **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
