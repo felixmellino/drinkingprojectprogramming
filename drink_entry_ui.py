@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from html import escape
 from pathlib import Path
 
@@ -85,4 +86,26 @@ def gate_card_html(eyebrow: str, big: str, line: str) -> str:
         f'<p class="reward-points reward-zero">{escape(big)}</p>'
         f'<p class="reward-where">{escape(line)}</p>'
         "</section>"
+    )
+
+
+_cooldown_timer = st.components.v2.component(
+    "checkin_cooldown",
+    html=gate_card_html("Next check-in in", "", ""),
+    isolate_styles=False,
+    js=(Path(__file__).parent / "components" / "checkin_cooldown.js").read_text(encoding="utf-8"),
+)
+
+
+def show_cooldown(now: datetime, deadline: datetime, seconds: int, *, has_photo: bool = False) -> None:
+    """Render the live timer and let its expiry trigger a normal page rerun."""
+    _cooldown_timer(
+        key="checkin_cooldown",
+        data={
+            "deadline": deadline.isoformat(),
+            "remainingMs": (deadline - now).total_seconds() * 1000,
+            "limit": f"One drink every {seconds // 60} minutes.",
+            "hasPhoto": has_photo,
+        },
+        on_expired_change=lambda: None,
     )

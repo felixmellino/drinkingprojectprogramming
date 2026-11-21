@@ -18,6 +18,6 @@ This file will hold every feature we plan to build with its priority and owner.
   season) and ends on a static awards card with a CSV download of the final
   standings. Rules: [RULES.md R-S01 to R-S03](RULES.md#season-awards-21-november-2026).
   Code: `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py`,
-  `components/season_recap/`, migration 027.
+  `components/season_recap/`, migration 029.
 - **Planned:** a shareable image of the awards card; lifetime achievements
   across seasons.

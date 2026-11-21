@@ -18,15 +18,17 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from action_feedback import action_button, explain, service_error
+from core.action_feedback import AMBIGUOUS_TERRITORY_MESSAGE, checkin_message, location_problem as location_blocker
 from camera_capture import CameraCancelled, camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
-from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, cooldown_remaining,
+from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, cooldown_deadline,
     create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
 from core.constants import MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
-from drink_entry_ui import gate_card_html, page_header, reward_card_html
+from drink_entry_ui import gate_card_html, page_header, reward_card_html, show_cooldown
 from phone_location import current_location, track_location
 from shared import get_territories, lobby_button, require_active_membership, require_login, selected_season, show_logged_in_as
 
@@ -36,7 +38,7 @@ membership_id, lobby_id, season_id = require_active_membership()
 
 season = selected_season(lobby_id, season_id)
 if season is None:
-    st.info("Choose a season on the Lobby page first.")
+    st.info("Open Lobbies and finish the selected lobby's setup, or make another active lobby current before checking in.")
     lobby_button()
     st.stop()
 modern = season.scoring_version == "v1"
@@ -47,14 +49,19 @@ if team_mode and not competitor_id:
     st.info("Open this lobby on the Lobby page and join a team before checking in.")
     lobby_button()
     st.stop()
-now = current_time()
-recent_entries = db.list_drink_entries_for_membership(membership_id)
+try:
+    recent_entries = db.list_drink_entries_for_membership(membership_id)
+except (APIError, RequestError, RuntimeError, OSError):
+    st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
+    st.stop()
 track_location()
+now = current_time()
 
 
 def reset_camera():
     """Forget an unsaved capture; a new component key opens a fresh stream."""
-    for key in ('checkin_pending_photo', 'checkin_capture', 'checkin_posted', 'checkin_saved_result'):
+    for key in ('checkin_pending_photo', 'checkin_capture', 'checkin_posted', 'checkin_saved_result',
+                'checkin_waiting_to_start'):
         st.session_state.pop(key, None)
     st.session_state['checkin_photo_number'] = st.session_state.get('checkin_photo_number', -1) + 1
 
@@ -80,15 +87,25 @@ photo = st.session_state.get('checkin_pending_photo')
 # a photo that can't count. A photo already taken keeps the warnings below.
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
 closed = period_closed or (modern and not scoring_open(now, season))
-waiting = cooldown_remaining(membership_id, now, recent_entries, rules["cooldown_seconds"]) if modern else 0
-if photo is None and not st.session_state.get('checkin_posted') and (closed or waiting):
+deadline = cooldown_deadline(membership_id, recent_entries, rules["cooldown_seconds"]) if modern else None
+waiting = deadline is not None and utc(now) < deadline
+if photo is None and not st.session_state.get('checkin_posted'):
+    if waiting and not closed:
+        st.session_state['checkin_waiting_to_start'] = True
+        page_header("Check in", compact=True)
+        show_cooldown(utc(now), deadline, rules["cooldown_seconds"])
+        st.stop()
+    if not closed and st.session_state.get('checkin_waiting_to_start'):
+        page_header("Check in", compact=True)
+        if not st.button("Start check-in", type="primary", width="stretch"):
+            st.stop()
+        st.session_state.pop('checkin_waiting_to_start')
+
+if photo is None and not st.session_state.get('checkin_posted') and closed:
     page_header("Check in", compact=True)
     zone = ZoneInfo(season.timezone_name)
-    opening = next_opening(now, season) if closed and modern else None
-    if waiting:
-        card = gate_card_html("Next check-in in", f"{waiting // 60}:{waiting % 60:02d}",
-                              f"One drink every {rules['cooldown_seconds'] // 60} minutes.")
-    elif opening:
+    opening = next_opening(now, season) if modern else None
+    if opening:
         local = opening.astimezone(zone)
         card = gate_card_html("Game night opens", f"{local:%a %H:%M}",
                               f"Check-ins open {local:%A %d %B at %H:%M} ({season.timezone_name}).")
@@ -96,9 +113,9 @@ if photo is None and not st.session_state.get('checkin_posted') and (closed or w
         local = season.starts_at.astimezone(zone)
         card = gate_card_html("Season starts", f"{local:%d %b}", f"{local:%A %d %B at %H:%M} ({season.timezone_name}).")
     else:
-        card = gate_card_html("Season over", "Done", "Start or choose a new season on the Lobby page.")
+        card = gate_card_html("Season over", "Done", "Create or join a new lobby on the Lobbies page and make it current to play again.")
     st.markdown(card, unsafe_allow_html=True)
-    if closed and not opening and not utc(now) < utc(season.starts_at):
+    if not opening and utc(now) >= utc(season.starts_at):
         lobby_button()
     elif st.button("Check again", type="primary", width="stretch"):
         st.rerun()
@@ -144,6 +161,7 @@ if saved_result is not None:
     with st.container(key="checkin_result"):
         points, location, owner_income, *saved_ids = saved_result
         territory_name, captured, unavailable = None, False, False
+        saved = None
         if saved_ids:
             try:
                 entries = db.list_drink_entries(season_id)
@@ -161,6 +179,8 @@ if saved_result is not None:
         st.markdown(reward_card_html(format_points(points), location, territory=territory_name, captured=captured,
                                      team_mode=team_mode, owner_income=income, ownership_unavailable=unavailable),
                     unsafe_allow_html=True)
+        if saved and saved.territory_boost_id and (saved.focus_multiplier or 1) <= TERRITORY_MULTIPLIER:
+            st.caption(f"Territory boost ×{TERRITORY_MULTIPLIER:g} applied.")
 
 if st.session_state.get('checkin_posted'):
     # The one button after a check-in. (The + tab in the bar starts the next one.)
@@ -174,14 +194,10 @@ if closed:
     if opening:
         st.warning(f"Scoring is closed. Opens {opening:%a %d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     elif utc(now) < utc(season.starts_at):
-        st.warning(f"This season starts {season.starts_at:%d %b %Y at %H:%M:%S %Z}.")
+        local_start = season.starts_at.astimezone(ZoneInfo(season.timezone_name))
+        st.warning(f"This season starts {local_start:%d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     else:
-        st.warning("This season has ended. Start or choose a new season on the Lobby page.")
-if waiting:
-    st.warning(f"Next check-in in {waiting // 60}:{waiting % 60:02d}.")
-    st.button("Refresh remaining wait")
-
-
+        st.warning("This season has ended. Create or join a new lobby on the Lobbies page and make it current to play again.")
 capture = st.session_state.get('checkin_capture')
 with st.container(key='checkin_photo'):
     # The photo fills all the space the controls leave free; Retake is a small round button on it.
@@ -230,6 +246,7 @@ with st.container(key="drink_ui_panel_selection"):
         if drink_type in ("beer", "wine"):
             amount = st.number_input("Amount (units)", min_value=0.1, value=1.0, step=0.1)
 
+territory_problem = None
 with st.container(key="drink_ui_panel_location"):
     device_gps, accuracy_m, location_problem = current_location()
     location_messages = {
@@ -260,7 +277,10 @@ with st.container(key="drink_ui_panel_location"):
                 if preview_result == "matched":
                     place = " in " + next(t.name for t in territories if t.id == preview_territory)
                 elif preview_result == "outside":
-                    place = ", outside the territories"
+                    place = ", outside the territories (season points only)"
+                elif preview_result == "uncertain":
+                    territory_problem = AMBIGUOUS_TERRITORY_MESSAGE
+                    place = ", territory could not be assigned"
             except (APIError, RequestError, RuntimeError):
                 pass  # The territory is checked again on submission.
         st.caption(f"Location found, accurate to {accuracy_m:.0f} m{place}")
@@ -271,7 +291,17 @@ recovered = next((item for item in recent_entries if capture and item.id == capt
 if recovered is not None:
     finish_checkin(recovered)
 
-if st.button("Submit", type="primary", width="stretch", disabled=photo is None or device_gps is None or closed or bool(waiting)) and photo is not None and capture is not None:
+if waiting:
+    show_cooldown(utc(now), deadline, rules["cooldown_seconds"], has_photo=True)
+
+blockers = [
+    location_blocker(location_problem, accuracy_m),
+    territory_problem,
+    checkin_message("scoring_closed") if closed else None,
+    checkin_message("missing_photo") if photo is None or capture is None else None,
+]
+if action_button("Submit", type="primary", width="stretch", disabled=waiting, problems=blockers,
+                 details="A blocked submission awards no points. Your photo and drink selection stay on this page while you fix the requirements. Location is checked again when you submit."):
     submitted_at = current_time() if modern else datetime.now().astimezone()
     _, capture_id, captured_at = capture
 
@@ -299,31 +329,12 @@ if st.button("Submit", type="primary", width="stretch", disabled=photo is None o
             entry = replace(entry, id=capture_id, photo_captured_at=captured_at)
             entry = db.save_drink_entry_photo(player_id, lobby_id, entry, clean_photo)
     except InvalidCheckinPhoto as error:
-        st.error(str(error))
+        explain(str(error))
     except CheckinRejected as rejected:
-        messages = {
-            "team_required": "Open your lobby and join a team before checking in.",
-            "scoring_closed": "Scoring has closed. Refresh to see the next opening.",
-            "cooldown": "Wait two minutes between check-ins. Your photo and selections are kept; refresh the remaining wait.",
-            "invalid_selection": "Choose a supported drink and size.",
-            "invalid_photo": "Take a fresh camera photo and try again.",
-            "invalid_territory": "We could not confirm the territory. Refresh and try again.",
-            "missing_photo": "A photo is required.",
-            "unknown_drink_type": "Unrecognized drink type.",
-            "missing_amount": "Enter an amount for this drink.",
-            "duplicate_check_in": "You already logged this drink a moment ago.",
-            "location_unavailable": "We need your location. Wait until it's found, then submit again.",
-            "location_uncertain": "Your location isn't accurate enough yet. Wait a moment, then submit again.",
-        }
-        st.error(messages.get(rejected.reason, rejected.reason))
+        explain(checkin_message(rejected.reason), details="This submission was rejected. Your photo and selections are kept so you can fix the problem and retry.")
     except PermissionError:
-        st.error("Choose a lobby you belong to before checking in.")
-    except RuntimeError as error:
-        if str(error).startswith("Scoring setup is required"):
-            st.error(str(error))
-        else:
-            st.error("We couldn't confirm the check-in was saved. Try submitting again.")
-    except (APIError, RequestError, StorageException):
-        st.error("We couldn't confirm the check-in was saved. Try submitting again.")
+        explain("Your lobby access could not be confirmed. Open the Lobby page and select a lobby you belong to, then retry.")
+    except (RuntimeError, APIError, RequestError, StorageException, OSError) as error:
+        service_error(error, "We couldn't confirm the check-in was saved. Keep this photo and submit again to recover the saved result without awarding it twice.", popup=True)
     else:
         finish_checkin(entry)

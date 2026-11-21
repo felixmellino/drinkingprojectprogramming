@@ -8,16 +8,17 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
-from core.reaction_duel import FINAL, STAKES, component_action, time_label, validate_pair
+from action_feedback import action_button, service_error
+from core.action_feedback import duel_closed_message, opponent_message, stake_problems
+from core.reaction_duel import CONFIG, FINAL, STAKES, component_action, time_label, validate_pair
 from core.scoring_v1 import format_points
 from reaction_duel_component import reaction_board
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 
 
-def _error(error):
-    st.error(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-             else "Reaction Duel is unavailable right now. It reloads by itself.")
+def _error(error, *, popup=False):
+    service_error(error, "Reaction Duel is unavailable right now. Keep this page open for an automatic retry, or reopen the game if the problem continues.", popup=popup)
 
 
 def _act(player, duel, action, revision=None, elapsed_ms=None, *, rerun=True):
@@ -26,7 +27,7 @@ def _act(player, duel, action, revision=None, elapsed_ms=None, *, rerun=True):
         if rerun:
             st.rerun()
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-        _error(error)
+        _error(error, popup=rerun)
 
 
 def _play(player, duel):
@@ -66,6 +67,9 @@ def _result(duel, member, labels):
                  f'<td class="{"win" if r["winner_id"] == other else ""}">{time_label(theirs)}</td></tr>')
     st.markdown(f'<table class="reaction-rounds"><tr><th>Round</th><th>You</th>'
                 f'<th>{escape(labels.get(other, "Opponent"))}</th></tr>{rows}</table>', unsafe_allow_html=True)
+    if any(r.get(key) is None or r[key] >= CONFIG['miss_ms'] for r in duel['round_results']
+           for key in ('challenger_ms', 'opponent_ms')):
+        game_note(f"Missed means no valid tap was recorded within the {CONFIG['reaction_response_ms'] / 1000:g}-second response window, or the try expired. It counts as a missed round.")
     if duel["status"] == "draw":
         game_note("Same rounds and same total time." if duel["reason"] == "rounds" else "Time ran out before anyone played.")
     if st.button("Done", key="reaction_done", type="primary", width="stretch"):
@@ -112,25 +116,25 @@ def _home(player, member, lobby, season, members, labels, state):
         except ValueError:
             continue
     if not state["open"]:
-        game_note("Opens with the scoring window.")
+        game_note(duel_closed_message(season))
     elif not opponents:
-        game_note("Needs another player." if lobby.game_mode != "team" else "Needs a rival team.")
+        game_note(opponent_message(own, lobby))
     elif not state["outgoing"]:
-        game_note("You already challenged tonight. Resets at 06:00.")
+        game_note(f"You already challenged tonight. Try again after 06:00 ({season.timezone_name}); finishing the duel does not reset this limit.")
     elif not any(d["challenger_id"] == member for d in pending):
         opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
                             format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
                             key="pill_radio_reaction_opponent")
         stake = st.radio("Stake (points)", STAKES, horizontal=True, key="pill_radio_reaction_stake")
-        if st.button("Challenge", type="primary", key="reaction_challenge", width="stretch",
-                     disabled=opponent is None or state["available_points"] < stake):
+        if action_button("Challenge", type="primary", key="reaction_challenge", width="stretch",
+                         problems=stake_problems(opponent, stake, state["available_points"])):
             request = st.session_state.setdefault("reaction_invitation_id", str(uuid4()))
             try:
                 db.invite_reaction_duel(player, season.id, request, opponent, stake)
                 st.session_state.pop("reaction_invitation_id", None)
                 st.rerun()
             except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-                _error(error)
+                _error(error, popup=True)
     recent = [d for d in duels if d["status"] in {"completed", "draw"}]
     if recent:
         with st.expander("Recent"):

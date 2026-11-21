@@ -1,4 +1,4 @@
--- Requires 026. Remembers which players have finished a season's recap (R-S03).
+-- Requires 028. Remembers which players have finished a season's recap (R-S03).
 -- One row per player and season; the server checks membership and that the season
 -- has ended before writing. The row grants nothing: it only hides the banner.
 begin;

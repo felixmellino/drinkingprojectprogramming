@@ -7,6 +7,7 @@ from postgrest.exceptions import APIError
 from httpx import RequestError
 
 import data.db as db
+from action_feedback import explain
 import theme
 from core.password_recovery import RESET_MESSAGE
 from core.lobbies import create_player
@@ -50,11 +51,11 @@ def show_start():
 
 def show_error(error):
     if isinstance(error, ValueError):
-        st.error(str(error))
+        explain(str(error))
     elif isinstance(error, APIError) and error.code == "23505":
-        st.error("That username or email is already registered.")
+        explain("That username or email is already registered. Choose a different username or log in to your existing account; use Forgot password if needed.")
     else:
-        st.error("Account service is unavailable. Please try again later.")
+        explain("Account service is unavailable. Check your connection and try again; if this continues, contact the app organizer.")
 
 
 def show_accounts():
@@ -84,7 +85,7 @@ def show_accounts():
                 try:
                     player = create_player(username, first, last, email, password, confirmation, db.list_players())
                     db.insert_player(player)
-                    finish_login(player)
+                    finish_login(player, new_account=True)
                 except (ValueError, APIError, RuntimeError, OSError, RequestError) as exc:
                     show_error(exc)
 
@@ -95,7 +96,10 @@ def show_accounts():
             with st.form("login"):
                 email = st.text_input("Email", key="login_email")
                 password = st.text_input("Password", type="password", key="login_password")
-                remember = st.checkbox("Remember password", help="Keep me signed in on this device for 30 days.")
+                with st.container(key="remember_me_row", horizontal=True, vertical_alignment="center", gap="xsmall"):
+                    remember = st.checkbox("Remember Me")
+                    with st.popover("Info", icon=":material/info:", type="tertiary"):
+                        st.write("Turn this on to stay signed in on this device for 30 days so you can skip logging in next time.")
                 submitted = st.form_submit_button("Log in")
             if submitted:
                 try:
@@ -103,7 +107,7 @@ def show_accounts():
                     if player:
                         finish_login(player, remember)
                     else:
-                        st.error("Email or password is incorrect.")
+                        explain("Sign-in could not be completed. Check your email and password or use Forgot password. After repeated attempts, wait 15 minutes before retrying.")
                 except (ValueError, APIError, RuntimeError, OSError, RequestError) as exc:
                     show_error(exc)
             if st.button("Forgot password?"):

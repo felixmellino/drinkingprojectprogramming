@@ -10,6 +10,8 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+from action_feedback import action_button, explain, service_error
+from core.action_feedback import duel_closed_message, location_problem, opponent_message, role_limit_message
 from camera_capture import CameraCancelled, camera_photo
 from chug_duel_component import duel_board
 from core.chug_duel import allowances, component_action, night_id, unlimited_plays, validate_pair, ERRORS
@@ -27,13 +29,12 @@ from time_duel_ui import render_time
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, StorageException)
 
 
-def _error(error):
+def _error(error, *, popup=False):
+    show = explain if popup else st.error
     if isinstance(error, CheckinRejected):
-        st.error(ERRORS.get(error.reason, "The shared check-in could not be accepted. Please retry."))
-    elif isinstance(error, (ValueError, PermissionError, RuntimeError)):
-        st.error(str(error))
+        show(ERRORS.get(error.reason, "The shared check-in could not be accepted. Refresh Minigames and review the saved duel before retrying."))
     else:
-        st.error("The duel service is unavailable. Refresh to recover any saved action before retrying.")
+        service_error(error, "The duel service is unavailable. Refresh to recover any saved action before retrying.", popup=popup)
 
 
 def _act(player, duel, action, winner=None):
@@ -41,7 +42,7 @@ def _act(player, duel, action, winner=None):
         db.chug_duel_action(player, duel["id"], action, winner)
         st.rerun()
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-        _error(error)
+        _error(error, popup=action not in {"arm", "finish"})
 
 
 GAME_ART = Path(__file__).parent / "assets" / "games"
@@ -73,7 +74,8 @@ def _game_tile(key, art, title, line, *, invites=0, alert=False, playable=True, 
             f'<div class="game-tile-text"><strong>{escape(title)}</strong>'
             f'<small class="{tone.strip()}">{escape(line)}</small></div></div>',
             unsafe_allow_html=True)
-        return real and st.button(f"Open {title}", key=f"open_game_{key}", width="stretch", disabled=not playable)
+        return real and action_button(f"Open {title}", key=f"open_game_{key}", width="stretch",
+                                      problems=["This game could not be loaded. Refresh Minigames to retry; if it remains unavailable, contact the app organizer." if not playable else None])
 
 
 # Placeholder tiles after the playable games; each becomes a real game later.
@@ -200,13 +202,10 @@ def _capture_and_start(player, lobby, season, duel):
     encoded = b64encode(capture[0]).decode("ascii")
     st.html(f'<img class="chug-photo" src="data:image/jpeg;base64,{encoded}" alt="Shared duel photo">')
     gps, accuracy, problem = current_location()
-    if problem == "off":
-        st.warning("Location is off. Turn it on in Profile → Location.")
-    elif problem:
-        st.warning("Waiting for your location. Keep this page open.")
+    blocker = location_problem(problem, accuracy)
     start, retake = st.columns(2)
     with start:
-        go = st.button("Start duel", type="primary", key=key + "_start", disabled=bool(problem), width="stretch")
+        go = action_button("Start duel", type="primary", key=key + "_start", problems=[blocker], width="stretch")
     with retake:
         if st.button("Retake photo", key=key + "_retake", width="stretch"):
             st.session_state.pop(key, None)
@@ -216,15 +215,16 @@ def _capture_and_start(player, lobby, season, duel):
         try:
             # Read the newest reading again at submission; do not use a preview.
             gps, accuracy, problem = current_location()
-            if problem:
-                raise ValueError(ERRORS["location_unavailable"])
+            blocker = location_problem(problem, accuracy)
+            if blocker:
+                raise ValueError(blocker)
             saved = db.start_chug_duel(player, lobby.id, season.id, duel["id"], capture[0], capture[1], gps, accuracy)
             if saved["status"] in {"started", "completed", "aborted"}:
                 st.session_state.pop(key, None)
                 st.rerun()
-            st.warning("This duel is no longer available.")
+            explain("This duel is no longer available. Return to All games and reopen Chug Duel to see its saved status before starting another.")
         except (ValueError, PermissionError, CheckinRejected) + SERVICE_ERRORS as error:
-            _error(error)
+            _error(error, popup=True)
 
 
 def render_minigames(player, member, lobby, season):
@@ -320,8 +320,10 @@ def render_minigames(player, member, lobby, season):
                             _act(player, duel, "cancel")
                     else:
                         a, b = st.columns(2)
-                        if a.button("Accept", key=f"accept_{duel['id']}", type="primary", disabled=not incoming, width="stretch"):
-                            _act(player, duel, "accept")
+                        with a:
+                            if action_button("Accept", key=f"accept_{duel['id']}", type="primary", width="stretch",
+                                             problems=[role_limit_message("Chug Duel", season.timezone_name, role="acceptance") if not incoming else None]):
+                                _act(player, duel, "accept")
                         if b.button("Decline", key=f"decline_{duel['id']}", width="stretch"):
                             _act(player, duel, "decline")
                         if not incoming:
@@ -339,7 +341,7 @@ def render_minigames(player, member, lobby, season):
                         _act(player, duel, "abort")
 
         if not scoring_open(now, season):
-            game_note("Duels open with the scoring window.")
+            game_note(duel_closed_message(season, now=now, allow_test_anytime=False))
         elif outgoing and not active:   # one thing at a time: answer or finish the open duel first
             opponents = []
             for candidate in members:
@@ -349,7 +351,7 @@ def render_minigames(player, member, lobby, season):
                 except ValueError:
                     pass
             if not opponents:
-                game_note("Needs another player." if lobby.game_mode != "team" else "Needs a rival team.")
+                game_note(opponent_message(own, lobby))
             else:
                 opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
                                     format_func=lambda mid: labels[mid], horizontal=True, key="pill_radio_chug_opponent")
@@ -361,15 +363,16 @@ def render_minigames(player, member, lobby, season):
                 if st.session_state.get("chug_request") != request:
                     st.session_state["chug_request"] = request
                     st.session_state["chug_invitation_id"] = str(uuid4())
-                if st.button("Challenge", type="primary", key="chug_invite", disabled=opponent is None, width="stretch"):
+                if action_button("Challenge", type="primary", key="chug_invite", width="stretch",
+                                 problems=["No opponent selected. Choose a player under Who, then try again." if opponent is None else None]):
                     try:
                         db.invite_chug_duel(player, season.id, st.session_state["chug_invitation_id"], opponent, drink, size)
                         st.session_state.pop("chug_request", None)
                         st.rerun()
                     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-                        _error(error)
+                        _error(error, popup=True)
         elif not outgoing and not active:
-            game_note("You already challenged tonight.")
+            game_note(f"You already challenged tonight. {role_limit_message('Chug Duel', season.timezone_name, role='challenge')}")
 
         history = [d for d in duels if d["status"] not in {"invited", "accepted", "started"}]
         for duel in history[:3]:

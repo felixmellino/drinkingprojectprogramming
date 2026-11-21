@@ -8,6 +8,9 @@ import streamlit as st
 from streamlit.components.v1 import declare_component
 
 import data.db as db
+from action_feedback import explain
+from httpx import RequestError
+from postgrest.exceptions import APIError
 
 _browser_storage = declare_component(
     "remember_device", path=str(Path(__file__).parent / "components" / "remember_device")
@@ -54,7 +57,7 @@ def set_identity(player) -> None:
     })
 
 
-def finish_login(player, remember: bool = False) -> None:
+def finish_login(player, remember: bool = False, *, new_account: bool = False) -> None:
     # Create the persistent record before authenticating: a database failure
     # must leave the form usable and must not create a half-saved preference.
     token = db.create_remembered_session(player) if remember else ""
@@ -63,13 +66,21 @@ def finish_login(player, remember: bool = False) -> None:
     st.session_state["_remember_attempted"] = True
     st.session_state["_device_token"] = token
     queue_storage("write" if remember else "clear", token)
+    if new_account:
+        st.session_state["_lobby_dialog"] = "welcome"
+        invite = st.query_params.get("lobby_invite")
+        st.switch_page("pages/2_Lobby.py", query_params={"lobby_invite": invite} if invite else None)
     st.rerun()
 
 
 def log_out() -> None:
     token = st.session_state.get("_device_token", "")
     if token:
-        db.revoke_remembered_session(token)
+        try:
+            db.revoke_remembered_session(token)
+        except (APIError, RequestError, RuntimeError, OSError):
+            explain("Sign-out could not be confirmed for this remembered device. You are still signed in. Check your connection and press Log out again.")
+            return
     st.session_state.clear()
     st.session_state["_remember_attempted"] = True
     queue_storage("clear")

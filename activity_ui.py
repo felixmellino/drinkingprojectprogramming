@@ -10,12 +10,13 @@ from datetime import datetime
 from html import escape
 from zlib import crc32
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from core.activity import CAPTURE, ActivityEvent
+from core.activity import CAPTURE, MEDAL, ActivityEvent
 from core.profile_photo import initials
-from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, format_points, window_bounds
+from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, format_points, utc, window_bounds
 from photo_history_ui import game_night_label, identity_colour
 from standings_ui import ago
 
@@ -108,11 +109,23 @@ def feed_html(events: list[ActivityEvent], *, member_names: dict, team_names: di
     for event in events:
         if season is not None:
             bounds = window_bounds(event.at, season)
-            if bounds != night:
-                night = bounds
-                parts.append(f'<p class="activity-night">{escape(game_night_label(*bounds))}</p>')
+            if event.kind == MEDAL and not (utc(season.starts_at) <= utc(event.at) < utc(season.ends_at)
+                                            and utc(bounds[0]) <= utc(event.at) < utc(bounds[1])):
+                date = utc(event.at).astimezone(ZoneInfo(season.timezone_name)).date()
+                group, label = date, f"{date:%d %b %Y}"
+            else:
+                group, label = bounds, game_night_label(*bounds)
+            if group != night:
+                night = group
+                parts.append(f'<p class="activity-night">{escape(label)}</p>')
         if event.kind == CAPTURE:
             parts.append(capture_html(event, names, territory_names, me_competitor))
+        elif event.kind == MEDAL:
+            name = "You" if event.member == me_member else member_names.get(event.member, "Unknown player")
+            medals = " · ".join(event.medals)
+            parts.append(f'<div class="activity-medal"><span aria-hidden="true">★</span>'
+                         f'<span>{escape(name)} earned <strong>{escape(medals)}</strong>'
+                         f'<small>{escape(ago(event.at, now))}</small></span></div>')
         else:
             parts.append(checkin_html(event, member_names, team_names, territory_names, me_member, now))
     return '<div class="activity-feed">' + "".join(parts) + "</div>"

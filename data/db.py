@@ -19,6 +19,7 @@ from core.auth import allow_unknown_login_attempt, authenticate, new_token, toke
 from core.checkin_photo import photo_expires_at
 from core.photo_privacy import can_view_photo
 from core.constants import UNLINKED_PHOTO_GRACE_HOURS
+from core.teams import ERRORS as TEAM_ERRORS
 
 from supabase import Client, create_client
 from postgrest.exceptions import APIError
@@ -98,6 +99,17 @@ def insert_player(player: Player) -> None:
             "email": player.email,
         }
     ).execute()
+
+
+def profile_medal_launch() -> datetime | None:
+    """The rollout timestamp survives app restarts and migration retries."""
+    try:
+        rows = get_client().table("profile_medal_rollout").select("launched_at").execute().data
+    except APIError as error:
+        if error.code in {"42P01", "PGRST205"}:
+            return None
+        raise
+    return datetime.fromisoformat(rows[0]["launched_at"]) if rows else None
 
 
 # -- lobbies & memberships ------------------------------------------------
@@ -195,14 +207,21 @@ def list_memberships_for_lobby(lobby_id: str, *, include_left: bool = False) -> 
 
 
 def insert_membership(membership: LobbyMembership) -> None:
-    get_client().table("lobby_memberships").insert(
-        {
-            "id": membership.id,
-            "player_id": membership.player_id,
-            "lobby_id": membership.lobby_id,
-            "joined_at": membership.joined_at.isoformat(),
-        }
-    ).execute()
+    try:
+        get_client().table("lobby_memberships").insert(
+            {
+                "id": membership.id,
+                "player_id": membership.player_id,
+                "lobby_id": membership.lobby_id,
+                "joined_at": membership.joined_at.isoformat(),
+            }
+        ).execute()
+    except APIError as error:
+        if error.message in TEAM_ERRORS:
+            raise ValueError(TEAM_ERRORS[error.message]) from None
+        if error.code == "23505":
+            raise ValueError("This membership changed while joining. Refresh lobbies to check whether you have already joined before trying again.") from None
+        raise
 
 
 def issue_lobby_invitation(player_id: str, lobby_id: str, friend_id: str) -> dict:
@@ -247,9 +266,11 @@ def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
     except APIError as error:
         reason = getattr(error, "message", "")
         if reason == "permission_denied":
-            raise PermissionError("This account cannot change that lobby membership.") from None
+            raise PermissionError("This account cannot change that lobby membership. Refresh lobbies and reopen a lobby you belong to.") from None
         if reason in {"minigame_active", "time_busy"}:
             raise ValueError("Finish your active minigame before leaving, or wait for it to expire.") from None
+        if reason in TEAM_ERRORS:
+            raise ValueError(TEAM_ERRORS[reason]) from None
         raise
 
 
@@ -298,8 +319,8 @@ def _scoring_rpc(name: str, parameters: dict):
             raise ValueError(ERRORS[reason]) from None
         if reason == "permission_denied":
             raise PermissionError("This account cannot change that lobby or entry.") from None
-        if reason in {"invalid_selection", "scoring_closed", "cooldown", "correction_closed", "correction_conflict",
-                      "team_required", "invalid_territory", "invalid_photo", "season_still_active", "lobby_already_started", "invalid_timezone", "invalid_rules"}:
+        from core.action_feedback import CHECKIN_MESSAGES
+        if reason in CHECKIN_MESSAGES:
             raise CheckinRejected(reason) from None
         if reason == "scoring_setup_required" or error.code in {"42703", "PGRST202", "PGRST204"}:
             raise RuntimeError("Scoring setup is required. Ask the Data owner to apply migration 005.") from None
@@ -408,6 +429,7 @@ def _row_to_drink_entry(r: dict) -> DrinkEntry:
         focus_multiplier=_score_number(r['focus_multiplier']) if r.get('focus_multiplier') is not None else None,
         time_duel_id=r.get('time_duel_id'), time_bonus=_score_number(r.get('time_bonus', 0)),
         absent_member_ids=tuple(r.get('absent_member_ids') or ()),
+        territory_boost_id=r.get("territory_boost_id"),
     )
 
 
@@ -485,13 +507,20 @@ def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, pho
     photo_path = _checkin_photo_path(lobby_id, entry.id)
     _private_photo_bucket().upload(photo_path, photo, {"content-type": "image/jpeg", "upsert": "true"})
     if entry.rule_version == "v1":
-        saved = _scoring_rpc("accept_scoring_checkin", {
+        params = {
             "actor_player": player_id, "capture_id": entry.id, "member_id": entry.membership_id,
             "target_season": entry.season_id, "selected_drink": entry.drink_type,
             "selected_size": entry.size, "verified_territory": entry.territory_id,
             "location_result": entry.location_check_result, "stored_photo": photo_path,
             "photo_received_at": entry.photo_captured_at.isoformat() if entry.photo_captured_at else entry.submitted_at.isoformat(),
-        })
+        }
+        rpc = "accept_scoring_checkin"
+        if entry.territory_id and (getattr(selected_season, "scoring_rules", None) or {}).get("territory_boost") is True:
+            from data.territory_file import boost_candidate_ids, territory_file_version
+
+            rpc = "accept_territory_scoring_checkin"
+            params["reachable_territories"] = boost_candidate_ids(entry.territory_id, territory_file_version())
+        saved = _scoring_rpc(rpc, params)
         return _row_to_drink_entry(saved[0])
     # Retrying the same capture uses the same object path and primary key.
     saved = table.upsert(
@@ -504,6 +533,13 @@ def save_drink_entry_photo(player_id: str, lobby_id: str, entry: DrinkEntry, pho
     if not saved:
         raise RuntimeError("Could not confirm the check-in was saved.")
     return _row_to_drink_entry(saved[0])
+
+
+def active_territory_boost(player_id: str, season_id: str) -> tuple[str, datetime] | None:
+    rows = _scoring_rpc("active_territory_boost", {"actor_player": player_id, "target_season": season_id})
+    if rows:
+        return rows[0]["territory_id"], datetime.fromisoformat(rows[0]["ends_at"])
+    return None
 
 
 def _lobby_photo_query(player_id: str, lobby_id: str):
@@ -1279,16 +1315,7 @@ def list_lobby_teams(player_id: str, lobby_id: str) -> list[Team]:
 
 def _team_rpc(name: str, parameters: dict):
     from core.quiz_duel import ERRORS as QUIZ_ERRORS
-    messages = {
-        "team_full": "That team is full. Choose another team.",
-        "lobby_full": "This lobby is full.",
-        "team_locked": "Your team is locked after your first scored check-in.",
-        "random_team_locked": "Teams are assigned at random in this lobby.",
-        "lobby_finished": "This lobby has finished. Teams are frozen.",
-        "invalid_team": "Choose a team in this lobby.",
-        "invalid_team_name": "Use a team name of 1–40 characters.",
-        "permission_denied": "Only members of this team can edit it.",
-    }
+    messages = TEAM_ERRORS
     try:
         return get_client().rpc(name, parameters).execute().data
     except APIError as error:
@@ -1301,7 +1328,7 @@ def _team_rpc(name: str, parameters: dict):
         if reason in messages:
             raise ValueError(messages[reason]) from None
         if error.code == "23505":
-            raise ValueError("Another team in this lobby already uses that name.") from None
+            raise ValueError("Another team in this lobby already uses that name. Enter a different team name.") from None
         raise
 
 

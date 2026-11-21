@@ -125,7 +125,7 @@ def unfinished_recaps(rows, finished: set[str], now: datetime) -> list[tuple[str
 
 
 def finished_or_empty(player_id: str) -> set[str] | None:
-    """None when the list can't be read (for example before migration 027):
+    """None when the list can't be read (for example before migration 029):
     then no banner is shown rather than an error on every page."""
     try:
         return db.finished_recap_seasons(player_id)

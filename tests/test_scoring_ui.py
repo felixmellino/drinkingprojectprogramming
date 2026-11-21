@@ -16,6 +16,7 @@ import data.db as db
 import core.scoring_v1 as rules
 from tests.test_checkins import INSIDE, TERRITORY
 from tests.test_scoring_v1 import START, entry, season
+from tests.feedback_helpers import assert_blocked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,6 +34,8 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, 'list_season_transfers', lambda _: [])
     game = season()
     state = {"now": START, "entries": [], "lose_reply": False, "calls": 0, "photo": None, "location": None}
+    state["cooldown"] = Mock()
+    monkeypatch.setattr("drink_entry_ui.show_cooldown", state["cooldown"])
     camera = BytesIO()
     Image.new("RGB", (12, 6)).save(camera, "JPEG")
     camera.file_id = "fresh-camera-capture"
@@ -194,9 +197,12 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
-    assert not page.exception and camera.call_count == 1 and 'Next check-in in' in gate(page)
+    assert not page.exception and camera.call_count == 1
+    state["cooldown"].assert_called_once_with(START, START + timedelta(seconds=120), 120)
     state['now'] = state['now'] + timedelta(seconds=120)
-    button(page, 'Check again').click().run()
+    page.run()
+    assert camera.call_count == 1
+    button(page, 'Start check-in').click().run()
     assert not page.exception and camera.call_count == 2 and not page.radio
 
 
@@ -282,7 +288,8 @@ def test_window_closing_after_the_photo_still_blocks_submission(ui):
     set_location(page, state)
     state["now"] = START + timedelta(days=3)
     page.run()
-    assert not page.exception and button(page, "Submit").disabled
+    assert not page.exception
+    assert_blocked(page, "Submit", "Scoring is closed", "Refresh")
     assert any("Scoring is closed" in item.value and "Europe/Lisbon" in item.value for item in page.warning)
     assert state["entries"] == []
 
@@ -295,9 +302,15 @@ def test_cooldown_shows_countdown_instead_of_the_camera(ui, monkeypatch):
     state["entries"] = [entry("saved", "member", "shot", None, 0)]
     page = open_checkin()
     assert not page.exception and camera.call_count == 0
-    assert "1:00" in gate(page) and "every 2 minutes" in gate(page)
+    state["cooldown"].assert_called_once_with(START + timedelta(seconds=60), START + timedelta(seconds=120), 120)
+    assert not any(item.label == "Start check-in" for item in page.button)
+    state["now"] = START + timedelta(seconds=119, milliseconds=999)
+    page.run()
+    assert camera.call_count == 0 and not any(item.label == "Start check-in" for item in page.button)
     state["now"] = START + timedelta(seconds=120)
-    button(page, "Check again").click().run()
+    page.run()  # The browser timer triggers the page rerun when it expires.
+    assert not page.exception and camera.call_count == 0
+    button(page, "Start check-in").click().run()
     assert not page.exception and camera.call_count == 1
 
 
@@ -312,12 +325,14 @@ def test_cooldown_keeps_capture_and_selection_and_expires_at_two_minutes(ui):
     capture = page.session_state["checkin_capture"][1]
     radio(page, "Drink").set_value("mixed").run()
     assert button(page, "Submit").disabled
-    assert any("Next check-in in 1:00" in item.value for item in page.warning)
+    state["cooldown"].assert_called_with(START + timedelta(seconds=60), START + timedelta(seconds=120), 120, has_photo=True)
+    radio(page, "Size").set_value("large").run()
     assert page.session_state["checkin_capture"][1] == capture
     state["now"] = START + timedelta(seconds=120)
-    button(page, "Refresh remaining wait").click().run()
+    page.run()
     assert not button(page, "Submit").disabled
     assert radio(page, "Drink").value == "mixed"
+    assert radio(page, "Size").value == "large"
     assert page.session_state["checkin_capture"][1] == capture
     assert state["calls"] == 0
 
@@ -407,7 +422,8 @@ def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch)
     monkeypatch.setattr(db, "list_checkin_revisions", lambda *args: [{"revision": 1,"old_drink_type":"wine","old_size":"large",
         "new_drink_type":"wine","new_size":"small","corrected_at":state["now"].isoformat()}])
     page = AppTest.from_file(ROOT / "pages/6_Check_in_photos.py", default_timeout=10).run()
-    assert not page.exception and button(page, "Save correction").disabled
+    assert not page.exception
+    assert_blocked(page, "Save correction", "unchanged", "choose")
     assert any("+4 season" in item.value for item in page.text)
     radio(page, "Correct size").set_value("small").run()
     button(page, "Save correction").click().run()
@@ -419,10 +435,15 @@ def test_history_correction_replays_and_survives_new_ui_session(ui, monkeypatch)
     assert fresh.table and "100 ml" in next(item.value for item in fresh.text if "Wine" in item.value)
 
 
-def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
+@pytest.mark.parametrize("boost_enabled", [False, True])
+def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch, boost_enabled):
     model = replace(entry("capture", "member", "beer", "large", 0), photo_captured_at=START)
+    game = season()
+    if not boost_enabled:
+        game.scoring_rules.pop("territory_boost")
     monkeypatch.setattr(db, "list_memberships_for_player", lambda _: [type("M",(),{"id":"member","lobby_id":"lobby"})()])
-    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [season()])
+    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
+    monkeypatch.setattr("data.territory_file.boost_candidate_ids", lambda origin, _: [origin, "neighbor"])
     client = Mock()
     client.storage.get_bucket.return_value.public = False
     query = client.table.return_value.select.return_value
@@ -434,7 +455,12 @@ def test_modern_save_sends_selection_but_never_client_point_awards(monkeypatch):
     saved = db.save_drink_entry_photo("player","lobby",replace(model,points_awarded=999),b"clean")
     assert saved.points_awarded == 3
     name, parameters = client.rpc.call_args.args
-    assert name == "accept_scoring_checkin"
+    if boost_enabled:
+        assert name == "accept_territory_scoring_checkin"
+        assert parameters["reachable_territories"] == [model.territory_id, "neighbor"]
+    else:
+        assert name == "accept_scoring_checkin"
+        assert "reachable_territories" not in parameters
     assert parameters["selected_size"] == "large"
     assert not any("points" in key or "bonus" in key for key in parameters)
     client.table.return_value.upsert.assert_not_called()
@@ -669,7 +695,7 @@ def test_changing_the_filter_starts_again_at_the_newest_photos(ui,monkeypatch):
 def test_submit_needs_the_phone_location_first(ui):
     state, _ = ui
     page = open_checkin()
-    assert button(page, "Submit").disabled
+    assert_blocked(page, "Submit", "location", "allow")
     assert any("Finding your location" in item.value for item in page.caption)
     set_location(page, state)
     assert not button(page, "Submit").disabled
@@ -682,7 +708,7 @@ def test_inaccurate_phone_location_warns_and_saves_nothing(ui):
     set_location(page, state, accuracy_m=80)
     assert any("only accurate to about 80 m" in item.value for item in page.warning)
     button(page, "Submit").click().run()
-    assert not page.exception and any("isn't accurate enough" in item.value for item in page.error)
+    assert not page.exception and any("80 m" in item.value and "50 m" in item.value for item in page.error)
     assert state["calls"] == 0 and state["entries"] == []
 
 
@@ -694,7 +720,8 @@ def test_phone_permission_retry_keeps_photo_and_selection_and_accepts_50m(ui):
     radio(page, "Size").set_value("large").run()
     state["location"] = {"error": "denied"}
     page.run()
-    assert not page.exception and button(page, "Submit").disabled
+    assert not page.exception
+    assert_blocked(page, "Submit", "blocked", "browser settings")
     assert any("Location is blocked" in item.value for item in page.warning)
     assert page.session_state["checkin_capture"][1] == capture_id
     assert radio(page, "Drink").value == "wine" and radio(page, "Size").value == "large"
@@ -711,7 +738,7 @@ def test_location_older_than_60_seconds_is_not_used(ui):
     state, _ = ui
     page = open_checkin()
     set_location(page, state, age_seconds=61)
-    assert button(page, "Submit").disabled
+    assert_blocked(page, "Submit", "60 seconds", "fresh reading")
     assert any("Updating your location" in item.value for item in page.caption)
     set_location(page, state, age_seconds=59)
     assert not button(page, "Submit").disabled

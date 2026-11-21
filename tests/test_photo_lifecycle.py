@@ -309,9 +309,11 @@ def delete_button(page):
 
 
 def test_owner_can_confirm_deletion_through_photo_page(store, monkeypatch):
+    from tests.feedback_helpers import assert_blocked
     page = photo_page(monkeypatch)
     assert not page.exception
-    assert delete_button(page).disabled
+    assert_blocked(page, 'Delete my photo', 'not been confirmed', 'Tick')
+    assert store.files and store.rows['entry']['points_awarded'] == 5
     page.checkbox[0].check().run()
     assert not delete_button(page).disabled
     delete_button(page).click().run()

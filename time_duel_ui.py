@@ -5,15 +5,16 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
+from action_feedback import action_button, explain, service_error
+from core.action_feedback import duel_closed_message, opponent_message, role_limit_message
 from core.time_duel import ACTIVE, FINAL, component_action, validate_pair
 from time_duel_component import time_board
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError, ValueError, PermissionError)
 
 
-def _error(error):
-    st.error(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-             else 'Time Duel is temporarily unavailable. Reopen it to recover your saved game.')
+def _error(error, *, popup=False):
+    service_error(error, 'Time Duel is temporarily unavailable. Reopen it to recover your saved game before you retry.', popup=popup)
 
 
 def _act(player, duel, action):
@@ -24,7 +25,7 @@ def _act(player, duel, action):
             st.session_state['minigame_selected'] = 'time'
         st.rerun()
     except SERVICE_ERRORS as error:
-        _error(error)
+        _error(error, popup=True)
 
 
 def _render_invitations(player, member, state, labels):
@@ -46,14 +47,14 @@ def _render_invitations(player, member, state, labels):
                 st.write(labels.get(duel['challenger_id'], 'Lobby member') + ' challenged you.')
                 if len(incoming) > 1 and confirmation == duel['id']:
                     st.warning('If you accept this invite, the other invites for this minigame will be declined.')
-                    if st.button('Confirm acceptance', key='time_confirm_' + duel['id'],
-                                 type='primary', disabled=not state['incoming']):
+                    if action_button('Confirm acceptance', key='time_confirm_' + duel['id'],
+                                 type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
                         _act(player, duel, 'accept')
                     if st.button('Keep invitations', key='time_keep_' + duel['id']):
                         st.session_state.pop('time_accept_confirmation', None)
                         st.rerun()
-                elif st.button('Accept Time Duel', key='time_accept_' + duel['id'],
-                               type='primary', disabled=not state['incoming']):
+                elif action_button('Accept Time Duel', key='time_accept_' + duel['id'],
+                               type='primary', problems=[role_limit_message('Time Duel', role='acceptance') if not state['incoming'] else None]):
                     if len(incoming) > 1:
                         st.session_state['time_accept_confirmation'] = duel['id']
                         st.rerun()
@@ -143,12 +144,18 @@ def render_time(player, member, lobby, season, members, labels):
         except ValueError:
             continue
     if not state['open']:
-        st.info('Time Duel opens during the scoring window. Test seasons can play throughout an active season.')
+        st.info(duel_closed_message(season))
     elif opponents:
         with st.form('time_invitation'):
             opponent = st.selectbox('Challenge player', opponents, format_func=lambda m: labels.get(m, 'Lobby member'))
-            sent = st.form_submit_button('Send Time Duel challenge', type='primary',
-                disabled=not state['outgoing'] or any(d['challenger_id'] == member for d in pending))
+            sent = st.form_submit_button('Send Time Duel challenge', type='primary')
+        problems = [
+            "You already have an open invitation. Cancel it above or wait for its answer before sending another." if any(d['challenger_id'] == member for d in pending) else None,
+            role_limit_message('Time Duel', season.timezone_name, role='challenge') if not state['outgoing'] else None,
+        ]
+        if sent and any(problems):
+            explain(problems)
+            sent = False
         if sent:
             if st.session_state.get('time_invitation_target') != opponent:
                 st.session_state.pop('time_invitation_id', None)
@@ -159,9 +166,9 @@ def render_time(player, member, lobby, season, members, labels):
                 st.session_state.pop('time_invitation_id', None)
                 st.rerun()
             except SERVICE_ERRORS as error:
-                _error(error)
+                _error(error, popup=True)
     else:
-        st.info('Another eligible lobby member is needed; team lobbies require an opposing team.')
+        st.info(opponent_message(own, lobby))
     with st.expander('Recent Time Duels'):
         for duel in (d for d in duels if d['status'] in FINAL):
             other = duel['opponent_id'] if duel['challenger_id'] == member else duel['challenger_id']

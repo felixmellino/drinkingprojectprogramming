@@ -1,8 +1,4 @@
-"""What happened in the selected lobby: check-ins and territory captures, newest first.
-
-The feed is rebuilt from the season's saved drink entries on every visit
-(core/activity.py), so it always matches Ranks and the Map.
-"""
+"""Selected lobby activity, including lifetime medal promotions earned there."""
 
 import streamlit as st
 from httpx import RequestError
@@ -10,7 +6,9 @@ from postgrest.exceptions import APIError
 
 import activity_ui
 import data.db as db
-from core.activity import activity_events
+from core.activity import activity_events, with_promotions
+from core.medals import lobby_promotions
+from data.profile_history import load_stat_history
 from core.scoring_v1 import current_time
 from drink_entry_ui import page_header
 from parallel import run_parallel
@@ -49,7 +47,22 @@ try:
 except (APIError, RequestError, RuntimeError):
     territory_names = {}  # rows then say "Unknown territory"; the feed itself still loads
 
+now = current_time()
 events = activity_events(entries)
+try:
+    launched_at = db.profile_medal_launch()
+    if launched_at is not None and launched_at <= now and memberships:
+        members_by_player = run_parallel(*(
+            lambda pid=pid: db.list_memberships_for_player(pid, include_left=True)
+            for pid in dict.fromkeys(member.player_id for member in memberships)
+        ))
+        all_members = [member for group in members_by_player for member in group]
+        history = load_stat_history((member.lobby_id for member in all_members),
+                                    known_entries={season_id: entries})
+        events = with_promotions(events, lobby_promotions(lobby_id, all_members, history,
+                                                           launched_at=launched_at, now=now))
+except (APIError, RequestError, RuntimeError, PermissionError):
+    st.warning("Medal promotions are temporarily unavailable.")
 if not events:
     empty_state("activity", "list-bullets", "No activity yet",
                 "The first drink of the season starts the feed.", check_in=True)
@@ -63,7 +76,7 @@ me_competitor = st.session_state.get("current_team_id") if team_mode else member
 shown = st.session_state.get("activity_shown", STEP)
 st.markdown(activity_ui.feed_html(events[:shown], member_names=member_names, team_names=team_names,
                                   territory_names=territory_names, me_member=membership_id,
-                                  me_competitor=me_competitor, season=season, now=current_time()),
+                                  me_competitor=me_competitor, season=season, now=now),
             unsafe_allow_html=True)
 if len(events) > shown:
     st.button("Load more", key="activity_load_more", on_click=load_more, args=(shown,), width="stretch")

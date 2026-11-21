@@ -35,7 +35,7 @@ standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 ## Hosting (deployed app)
 
 The season recap remembers who finished a season in a table from
-[migration 027](docs/MIGRATIONS.md); without it the app still runs but shows no recap banner.
+[migration 029](docs/MIGRATIONS.md); without it the app still runs but shows no recap banner.
 
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
 use the same Brevo settings as password recovery. In an active lobby, the
@@ -304,7 +304,7 @@ Logout clears the browser session and remembered device; accounts and progress r
    may need to select their active lobby again after logging in.
 3. Try a duplicate username/email with different capitalization and invalid
    or mismatched passwords. Confirm no account or points are added.
-4. Tick Remember password, close and reopen the app, and confirm login is
+4. Tick Remember Me, close and reopen the app, and confirm login is
    restored without entering credentials. Log out and reopen: login must be
    required. Repeat with the checkbox unticked; a fresh browser session must
    require login. Verify an administrator password change also cancels remembered access.
@@ -325,7 +325,7 @@ project; the automated suite does not replace it.
 - `phone_location.py` and `components/phone_location/` — automatic phone GPS for Check-in and Map.
 - `map_ui.py` and `pages/5_Map.py` — territory map coloured by owner.
 - `core/activity.py`, `activity_ui.py` and `pages/8_Activity.py` — the Activity tab: check-ins and territory captures, rebuilt from saved entries; Photos is a view inside it.
-- `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py` and `components/season_recap/` — the end-of-season story, awards card and CSV export (needs migration 027).
+- `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py` and `components/season_recap/` — the end-of-season story, awards card and CSV export (needs migration 029).
 - `migrations/` — changes for already-populated databases.
 - `pages/` — one Streamlit screen per file; each only calls into
   `core`/`data`, no rules live here.

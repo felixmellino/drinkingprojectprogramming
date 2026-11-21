@@ -18,7 +18,7 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 <section id="result" class="panel" hidden><h2 id="resultTitle"></h2><div id="overview" aria-label="Reaction times"></div><p id="resultText"></p></section>
 <div id="saving" role="status" aria-live="polite"></div>
 </main>
-<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p class="small">Tap to continue</p></div>
+<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p>You tapped before the signal or too soon after it. Wait for TAP NOW and react to the signal.</p><p class="small">Tap to continue</p></div>
 <script>
 let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,showRed=false;
 const $=id=>document.getElementById(id),views=['ready','reaction','flash','result'];

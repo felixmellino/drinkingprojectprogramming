@@ -6,6 +6,7 @@ import streamlit as st
 
 import data.db as db
 from core.checkins import CheckinRejected
+from core.action_feedback import checkin_message
 from core.lobbies import create_lobby, join_lobby
 from core.lobby_overview import latest_season, lobby_status
 from httpx import RequestError
@@ -14,6 +15,18 @@ from postgrest.exceptions import APIError
 
 def dismiss_dialog():
     st.session_state.pop('_lobby_dialog', None)
+
+
+@st.dialog('Welcome to WeGoPub!', on_dismiss=dismiss_dialog)
+def welcome_dialog():
+    st.write('Join a lobby with an invite code, or create one and invite your friends.')
+    join, create = st.columns(2)
+    if join.button('Join a lobby', key='welcome_join_lobby', type='primary', width='stretch'):
+        st.session_state['_lobby_dialog'] = 'join'
+        st.rerun()
+    if create.button('Create a lobby', key='welcome_create_lobby', type='primary', width='stretch'):
+        st.session_state['_lobby_dialog'] = 'create'
+        st.rerun()
 
 
 def open_joined_lobby(lobby_id, message, *, make_current):
@@ -61,14 +74,23 @@ def create_dialog(player_id):
                 db.insert_lobby(lobby)
                 membership = join_lobby(player_id, lobby.invite_code, [lobby], [])
                 db.insert_membership(membership)
-            except (APIError, RequestError, RuntimeError, ValueError):
-                st.error("Could not create the lobby. Refresh your lobbies before trying again.")
+            except ValueError as error:
+                st.error(str(error))
+                return
+            except (APIError, RequestError, RuntimeError):
+                st.error(f"Could not confirm lobby creation. Refresh your lobbies before creating another. If the lobby was created but is missing from your list, try Join with a code using {lobby.invite_code}.")
                 return
             try:
                 db.start_scoring_season(player_id, lobby.id, length_choice, timezone_name,
                                                  **({"test_mode": True} if test_mode else {}))
-            except (APIError, RequestError, RuntimeError, CheckinRejected):
-                open_joined_lobby(lobby.id, "Lobby created. Its scoring season could not start. Use Retry lobby setup below.",
+            except CheckinRejected as error:
+                open_joined_lobby(lobby.id, f"Lobby created. {checkin_message(error.reason)} Use Retry lobby setup below if needed.",
+                                  make_current=False)
+            except PermissionError:
+                open_joined_lobby(lobby.id, "Lobby created, but your membership could not be confirmed for season setup. Close this window, refresh Lobbies, reopen this lobby and use Retry lobby setup.",
+                                  make_current=False)
+            except (APIError, RequestError, RuntimeError):
+                open_joined_lobby(lobby.id, "Lobby created. Its season setup could not be confirmed. Reopen this lobby and check its season before using Retry lobby setup.",
                                   make_current=False)
 
             open_joined_lobby(lobby.id, f"Lobby created! Invite code: {lobby.invite_code}", make_current=True)
@@ -93,7 +115,7 @@ def join_dialog(player_id):
         except (APIError, RequestError, RuntimeError):
             st.error("Could not load lobbies. Please try again.")
         except ValueError:
-            st.error("That invite code doesn't match any lobby.")
+            st.error("That invite code doesn't match any lobby. Check the code with the person who invited you and enter it again.")
         else:
             is_new = membership.id not in {m.id for m in memberships}
             lobby = next(l for l in lobbies if l.id == membership.lobby_id)
@@ -103,7 +125,10 @@ def join_dialog(player_id):
                     db.insert_membership(membership)
                 elif membership.left_at is not None:
                     db.rejoin_lobby(player_id, membership.lobby_id)
-            except (APIError, RequestError, RuntimeError, PermissionError, ValueError):
+            except (PermissionError, ValueError) as error:
+                st.error(str(error))
+                return
+            except (APIError, RequestError, RuntimeError):
                 st.error("Could not finish joining the lobby. Refresh your lobbies before trying again.")
                 return
 

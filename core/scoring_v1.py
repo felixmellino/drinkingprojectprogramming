@@ -21,6 +21,7 @@ from core.teams import competitor
 from core.focus_challenge import new_focus_rules
 
 VERSION = "v1"
+TERRITORY_MULTIPLIER = 1.25
 DRINK_LABELS = {"beer": "Beer", "wine": "Wine", "shot": "Shot", "mixed": "Mixed drink"}
 SIZE_LABELS = {"small": "Small", "medium": "Medium", "large": "Large"}
 VOLUMES = {"beer": {"small": 250, "medium": 330, "large": 500},
@@ -47,6 +48,7 @@ def new_rules(*, test_mode: bool = False) -> dict:
     """A new season gets its own snapshot, never the mutable module object."""
     rules = deepcopy(_RULES)
     rules['focus_challenge'] = new_focus_rules()
+    rules['territory_boost'] = True
     if test_mode:
         rules.update(test_mode=True, start_weekday=2, start_hour=8)
     return rules
@@ -110,9 +112,14 @@ def next_opening(now: datetime, season: Season) -> datetime | None:
     return candidate.astimezone(ZoneInfo(season.timezone_name)) if candidate < utc(season.ends_at) else None
 
 
+def cooldown_deadline(membership_id: str, entries: list[DrinkEntry], seconds: int = 120) -> datetime | None:
+    latest = max((utc(entry.submitted_at) for entry in entries if entry.membership_id == membership_id), default=None)
+    return latest + timedelta(seconds=seconds) if latest is not None else None
+
+
 def cooldown_remaining(membership_id: str, now: datetime, entries: list[DrinkEntry], seconds: int = 120) -> int:
-    times = [utc(entry.submitted_at) for entry in entries if entry.membership_id == membership_id]
-    return max(0, ceil((max(times) + timedelta(seconds=seconds) - utc(now)).total_seconds())) if times else 0
+    deadline = cooldown_deadline(membership_id, entries, seconds)
+    return max(0, ceil((deadline - utc(now)).total_seconds())) if deadline is not None else 0
 
 
 def can_correct(entry: DrinkEntry, season: Season, now: datetime) -> bool:
@@ -168,9 +175,12 @@ def corrected_entry(entry: DrinkEntry, season: Season, drink_type: str, size: st
         points = base_points(drink_type, size, rules_for(season))
     except ValueError:
         raise CheckinRejected("invalid_selection") from None
+    focus = (entry.focus_multiplier or 1.5) if entry.focus_attempt_id else 1
+    multiplier = max(focus,
+                     TERRITORY_MULTIPLIER if entry.territory_boost_id else 1)
     return replace(entry, drink_type=drink_type, size=size, amount=volume_for(drink_type, size, rules_for(season)),
-                   points_awarded=points * ((entry.focus_multiplier or 1.5) if entry.focus_attempt_id else 1),
-                   time_bonus=points * 0.25 if entry.time_duel_id and not entry.focus_attempt_id else 0,
+                   points_awarded=points * multiplier,
+                   time_bonus=points * 0.25 if entry.time_duel_id and multiplier == 1 else 0,
                    corrected_at=utc(now), revision=entry.revision + 1)
 
 

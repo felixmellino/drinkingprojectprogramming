@@ -11,6 +11,7 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
+from action_feedback import service_error
 from core.checkins import CheckinRejected
 from core.leaderboard import season_leader, season_leaderboard
 from core.lobby_overview import latest_season, lobby_status, time_left
@@ -22,7 +23,7 @@ from parallel import run_parallel
 from core.lobbies import lobby_creator
 from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
-from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog, welcome_dialog
 from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
 import season_recap_ui
 import standings_ui
@@ -136,7 +137,9 @@ def show_overview_actions(player_id):
             dismiss_members()
             st.session_state['_lobby_dialog'] = 'join'
 
-    if st.session_state.get('_lobby_dialog') == 'create':
+    if st.session_state.get('_lobby_dialog') == 'welcome':
+        welcome_dialog()
+    elif st.session_state.get('_lobby_dialog') == 'create':
         create_dialog(player_id)
     elif st.session_state.get('_lobby_dialog') == 'join':
         join_dialog(player_id)
@@ -193,8 +196,13 @@ def retry_setup(player_id, lobby):
             try:
                 db.start_scoring_season(player_id, lobby.id, duration, zone,
                                         **({'test_mode': True} if test_mode else {}))
-            except (PermissionError, CheckinRejected, *LOAD_ERRORS):
-                st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
+            except CheckinRejected as error:
+                from core.action_feedback import checkin_message
+                st.error(checkin_message(error.reason))
+            except PermissionError:
+                st.error('Your lobby access could not be confirmed. Close this window, refresh your lobbies and reopen a lobby you belong to.')
+            except LOAD_ERRORS as error:
+                service_error(error, 'The season setup could not be confirmed. Close this window, refresh Lobbies and check whether its season started before trying again.')
             else:
                 st.session_state['_lobby_choice_pending'] = lobby.id
                 st.rerun()
@@ -277,6 +285,7 @@ def show_lobby_management(player_id, lobby, season, memberships=None):
         try:
             memberships = db.list_memberships_for_lobby(lobby.id, include_left=True)
         except LOAD_ERRORS:
+            st.warning('Lobby management controls could not be loaded. Close this window and use Refresh lobbies to retry.')
             return
     if lobby_creator(memberships) != player_id:
         return

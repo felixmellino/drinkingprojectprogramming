@@ -11,6 +11,7 @@ from streamlit.testing.v1 import AppTest
 
 import data.db as db
 from activity_ui import VERBS, drink_verb
+from core.models import LobbyMembership
 from tests.test_checkins import TERRITORY
 from tests.test_scoring_v1 import START, entry, season
 from tests.test_standings_ui import text
@@ -34,6 +35,7 @@ def ui(monkeypatch):
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
         SimpleNamespace(id="member", player_id="mia"), SimpleNamespace(id="other", player_id="leo")])
     monkeypatch.setattr(db, "list_public_usernames", lambda: state["players"])
+    monkeypatch.setattr(db, "profile_medal_launch", lambda: None)
     return state
 
 
@@ -133,3 +135,43 @@ def test_each_checkin_keeps_its_verb_but_the_feed_varies():
     assert drink_verb("m1") == drink_verb("m1")  # same wording on every reload and restart
     assert drink_verb("m1") in VERBS
     assert len({drink_verb(f"e{i}") for i in range(50)}) > 5  # not always "drank"
+
+
+def test_first_checkin_posts_three_medals_in_one_feed_row_after_reload(ui, monkeypatch):
+    game = season()
+    members = [LobbyMembership(member, player, "lobby", game.starts_at)
+               for member, player in (("member", "mia"), ("other", "leo"))]
+    monkeypatch.setattr(db, "profile_medal_launch", lambda: START + timedelta(seconds=1))
+    monkeypatch.setattr(db, "list_memberships_for_player",
+                        lambda player, **_: [member for member in members if member.player_id == player])
+    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
+    monkeypatch.setattr(db, "list_season_transfers", lambda _: [])
+
+    for at in (page(), page()):
+        assert not at.exception
+        visible = feed(at)
+        assert "You earned" not in visible  # Mia's check-in was before rollout.
+        assert visible.count("Leo earned") == 1
+        assert "Beginner in total points · Beginner in drinks · Beginner in lobbies played" in visible
+
+
+def test_previous_season_win_stays_visible_in_current_lobby_feed(ui, monkeypatch):
+    current = season()
+    old_end = current.starts_at
+    previous = replace(current, id="previous", starts_at=old_end - timedelta(days=30), ends_at=old_end)
+    saved = [replace(entry("winner", "other", "shot", None, 0, territory=None),
+                     season_id=previous.id, submitted_at=old_end - timedelta(days=1))]
+    members = [LobbyMembership(member, player, "lobby", previous.starts_at)
+               for member, player in (("member", "mia"), ("other", "leo"))]
+    ui["entries"] = []
+    monkeypatch.setattr(db, "profile_medal_launch", lambda: old_end - timedelta(hours=1))
+    monkeypatch.setattr(db, "list_memberships_for_player",
+                        lambda player, **_: [member for member in members if member.player_id == player])
+    monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [current, previous])
+    monkeypatch.setattr(db, "list_drink_entries", lambda season_id: saved if season_id == previous.id else [])
+    monkeypatch.setattr(db, "list_season_transfers", lambda _: [])
+
+    at = page()
+    assert not at.exception
+    assert "Leo earned Beginner in total wins" in feed(at)
+    assert f"Leo {drink_verb('winner')} a shot" not in feed(at)

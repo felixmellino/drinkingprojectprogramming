@@ -121,8 +121,7 @@ function stopFollowing() {
 // ---- visible switch in Profile ----------------------------------------------------------
 const $ = id => document.getElementById(id);
 const OFF = "Off. Turn it on to check in and see where you are on the map.";
-const BLOCKED = "Blocked. On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using, " +
-  "then Settings → Safari → Location → Ask or Allow. Then turn this on again.";
+const BLOCKED = "Blocked. Turn on location services in your phone settings and allow location for this app in your browser's site settings. Then turn this switch on again.";
 function show(on, text, bad) {
   $("switch").setAttribute("aria-checked", on ? "true" : "false");
   $("status").textContent = text;
@@ -134,7 +133,13 @@ async function showSwitch(compact, followToo) {
   started = true;
   if (compact) document.body.classList.add("compact");
   $("row").classList.add("show");
-  if (!navigator.geolocation) {show(false, "This browser can't share its location.", true); $("switch").disabled = true; return;}
+  if (!navigator.geolocation) {
+    const help = "This browser can't share its location. Open the app's HTTPS address in Safari or Chrome and allow location access.";
+    show(false, help, true);
+    $("switch").addEventListener("click", () => window.alert(help));
+    if (followToo) sendValue({error: "unsupported"});
+    return;
+  }
   const state = await permission();
   if (state === "denied") {   // tapping still retries: the browser may ask again
     show(false, BLOCKED, true);

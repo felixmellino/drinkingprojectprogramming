@@ -349,7 +349,7 @@ Two equally big takeovers: the earlier one wins.
 After the season ends, a banner on every page ("Your season in X is over")
 offers **Finish season** for two weeks; the past lobby on the Lobby page keeps
 the button. It plays the recap story and ends on the awards card; **Close**
-saves that this player finished the season (migration 027,
+saves that this player finished the season (migration 029,
 `season_recap_views`), so the banner stays gone after a restart. Afterwards
 the past lobby shows **Season awards**, which reopens the card. The final
 standings can be downloaded as CSV from the recap.
@@ -407,6 +407,29 @@ allowed. A drink in a gap counts as outside every Territory (see R1).
 | Boundary | A location near or on a shared border belongs to the Territory that contains the measured point (R-L03). |
 
 Source: Location & Territories block (Felix), 2026-11-17. Resolves D-03.
+
+### R-T03 Random territory boost
+
+Contributor-selected 21 November 2026. Migration 027 and the Map and Check-in
+pages implement this rule for newly created competitions with the boost in
+their frozen scoring rules. Team review and deployment are tracked in D-21.
+
+- A verified ordinary check-in starts a boost if another competitor had a
+  verified ordinary check-in in the same territory within the preceding 30
+  minutes, inclusive. Competitors are distinct players or opposing teams.
+- The lobby draws uniformly from the triggering territory and territories
+  up to two shared borders away in the current map. The draw uses the map's
+  shared-border test with its 0.5 m drawing tolerance. Corner contact alone
+  does not count. The map highlights the drawn territory with a clock pin.
+- Boosts start at least 150 minutes apart in each lobby. A boost lasts 15
+  minutes and starts only if that whole duration fits before the scoring
+  window and season close. The triggering check-in earns its usual points.
+- Subsequent ordinary check-ins received in the boosted territory before
+  expiry earn ×1.25 territory and season points. When another boost also
+  applies, use the highest applicable multiplier for each account. Eligible
+  prior owners get 25% of the territory award as additional season income.
+  The original boost is retained when correcting a saved drink or size.
+  Chug Duel entries neither trigger the draw nor receive the boost.
 
 ## Location
 
@@ -543,7 +566,8 @@ verify that the selected drink type/size is accurate or that it was consumed.
 | A4 | Login uses email and password, without registration email verification. Password recovery is available through the registered email (authorised 18 November 2026). | Incorrect credentials leave credentials and game points unchanged. The login screen offers Forgot password and a code-based reset form. |
 | A5 | Existing game progress is preserved. | Keep player IDs and all linked game records. No account-upgrade screen is shown; legacy records without an email require administrator migration to use email login. |
 | A6 | Profile offers one Create account / Log in selector. | Only the selected account form is shown. No upgrade controls; Log in offers Forgot password. |
-| A7 | Login has an optional Remember password checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
+| A7 | Login has an optional Remember Me checkbox. | Checked: remember this device for 30 days using an opaque token, without storing the password. Unchecked: no persistent login. Logout revokes this device; password changes invalidate remembered access. Expired/invalid tokens do not authenticate. |
+| A8 | Successful registration opens Lobbies with a one-time WeGoPub welcome. | Join a lobby and Create a lobby have equal prominence and open the existing forms. Dismissing the welcome or choosing either action ends it. Ordinary sign-in keeps its usual destination, including for accounts with no lobby. |
 
 Login throttling (ten attempts per account per 15 minutes) is a security
 implementation setting, not a scoring rule. Recovery requests and reset attempts
@@ -726,6 +750,35 @@ shows an error rather than a partial total. No scores or entities are changed.
 
 Source: contributor request and clarified answers, 18 November 2026;
 active-lobby inclusion and completed-season-only wins confirmed 19 November 2026.
+
+### R-P02 Lifetime stat medals and lobby promotions
+
+Each of the four My stats cards displays its current medal and progress toward
+the next rank. Rank thresholds are inclusive and independent per category.
+
+| Rank | Total points | Drinks | Lobbies played | Total wins |
+| --- | ---: | ---: | ---: | ---: |
+| Newcomer | 0 | 0 | 0 | 0 |
+| Beginner | 1 | 1 | 1 | 1 |
+| Regular | 10 | 5 | 2 | 2 |
+| Contender | 25 | 10 | 3 | 3 |
+| Expert | 50 | 20 | 5 | 4 |
+| Veteran | 100 | 35 | 8 | 5 |
+| Master | 250 | 60 | 12 | 8 |
+| Legend | 500 | 100 | 20 | 12 |
+
+Existing history immediately qualifies for profile medals. Feed promotions begin
+at the database rollout cutoff (migration 028). A promotion is shown only to
+viewers of the lobby where the relevant credit happened, including wins at the
+season end and personal owner income or stake transfers that cross a threshold.
+One action advancing multiple categories shows one post, naming the highest new
+rank in each and omitting totals. An earlier rank crossing suppresses a repeat
+announcement after a score drop and recovery. Like check-ins and captures, the
+feed is rebuilt from retained, corrected records. Corrections are replayed at
+the original check-in position and can change the ranks or posts in that history.
+Past-season promotions remain in the lobby feed when another season is selected.
+
+Source: contributor's profile medal thresholds and feed choices, 21 November 2026.
 
 ## Leaving and rejoining a lobby
 
