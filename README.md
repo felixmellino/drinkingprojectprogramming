@@ -301,7 +301,7 @@ Logout clears the browser session and remembered device; accounts and progress r
    may need to select their active lobby again after logging in.
 3. Try a duplicate username/email with different capitalization and invalid
    or mismatched passwords. Confirm no account or points are added.
-4. Tick Remember password, close and reopen the app, and confirm login is
+4. Tick Remember Me, close and reopen the app, and confirm login is
    restored without entering credentials. Log out and reopen: login must be
    required. Repeat with the checkbox unticked; a fresh browser session must
    require login. Verify an administrator password change also cancels remembered access.

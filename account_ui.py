@@ -96,7 +96,10 @@ def show_accounts():
             with st.form("login"):
                 email = st.text_input("Email", key="login_email")
                 password = st.text_input("Password", type="password", key="login_password")
-                remember = st.checkbox("Remember password", help="Keep me signed in on this device for 30 days.")
+                with st.container(key="remember_me_row", horizontal=True, vertical_alignment="center", gap="xsmall"):
+                    remember = st.checkbox("Remember Me")
+                    with st.popover("Info", icon=":material/info:", type="tertiary"):
+                        st.write("Turn this on to stay signed in on this device for 30 days so you can skip logging in next time.")
                 submitted = st.form_submit_button("Log in")
             if submitted:
                 try:

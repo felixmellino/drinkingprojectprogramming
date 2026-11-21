@@ -104,7 +104,10 @@ def test_login_offers_password_recovery(path):
     assert not at.expander
     assert [field.label for field in at.text_input] == ["Email", "Password"]
     assert [button.label for button in at.button] == ["Log in", "Forgot password?"]
-    assert [box.label for box in at.checkbox] == ["Remember password"]
+    assert [box.label for box in at.checkbox] == ["Remember Me"]
+    info, = at.get("popover")
+    assert info.proto.popover.label == "Info"
+    assert "stay signed in on this device for 30 days" in info.get("markdown")[0].value
 
 
 def test_incorrect_password_does_not_authenticate_or_change_account():
@@ -186,7 +189,7 @@ def test_remember_checkbox_creates_device_token_and_restores_after_new_session()
         at.radio(key="account_action").set_value("Log in").run()
         at.text_input(key="login_email").input(player.email)
         at.text_input(key="login_password").input("password8")
-        next(box for box in at.checkbox if box.label == "Remember password").check()
+        next(box for box in at.checkbox if box.label == "Remember Me").check()
         form(at, "Log in").click().run()
         assert not at.exception
         create.assert_called_once_with(player)
