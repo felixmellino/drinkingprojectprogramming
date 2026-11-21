@@ -54,7 +54,7 @@ def test_menu_edit_and_saved_profile_in_new_session(repo):
     at = page(repo)
     assert not at.exception
     assert [b.label for b in at.button] == [
-        'Profile', 'Lobbies', 'Map', 'Ranks', 'Check in', 'Games', 'Photos',
+        'Profile', 'Lobbies', 'Map', 'Ranks', 'Check in', 'Games', 'Activity',
         'Edit profile', 'Friends', 'My stats', 'Account & security', 'FAQ / Help', 'Log out',
     ]
     assert not at.text_input

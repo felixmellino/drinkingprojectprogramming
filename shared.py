@@ -89,7 +89,7 @@ def require_login() -> str:
     return st.session_state["player_id"]
 
 
-MEMBERSHIP_PAGES = {"map", "standings", "minigames", "check_in", "check_in_photos"}
+MEMBERSHIP_PAGES = {"map", "standings", "minigames", "check_in", "check_in_photos", "activity"}
 
 
 def _membership_key():

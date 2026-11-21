@@ -144,9 +144,9 @@ def test_checkin_form_has_only_the_necessary_controls_and_little_text(ui):
     state, _ = ui
     page = open_checkin()
     set_location(page, state)
-    assert [b.label for b in page.button] == ["Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos", "Retake photo", "Submit"] \
+    assert [b.label for b in page.button] == ["Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Activity", "Retake photo", "Submit"] \
         or [b.label for b in page.button][-2:] == ["Retake photo", "Submit"]
-    assert len([b for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos"}]) == 2
+    assert len([b for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Activity"}]) == 2
     text = " ".join(m.value for m in page.markdown) + " ".join(c.value for c in page.caption)
     for gone in ("Take a photo. Choose your drink", "Looking good", "Shared only with your lobby", "One drink, one size",
                  "Preview only", "territory points if", "25% season income", "Your location assigns"):
@@ -193,7 +193,7 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     assert not page.exception and reward(page)
     assert camera.call_count == 1 and 'checkin_pending_photo' not in page.session_state
     assert not page.radio and button(page, 'Go to map') and not any(b.label == 'New check-in' for b in page.button)
-    assert [b.label for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Photos"}] == ["Go to map"]
+    assert [b.label for b in page.button if b.label not in {"Profile", "Lobbies", "Map", "Ranks", "Check in", "Games", "Activity"}] == ["Go to map"]
     # Straight after a check-in the cooldown runs: + shows the countdown, not the camera.
     page.session_state['checkin_open_camera'] = True
     page.run()
