@@ -289,6 +289,28 @@ remain legacy; the new rules apply to new v1 seasons. The earlier
 [planning proposal](SCORING_PROPOSAL.md) and three-page PDF are historical
 review records, not a claim of current deployment.
 
+## Check-in
+
+### R-C01 Drink suggestion from the photo (21 November 2026)
+
+When the server has an Anthropic API key, the Check in page sends the
+check-in photo (metadata removed, scaled to at most 1024 px) to Claude once
+and preselects the drink and size it suggests. It is only a suggestion.
+
+| Case | Outcome |
+| --- | --- |
+| Drink and size recognised with high or medium confidence | Both are preselected; the page says "Looks like a large beer. Change it if that's wrong." |
+| Drink sure, size unsure (or a shot) | Only the drink is preselected. |
+| Unsure drink, several drinks, or no drink visible | Nothing is preselected; the page says so. Check-in is not blocked. |
+| No key, timeout (12 s), API error, refusal or malformed answer | Normal form, no message. Asked once per photo, not on every rerun. |
+| More than 10 recognitions by one player in a rolling hour | The 11th photo is not sent; the page says suggestions are paused. A call exactly one hour old no longer counts. Failed calls count too. The count lives in the server process and resets on restart. |
+
+The player always confirms or changes the selection, and points come only
+from the selected drink and size (R3, SCORING_V1). The suggestion never
+blocks a check-in, never changes points, and is not anti-cheat evidence.
+Legacy seasons do not use it. Code: `core/drink_recognition.py` (rules),
+`drink_recognition.py` (API call), `pages/3_Check_in.py`.
+
 ## Ranking
 
 ### R-R01 Ties

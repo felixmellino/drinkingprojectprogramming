@@ -18,6 +18,7 @@ from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
 import data.db as db
+import drink_recognition
 from action_feedback import action_button, explain, service_error
 from core.action_feedback import AMBIGUOUS_TERRITORY_MESSAGE, checkin_message, location_problem as location_blocker
 from camera_capture import CameraCancelled, camera_photo
@@ -61,7 +62,7 @@ now = current_time()
 def reset_camera():
     """Forget an unsaved capture; a new component key opens a fresh stream."""
     for key in ('checkin_pending_photo', 'checkin_capture', 'checkin_posted', 'checkin_saved_result',
-                'checkin_waiting_to_start'):
+                'checkin_waiting_to_start', 'checkin_suggestion'):
         st.session_state.pop(key, None)
     st.session_state['checkin_photo_number'] = st.session_state.get('checkin_photo_number', -1) + 1
 
@@ -221,10 +222,27 @@ if modern:
             st.success(f'Time Duel ×1.25 until {boost_end:%H:%M}.')
     except (APIError, RequestError, RuntimeError, ValueError, PermissionError):
         pass  # The server applies any earned bonus on submission.
+suggestion = None
+if modern and capture is not None and drink_recognition.is_enabled():
+    # Ask Claude once per photo; a failed call is remembered as None so it is not retried on every rerun.
+    saved_suggestion = st.session_state.get('checkin_suggestion')
+    if saved_suggestion is None or saved_suggestion[0] != capture[1]:
+        with st.spinner('Recognising your drink…'):
+            result = drink_recognition.suggest_drink(photo.getvalue(), rules, player_id=player_id)
+        saved_suggestion = (capture[1], result)
+        st.session_state['checkin_suggestion'] = saved_suggestion
+    suggestion = saved_suggestion[1]
 with st.container(key="drink_ui_panel_selection"):
     if modern:
+        if suggestion is not None:
+            with st.container(key="drink_ui_suggestion"):
+                st.caption(suggestion.message)
+        drinks = list(DRINK_LABELS)
         with st.container(key="drink_ui_drinks"):
-            drink_type = st.radio("Drink", options=list(DRINK_LABELS), format_func=DRINK_LABELS.get,
+            # Keyed per photo, so a new photo starts from its own suggestion.
+            drink_type = st.radio("Drink", options=drinks, format_func=DRINK_LABELS.get,
+                                  index=drinks.index(suggestion.drink) if suggestion and suggestion.drink else 0,
+                                  key=f"checkin_drink_{photo_number}",
                                   horizontal=True, width="stretch", label_visibility="collapsed")
         # A shot has no size, but its row keeps the same height (an invisible spacer in the same keyed
         # container, which has a minimum height, see drink_entries.css), so the photo above does not
@@ -233,8 +251,11 @@ with st.container(key="drink_ui_panel_selection"):
             if drink_type == "shot":
                 st.markdown('<span class="size-spacer" aria-hidden="true"></span>', unsafe_allow_html=True)
             else:
-                size = st.radio("Size", options=list(SIZE_LABELS),
+                sizes = list(SIZE_LABELS)
+                size = st.radio("Size", options=sizes,
                                 format_func=lambda value: size_label(drink_type, value, rules),
+                                index=sizes.index(suggestion.size) if suggestion and suggestion.size else 0,
+                                key=f"checkin_size_{photo_number}",
                                 horizontal=True, width="stretch", label_visibility="collapsed")
         preview = base_points(drink_type, size, rules) * max(focus_multiplier, time_multiplier)
         point_word = "point" if preview == 1 else "points"

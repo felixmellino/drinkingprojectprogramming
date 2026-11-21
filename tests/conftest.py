@@ -9,6 +9,16 @@ themselves; tests/test_season_recap_db.py tests the real function.
 import pytest
 
 import data.db as db
+import drink_recognition
+
+
+@pytest.fixture(autouse=True)
+def no_real_drink_recognition(monkeypatch):
+    """Tests never call the real Claude API, even when a local secrets file has a key.
+
+    Tests that need the suggestion patch drink_recognition themselves.
+    """
+    monkeypatch.setattr(drink_recognition, "api_key", lambda: None)
 
 
 @pytest.fixture(autouse=True)
