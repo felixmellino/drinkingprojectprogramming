@@ -145,6 +145,11 @@ The team's configured key expires 18 February 2027 (and may expire after 90 days
 of inactivity); replace it in Secrets before expiry. No Brevo dashboard template
 is required: `password_email.py` sends HTML and plain text versions directly.
 
+Optional drink suggestion (R-C01): with `ANTHROPIC_API_KEY = "..."` in the same
+Secrets, the Check in page asks Claude once per photo which drink and size it
+shows and preselects them; the player confirms. At most 10 recognitions per
+player per hour. Without the key the feature is off. Set a monthly spend limit for the key in the Anthropic console.
+
 On Log in, choose **Forgot password?**, request a code and enter it with a new
 password. Codes expire after 15 minutes, work once, and a new request replaces
 the previous code. Requests have a one-minute per-account cooldown; requests and

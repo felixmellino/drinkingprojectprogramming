@@ -77,6 +77,21 @@ verification result and territory, and have empty exact-coordinate fields.
 The photo setup migration clears exact coordinates from legacy entries too,
 preserving scores and territory assignments.
 
+### Drink suggestion (Anthropic API, R-C01)
+
+If `ANTHROPIC_API_KEY` is set, the cleaned check-in photo (no metadata,
+at most 1024 px) is sent once over HTTPS to the Anthropic API to suggest
+the drink and size. Only the image and a fixed instruction are sent: no
+name, email, lobby or location. People in the background of a photo are
+sent too, so players are asked to photograph only their drink. The key is
+server-only, read from secrets in `drink_recognition.py` (the only file
+that calls Anthropic), and should have a spend limit in the Anthropic
+console. Each player gets at most 10 recognitions per rolling hour, so
+retaking photos cannot run up the bill; the count is per server process and
+resets on restart, so the console spend limit stays the hard cap. API error
+details are never shown to the player. Without the key
+nothing is sent. Tests use a fake client and never call the API.
+
 Each capture has one entry ID and storage path. Retrying a submission uses
 that ID and cannot insert another scored row. A failed upload records no
 points. If an upload succeeds and a database save fails, retrying can finish
