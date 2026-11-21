@@ -75,7 +75,8 @@ def choose_current(at, lobby_id):
 
 @pytest.mark.parametrize('failure, expected', [
     (CheckinRejected('invalid_timezone'), 'timezone is not supported'),
-    (RuntimeError('offline'), 'scoring season could not start'),
+    (RuntimeError('offline'), 'season setup could not be confirmed'),
+    (PermissionError('membership changed'), 'membership could not be confirmed'),
 ])
 def test_failed_new_season_keeps_current_lobby_and_specific_recovery(ui, monkeypatch, failure, expected):
     def insert_lobby(lobby):

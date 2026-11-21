@@ -157,7 +157,7 @@ def test_ranks_does_not_show_another_lobby_when_current_setup_is_incomplete(ui, 
     at.run()
     assert not at.exception
     assert any('Older lobby' in item.value for item in at.markdown)
-    assert any('Start or select a season' in item.value for item in at.info)
+    assert any('Retry lobby setup' in item.value and 'active lobby current' in item.value for item in at.info)
     records.assert_not_called()
 
 

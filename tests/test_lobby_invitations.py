@@ -89,7 +89,8 @@ def test_full_lobby_keeps_invite_on_screen(ui, monkeypatch):
     at.session_state["player_id"] = "me"
     at.session_state["credential_version"] = "current"
     click(at, "Accept")
-    assert "This lobby is full." in at.error[-1].value
+    assert "This lobby is full" in at.error[-1].value
+    assert "reserved places" in at.error[-1].value and "decline" in at.error[-1].value
     assert "Decline" in [b.label for b in at.button]
 
 

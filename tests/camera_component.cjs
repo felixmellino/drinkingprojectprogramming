@@ -8,7 +8,7 @@ const html = fs.readFileSync('components/drink_camera/index.html', 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function setup({denied = false, pending = false} = {}) {
+function setup({denied = false, pending = false, failure = null} = {}) {
   const listeners = {}, documentListeners = {}, messages = [];
   let calls = 0, stops = 0, release;
   const facings = [], drawings = [], transforms = [];
@@ -33,6 +33,7 @@ function setup({denied = false, pending = false} = {}) {
     assert.equal(constraints.audio, false);
     facings.push(constraints.video.facingMode.ideal);
     if (denied) throw {name:'NotAllowedError'};
+    if (failure) throw {name:failure, message:'private device details'};
     if (pending) return new Promise(resolve => release = () => resolve(media()));
     return media();
   }}};
@@ -89,6 +90,15 @@ function setup({denied = false, pending = false} = {}) {
   assert.equal(blocked.messages.some(m => m.type === 'streamlit:setComponentValue'), false);
   blocked.allow(); blocked.click('retry'); await flush();
   assert.equal(blocked.calls(), 2);
+
+  for (const [failure, expected] of [['NotReadableError', /could not be read/], ['NotFoundError', /device with a camera/], ['UnknownDeviceError', /browser settings/]]) {
+    const broken = setup({failure});
+    broken.render(); await flush();
+    assert.equal(broken.elements.retry.hidden, false);
+    assert.match(broken.elements.status.textContent, expected);
+    assert(!broken.elements.status.textContent.includes('private device details'));
+    assert.equal(broken.elements.shutter.disabled, true);
+  }
 
   const late = setup({pending:true});
   late.render();

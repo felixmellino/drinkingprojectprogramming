@@ -155,4 +155,5 @@ def test_missing_migration_shows_one_clear_message(reaction, monkeypatch):
         raise RuntimeError('Reaction Duel needs database migration 025 before it can open.')
     monkeypatch.setattr(reaction_ui.db, 'reaction_status', missing)
     page = open_page(selected='reaction')
-    assert not page.exception and 'migration 025' in page.error[0].value
+    assert not page.exception and 'app organizer' in page.error[0].value
+    assert any('migration 025' in item.value for item in page.markdown)

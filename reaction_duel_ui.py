@@ -8,9 +8,9 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
-from action_feedback import action_button, explain
+from action_feedback import action_button, service_error
 from core.action_feedback import duel_closed_message, opponent_message, stake_problems
-from core.reaction_duel import FINAL, STAKES, component_action, time_label, validate_pair
+from core.reaction_duel import CONFIG, FINAL, STAKES, component_action, time_label, validate_pair
 from core.scoring_v1 import format_points
 from reaction_duel_component import reaction_board
 
@@ -18,9 +18,7 @@ SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 
 
 def _error(error, *, popup=False):
-    show = explain if popup else st.error
-    show(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-             else "Reaction Duel is unavailable right now. It reloads by itself.")
+    service_error(error, "Reaction Duel is unavailable right now. Keep this page open for an automatic retry, or reopen the game if the problem continues.", popup=popup)
 
 
 def _act(player, duel, action, revision=None, elapsed_ms=None, *, rerun=True):
@@ -69,6 +67,9 @@ def _result(duel, member, labels):
                  f'<td class="{"win" if r["winner_id"] == other else ""}">{time_label(theirs)}</td></tr>')
     st.markdown(f'<table class="reaction-rounds"><tr><th>Round</th><th>You</th>'
                 f'<th>{escape(labels.get(other, "Opponent"))}</th></tr>{rows}</table>', unsafe_allow_html=True)
+    if any(r.get(key) is None or r[key] >= CONFIG['miss_ms'] for r in duel['round_results']
+           for key in ('challenger_ms', 'opponent_ms')):
+        game_note(f"Missed means no valid tap was recorded within the {CONFIG['reaction_response_ms'] / 1000:g}-second response window, or the try expired. It counts as a missed round.")
     if duel["status"] == "draw":
         game_note("Same rounds and same total time." if duel["reason"] == "rounds" else "Time ran out before anyone played.")
     if st.button("Done", key="reaction_done", type="primary", width="stretch"):
@@ -119,7 +120,7 @@ def _home(player, member, lobby, season, members, labels, state):
     elif not opponents:
         game_note(opponent_message(own, lobby))
     elif not state["outgoing"]:
-        game_note("You already challenged tonight. Resets at 06:00.")
+        game_note(f"You already challenged tonight. Try again after 06:00 ({season.timezone_name}); finishing the duel does not reset this limit.")
     elif not any(d["challenger_id"] == member for d in pending):
         opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
                             format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,

@@ -16,6 +16,17 @@ Unknown check-in rejection codes get a safe recovery message, never raw codes.
 
 ## Workflow matrix
 
+Second audit after merging the current main: added lobby-invitation recovery
+(including its rolling 24-hour limits), logout-service failures, explicit
+legacy-photo restrictions and precise recovery for reserved versus consumed
+duel roles. Removed advice to open the retired Focus screen. Quiz balances
+below the minimum stake now explain how to obtain enough points rather than
+suggesting a smaller stake that is not available. Test-season duel opening
+messages use the season start; Chug keeps its scoring-window exception.
+Setup problems direct players to the app organizer; technical migration/storage
+details are expandable. Accurate GPS in overlapping territories gets its own
+explanation instead of incorrectly blaming GPS accuracy.
+
 | Workflow / rejected case | How to reproduce | Expected explanation and next step | Verification |
 | --- | --- | --- | --- |
 | Check-in: tracking off | Turn Location off in Profile, take a photo, press Submit | Open Profile → Location and turn it on | `test_action_feedback.py` |
@@ -54,6 +65,10 @@ Unknown check-in rejection codes get a safe recovery message, never raw codes.
 | Map: unusable location | Tap Location help with denied/unsupported/timeout reading | Explain actual browser failure and recovery, rather than generic waiting | `test_map_page.py` |
 | Account: registration / credentials / duplicate name/email | Submit each invalid form | Field requirement, different username or existing-account login/reset route | Account/auth tests |
 | Account: repeated login attempts / reset | Submit invalid credentials or reset code | Check credentials/reset route; retry after 15 minutes after repeated attempts. Reset responses preserve account privacy | Existing auth/reset tests |
+| Account: logout service failure on remembered device | Fail session revocation when pressing Log out | Sign-out is unconfirmed; session stays signed in and Log out can be retried | `test_feedback_audit.py` |
+| Lobby invitations: limits / pending / friend email / stale link / invalid response | Simulate migration 026 rejections | Exact 20-per-24-hours and per-friend/lobby limits; pending-invite, code-sharing or fresh-invitation recovery as appropriate | `test_feedback_audit.py`, `test_lobby_invitations.py` |
+| Duel stakes below the minimum | Try Quiz with 0, 1 or 2 available points | Explain minimum 3 points and earning/releasing points; never suggest an impossible lower stake | `test_feedback_audit.py` |
+| Duel roles used versus reserved | Try a consumed or reserved role | Cancel before start to release a reservation; after start, wait for 06:00; finishing does not reset the role | `test_feedback_audit.py` |
 | Profile / password / picture / photo privacy | Submit invalid values or fail save | Field rule or retry/check-saved-state instruction; existing privacy/password dialogs retain inline feedback | Profile/picture tests |
 | Friends: pending, accepted, declined cooldown, stale or wrong-role request | Try the corresponding invalid transition | Check incoming/outgoing/current friends, refresh, or wait ten minutes | Existing friendship tests |
 | Standings/map/profile loading | Fail a read | Inline reload/retry instruction; optional missing avatars keep initials | Existing page outage tests |
@@ -80,3 +95,13 @@ inputs and the shared database disabled. In the sidebar, choose off or inaccurat
 tap Submit, dismiss the explanation, then choose ready and submit the same
 photo. A browser check verified both popups, retained drink selection and the
 accepted retry. Screenshot: `output/previews/action-feedback-location.jpg`.
+
+`tests/fixtures/feedback_poll_browser_app.py` shows the real Quiz Duel home
+with an insufficient balance and one-second automatic refreshes. Use it to
+check that a rejection popup remains readable during polling and dismisses
+normally. It has no access to the shared database and rejects any attempted
+invitation write.
+
+Browser verification of this fixture passed: the rejection stayed open through
+multiple automatic updates, and OK returned to the same opponent and stake.
+Screenshot: `output/previews/action-feedback-quiz-audit.jpg`.
