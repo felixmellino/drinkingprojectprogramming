@@ -258,3 +258,47 @@ def test_unreadable_photo_does_not_use_a_slot():
     for _ in range(12):
         drink_recognition.suggest_drink(b"not a jpeg", player_id="p1", client=client)
     assert drink_recognition._calls == {} and client.requests == []
+
+
+# --- Server log: the reason for a failure is logged, never the key -------------------------------
+
+
+def test_api_error_reason_is_logged_without_the_key(monkeypatch, caplog):
+    error = anthropic.BadRequestError("Your credit balance is too low.",
+                                      response=httpx2.Response(400, request=make_request()), body=None)
+    built = {}
+
+    def fake_anthropic(**options):
+        built.update(options)
+        return FakeClient(error=error)
+
+    monkeypatch.setattr(drink_recognition, "api_key", lambda: "sk-ant-secret-test-key")
+    monkeypatch.setattr(anthropic, "Anthropic", fake_anthropic)
+    with caplog.at_level("WARNING", logger="drink_recognition"):
+        assert drink_recognition.suggest_drink(jpeg(), player_id="p1") is None
+    assert "HTTP 400 BadRequestError: Your credit balance is too low." in caplog.text
+    assert "sk-ant-secret-test-key" not in caplog.text and built["api_key"] == "sk-ant-secret-test-key"
+
+
+@pytest.mark.parametrize("response, logged", [
+    (reply(json.dumps(answer()), stop_reason="refusal"), "stop_reason=refusal"),
+    (reply("not json"), "was not JSON"),
+    (reply(json.dumps({"drink": "beer"})), "did not match"),
+])
+def test_unusable_answers_are_logged(response, logged, caplog):
+    with caplog.at_level("WARNING", logger="drink_recognition"):
+        drink_recognition.suggest_drink(jpeg(), player_id="p1", client=FakeClient(response))
+    assert logged in caplog.text
+
+
+def test_network_error_is_logged_by_type(caplog):
+    with caplog.at_level("WARNING", logger="drink_recognition"):
+        drink_recognition.suggest_drink(jpeg(), player_id="p1",
+                                        client=FakeClient(error=anthropic.APITimeoutError(request=make_request())))
+    assert "Drink recognition failed: APITimeoutError" in caplog.text
+
+
+def test_success_logs_nothing(caplog):
+    with caplog.at_level("WARNING", logger="drink_recognition"):
+        drink_recognition.suggest_drink(jpeg(), player_id="p1", client=FakeClient(reply(json.dumps(answer()))))
+    assert caplog.text == ""

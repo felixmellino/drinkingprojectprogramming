@@ -8,6 +8,7 @@ check-in and never changes points.
 """
 import base64
 import json
+import logging
 import os
 import threading
 import time
@@ -18,6 +19,8 @@ from PIL import Image
 
 from core.drink_recognition import (ANSWER_SCHEMA, LIMIT_REACHED, DrinkSuggestion, prompt_for, suggestion_from_answer,
                                     within_limit)
+
+log = logging.getLogger(__name__)
 
 MODEL = "claude-opus-5-5"
 MAX_SIDE_PX = 1024      # smaller image: fewer tokens, faster answer, still enough detail
@@ -74,6 +77,7 @@ def suggest_drink(jpeg: bytes, rules: dict | None = None, *, player_id: str, cli
     if client is None:
         key = api_key()
         if key is None:
+            log.info("Drink recognition is off: no ANTHROPIC_API_KEY in the secrets.")
             return None
         client = anthropic.Anthropic(api_key=key, timeout=TIMEOUT_SECONDS, max_retries=0)
     try:
@@ -95,14 +99,25 @@ def suggest_drink(jpeg: bytes, rules: dict | None = None, *, player_id: str, cli
                 {"type": "text", "text": prompt_for(rules)},
             ]}],
         )
-    except (anthropic.AnthropicError, OSError, ValueError):
-        # Never show API error details: they are not useful to the player.
+    except anthropic.APIStatusError as error:
+        # The player only sees the normal form. The reason goes to the server log
+        # (Streamlit Cloud: Manage app -> Logs); it never contains the key.
+        log.warning("Drink recognition failed: HTTP %s %s: %s", error.status_code, type(error).__name__,
+                    str(error.message)[:300])
+        return None
+    except (anthropic.AnthropicError, OSError, ValueError) as error:
+        log.warning("Drink recognition failed: %s", type(error).__name__)
         return None
     if response.stop_reason != "end_turn":
-        return None  # refusal or cut-off answer
+        log.warning("Drink recognition gave no answer: stop_reason=%s", response.stop_reason)
+        return None
     text = next((block.text for block in response.content if block.type == "text"), None)
     try:
         answer = json.loads(text)
     except (TypeError, ValueError):
+        log.warning("Drink recognition answer was not JSON.")
         return None
-    return suggestion_from_answer(answer)
+    suggestion = suggestion_from_answer(answer)
+    if suggestion is None:
+        log.warning("Drink recognition answer did not match the expected fields.")
+    return suggestion
