@@ -23,6 +23,13 @@ checks only within a bounded gallery download of at most twelve photos.
 It checks the entire requested audience before fetching any image, checks
 the private bucket once, and never caches permissions across page requests.
 The metadata listing and full-photo detail each authorize independently.
+Since 21 November the check that a photo bucket is still private runs once
+per bucket every 10 minutes per server process instead of before every
+photo (`data/db.py`, `PRIVATE_BUCKET_RECHECK_SECONDS`); a refusal is never
+remembered. Access checks themselves (credential, friendships, membership,
+consent) still run fresh on every page render. Lobby and Map start the
+profile-picture credential and friendship check together with their other
+first reads and use it in the same render only.
 Display thumbnails do not replace the stored originals or alter retention.
 
 Apply `migrations/013_checkin_photo_privacy.sql` before deploying these

@@ -60,25 +60,55 @@ def test_failed_client_initialization_is_not_cached(monkeypatch):
     assert db.get_client() is client and factory.call_count==2
 
 
-def test_lobby_leader_name_and_roster_requests_overlap(monkeypatch):
+def test_lobby_cards_load_in_three_rounds_not_one_chain_per_card(monkeypatch):
+    """Round 1 overlaps every card's scores with the picture permission check;
+    round 2 asks for all leaders' names at once; round 3 is one picture batch."""
     from threading import Barrier
     from types import SimpleNamespace
     from tests.test_scoring_v1 import entry,season
     import lobby_ui
-    barrier=Barrier(2,timeout=2)
-    def name(*args):
+    barrier=Barrier(3,timeout=2)  # two cards' entry reads + the permission check
+    def entries(_):
         barrier.wait()
-        return 'Mia'
-    def roster(*args):
+        return [entry('one','me','beer','small',0)]
+    def access(_):
         barrier.wait()
-        return [SimpleNamespace(id='me',player_id='player')]
+        return ['relationships']
+    name_requests,picture_requests=[],[]
+    def names(pairs):
+        name_requests.append(list(pairs))
+        return {pair:{'player_id':'player-'+pair[1],'display_name':'Mia'} for pair in pairs}
+    def pictures(viewer,owners,relationships=None):
+        picture_requests.append((viewer,owners,relationships))
+        return {'player-a':b'photo'}
+    monkeypatch.setattr(db,'list_drink_entries',entries)
+    monkeypatch.setattr(db,'list_season_transfers',lambda _: [])
+    monkeypatch.setattr(db,'list_membership_names',names)
+    monkeypatch.setattr(lobby_ui,'picture_access',access)
+    monkeypatch.setattr(lobby_ui,'load_pictures',pictures)
+    cards=[(SimpleNamespace(id='a',game_mode='individual'),season(),'active'),
+           (SimpleNamespace(id='b',game_mode='individual'),season(),'past')]
+    result=lobby_ui.load_summaries('player',cards)
+    assert [r[1:] for r in result]==[(True,'Mia',b'photo'),(True,'Mia',None)]
+    assert name_requests==[[('me','a'),('me','b')]]
+    assert picture_requests==[('player',['player-a'],['relationships'])], 'only the active card shows a picture'
+
+
+def test_lobby_name_failure_marks_only_individual_leader_cards_unavailable(monkeypatch):
+    from types import SimpleNamespace
+    from tests.test_scoring_v1 import entry,season
+    import lobby_ui
     monkeypatch.setattr(db,'list_drink_entries',lambda _: [entry('one','me','beer','small',0)])
     monkeypatch.setattr(db,'list_season_transfers',lambda _: [])
-    monkeypatch.setattr(db,'membership_display_name',name)
-    monkeypatch.setattr(db,'list_memberships_for_lobby',roster)
-    monkeypatch.setattr(lobby_ui,'load_picture',lambda *args:None)
-    result=lobby_ui.load_summary('player',SimpleNamespace(id='lobby',game_mode='individual'),season(),'active')
-    assert result[1:] == (True,'Mia',None)
+    monkeypatch.setattr(db,'list_membership_names',Mock(side_effect=RuntimeError('offline')))
+    monkeypatch.setattr(lobby_ui,'picture_access',lambda _: None)
+    load_pictures=Mock()
+    monkeypatch.setattr(lobby_ui,'load_pictures',load_pictures)
+    cards=[(SimpleNamespace(id='a',game_mode='individual'),season(),'active'),
+           (SimpleNamespace(id='c',game_mode='individual'),None,'setup')]
+    result=lobby_ui.load_summaries('player',cards)
+    assert [r[1:] for r in result]==[(False,None,None),(True,None,None)]
+    load_pictures.assert_not_called()
 
 
 @pytest.mark.parametrize('multiplier,expected',[(1.25,'×1.25'),(1.5,'×1.5'),(None,'×1.5')])

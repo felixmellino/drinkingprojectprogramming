@@ -35,8 +35,24 @@ def load_picture(viewer_id, owner_id):
     return db.download_profile_picture(viewer_id, st.session_state['credential_version'], owner_id)
 
 
-def load_pictures(viewer_id, owner_ids):
-    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids)
+def load_pictures(viewer_id, owner_ids, relationships=None):
+    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids,
+                                        relationships=relationships)
+
+
+def picture_access(viewer_id):
+    """Start the picture permission check early (with a page's first reads).
+
+    Returns None when there is no signed-in credential or the check failed;
+    load_pictures then runs its own check as before.
+    """
+    credential = st.session_state.get('credential_version')
+    if not credential:
+        return None
+    try:
+        return db.profile_picture_access(viewer_id, credential)
+    except (*PICTURE_ERRORS, PermissionError, ValueError):
+        return None
 
 
 def show_picture_identity(viewer_id, owner_id, username, *, size=64):
