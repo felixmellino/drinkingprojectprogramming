@@ -31,12 +31,13 @@ assert.equal(order[0],'schema.sql');
   'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation'])
   assert(have.has(fn),'missing function '+fn);
  const tables=new Set((await pg.query("select tablename from pg_tables where schemaname='public'")).rows.map(r=>r.tablename));
- for(const t of ['players','lobbies','seasons','drink_entries','friendships','chug_duels','quiz_duels','quiz_transfers','time_duels','reaction_duels','reaction_runs'])
+ for(const t of ['players','lobbies','seasons','drink_entries','friendships','chug_duels','quiz_duels','quiz_transfers','time_duels','reaction_duels','reaction_runs','season_recap_views'])
   assert(tables.has(t),'missing table '+t);
  // Both public API roles must be denied, even after the complete migration chain.
  const privateTables=['players','remembered_sessions','password_resets','login_attempts',
   'lobbies','lobby_memberships','seasons','drink_entries','friendships',
-  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations'];
+  'reaction_duels','reaction_runs','quiz_duels','quiz_transfers','time_duels','chug_duels','lobby_invitations',
+  'season_recap_views'];
  const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
   'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action',
   'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation'];

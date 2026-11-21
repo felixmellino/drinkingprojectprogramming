@@ -439,6 +439,24 @@ Map owner badge update (19 November 2026, contributor request):
 - Empty: "No activity yet. The first drink of the season starts the feed." + Check in.
 - Later event kinds (achievements, duel results, joins) are planned but not built.
 
+## Season recap (21 November 2026)
+
+- **Banner** at the top of every page while a season the player was in has
+  ended in the last two weeks and is not finished: "Your season in X is over.
+  See who won and collect the awards." + **Finish season** (oldest first).
+- **Story** (`components/season_recap`): full-width slides that advance on
+  their own with progress bars at the top. Tap for the next slide, **Skip**
+  for the card. Slides: "Season over" with confetti, the podium (2-1-3 bars
+  rising), one slide per award (icon, title, winner, detail), "Your season".
+  Reduced motion skips straight to the card.
+- **Awards card**: lobby and dates, top three, one row per award, your line,
+  **Replay** and **Close**. **Download standings (CSV)** sits below the card.
+  Close saves the season as finished and returns to the Lobby page.
+- **Lobby page**: a past lobby shows **Finish season** until then, and
+  **Season awards** (the static card) afterwards.
+- Errors: a stranger sees "You can only see the awards of a season you played
+  in."; a running season says its awards appear when it ends.
+
 ## Memories
 
 - Implemented as Photo history, now the **Photos** view of the Activity tab (gallery look since 20 November

@@ -319,6 +319,47 @@ The database serializes season inserts per lobby to reject concurrent renewals.
 Source: contributor decision, 2026-11-18; supersedes same-lobby renewal in the
 earlier scoring contract. Photo access and ranking rules are unchanged.
 
+## Season awards (21 November 2026)
+
+### R-S01 Awards and what they mean
+When a season has ended, every player of that lobby can open its recap. It
+shows the podium (top three of the final ranking) and these awards:
+
+- **MVP**: rank 1 of the final ranking (R-R01 decides ties).
+- **Most territories held**: the most territories owned at the season's end.
+- **Biggest takeover**: the takeover (a territory taken from another owner, not
+  a first claim of a free one) where the previous owner had the most points in
+  that territory at that moment.
+- **Most captures**: the most times a player gained a territory, first claims
+  included.
+- **Most drinks**: the most accepted check-ins.
+- **Your season**: the viewer's rank, points, drinks, territories held and captures.
+
+Awards are derived from the saved entries and duel transfers with the same
+replay as Ranks and the Map (`core/season_recap.py`). They are not points and
+change nothing in the ranking. An award without a winner (for example no
+takeovers) is left out. Team lobbies award teams. Seasons scored before v1
+(legacy) show MVP and Most drinks only.
+
+### R-S02 Award ties
+A tie for most territories, captures or drinks goes to the better final rank.
+Two equally big takeovers: the earlier one wins.
+
+### R-S03 Finishing a season
+After the season ends, a banner on every page ("Your season in X is over")
+offers **Finish season** for two weeks; the past lobby on the Lobby page keeps
+the button. It plays the recap story and ends on the awards card; **Close**
+saves that this player finished the season (migration 027,
+`season_recap_views`), so the banner stays gone after a restart. Afterwards
+the past lobby shows **Season awards**, which reopens the card. The final
+standings can be downloaded as CSV from the recap.
+
+Allowed: players of that lobby, also after they left it. Rejected: anyone else
+(no data shown) and a season that is still running. Boundary: `now == ends_at`
+counts as ended (R-R03). Finishing twice saves once.
+
+Source: Niklas, 21 November 2026.
+
 ## Territories
 
 ### R-T01 Territory set
