@@ -615,6 +615,8 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - Past Lobbies are light grey, latest finish first: name, winner's public
   username and finish timestamp. No scored entries reads **No Leader** in both
   lists. Service failure reads Standings unavailable, never an invented result.
+  Past cards keep **Make current**, beside Season awards, to view the final
+  Map, Ranks and Activity; Check-in and Minigames say the season has ended.
 - A timed fragment refreshes the list/countdown every 60 seconds while open,
   rechecks memberships and moves expired cards at the next refresh. Server
   check-ins still enforce the exact finish boundary independently of the UI.

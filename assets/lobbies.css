@@ -32,6 +32,8 @@
   align-items:flex-end;justify-content:flex-end;padding:18px 20px;
 }
 [class*="st-key-lobby_card_"] [class*="st-key-open_lobby_"] button p {font-weight:600;}
+/* Streamlit centres the label wrapper; keep "View lobby →" bottom-right, clear of the card's left buttons. */
+[class*="st-key-lobby_card_"] [class*="st-key-open_lobby_"] button > div {justify-content:flex-end;}
 [class*="st-key-lobby_card_"] [class*="st-key-open_lobby_"] button:hover {background:color-mix(in srgb,var(--accent) 4%,transparent);border-color:var(--accent-ink);}
 [class*="st-key-lobby_card_"] [class*="st-key-open_lobby_"] button:focus-visible {outline:3px solid var(--accent-ink);outline-offset:3px;}
 [class*="st-key-lobby_card_"] [class*="st-key-lobby_select_"] {position:absolute;bottom:10px;left:12px;width:auto;z-index:2;}

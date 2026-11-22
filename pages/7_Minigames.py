@@ -1,7 +1,10 @@
 """Minigames in the selected lobby; server RPCs recheck every action."""
+from datetime import datetime, timezone
+
 import streamlit as st
 import data.db as db
 from minigames_ui import render_minigames, _error, SERVICE_ERRORS
+from core.scoring_v1 import utc
 from shared import lobby_button, require_login, require_active_membership, selected_season
 
 player = require_login()
@@ -14,6 +17,10 @@ try:
         lobby_button()
     elif season.scoring_version != "v1":
         st.info("Minigames are unavailable in this historical season. Create or join a new lobby on the Lobby page to play with the current rules. Your old scores are kept.")
+        lobby_button()
+    elif datetime.now(timezone.utc) >= utc(season.ends_at):
+        # A finished lobby can stay current for viewing; its games are over (R-R03).
+        st.info("This season has ended, so its minigames are closed. Make a running lobby current on the Lobby page to play.")
         lobby_button()
     else:
         render_minigames(player, member, lobby, season)

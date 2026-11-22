@@ -164,7 +164,8 @@ The [canonical proposal](SCORING_PROPOSAL.md) defines the replacement flow: four
 
 Contributor decision: the last lobby explicitly chosen as the context for
 lobby-specific pages is saved per player in the database, across devices,
-logouts and app restarts. Choose **Make current** on an eligible lobby card.
+logouts and app restarts. Choose **Make current** on a lobby card, including a
+past lobby.
 Exactly one card has the **Current lobby** badge when a lobby is selected.
 **View lobby** opens details without changing the selection, and a lobby's
 standings can be viewed there without making that lobby current.
@@ -179,11 +180,15 @@ After authentication, restore the saved lobby before rendering Leaderboard,
 Map, Check-in, Minigames or Photo history. Recheck current membership and load
 current lobby mode, team and season from the database. A preference grants
 no access. If membership has been removed, require a choice on the Lobby page.
-If the saved competition has finished, select the newest active competition
-(by start timestamp, then lobby ID). This also applies on the next page
-load or Lobby refresh if the season ends during a signed-in session. With
-no active alternative, require a choice for gameplay.
-A player without a saved choice also defaults to their newest active lobby.
+A saved lobby stays selected after its competition has finished, so the
+player keeps its final Map, Ranks and Activity (contributor decision,
+22 November 2026; it replaces the earlier automatic fallback for saved
+choices). Check-in and Minigames then say the season has ended; the server
+rejects late actions anyway (R-R03).
+A player without a saved choice defaults to their newest active lobby
+(by start timestamp, then lobby ID). If that automatic pick finishes, the next
+page load or Lobby refresh moves to the newest active competition. With no
+active alternative, require a choice.
 Upcoming/incomplete saved lobbies stay selected; existing workflow checks
 explain when a season or team is still needed.
 

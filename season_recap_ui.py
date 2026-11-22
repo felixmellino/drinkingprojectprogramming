@@ -155,11 +155,9 @@ def lobby_button(lobby, season, finished: set[str] | None) -> None:
     # When the list can't be read, never push an animation that can't be saved.
     done = finished is None or season.id in finished
     label, animate = ("Season awards", False) if done else ("Finish season", True)
-    # The lobby_select_ key puts it in the card's bottom-left slot (assets/lobbies.css),
-    # where Make current sits on running lobbies, so it never covers View lobby.
-    with st.container(key=f"lobby_select_recap_{lobby.id}"):
-        if st.button(label, key=f"season_recap_{lobby.id}", type="secondary" if done else "primary"):
-            open_recap(lobby.id, lobby.name, season.id, animate=animate)
+    # Drawn inside the card's bottom-left slot (lobby_ui), beside Make current.
+    if st.button(label, key=f"season_recap_{lobby.id}", type="secondary" if done else "primary"):
+        open_recap(lobby.id, lobby.name, season.id, animate=animate)
 
 
 def mark_finished(season_id: str) -> None:
