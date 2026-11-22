@@ -28,6 +28,17 @@ def no_finished_recaps(monkeypatch, request):
 
 
 @pytest.fixture(autouse=True)
+def no_season_summary_gate(monkeypatch, request):
+    """Page tests use seasons that have ended; by default their players already
+    watched the summary (R-S03), so pages behave as before the gate.
+    tests/test_season_finished_gate.py tests the real gate."""
+    if request.module.__name__.endswith("test_season_finished_gate"):
+        return
+    import season_recap_ui
+    monkeypatch.setattr(season_recap_ui, "summary_pending", lambda player_id, season: False)
+
+
+@pytest.fixture(autouse=True)
 def fresh_private_bucket_checks():
     """The private-bucket check is remembered per server process; each test starts fresh."""
     db._private_bucket_checked_at.clear()

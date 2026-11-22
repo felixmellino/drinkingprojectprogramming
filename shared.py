@@ -19,6 +19,7 @@ from app_navigation import bottom_navigation, minigame_invite_badge
 from theme import apply_theme
 from lobby_selection import restore_selection
 from parallel import run_parallel
+import season_recap_ui
 
 
 def require_login() -> str:
@@ -145,9 +146,10 @@ def lobby_button(key: str = "open_lobbies") -> None:
         st.switch_page("pages/2_Lobby.py")
 
 
-def require_active_membership() -> tuple[str, str, str]:
-    """Stop the page with a message if no lobby is selected yet. Returns
-    (membership_id, lobby_id, season_id) otherwise."""
+def require_active_membership(*, summary_page: bool = False) -> tuple[str, str, str]:
+    """Stop the page with a message if no lobby is selected yet, or while a
+    finished season's summary is still due (summary_page: the page shows it).
+    Returns (membership_id, lobby_id, season_id) otherwise."""
     if "current_membership_id" not in st.session_state:
         st.info("Choose a lobby on the Lobby page to continue.")
         lobby_button()
@@ -179,6 +181,11 @@ def require_active_membership() -> tuple[str, str, str]:
         st.stop()
     st.session_state["current_team_id"] = selected.team_id
     st.session_state["_validated_season"] = season
+    # R-S03: once the season is finished, its pages wait until the player watched
+    # the summary. Ranks shows the Watch summary card itself (pages/4_Standings.py).
+    if not summary_page and season_recap_ui.summary_pending(st.session_state["player_id"], season):
+        season_recap_ui.finished_notice()
+        st.stop()
     return (
         st.session_state["current_membership_id"],
         st.session_state["current_lobby_id"],

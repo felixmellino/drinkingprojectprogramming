@@ -99,6 +99,14 @@ def test_close_saves_once_and_returns_to_the_lobby(page_env):
     assert page_env["switch"].call_args.args[0] == "pages/2_Lobby.py"
 
 
+def test_close_from_ranks_returns_to_ranks_and_opens_its_pages(page_env):
+    page_env["value"] = {"action": "close", "opened": "t1"}
+    at = open_page(_recap_animate=True, _recap_opened="t1", _recap_return=season_recap_ui.RANKS_PAGE)
+    assert not at.exception
+    assert page_env["switch"].call_args.args[0] == "pages/4_Standings.py"
+    assert ("player-mia", "season") in at.session_state["_recap_seen"]
+
+
 def test_a_close_from_an_earlier_visit_is_ignored(page_env):
     page_env["value"] = {"action": "close", "opened": "old"}
     open_page(_recap_opened="new")

@@ -392,6 +392,19 @@ member. The button plays the personal recap story and opens the awards card.
 Regular members can open **Season awards** as soon as the season ends and
 replay the story from there. The recap offers a CSV of the final standings.
 
+**Watch summary on Ranks (22 November 2026, contributor decision).** Once
+the season has ended, normally or early by the creator (R-S04), every player
+whose current lobby it is sees only a "The season is finished" card with
+**Watch summary** on Ranks. Map, Check in, Games, Activity and Check-in photos
+show "This season is finished" with **Go to Ranks** and load nothing else.
+Watch summary plays the story; **Close** saves it as watched and returns to
+Ranks, which then shows the final ranking again, and the lobby's pages open
+for viewing. The lobby card's recap button replays it later. Lobbies and
+Profile always stay usable, so a player can switch lobby. If the watched
+history can't be read (before migration 029 or during an outage), nobody is
+held back. The check runs on each page load against the season read fresh
+from the database, so an early end reaches other players on their next page.
+
 Recap access is available to players of that lobby, including former members.
 Outsiders and players in a still-running season cannot open the recap.
 At `now == ends_at` the season counts as ended (R-R03). Finishing twice saves

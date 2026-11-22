@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 import io
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -22,6 +23,7 @@ from core.season_recap import CAPTURES, DRINKS, MVP, TAKEOVER, TERRITORIES, Reca
 from theme import icon_url
 
 RECAP_PAGE = "pages/9_Season_recap.py"
+RANKS_PAGE = "pages/4_Standings.py"
 LOAD_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 ICONS = {MVP: "trophy", TERRITORIES: "map-trifold", TAKEOVER: "arrow-clockwise", CAPTURES: "skyline",
          DRINKS: "beer-stein", "you": "user-circle"}
@@ -100,11 +102,54 @@ def board(payload: dict, *, animate: bool, opened: str, key: str):
     return _board(recap=payload, animate=animate, opened=opened, tokens=component_tokens(), key=key, default=None)
 
 
-def open_recap(lobby_id: str, lobby_name: str, season_id: str, *, animate: bool) -> None:
-    """Open the recap page for one season; the page checks access again."""
+def open_recap(lobby_id: str, lobby_name: str, season_id: str, *, animate: bool,
+               return_to: str | None = None) -> None:
+    """Open the recap page for one season; the page checks access again.
+    Close returns to return_to, otherwise to the Lobby page."""
+    st.session_state["_recap_return"] = return_to
     st.session_state.update(_recap_season_id=season_id, _recap_lobby_id=lobby_id, _recap_lobby_name=lobby_name,
                             _recap_animate=animate, _recap_opened=str(time.time_ns()))
     st.switch_page(RECAP_PAGE)
+
+
+def summary_pending(player_id: str, season) -> bool:
+    """R-S03: the season has ended and this player has not closed its recap yet.
+
+    While True, the lobby's pages send the player to Ranks to watch the summary.
+    A season this session saw finished is remembered, so pages read the history
+    only while the summary is still due. If the history can't be read (for
+    example before migration 029), nobody is held back: the recap could not be saved.
+    """
+    if season is None or datetime.now(timezone.utc) < utc(season.ends_at):
+        return False
+    seen = st.session_state.setdefault("_recap_seen", set())
+    if (player_id, season.id) in seen:
+        return False
+    finished = finished_or_empty(player_id)
+    if finished is None or season.id in finished:
+        seen.add((player_id, season.id))
+        return False
+    return True
+
+
+def mark_seen(player_id: str, season_id: str) -> None:
+    st.session_state.setdefault("_recap_seen", set()).add((player_id, season_id))
+
+
+def finished_notice() -> None:
+    """Map, Check in, Games, Activity and photos while the summary is due."""
+    st.info("This season is finished. Watch the summary on Ranks to see who won.")
+    if st.button("Go to Ranks", key="season_finished_go_to_ranks", type="primary"):
+        st.switch_page(RANKS_PAGE)
+
+
+def finished_card(lobby_id: str, lobby_name: str, season) -> None:
+    """Ranks while the summary is due: only the finished card and Watch summary."""
+    with st.container(border=True, key="season_finished_card"):
+        st.markdown("### The season is finished")
+        st.caption(f"{lobby_name}, {season_dates(season)}. See who won and collect the awards.")
+        if st.button("Watch summary", key="season_finished_watch", type="primary", width="stretch"):
+            open_recap(lobby_id, lobby_name, season.id, animate=True, return_to=RANKS_PAGE)
 
 
 def finished_or_empty(player_id: str) -> set[str] | None:
