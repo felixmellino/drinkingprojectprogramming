@@ -43,7 +43,7 @@ assert.equal(order[0],'schema.sql');
  const privateFunctions=['accept_scoring_checkin','correct_scoring_checkin','start_scoring_season',
   'delete_lobby','leave_lobby','chug_duel_action','quiz_action','time_action','reaction_action',
   'issue_lobby_invitation','pending_lobby_invitations','respond_to_lobby_invitation',
-  'accept_territory_scoring_checkin','active_territory_boost'];
+  'accept_territory_scoring_checkin','active_territory_boost','end_test_season'];
  for(const fn of privateFunctions)assert(have.has(fn),'missing protected function '+fn);
  for(const role of ['anon','authenticated']){
   for(const t of privateTables){
@@ -65,6 +65,7 @@ assert.equal(order[0],'schema.sql');
  const focusColumn = (await pg.query("select 1 from information_schema.columns where table_schema='public' and table_name='drink_entries' and column_name='focus_multiplier'")).rows;
  assert.equal(focusColumn.length, process.env.VERIFY_LEGACY_FOCUS==='1' ? 0 : 1);
  await pg.exec(fs.readFileSync('tests/territory_boosts_postgres.sql','utf8'));
+ await pg.exec(fs.readFileSync('tests/end_test_season_postgres.sql','utf8'));
  const medalCutoff = (await pg.query('select launched_at from public.profile_medal_rollout')).rows;
  assert.equal(medalCutoff.length, 1);
  await pg.exec(fs.readFileSync('migrations/028_profile_medals.sql', 'utf8'));
@@ -74,6 +75,9 @@ assert.equal(order[0],'schema.sql');
  const {rows} = await reopened.query('select points_awarded,owner_bonus_quarters from drink_entries where territory_boost_id is not null');
  assert.deepEqual(rows, [{points_awarded:'1.250',owner_bonus_quarters:'1.250'}]);
  assert.deepEqual((await reopened.query('select launched_at from public.profile_medal_rollout')).rows, medalCutoff);
+ assert.deepEqual((await reopened.query(`select s.ended_early, r.status, t.points
+  from seasons s join reaction_duels r on r.season_id=s.id join quiz_transfers t on t.id=r.id
+  where s.ended_early`)).rows, [{ended_early:true,status:'completed',points:3}]);
  await reopened.close();
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();

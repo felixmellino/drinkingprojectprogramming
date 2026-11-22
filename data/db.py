@@ -282,6 +282,22 @@ def membership_display_name(membership_id: str, lobby_id: str) -> str:
 
 # -- seasons ----------------------------------------------------------
 
+def end_test_season(player_id: str, lobby_id: str, season_id: str) -> None:
+    """Close the current test competition and settle its open duels in one transaction."""
+    try:
+        get_client().rpc("end_test_season", {
+            "actor_player": player_id, "target_lobby": lobby_id, "target_season": season_id,
+        }).execute()
+    except APIError as error:
+        if error.message == "permission_denied":
+            raise PermissionError("Only the lobby creator can end its current season early.") from None
+        if error.message in {"test_season_required", "season_not_active"}:
+            raise ValueError("Only a running test season can be ended early. Refresh lobbies to check its status.") from None
+        if error.code == "PGRST202":
+            raise RuntimeError("Early season closure requires database migration 030.") from None
+        raise
+
+
 def list_seasons_for_lobby(lobby_id: str) -> list[Season]:
     rows = get_client().table("seasons").select("*").eq("lobby_id", lobby_id).execute().data
     return sorted([_row_to_season(r) for r in rows], key=lambda s: s.starts_at, reverse=True)

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace as Obj
@@ -681,6 +682,48 @@ def test_only_the_creator_sees_delete(ui):
     assert not at.exception
     assert any(b.label == 'Leave lobby' for b in at.button)
     assert not any(b.label == 'Delete lobby' for b in at.button)
+
+
+@pytest.mark.parametrize('mode', ['individual', 'team'])
+def test_creator_confirms_end_of_test_season_and_opens_recap(ui, monkeypatch, mode):
+    lobby = ui['lobbies'][1]
+    if mode == 'team':
+        ui['lobbies'][1] = replace(lobby, game_mode='team', team_count=2, team_capacity=4, team_assignment='manual')
+        monkeypatch.setattr(db, 'list_lobby_teams', lambda *_: [])
+    season = create_season(lobby.id, '1_week', datetime.now(timezone.utc) - timedelta(days=1), test_mode=True)
+    ui['seasons'][lobby.id] = [season]
+    close = Mock()
+    switch = Mock()
+    monkeypatch.setattr(db, 'end_test_season', close)
+    monkeypatch.setattr('streamlit.switch_page', switch)
+    at = page()
+    assert not at.get('popover')
+    at.button(key='open_lobby_new').click().run()
+    assert not at.exception
+    assert any(p.proto.popover.label == 'End season early' for p in at.get('popover'))
+    close.assert_not_called()
+    click(at, 'Confirm end season')
+    assert not at.exception
+    close.assert_called_once_with('me', lobby.id, season.id)
+    switch.assert_called_once_with('pages/9_Season_recap.py')
+    assert at.session_state['_recap_season_id'] == season.id
+    assert at.session_state['_recap_animate'] is True
+
+
+@pytest.mark.parametrize(('test_mode', 'starts_in_days', 'is_creator'), [
+    (True, -1, False), (False, -1, True), (True, 1, True), (True, -8, True),
+])
+def test_end_season_control_is_limited_to_the_creator_of_a_running_test_season(
+        ui, test_mode, starts_in_days, is_creator):
+    now = datetime.now(timezone.utc)
+    ui['seasons']['new'] = [create_season('new', '1_week', now + timedelta(days=starts_in_days), test_mode=test_mode)]
+    if not is_creator:
+        ui['lobby_members']['new'][1].joined_at = now - timedelta(days=2)
+    at = page()
+    at.button(key='open_lobby_new').click().run()
+    assert not at.exception
+    assert all(p.proto.popover.label != 'End season early' for p in at.get('popover'))
+    assert all(b.label != 'Confirm end season' for b in at.button)
 
 
 @pytest.mark.parametrize('error', [PermissionError('Only the person who created this lobby can delete it.'), RuntimeError('offline')])

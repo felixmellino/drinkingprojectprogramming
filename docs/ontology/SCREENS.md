@@ -476,6 +476,9 @@ Map owner badge update (19 November 2026, contributor request):
   Close saves the season as finished and returns to the Lobby page.
 - **Lobby page**: a past lobby shows **Finish season** until then, and
   **Season awards** (the static card) afterwards.
+- **Open lobby**: only the creator sees **End season early** during a running
+  test season in either lobby mode. The confirmation explains the permanent
+  cutoff and the timeout for open duels. Confirming opens the recap story.
 - Errors: a stranger sees "You can only see the awards of a season you played
   in."; a running season says its awards appear when it ends.
 

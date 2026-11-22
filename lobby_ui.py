@@ -289,9 +289,29 @@ def show_lobby_management(player_id, lobby, season, memberships=None):
             return
     if lobby_creator(memberships) != player_id:
         return
-    if lobby_status(season, datetime.now(timezone.utc)) in ('active', 'upcoming'):
+    status = lobby_status(season, datetime.now(timezone.utc))
+    if status in ('active', 'upcoming'):
         show_invite_player(player_id, lobby.id, memberships)
+    if (status == 'active' and season.scoring_version == 'v1'
+            and (season.scoring_rules or {}).get('test_mode') is True):
+        end_test_season_controls(player_id, lobby, season)
     delete_lobby_controls(player_id, lobby)
+
+
+def end_test_season_controls(player_id, lobby, season):
+    with st.popover('End season early', width='stretch'):
+        st.warning('This permanently ends check-ins and games for everyone in this lobby. '
+                   'Open duels follow their usual timeout rules.')
+        if st.button('Confirm end season', key=f'end_test_season_{season.id}', type='primary', width='stretch'):
+            try:
+                db.end_test_season(player_id, lobby.id, season.id)
+            except (PermissionError, ValueError, RuntimeError) as error:
+                st.error(str(error))
+            except (APIError, RequestError):
+                st.error('The season ending could not be confirmed. Try again or refresh lobbies.')
+            else:
+                dismiss_members()
+                season_recap_ui.open_recap(lobby.id, lobby.name, season.id, animate=True)
 
 
 def delete_lobby_controls(player_id, lobby):

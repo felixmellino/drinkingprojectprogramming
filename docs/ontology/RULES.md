@@ -327,8 +327,9 @@ three options: one week, one month, or three months.
 Source: team decision, 2026-11-17.
 
 ### R-R03 One competition per lobby
-A lobby runs for its chosen 7/30/91-day duration exactly once. At its
-competition's end timestamp it becomes a past lobby automatically and cannot
+A lobby runs for its chosen 7/30/91-day duration exactly once, with the early
+closure option for test seasons in R-S04. At its competition's end timestamp
+it becomes a past lobby automatically and cannot
 start another season. Start a new lobby for another competition. Keep the
 existing Season entity/IDs for scoring and history; retain older multi-season
 records unchanged, using their latest competition for the overview.
@@ -381,6 +382,21 @@ Allowed: players of that lobby, also after they left it. Rejected: anyone else
 counts as ended (R-R03). Finishing twice saves once.
 
 Source: Niklas, 21 November 2026.
+
+### R-S04 Ending a test season early
+
+Only the original creator, while still a member, can end the lobby's current
+active v1 season with the frozen JSON flag `test_mode: true`. A confirmation
+sets a permanent cutoff at the database's current time. The cutoff stops
+check-ins, drink corrections and new games. Open games use their existing
+timeout outcomes at the earlier of their previous deadline and the new cutoff.
+Reaction Duel counts unplayed tries as misses and can settle a stake. The
+30-day photo retention period starts at the new cutoff. The recap opens for
+the creator after confirmation, and other participants get the usual R-S03
+recap entry points.
+
+A successful closure is safe to retry. Migration `030_end_test_season.sql`
+applies the cutoff and settles the games in the same lobby transaction.
 
 ## Territories
 

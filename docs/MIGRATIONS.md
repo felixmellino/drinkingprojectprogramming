@@ -40,6 +40,7 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 27. `027_territory_boosts.sql`
 28. `028_profile_medals.sql`
 29. `029_season_recap_views.sql`
+30. `030_end_test_season.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -48,7 +49,11 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest migration:** `029_season_recap_views.sql` (who has finished a season recap). The quick check
+**Newest migration:** `030_end_test_season.sql` (creator-only early closure for
+test seasons). Check that `select to_regprocedure('public.end_test_season(uuid,uuid,uuid)');`
+returns a function signature.
+
+**Before that:** `029_season_recap_views.sql` (who has finished a season recap). The quick check
 
 ```sql
 select count(*) from public.season_recap_views;
