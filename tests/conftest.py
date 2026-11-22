@@ -45,3 +45,11 @@ def no_real_picture_access(monkeypatch, request):
     if request.module.__name__.endswith("test_profile_picture_db"):
         return
     monkeypatch.setattr(db, "profile_picture_access", lambda viewer_id, credential_version: [])
+
+
+@pytest.fixture(autouse=True)
+def no_real_duel_results(monkeypatch, request):
+    """The Activity feed reads duel results; keep pages that don't mock it off the network."""
+    if request.module.__name__.endswith("test_duel_results_db"):
+        return
+    monkeypatch.setattr(db, "list_duel_results", lambda season_id: {"reaction_ids": set(), "time": []})

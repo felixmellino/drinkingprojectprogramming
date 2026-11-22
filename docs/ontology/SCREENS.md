@@ -464,11 +464,26 @@ Map owner badge update (19 November 2026, contributor request):
     **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
     territory, scarlet when you lose one, neutral when two rivals trade it.
     Ties never capture (R-R01); team lobbies name the team.
+    (Colours since 22 November: green / red / violet, see DESIGN_GUIDELINES.md.)
+  - **Duel result** (22 November 2026): one row with a trophy per finished duel,
+    green when you won, red when you lost, violet between other players.
+    "**Felix** won the Chug Duel against **Ben**", on the right what the winner
+    got, below what the loser gave up and when. When you lost, the right side
+    shows your loss ("−5") and the line below the winner's gain ("Ben +5"):
+    - Chug Duel (R-M03): the two linked drinks become this one row. The winner
+      gets both drinks' base points ("+2" for two small beers), the loser loses
+      their drink's ("Ben −1"); the territory is shown too. A duel without a
+      recorded winner stays two ordinary check-ins.
+    - Quiz and Reaction Duel (R-M11): the stake from the shared ledger,
+      "+5" / "Ben −5", at the time the duel ended.
+    - Time Duel (R-M10): "×1.25", "1 hour boost"; no points change hands.
+    Draws are not shown (nothing changes hands). If the Quiz/Reaction/Time results
+    cannot be loaded, the feed still loads and says so.
 - Nothing is stored for the feed: it is rebuilt from the saved drink entries
   with the same replay as Ranks and the Map, so a correction also corrects the
   feed. Rejected or unscored entries never appear.
 - Empty: "No activity yet. The first drink of the season starts the feed." + Check in.
-- Later event kinds (achievements, duel results, joins) are planned but not built.
+- Later event kinds (lobby joins and leaves) are planned but not built.
 
 ## Season recap (21 November 2026)
 

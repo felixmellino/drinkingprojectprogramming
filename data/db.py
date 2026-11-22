@@ -1535,6 +1535,35 @@ def reaction_action(player_id, duel_id, action, revision=None, elapsed_ms=None):
         selected_action=action, expected_revision=revision, elapsed_ms=elapsed_ms))
 
 
+def list_duel_results(season_id) -> dict:
+    """What the Activity feed needs about finished duels, in two parallel reads.
+
+    `reaction_ids`: Reaction Duels of the season. Stake transfers whose id is
+    in it come from a Reaction Duel, the others from a Quiz Duel (both share
+    the quiz_transfers ledger, R-M11). `time`: won Time Duels (their prize is a
+    boost, not points). A missing table (migration not applied) reads as empty.
+    """
+    from parallel import run_parallel
+
+    def rows(query):
+        try:
+            return query().data
+        except APIError as error:
+            if error.code in {"42P01", "PGRST205"}:
+                return []
+            raise
+
+    reaction, time = run_parallel(
+        lambda: rows(lambda: get_client().table("reaction_duels").select("id")
+                     .eq("season_id", season_id).eq("status", "completed").execute()),
+        lambda: rows(lambda: get_client().table("time_duels")
+                     .select("id,challenger_id,opponent_id,winner_id,finished_at")
+                     .eq("season_id", season_id).eq("status", "completed").execute()))
+    return {"reaction_ids": {row["id"] for row in reaction},
+            "time": [dict(row, finished_at=datetime.fromisoformat(row["finished_at"]))
+                     for row in time if row.get("winner_id") and row.get("finished_at")]}
+
+
 def list_season_transfers(season_id):
     return list_transfers_for_seasons([season_id])
 

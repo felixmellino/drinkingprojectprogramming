@@ -23,6 +23,15 @@ def load_more(count):
     st.session_state["activity_shown"] = count + STEP
 
 
+def duel_data():
+    """Stake transfers and finished duels; None if unavailable (the feed still loads)."""
+    try:
+        return run_parallel(lambda: db.list_season_transfers(season_id),
+                            lambda: db.list_duel_results(season_id))
+    except (APIError, RequestError, RuntimeError, OSError):
+        return None
+
+
 def medal_launch():
     try:
         return db.profile_medal_launch(), False
@@ -44,10 +53,10 @@ activity_ui.load_styles()
 activity_ui.view_switch("Feed")
 
 try:
-    entries, memberships, players, (launched_at, medals_unavailable) = run_parallel(
+    entries, memberships, players, (launched_at, medals_unavailable), duels = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_public_usernames, medal_launch)
+        db.list_public_usernames, medal_launch, duel_data)
     team_mode = st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries)
     teams = db.list_lobby_teams(player_id, lobby_id) if team_mode else []
 except (APIError, RequestError, RuntimeError, PermissionError):
@@ -60,7 +69,8 @@ except (APIError, RequestError, RuntimeError):
     territory_names = {}  # rows then say "Unknown territory"; the feed itself still loads
 
 now = current_time()
-events = activity_events(entries)
+transfers, duel_results = duels if duels is not None else ((), None)
+events = activity_events(entries, transfers, duel_results)
 
 
 def promotions():
@@ -88,6 +98,8 @@ except (APIError, RequestError, RuntimeError, OSError):
     medals_unavailable = True
 if medals_unavailable:
     st.warning("Medal promotions are temporarily unavailable.")
+if duels is None:
+    st.warning("Quiz, Reaction and Time Duel results are temporarily unavailable.")
 if not events:
     empty_state("activity", "list-bullets", "No activity yet",
                 "The first drink of the season starts the feed.", check_in=True)

@@ -14,11 +14,12 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-from core.activity import CAPTURE, MEDAL, ActivityEvent
+from core.activity import CAPTURE, CHUG_DUEL, DUEL, MEDAL, ActivityEvent
 from core.profile_photo import initials
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, format_points, utc, window_bounds
 from photo_history_ui import game_night_label, identity_colour
 from standings_ui import ago
+from theme import icon_css
 
 VIEWS = ["Feed", "Photos"]
 VIEW_PAGES = {"Feed": "pages/8_Activity.py", "Photos": "pages/6_Check_in_photos.py"}
@@ -31,6 +32,7 @@ VERBS = ["drank", "downed", "sank", "knocked back", "polished off", "put away", 
 
 def load_styles() -> None:
     css = (Path(__file__).parent / "assets" / "activity.css").read_text(encoding="utf-8")
+    css += icon_css(".activity-duel-icon", "trophy-fill")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
@@ -87,6 +89,52 @@ def capture_html(event: ActivityEvent, names: dict, territory_names: dict, me: s
             f'<span>{text}</span></div>')
 
 
+def duel_html(event: ActivityEvent, member_names: dict, team_names: dict, territory_names: dict,
+              me_member: str, me_competitor: str, now: datetime) -> str:
+    """'You won the Chug Duel against Ben', +2, 'Ben −1': one row per finished duel.
+
+    Green when you won, red when you lost, violet between other players, like
+    captures. The right-hand column shows what the winner got (or the Time Duel
+    boost) and the second line what the loser gave up; when you lost, the
+    right-hand column is your loss and the second line the winner's gain."""
+    def who(member, account, *, start):
+        if member == me_member:
+            return "You" if start else "you"
+        name = member_names.get(member, "Unknown player")
+        team = team_names.get(account) if team_names else None
+        return f"{name} ({team})" if team else name
+
+    you_won = event.member == me_member or (team_names and event.competitor == me_competitor)
+    you_lost = event.loser_member == me_member or (team_names and event.loser == me_competitor)
+    tone = "yours" if you_won else "lost" if you_lost else "rival"
+    game = "a duel" if event.game == "Duel" else f"the {event.game}"
+    title = (f"<strong>{escape(who(event.member, event.competitor, start=True))}</strong> won {escape(game)} "
+             f"against <strong>{escape(who(event.loser_member, event.loser, start=False))}</strong>")
+    details = []
+    if event.game == CHUG_DUEL and event.territory_id:
+        details.append(territory_names.get(event.territory_id, "Unknown territory"))
+    winner_gets = event.prize or f"+{format_points(event.points)}"
+    loser_gives = f"\u2212{format_points(event.lost_points)}" if event.lost_points else None
+    # The right-hand number is the viewer's own result when they lost.
+    if tone == "lost" and loser_gives:
+        reward = loser_gives
+        details.append(f"{who(event.member, event.competitor, start=True)} {winner_gets}")
+    else:
+        reward = winner_gets
+        if event.prize:
+            details.append("1 hour boost")
+        elif loser_gives:
+            details.append(f"{who(event.loser_member, event.loser, start=True)} {loser_gives}")
+    details.append(ago(event.at, now))
+    return (
+        f'<div class="activity-duel activity-duel-{tone}">'
+        f'<span class="activity-duel-icon" aria-hidden="true"></span>'
+        f'<span class="activity-main"><span class="activity-title">{title}</span>'
+        f'<span class="activity-meta">{escape(", ".join(details))}</span></span>'
+        f'<span class="activity-points">{escape(reward)}</span></div>'
+    )
+
+
 def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, territory_names: dict,
                  me_member: str, now: datetime) -> str:
     you = event.member == me_member
@@ -126,6 +174,8 @@ def feed_html(events: list[ActivityEvent], *, member_names: dict, team_names: di
                 parts.append(f'<p class="activity-night">{escape(label)}</p>')
         if event.kind == CAPTURE:
             parts.append(capture_html(event, names, territory_names, me_competitor))
+        elif event.kind == DUEL:
+            parts.append(duel_html(event, member_names, team_names, territory_names, me_member, me_competitor, now))
         elif event.kind == MEDAL:
             name = "You" if event.member == me_member else member_names.get(event.member, "Unknown player")
             medals = medal_list(event.medals)

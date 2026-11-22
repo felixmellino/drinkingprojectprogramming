@@ -36,6 +36,9 @@ def ui(monkeypatch):
         SimpleNamespace(id="member", player_id="mia"), SimpleNamespace(id="other", player_id="leo")])
     monkeypatch.setattr(db, "list_public_usernames", lambda: state["players"])
     monkeypatch.setattr(db, "profile_medal_launch", lambda: None)
+    state["transfers"], state["duels"] = [], {"reaction_ids": set(), "time": []}
+    monkeypatch.setattr(db, "list_season_transfers", lambda _: state["transfers"])
+    monkeypatch.setattr(db, "list_duel_results", lambda _: state["duels"])
     return state
 
 
@@ -254,3 +257,67 @@ def test_every_capture_has_a_tinted_banner_and_coloured_edge_unlike_checkins():
     edges = {line.split("border-left-color: var(--")[1].split(")")[0]
              for line in css.splitlines() if "border-left-color" in line}
     assert len(edges) == 3, "you, lost and others each have their own colour"
+
+
+# --- Duel results in the feed ----------------------------------------------------------------------
+
+def _markup(at):
+    return "\n".join(item.value for item in at.markdown if "activity-feed" in item.value)
+
+
+def test_chug_duel_shows_the_winner_with_both_drinks_points_and_what_the_loser_lost(ui):
+    # Mia (me) and Leo chug two small beers; Leo wins.
+    mine = replace(entry("c1", "member", "beer", "small", 2, territory=None, order=5), duel_id="d")
+    his = replace(entry("c2", "other", "beer", "small", 2, territory=None, order=6), duel_id="d")
+    ui["entries"] = [replace(mine, duel_transfer_to="other", duel_transfer_order=7), his]
+    at = page()
+    assert not at.exception
+    visible = feed(at)
+    assert "Leo won the Chug Duel against you" in visible
+    assert "−1" in visible and "Leo +2" in visible, "you lost: your loss on the right, Leo's gain below"
+    assert "You −1" not in visible and "+1" not in visible, "the two drinks are not listed separately any more"
+    assert "activity-duel-lost" in _markup(at)
+
+
+def test_stake_duels_name_the_game_and_both_sides(ui):
+    from core.models import SeasonTransfer
+    ui["transfers"] = [
+        SeasonTransfer("q", "season", "other", "member", "other", "member", 5, 50, START + timedelta(minutes=3)),
+        SeasonTransfer("r", "season", "member", "other", "member", "other", 2, 51, START + timedelta(minutes=4))]
+    ui["duels"] = {"reaction_ids": {"r"}, "time": []}
+    at = page()
+    visible = feed(at)
+    assert "You won the Quiz Duel against Leo" in visible and "+5" in visible and "Leo −5" in visible
+    assert "Leo won the Reaction Duel against you" in visible and "Leo +2" in visible and "−2" in visible
+    assert visible.index("Reaction Duel") < visible.index("Quiz Duel"), "newest first"
+    markup = _markup(at)
+    assert "activity-duel-yours" in markup and "activity-duel-lost" in markup
+
+
+def test_time_duel_between_others_shows_the_boost_in_violet(ui, monkeypatch):
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _, **kwargs: [
+        SimpleNamespace(id="member", player_id="mia"), SimpleNamespace(id="other", player_id="leo"),
+        SimpleNamespace(id="third", player_id="ben")])
+    ui["players"].append(dict(id="ben", display_name="<b>Ben</b>"))
+    ui["duels"] = {"reaction_ids": set(), "time": [{
+        "id": "t", "challenger_id": "third", "opponent_id": "other", "winner_id": "third",
+        "finished_at": START + timedelta(minutes=5)}]}
+    at = page()
+    visible, markup = feed(at), _markup(at)
+    assert "<b>Ben</b> won the Time Duel against Leo" in visible and "×1.25" in visible and "1 hour boost" in visible
+    assert "activity-duel-rival" in markup and "<b>Ben</b>" not in markup, "names are escaped"
+
+
+def test_missing_duel_results_keep_the_feed_and_say_so(ui, monkeypatch):
+    monkeypatch.setattr(db, "list_duel_results", Mock(side_effect=RuntimeError("offline")))
+    at = page()
+    assert not at.exception and "You claimed Bairro Alto" in feed(at)
+    assert any("Duel results are temporarily unavailable" in w.value for w in at.warning)
+
+
+def test_duel_rows_use_the_capture_colours_and_a_trophy():
+    css = (ROOT / "assets" / "activity.css").read_text(encoding="utf-8")
+    for tone, edge in [("yours", "capture-yours-edge"), ("lost", "territory-theirs"), ("rival", "capture-rival-edge")]:
+        rule = next(line for line in css.splitlines() if line.startswith(f".activity-duel-{tone} {{"))
+        assert f"border-left-color: var(--{edge})" in rule
+    assert ".activity-duel-icon" in css
