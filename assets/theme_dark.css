@@ -22,6 +22,15 @@
   --success-ink: #5FD08F;
   --medal-2: #9FB0BC;
   --medal-3: #C08A55;
+  --capture-yours-soft: #163A29;
+  --capture-yours-edge: #3FBF78;
+  --capture-yours-ink: #5FD08F;
+  --capture-rival-soft: #2B2450;
+  --capture-rival-edge: #A693F0;
+  --capture-rival-ink: #C4B5FF;
+  --medal-soft: #33291A;
+  --medal-ink: #F4CF6E;        /* 9.5:1 on --medal-soft */
+  --medal-gold: #F4C04E;
   --shadow-card: 0 0 0 1px rgba(255, 255, 255, .05), 0 6px 18px rgba(0, 0, 0, .35);
   --shadow-float: 0 14px 36px rgba(0, 0, 0, .5);
 }

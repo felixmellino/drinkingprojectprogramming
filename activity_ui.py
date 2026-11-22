@@ -70,8 +70,8 @@ def _name(competitor: str | None, names: dict, me: str) -> str:
 def capture_html(event: ActivityEvent, names: dict, territory_names: dict, me: str) -> str:
     """'Ben took Shortys from you', 'You claimed Nova SBE', ... as a tinted banner.
 
-    Blue when you gain a territory, red when one is taken from you, neutral
-    when two rivals trade it."""
+    Green when you gain a territory, red when one is taken from you, violet
+    when other players take one (assets/activity.css)."""
     winner = _name(event.competitor, names, me)
     place = escape(territory_names.get(event.territory_id, "a territory"))
     if event.previous_owner is None:
