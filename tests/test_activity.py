@@ -107,3 +107,82 @@ def test_a_medal_at_the_same_moment_goes_above_the_checkin():
     events = activity_events([entry("1", "Mia", "beer", "large", 0, territory=None)])
     merged = with_promotions(events, [Promotion("Mia", START, ("Beginner in drinks",))])
     assert [e.kind for e in merged] == [MEDAL, CHECKIN]
+
+
+# --- Duel results (Chug: from the two linked drinks; Quiz/Reaction: stake ledger; Time: boost) -------
+
+from datetime import datetime, timezone  # noqa: E402
+
+from core.activity import (CHUG_DUEL, DUEL, QUIZ_DUEL, REACTION_DUEL, TIME_DUEL,  # noqa: E402
+                           TIME_DUEL_PRIZE)
+from core.models import SeasonTransfer  # noqa: E402
+
+
+def chug(winner="Felix", loser="Ben", *, decided=True, territory=A, minute=5):
+    """Two linked small beers (1 point each); the loser's entry names the winner."""
+    a = replace(entry("w", winner, "beer", "small", minute, territory=territory, order=10), duel_id="d1")
+    b = replace(entry("l", loser, "beer", "small", minute, territory=territory, order=11), duel_id="d1")
+    if decided:
+        b = replace(b, duel_transfer_to=winner, duel_transfer_order=12)
+    return a, b
+
+
+def test_finished_chug_duel_is_one_row_with_both_drinks_points_for_the_winner():
+    events = activity_events([*chug(territory=None)])
+    assert kinds(events) == [(DUEL, "Felix")]
+    duel = events[0]
+    assert duel.game == CHUG_DUEL and duel.points == 2, "the winner gets both drinks' base points"
+    assert duel.loser_member == "Ben" and duel.loser == "Ben" and duel.lost_points == 1
+
+
+def test_chug_duel_without_a_winner_stays_two_checkins():
+    events = activity_events([*chug(decided=False, territory=None)])
+    assert [event.kind for event in events] == [CHECKIN, CHECKIN]
+    assert {event.points for event in events} == {1}
+
+
+def test_capture_by_a_chug_duel_is_shown_directly_above_its_result():
+    """Felix's duel drink claims the free territory; the banner sits on the duel row."""
+    events = activity_events([*chug(minute=5)])
+    assert [(e.kind, e.competitor) for e in events] == [(CAPTURE, "Felix"), (DUEL, "Felix")]
+
+
+def test_earlier_drinks_stay_below_the_duel():
+    events = activity_events([entry("x", "Mia", "beer", "small", 0, order=1), *chug(minute=5)])
+    assert [e.kind for e in events] == [DUEL, CAPTURE, CHECKIN]
+    assert events[1].competitor == events[2].member == "Mia"
+
+
+def transfer(id_, winner, loser, points, minute):
+    return SeasonTransfer(id_, "season", loser, winner, loser, winner, points, 100 + minute,
+                          START + timedelta(minutes=minute))
+
+
+def test_stake_duels_say_which_game_and_how_much_changed_hands():
+    events = activity_events([entry("1", "Mia", "beer", "small", 0, territory=None, order=1)],
+                             [transfer("quiz-1", "Mia", "Leo", 5, 10), transfer("react-1", "Leo", "Mia", 3, 20)],
+                             {"reaction_ids": {"react-1"}, "time": []})
+    assert [(e.kind, e.game) for e in events] == [(DUEL, REACTION_DUEL), (DUEL, QUIZ_DUEL), (CHECKIN, None)]
+    reaction, quiz, _ = events
+    assert (reaction.member, reaction.loser_member, reaction.points, reaction.lost_points) == ("Leo", "Mia", 3, 3)
+    assert (quiz.member, quiz.loser_member, quiz.points) == ("Mia", "Leo", 5)
+
+
+def test_stake_duels_are_called_duel_when_the_game_is_unknown():
+    events = activity_events([], [transfer("t", "Mia", "Leo", 4, 1)], None)
+    assert [(e.kind, e.game) for e in events] == [(DUEL, "Duel")]
+
+
+def test_time_duel_win_shows_the_boost_and_no_points_lost():
+    won = {"id": "t1", "challenger_id": "Leo", "opponent_id": "Mia", "winner_id": "Mia",
+           "finished_at": START + timedelta(minutes=30)}
+    events = activity_events([], (), {"reaction_ids": set(), "time": [won]})
+    duel, = events
+    assert (duel.game, duel.member, duel.loser_member, duel.prize, duel.lost_points) == \
+        (TIME_DUEL, "Mia", "Leo", TIME_DUEL_PRIZE, 0)
+
+
+def test_timed_duel_at_the_same_moment_as_a_drink_goes_above_it():
+    events = activity_events([entry("1", "Mia", "beer", "small", 10, territory=None, order=1)],
+                             [transfer("q", "Mia", "Leo", 3, 10)], {"reaction_ids": set(), "time": []})
+    assert [e.kind for e in events] == [DUEL, CHECKIN]
