@@ -54,10 +54,56 @@ window.addEventListener("message", event => {
     });
   } else {
     send("streamlit:setFrameHeight", {height: 0});
+    openPhoneFrame();
     // Light is already the default. An unset preference needs no app rerun.
     const choice = saved();
     if (choice === "dark" || choice === "light") sendValue(choice);
   }
 });
+// Laptops show the app inside a drawn phone (static/phone.html) at the same address,
+// so it looks exactly like on a phone. Decided once per visit by the reader above.
+const FRAME = "app/static/phone.html";
+const FULL_VIEW = "wegopub-full-view";
+
+// Where to send this page, or null to stay. Pure, so tests can check every case.
+//  href: this app page's address; wide: a laptop-size window with a mouse;
+//  hostPath: the address path of the page around the app (null if none or unreadable);
+//  fullView: the player asked for the normal wide view (?full) in this tab.
+function phoneFrameTarget(href, wide, hostPath, fullView) {
+  if (!wide || fullView) return null;
+  if (hostPath !== null && hostPath.endsWith("/" + FRAME)) return null;   // already inside the phone
+  const url = new URL(href);
+  const base = url.pathname.startsWith("/~/+/") ? "/~/+/" : "/";          // Streamlit Cloud serves the app under /~/+/
+  const page = url.pathname.slice(base.length) + url.search;
+  return url.origin + base + FRAME + (page ? "?to=" + encodeURIComponent(page) : "");
+}
+
+function openPhoneFrame() {
+  try {
+    const app = window.parent;
+    const query = new URLSearchParams(app.location.search);
+    if (query.has("full")) app.sessionStorage.setItem(FULL_VIEW, "1");
+    const fullView = app.sessionStorage.getItem(FULL_VIEW) === "1";
+    const wide = app.innerWidth >= 700 && app.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    let hostPath = null;
+    try { hostPath = app.parent === app ? null : app.parent.location.pathname; } catch (e) { return; } // embedded elsewhere: stay
+    const target = phoneFrameTarget(app.location.href, wide, hostPath, fullView);
+    if (!target) return;
+    // Only if the frame page is really there; otherwise keep the normal app.
+    // Streamlit sandboxes this component, so it may not navigate the page itself:
+    // the page runs the one-line navigation (same site, the address is our own).
+    fetch(target, {method: "HEAD", cache: "no-store"})
+      .then(response => {
+        if (!response.ok) return;
+        const script = app.document.createElement("script");
+        script.textContent = "location.replace(" + JSON.stringify(target) + ");";
+        app.document.head.appendChild(script);
+      })
+      .catch(() => {});
+  } catch (e) {
+    // Any surprise: keep the normal app.
+  }
+}
+
 send("streamlit:componentReady", {apiVersion: 1});
 </script></body></html>

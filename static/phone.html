@@ -3,7 +3,10 @@
   Presenter view: the real WeGoPub app inside a drawn phone, for showing the
   app on a laptop or projector without mirroring a phone.
 
-  Open  <app address>/app/static/phone.html
+  Laptops open it automatically: the app's theme reader (components/theme_switch)
+  sends a wide window with a mouse here, at the same address. Phones, tablets and
+  narrow windows keep the normal app; "Wide view" (or ?full) shows the wide layout.
+  Direct address: <app address>/app/static/phone.html
   (Streamlit Community Cloud: https://wegopubnow.streamlit.app/~/+/app/static/phone.html)
 
   The app runs in an iframe of phone size (393 x 764 CSS pixels), so all of its
@@ -84,7 +87,7 @@
             <span class="battery"></span>
           </span>
         </div>
-        <iframe class="app" id="app" title="WeGoPub" src="../../"
+        <iframe class="app" id="app" title="WeGoPub" src="about:blank"
                 allow="camera; geolocation; microphone; clipboard-write; fullscreen"></iframe>
         <div class="home" aria-hidden="true"><span></span></div>
       </div>
@@ -92,12 +95,21 @@
     <div class="controls">
       <button type="button" id="reload" title="Reload the app inside the phone">Reload app</button>
       <button type="button" id="home" title="Open the start of the app">Start screen</button>
+      <button type="button" id="full" title="Show the normal wide layout in this tab">Wide view</button>
     </div>
   </div>
 <script>
   const app = document.getElementById("app");
   const root = document.documentElement.style;
   const APP_URL = "../../";
+
+  // The page to open inside the phone: ?to=Lobby%3Flobby_invite%3D... from the
+  // app's own redirect. Only a page name and query of this app are accepted.
+  function appPath(search) {
+    const to = new URLSearchParams(search).get("to") || "";
+    return /^[A-Za-z0-9_-]*(\?[A-Za-z0-9_\-=&%.+]*)?$/.test(to) ? to : "";
+  }
+  app.src = APP_URL + appPath(location.search);
 
   // Real time in the status bar, like a phone.
   function tick() {
@@ -143,6 +155,8 @@
     try { app.contentWindow.location.reload(); } catch (error) { app.src = app.src; }
   });
   document.getElementById("home").addEventListener("click", () => { app.src = APP_URL; });
+  // The normal wide view, for this tab: ?full (remembered until the tab closes).
+  document.getElementById("full").addEventListener("click", () => { location.href = APP_URL + "?full"; });
 </script>
 </body>
 </html>
