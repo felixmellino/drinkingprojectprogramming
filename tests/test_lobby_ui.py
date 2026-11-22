@@ -93,9 +93,21 @@ def test_past_card_keeps_lobby_details_and_opens_its_season_recap(ui, monkeypatc
     assert not at.exception
     assert at.button(key='open_lobby_past').label == 'View lobby →'
     assert at.button(key='season_recap_past').label == 'Finish season'
-    assert not any(button.key in {'make_current_past', 'season_recap_new'} for button in at.button)
+    assert not any(button.key == 'season_recap_new' for button in at.button)
     at.button(key='season_recap_past').click().run()
     open_recap.assert_called_once_with('past', 'Finished lobby', ui['seasons']['past'][0].id, animate=True)
+
+
+def test_a_finished_lobby_can_be_made_current_to_view_its_season(ui):
+    at = page()
+    assert at.session_state['current_lobby_id'] == 'new'
+    choose_current(at, 'past')
+    assert not at.exception and at.session_state['current_lobby_id'] == 'past'
+    ui['save_choice'].assert_called_once_with('me', 'past')
+    assert 'Current lobby' in next(c for c in cards(at) if 'Finished lobby' in c)
+    assert not any(b.key == 'make_current_past' for b in at.button)
+    at.run()  # a refresh keeps it instead of jumping back to a running lobby
+    assert at.session_state['current_lobby_id'] == 'past'
 
 
 @pytest.mark.parametrize('failure, expected', [
@@ -165,7 +177,7 @@ def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
     assert 'Current lobby' in shown[0] and all('Current lobby' not in card for card in shown[1:])
     assert 'lobby-is-current' in shown[0] and all('lobby-is-current' not in card for card in shown[1:])
     assert at.button(key='make_current_old').label == 'Make current'
-    assert not any(b.key == 'make_current_past' for b in at.button)
+    assert at.button(key='make_current_past').label == 'Make current'  # finished lobbies stay viewable
 
 
 def test_leader_uses_existing_tie_rule_public_name_and_private_photo_fallback(ui):
@@ -800,3 +812,19 @@ def test_trash_failure_keeps_the_lobby(ui, monkeypatch):
     at.button(key='confirm_remove_yes_new').click().run()
     assert not at.exception and any('active duel' in e.value for e in at.error)
     assert len(ui['members']) == 3
+
+
+def test_minigames_are_closed_on_a_finished_current_lobby(ui, monkeypatch):
+    render = Mock()
+    monkeypatch.setattr('minigames_ui.render_minigames', render)
+    monkeypatch.setattr(db, 'get_lobby', lambda lid: next(l for l in ui['lobbies'] if l.id == lid))
+    monkeypatch.setattr(db, 'membership_context', lambda pid, mid, lid, sid: (
+        ui['members'][2], ui['seasons']['past'][0]))
+    at = AppTest.from_file(ROOT / 'pages/7_Minigames.py', default_timeout=10)
+    for key, value in dict(player_id='me', current_membership_id='m-past', current_lobby_id='past',
+                           current_season_id=ui['seasons']['past'][0].id).items():
+        at.session_state[key] = value
+    at.run()
+    assert not at.exception
+    assert any('season has ended' in i.value for i in at.info)
+    render.assert_not_called()

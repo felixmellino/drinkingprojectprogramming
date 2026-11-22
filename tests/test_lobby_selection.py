@@ -53,22 +53,34 @@ def test_explicit_choice_survives_fresh_sessions_and_other_player_is_separate(ui
     ui['save_choice'].assert_called_once_with('me', 'old')
 
 
-def test_finished_choice_falls_back_to_newest_active_without_overwriting(ui):
+def test_finished_choice_stays_selected_for_viewing(ui):
+    """A finished lobby the player chose stays current: map, ranks and activity stay viewable."""
     ui['choices']['me'] = 'past'
     at = restored_page()
-    assert not at.exception and at.session_state['current_lobby_id'] == 'new'
-    assert ui['choices']['me'] == 'past'
+    assert not at.exception and at.title[0].value == 'Ready: Finished lobby'
+    assert at.session_state['current_season_id'] == ui['seasons']['past'][0].id
+    assert at.session_state['_current_lobby_ends_at'] is None  # no recheck on every page load
     ui['save_choice'].assert_not_called()
 
 
-def test_expiry_switches_within_an_existing_session(ui, monkeypatch):
-    from core.models import LobbyMembership
-
+def test_saved_choice_stays_when_its_season_ends_during_a_session(ui, monkeypatch):
     ui['choices']['me'] = 'old'
     at = restored_page()
-    assert at.session_state['current_lobby_id'] == 'old'
     end = at.session_state['_current_lobby_ends_at']
-    ui['seasons']['new'][0].ends_at = end + timedelta(days=1)
+    clock = Mock(wraps=datetime)
+    clock.now.return_value = end
+    monkeypatch.setattr('lobby_selection.datetime', clock)
+    at.run()
+    assert not at.exception and at.session_state['current_lobby_id'] == 'old'
+    assert at.session_state['_current_lobby_ends_at'] is None
+
+
+def test_expiry_of_an_automatic_pick_switches_within_an_existing_session(ui, monkeypatch):
+    from core.models import LobbyMembership
+
+    at = restored_page()  # no saved choice: the newest running lobby is picked
+    assert at.session_state['current_lobby_id'] == 'new'
+    end = at.session_state['_current_lobby_ends_at']
     ui['seasons']['secret'][0].ends_at = end + timedelta(days=2)
     ui['members'].append(LobbyMembership('m-secret', 'me', 'secret', end))
     ui['choices']['me'] = 'new'  # A saved choice from another device applies on a fresh session.
@@ -92,8 +104,7 @@ def test_removed_membership_does_not_restore_or_choose_another_lobby(ui):
     assert at.session_state['_lobby_choice_required']
 
 
-def test_no_active_alternative_requires_selection(ui):
-    ui['choices']['me'] = 'past'
+def test_no_saved_choice_and_no_active_alternative_requires_selection(ui):
     ui['members'] = ui['members'][2:]
     at = restored_page()
     assert not at.exception and not at.title
@@ -164,7 +175,7 @@ def test_ranks_does_not_show_another_lobby_when_current_setup_is_incomplete(ui, 
 @pytest.mark.parametrize(
     'choice, joined, expected',
     [('past', ('past',), 'past'), ('secret', ('old', 'past'), 'old'),
-     (None, (), None), ('past', ('old', 'past'), 'old')],
+     (None, (), None), ('past', ('old', 'past'), 'past')],
 )
 @pytest.mark.parametrize('predeployment_module', [False, True])
 def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, joined, expected, predeployment_module):
@@ -197,8 +208,9 @@ def test_leaderboard_first_has_a_board_or_empty_state(ui, monkeypatch, choice, j
         records.assert_called_once_with(ui['seasons'][expected][0].id)
         assert any('empty-state-title' in m.value and 'No points yet' in m.value for m in at.markdown)
     assert any('Final standings' in item.value for item in at.caption) == (expected == 'past')
-    if (choice, expected) != ('past', 'old'):
-        assert 'current_lobby_id' not in at.session_state
+    # A saved finished lobby is restored as current; a removed one is never.
+    assert at.session_state['current_lobby_id'] == choice if choice and expected == choice else (
+        'current_lobby_id' not in at.session_state)
 
 
 def test_database_preference_is_scoped_to_player_and_survives_new_client(ui, monkeypatch):

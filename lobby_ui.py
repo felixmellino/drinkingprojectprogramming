@@ -562,9 +562,12 @@ def show_lobbies(player_id):
         groups[status].sort(key=lambda row: (utc(row[2].ends_at if status == 'past' else row[2].starts_at), row[0].id), reverse=True)
     opened = next((row for rows in groups.values() for row in rows
                    if row[0].id == st.session_state.get('_opened_lobby_id')), None)
+    # A finished lobby stays current only when the player chose it (Make current), so its
+    # map, ranks and activity stay viewable; an automatic pick moves on to a running lobby.
+    chosen = {st.session_state.get('_saved_lobby_choice'), st.session_state.get('_unsaved_lobby_choice')}
     selected = next((row for rows in groups.values() for row in rows
                      if row[0].id == st.session_state.get('current_lobby_id')
-                     and lobby_status(row[2], now) != 'past'), None)
+                     and (lobby_status(row[2], now) != 'past' or row[0].id in chosen)), None)
     pending = st.session_state.pop('_lobby_choice_pending', None)
     if opened and opened[0].id == pending and lobby_status(opened[2], now) != 'past' and make_current(player_id, *opened):
         selected = opened
@@ -596,17 +599,17 @@ def show_lobbies(player_id):
                 show_summary(player_id, lobby, season, status, now, loaded=summaries_by_lobby[lobby.id])
                 st.button('View lobby →', key=f'open_lobby_{lobby.id}', help=f'Open {lobby.name}',
                           width='stretch', on_click=open_lobby, args=(lobby.id,))
-                if status == 'past':
-                    season_recap_ui.lobby_button(lobby, season, finished_recaps)
-                else:
-                    current = st.session_state.get('current_lobby_id') == lobby.id
-                    unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
+                current = st.session_state.get('current_lobby_id') == lobby.id
+                unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
+                # Bottom-left slot (assets/lobbies.css): Season awards on past lobbies, then Make current.
+                with st.container(key=f'lobby_select_{lobby.id}', horizontal=True, gap='small'):
+                    if status == 'past':
+                        season_recap_ui.lobby_button(lobby, season, finished_recaps)
                     if not current or unsaved:
                         label = 'Save choice' if current else 'Make current'
-                        with st.container(key=f'lobby_select_{lobby.id}'):
-                            if st.button(label, key=f'make_current_{lobby.id}', help=f'Select {lobby.name} as your current lobby'):
-                                if make_current(player_id, lobby, membership, season):
-                                    st.rerun()
+                        if st.button(label, key=f'make_current_{lobby.id}', help=f'Select {lobby.name} as your current lobby'):
+                            if make_current(player_id, lobby, membership, season):
+                                st.rerun()
                 with st.container(key=f'trash_{lobby.id}'):   # top-right corner of the card
                     confirm_key = remove_lobby_button(player_id, lobby)
             remove_lobby_confirm(player_id, lobby, confirm_key)
