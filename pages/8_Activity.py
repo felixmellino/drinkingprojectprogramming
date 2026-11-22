@@ -9,13 +9,14 @@ import data.db as db
 from core.activity import activity_events, with_promotions
 from core.medals import lobby_promotions
 from data.profile_history import load_stat_history
-from core.scoring_v1 import current_time
+from core.scoring_v1 import current_time, utc
 from drink_entry_ui import page_header
 from parallel import run_parallel
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
 
 STEP = 30  # events shown at first and added by each "Load more"
+PROMOTIONS_REUSE_SECONDS = 300
 
 
 def load_more(count):
@@ -60,13 +61,29 @@ except (APIError, RequestError, RuntimeError):
 
 now = current_time()
 events = activity_events(entries)
+
+
+def promotions():
+    """Medal promotions need every member's lifetime history, which is many reads.
+    Reuse the result for this visit while the lobby's check-ins and members are
+    unchanged, and at most PROMOTIONS_REUSE_SECONDS, so Load more and other
+    reruns don't reload all of it. A finished season can add a win, so that
+    state is part of the key too."""
+    key = (lobby_id, season_id, launched_at, len(entries), entries[-1].id if entries else None,
+           len(memberships), season is not None and utc(now) >= utc(season.ends_at))
+    saved = st.session_state.get("_activity_promotions")
+    if saved and saved[0] == key and (now - saved[1]).total_seconds() < PROMOTIONS_REUSE_SECONDS:
+        return saved[2]
+    all_members = db.list_membership_history_for_players(member.player_id for member in memberships)
+    history = load_stat_history((member.lobby_id for member in all_members), known_entries={season_id: entries})
+    result = lobby_promotions(lobby_id, all_members, history, launched_at=launched_at, now=now)
+    st.session_state["_activity_promotions"] = (key, now, result)
+    return result
+
+
 try:
     if launched_at is not None and launched_at <= now and memberships:
-        all_members = db.list_membership_history_for_players(member.player_id for member in memberships)
-        history = load_stat_history((member.lobby_id for member in all_members),
-                                    known_entries={season_id: entries})
-        events = with_promotions(events, lobby_promotions(lobby_id, all_members, history,
-                                                           launched_at=launched_at, now=now))
+        events = with_promotions(events, promotions())
 except (APIError, RequestError, RuntimeError, OSError):
     medals_unavailable = True
 if medals_unavailable:

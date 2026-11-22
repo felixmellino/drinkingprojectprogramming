@@ -152,7 +152,8 @@ def test_first_checkin_posts_three_medals_in_one_feed_row_after_reload(ui, monke
         visible = feed(at)
         assert "You earned" not in visible  # Mia's check-in was before rollout.
         assert visible.count("Leo earned") == 1
-        assert "Beginner in total points · Beginner in drinks · Beginner in lobbies played" in visible
+        assert "Beginner in total points, Beginner in drinks and Beginner in lobbies played" in visible
+        assert "·" not in visible
 
 
 def test_previous_season_win_stays_visible_in_current_lobby_feed(ui, monkeypatch):
@@ -177,3 +178,28 @@ def test_previous_season_win_stays_visible_in_current_lobby_feed(ui, monkeypatch
     assert not at.exception
     assert "Leo earned Beginner in total wins" in feed(at)
     assert f"Leo {drink_verb('winner')} a shot" not in feed(at)
+
+
+def test_load_more_reuses_the_medal_promotions_instead_of_reloading_history(ui, monkeypatch):
+    """Medals need every member's lifetime history; a Load more must not read it all again."""
+    ui["entries"] = [entry(f"e{i}", "member", "shot", None, i * 3, territory=None) for i in range(35)]
+    game = season()
+    members = [LobbyMembership(member, player, "lobby", game.starts_at)
+               for member, player in (("member", "mia"), ("other", "leo"))]
+    history_reads = Mock(return_value=list(members))
+    monkeypatch.setattr(db, "profile_medal_launch", lambda: START - timedelta(days=1))
+    monkeypatch.setattr(db, "list_membership_history_for_players", history_reads)
+    monkeypatch.setattr(db, "list_seasons_for_lobbies", lambda _: [game])
+    monkeypatch.setattr(db, "list_transfers_for_seasons", lambda _: [])
+    at = page()
+    assert not at.exception and history_reads.call_count == 1
+    next(b for b in at.button if b.label == "Load more").click().run()
+    # The oldest check-in, with its medal, is now shown, without a second history read.
+    assert not at.exception and feed(at).count("a shot") == 35 and "You earned" in feed(at)
+    assert history_reads.call_count == 1
+
+
+def test_medal_names_read_as_a_sentence():
+    from activity_ui import medal_list
+    assert medal_list(["A"]) == "A" and medal_list(["A", "B"]) == "A and B"
+    assert medal_list(["A", "B", "C"]) == "A, B and C"

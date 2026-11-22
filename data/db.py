@@ -293,18 +293,21 @@ def _membership_rpc(action: str, player_id: str, lobby_id: str) -> None:
 
 
 def list_membership_names(pairs) -> dict[tuple[str, str], dict]:
-    """Player id and public username for several (membership id, lobby id) pairs in one request.
+    """Player id and public username for several (membership id, lobby id) pairs.
 
-    A pair whose membership is not in that lobby is left out, like
-    membership_display_name, so a caller never shows a name from another lobby.
+    One request per 50 memberships, so the PostgREST filter stays short; a player
+    in many lobbies just gets more batches instead of an error. A pair whose
+    membership is not in that lobby is left out, like membership_display_name,
+    so a caller never shows a name from another lobby.
     """
     pairs = list(dict.fromkeys(pairs))
     if not pairs:
         return {}
-    if len(pairs) > 50:
-        raise ValueError("Too many lobby members requested at once.")
-    rows = (get_client().table("lobby_memberships").select("id,lobby_id,player_id,players(display_name)")
-            .in_("id", [membership_id for membership_id, _ in pairs]).execute().data)
+    ids = list(dict.fromkeys(membership_id for membership_id, _ in pairs))
+    rows = []
+    for start in range(0, len(ids), 50):
+        rows += (get_client().table("lobby_memberships").select("id,lobby_id,player_id,players(display_name)")
+                 .in_("id", ids[start:start + 50]).execute().data)
     wanted = set(pairs)
     return {(row["id"], row["lobby_id"]): {"player_id": row["player_id"],
                                            "display_name": (row.get("players") or {}).get("display_name") or "Lobby member"}

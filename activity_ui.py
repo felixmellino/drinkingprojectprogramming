@@ -42,6 +42,12 @@ def view_switch(current: str) -> None:
         st.switch_page(VIEW_PAGES[choice])
 
 
+def medal_list(medals) -> str:
+    """'A', 'A and B', 'A, B and C': no middle dots, like the rest of the app."""
+    medals = list(medals)
+    return " and ".join([", ".join(medals[:-1]), medals[-1]]) if len(medals) > 1 else "".join(medals)
+
+
 def drink_label(event: ActivityEvent) -> str:
     """'large beer', 'shot': size first, all lower case, to follow the bold name."""
     drink = DRINK_LABELS.get(event.drink_type, "Drink").lower()
@@ -122,7 +128,7 @@ def feed_html(events: list[ActivityEvent], *, member_names: dict, team_names: di
             parts.append(capture_html(event, names, territory_names, me_competitor))
         elif event.kind == MEDAL:
             name = "You" if event.member == me_member else member_names.get(event.member, "Unknown player")
-            medals = " · ".join(event.medals)
+            medals = medal_list(event.medals)
             parts.append(f'<div class="activity-medal"><span aria-hidden="true">★</span>'
                          f'<span>{escape(name)} earned <strong>{escape(medals)}</strong>'
                          f'<small>{escape(ago(event.at, now))}</small></span></div>')

@@ -2,7 +2,8 @@
 from dataclasses import replace
 from datetime import timedelta
 
-from core.activity import CAPTURE, CHECKIN, activity_events
+from core.activity import CAPTURE, CHECKIN, MEDAL, activity_events, with_promotions
+from core.medals import Promotion
 from core.scoring_v1 import corrected_entry, replay_season
 from tests.test_scoring_v1 import START, entry, season
 
@@ -87,3 +88,22 @@ def test_captures_match_the_replay_ownership():
     assert [(c[0], c[2], c[3]) for c in replay.captures] == [("1", "Mia", None), ("2", "Leo", "Mia"), ("3", "Mia", "Leo")]
     # What each capture beat: nothing (free), Mia's 3, then Leo's 4.
     assert [c[4] for c in replay.captures] == [0, 3, 4]
+
+
+def test_medals_slot_in_by_time_without_reordering_the_replay():
+    """A capture stays directly above the check-in that caused it, even when the
+    saved timestamps disagree with the replay order (event_order)."""
+    late_order = replace(entry("1", "Mia", "beer", "large", 5), event_order=1)  # saved first, stamped later
+    early_order = replace(entry("2", "Leo", "shot", None, 0), event_order=2)    # takes the territory
+    events = activity_events([late_order, early_order])
+    medal = Promotion("Mia", START + timedelta(minutes=10), ("Beginner in drinks",))
+    merged = with_promotions(events, [medal])
+    assert merged[0].kind == MEDAL
+    assert [(e.kind, e.entry_id) for e in merged[1:]] == [(e.kind, e.entry_id) for e in events]
+    assert [e.kind for e in merged[1:3]] == [CAPTURE, CHECKIN] and merged[1].entry_id == merged[2].entry_id
+
+
+def test_a_medal_at_the_same_moment_goes_above_the_checkin():
+    events = activity_events([entry("1", "Mia", "beer", "large", 0, territory=None)])
+    merged = with_promotions(events, [Promotion("Mia", START, ("Beginner in drinks",))])
+    assert [e.kind for e in merged] == [MEDAL, CHECKIN]
