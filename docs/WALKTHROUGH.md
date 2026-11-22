@@ -4,10 +4,12 @@ Every team member should be able to answer each section below without
 notes. Any of us can be asked about any part. For a longer plain-language tour
 of every file, see [`WORKING_GUIDE.md`](WORKING_GUIDE.md).
 
-## 1. What we built on
+## 1. Where it comes from
 
-- **Solo project:** TODO (owner, link). It already had: TODO.
-- **What the team added:** email accounts and remembered devices, lobbies
+- **Origin:** WeGoPub is a new application built by the team for the team
+  project (the course allows a new application instead of extending a Block 2
+  solo project).
+- **What it includes:** email accounts and remembered devices, lobbies
   (individual and team), scoring v1 with game-night windows, predefined
   territories with GPS verification and a map, photo check-ins with private
   storage, standings and profile stats, friends, and four duels (Chug, Quiz,
