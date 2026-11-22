@@ -15,6 +15,7 @@ from core.territories import territory_owner, territory_standings
 from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
 from profile_picture_ui import member_pictures, picture_access, team_pictures
+import season_recap_ui
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
@@ -27,9 +28,12 @@ standings_ui.load_styles()
 
 try:
     if st.session_state.get("current_membership_id"):
-        membership_id, lobby_id, season_id = require_active_membership()
+        membership_id, lobby_id, season_id = require_active_membership(summary_page=True)
         lobby_mode = st.session_state.get("current_lobby_mode")
         season = st.session_state.get("_validated_season")
+        if season_recap_ui.summary_pending(player_id, season):
+            season_recap_ui.finished_card(lobby_id, st.session_state.get("current_lobby_name") or "Your lobby", season)
+            st.stop()
     else:
         fallback = leaderboard_fallback(player_id)
         if fallback is None:

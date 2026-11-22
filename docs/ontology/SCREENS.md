@@ -499,6 +499,11 @@ Map owner badge update (19 November 2026, contributor request):
   closing the recap and **Season awards** afterwards. Other members see
   **Season awards** immediately. The recap button sits beside **Make current**
   when available.
+- **Ranks after the season ends** (R-S03): until the player has watched the
+  summary, only a card "The season is finished" with the lobby, dates and a
+  full-width **Watch summary** button. Other lobby pages show "This season is
+  finished. Watch the summary on Ranks to see who won." and **Go to Ranks**.
+  Close on the awards card returns to Ranks, now with the final standings.
 - **Open lobby**: only the creator sees **End season early** during a running
   test season in either lobby mode. The confirmation explains the permanent
   cutoff and the timeout for open duels. Confirming opens the recap story.

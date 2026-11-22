@@ -90,6 +90,7 @@ if isinstance(value, dict) and value.get("action") == "close" and value.get("ope
     except LOAD_ERRORS:
         st.error("We couldn't save that. Try Close again.")
         st.stop()
+    ui.mark_seen(player_id, season.id)  # the lobby's pages open again (R-S03)
     for key in ("_recap_season_id", "_recap_animate", "_recap_opened"):
         st.session_state.pop(key, None)
-    st.switch_page("pages/2_Lobby.py")
+    st.switch_page(st.session_state.pop("_recap_return", None) or "pages/2_Lobby.py")

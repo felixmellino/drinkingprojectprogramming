@@ -55,7 +55,7 @@ def save_local(_player, _lobby, entry, _photo):
 
 db.save_drink_entry_photo = save_local
 shared.require_login = lambda: "local-player"
-shared.require_active_membership = lambda: ("member", "lobby", "season")
+shared.require_active_membership = lambda **_: ("member", "lobby", "season")
 shared.show_logged_in_as = lambda: None
 shared.get_territories = lambda: [TERRITORY]
 scoring.current_time = lambda: START

@@ -120,7 +120,7 @@ def test_random_assignment_has_no_manual_join_buttons(ui):
 def test_team_standings_use_team_identity(ui,monkeypatch):
     ui['me'].team_id='t1'
     ui['entries']=[drink('d1','m1','t1',5,1),drink('d2','m2','t1',6,2),drink('d3','m3','t2',10,3)]
-    monkeypatch.setattr('shared.require_active_membership',lambda:('m1','lobby','season'))
+    monkeypatch.setattr('shared.require_active_membership',lambda **_:('m1','lobby','season'))
     monkeypatch.setattr(db,'list_players',lambda:[Obj(id='me',display_name='Myself')])
     from tests.test_checkins import TERRITORY
     monkeypatch.setattr('shared.get_territories',lambda:[replace(TERRITORY,id='territory-a')])
@@ -153,7 +153,7 @@ def test_team_map_shows_combined_capture_gap(ui,monkeypatch):
     ui['me'].team_id='t2'
     ui['members'].append(LobbyMembership('m3','third','lobby',datetime.now(timezone.utc),'t1'))
     ui['entries']=[drink('d1','m2','t1',5,1),drink('d2','m3','t1',6,2),drink('d3','m1','t2',10,3)]
-    monkeypatch.setattr('shared.require_active_membership',lambda:('m1','lobby','season'))
+    monkeypatch.setattr('shared.require_active_membership',lambda **_:('m1','lobby','season'))
     monkeypatch.setattr(db,'list_players',lambda:[Obj(id='me',display_name='Myself')])
     from tests.test_checkins import TERRITORY
     monkeypatch.setattr('shared.get_territories',lambda:[replace(TERRITORY,id='territory-a')])

@@ -51,7 +51,7 @@ def ui(monkeypatch):
         "territories": [TERRITORY],
     }
     monkeypatch.setattr("shared.require_login", lambda: "mia")
-    monkeypatch.setattr("shared.require_active_membership", lambda: ("member", "lobby", "season"))
+    monkeypatch.setattr("shared.require_active_membership", lambda **_: ("member", "lobby", "season"))
     monkeypatch.setattr("shared.show_logged_in_as", lambda: None)
     monkeypatch.setattr("shared.get_territories", lambda: state["territories"])
     monkeypatch.setattr(db, "list_drink_entries", lambda _: state["entries"])
