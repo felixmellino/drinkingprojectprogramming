@@ -15,8 +15,9 @@ This file will hold every feature we plan to build with its priority and owner.
 
 ## Season recap and awards (21 November 2026)
 
-- **Built:** when a season ends, each player gets a **Finish season** banner.
-  It plays an animated story (season over, podium, one slide per award, your
+- **Built:** the admin can open **Finish season** on the past lobby card.
+  Other members can open **Season awards** immediately. The recap includes
+  an animated story (season over, podium, one slide per award, your
   season) and ends on a static awards card with a CSV download of the final
   standings. Rules: [RULES.md R-S01 to R-S03](RULES.md#season-awards-21-november-2026).
   Code: `core/season_recap.py`, `season_recap_ui.py`, `pages/9_Season_recap.py`,

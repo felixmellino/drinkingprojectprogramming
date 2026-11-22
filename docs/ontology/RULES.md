@@ -379,17 +379,19 @@ A tie for most territories, captures or drinks goes to the better final rank.
 Two equally big takeovers: the earlier one wins.
 
 ### R-S03 Finishing a season
-After the season ends, a banner on every page ("Your season in X is over")
-offers **Finish season** for two weeks; the past lobby on the Lobby page keeps
-the button. It plays the recap story and ends on the awards card; **Close**
-saves that this player finished the season (migration 029,
-`season_recap_views`), so the banner stays gone after a restart. Afterwards
-the past lobby shows **Season awards**, which reopens the card. The final
-standings can be downloaded as CSV from the recap.
+After the season ends, **Finish season** appears only for that lobby's
+current admin on its card in Past Lobbies, beside **Make current** when
+available. The creator is the only implemented admin and must still be a
+member. The button plays the personal recap story and opens the awards card.
+**Close** saves the viewer's recap completion (migration 029,
+`season_recap_views`). On later visits the admin sees **Season awards**.
+Regular members can open **Season awards** as soon as the season ends and
+replay the story from there. The recap offers a CSV of the final standings.
 
-Allowed: players of that lobby, also after they left it. Rejected: anyone else
-(no data shown) and a season that is still running. Boundary: `now == ends_at`
-counts as ended (R-R03). Finishing twice saves once.
+Recap access is available to players of that lobby, including former members.
+Outsiders and players in a still-running season cannot open the recap.
+At `now == ends_at` the season counts as ended (R-R03). Finishing twice saves
+once.
 
 Source: Niklas, 21 November 2026.
 

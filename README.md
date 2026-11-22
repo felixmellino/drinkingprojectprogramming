@@ -34,8 +34,8 @@ standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ## Hosting (deployed app)
 
-The season recap remembers who finished a season in a table from
-[migration 029](docs/MIGRATIONS.md); without it the app still runs but shows no recap banner.
+The season recap uses [migration 029](docs/MIGRATIONS.md) to remember who has
+closed the recap and show **Season awards** on subsequent visits.
 
 Personal lobby invitations require [migration 026](docs/MIGRATIONS.md) and
 use the same Brevo settings as password recovery. In an active lobby, the

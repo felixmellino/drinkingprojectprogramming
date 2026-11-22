@@ -92,10 +92,29 @@ def test_past_card_keeps_lobby_details_and_opens_its_season_recap(ui, monkeypatc
     at = page()
     assert not at.exception
     assert at.button(key='open_lobby_past').label == 'View lobby →'
-    assert at.button(key='season_recap_past').label == 'Finish season'
+    action_row = next(block for block in at.get('flex_container') if block.proto.id.endswith('lobby_select_past'))
+    assert [button.label for button in action_row.button] == ['Finish season', 'Make current']
     assert not any(button.key == 'season_recap_new' for button in at.button)
     at.button(key='season_recap_past').click().run()
     open_recap.assert_called_once_with('past', 'Finished lobby', ui['seasons']['past'][0].id, animate=True)
+    monkeypatch.setattr(db, 'finished_recap_seasons', lambda _: {ui['seasons']['past'][0].id})
+    assert page().button(key='season_recap_past').label == 'Season awards'
+
+
+def test_past_lobby_admin_is_checked_per_card_including_departed_creators(ui, monkeypatch):
+    ui['seasons']['old'][0].ends_at = ui['seasons']['past'][0].ends_at
+    creator = LobbyMembership('creator-past', 'former-admin', 'past',
+                              ui['members'][2].joined_at - timedelta(days=1),
+                              left_at=ui['members'][2].joined_at + timedelta(days=1))
+    ui['lobby_members']['past'].append(creator)
+    membership_history = Mock(side_effect=lambda lid, **kwargs: ui['lobby_members'][lid])
+    monkeypatch.setattr(db, 'list_memberships_for_lobby', membership_history)
+
+    at = page()
+    assert not at.exception
+    assert at.button(key='season_recap_old').label == 'Finish season'
+    assert at.button(key='season_recap_past').label == 'Season awards'
+    membership_history.assert_any_call('past', include_left=True)
 
 
 def test_a_finished_lobby_can_be_made_current_to_view_its_season(ui):
@@ -106,6 +125,7 @@ def test_a_finished_lobby_can_be_made_current_to_view_its_season(ui):
     ui['save_choice'].assert_called_once_with('me', 'past')
     assert 'Current lobby' in next(c for c in cards(at) if 'Finished lobby' in c)
     assert not any(b.key == 'make_current_past' for b in at.button)
+    assert at.button(key='season_recap_past').label == 'Finish season'
     at.run()  # a refresh keeps it instead of jumping back to a running lobby
     assert at.session_state['current_lobby_id'] == 'past'
 
