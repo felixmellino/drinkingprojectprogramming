@@ -46,6 +46,14 @@ The public app runs on **Streamlit Community Cloud** at
 https://wegopubnow.streamlit.app/ and uses the team's shared Supabase project
 (region West EU) as its database and photo storage.
 
+**Phone view for presentations:** https://wegopubnow.streamlit.app/~/+/app/static/phone.html
+shows the real app inside a drawn phone on a laptop or projector (locally:
+http://localhost:8501/app/static/phone.html). The app runs at phone size, so it
+looks exactly like on a phone; **Reload app** beside the phone restarts it if a
+screen ever hangs. Camera and location are the laptop's. The page is
+`static/phone.html`, served because `enableStaticServing` is on in
+`.streamlit/config.toml`.
+
 - **Source:** repository `felixmellino/drinkingprojectprogramming`, branch
   `main`, main file `app.py`. Every merge into `main` redeploys the app
   automatically within a few minutes.

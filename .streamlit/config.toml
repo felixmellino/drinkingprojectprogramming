@@ -2,6 +2,8 @@
 enableXsrfProtection = true
 enableCORS = true
 maxUploadSize = 10
+# Serves ./static (only the presenter phone frame, static/phone.html; no data or secrets).
+enableStaticServing = true
 
 [client]
 # Players see a short error instead of a Python stack trace.
