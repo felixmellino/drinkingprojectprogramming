@@ -21,6 +21,7 @@ from theme import component_tokens, dark_mode
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
 from core.profile_photo import initials
+from profile_picture_ui import avatar_src
 from map_markers import boost_badge, interior_anchor, owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
@@ -341,7 +342,9 @@ def _sheet_row(row: dict) -> dict:
     else:
         badge, sub, pill = "", "Unclaimed", "Claim it"
     return {"id": row["id"], "name": row["name"], "status": row["status"], "sub": sub, "pill": pill,
-            "avatar": initials(badge) if badge else "–", "detail": row["detail"]}
+            "avatar": initials(badge) if badge else "–", "detail": row["detail"],
+            # Key into the sheet's `photos`: the owner's picture replaces the initials (A11).
+            "photo": row.get("owner_id") if row["status"] in ("theirs", "yours") else None}
 
 
 def territory_sheet_rows(rows: list[dict]) -> list[dict]:
@@ -368,7 +371,8 @@ def all_territories_button(rows: list[dict]) -> None:
         st.session_state["map_sheet_open_count"] = st.session_state["map_sheet_open"]
 
 
-def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = False) -> str | None:
+def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = False,
+                   pictures: dict | None = None) -> str | None:
     """The territory sheet over the map (its own component, so it can be swiped
     down like an iPhone sheet). Call it outside the blurred bottom card: a blurred
     parent would trap the full-screen frame inside it. Returns the territory id
@@ -379,7 +383,12 @@ def territory_list(rows: list[dict], *, lobby_name: str = "", team_mode: bool = 
     summary = summary_line(rows)
     note = "Team territories: points and gaps combine all team members’ drinks." if team_mode else ""
     with st.container(key="territory_sheet_stage"):
-        value = _territory_sheet(rows=territory_sheet_rows(rows), title=lobby_name, summary=summary, note=note,
+        sheet_rows = territory_sheet_rows(rows)
+        # Each owner's picture is sent once (small), not once per territory row.
+        photos = {owner: avatar_src(photo, 64) for owner, photo in (pictures or {}).items()
+                  if any(row["photo"] == owner for row in sheet_rows)}
+        value = _territory_sheet(rows=sheet_rows, photos={k: v for k, v in photos.items() if v},
+                                 title=lobby_name, summary=summary, note=note,
                                  tokens=component_tokens(), key=f"territory_sheet_{opened}", default=None)
     if not isinstance(value, dict) or value.get("action") not in ("close", "select"):
         return None

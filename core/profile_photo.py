@@ -1,4 +1,5 @@
 """Safe profile pictures and the audience allowed to see them."""
+from dataclasses import dataclass
 from io import BytesIO
 from warnings import catch_warnings, simplefilter
 
@@ -34,8 +35,23 @@ def prepare_profile_photo(raw: bytes) -> bytes:
         raise ValueError("This picture couldn't be read. Choose a JPEG, PNG or WebP image.") from exc
 
 
-def can_view_profile_photo(viewer: str, owner: str, relationships: list[dict]) -> bool:
+@dataclass(frozen=True)
+class PictureAccess:
+    """Whose pictures a viewer may see, read fresh for one page render (A11).
+
+    `relationships`: the viewer's friendships and requests. `co_members`: player
+    ids that are current members of a lobby the viewer is a current member of.
+    """
+    relationships: tuple = ()
+    co_members: frozenset = frozenset()
+
+
+def can_view_profile_photo(viewer: str, owner: str, relationships, co_members=frozenset()) -> bool:
+    """A11 (revised 22 November 2026): the owner, accepted friends, both sides of
+    a pending request, and players who share a lobby right now."""
     if viewer == owner:
+        return True
+    if owner in co_members and viewer in co_members:
         return True
     return any({r['sender_id'], r['recipient_id']} == {viewer, owner}
                and r['status'] in ('accepted', 'pending') for r in relationships)

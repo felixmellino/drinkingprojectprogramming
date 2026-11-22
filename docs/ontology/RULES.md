@@ -674,8 +674,15 @@ server service key is the only database role with friendship access.
   player in friend lists and incoming/outgoing requests. Only the owner,
   accepted friends and both participants of a pending request can retrieve
   it. Declining, cancelling or removing the relationship ends further access.
-  Search results for unrelated players show initials. No lobby-wide avatar
-  visibility is introduced. Previously downloaded copies cannot be recalled.
+  Search results for unrelated players show initials. Previously downloaded
+  copies cannot be recalled.
+  **Revised 22 November 2026 (Felix): lobby-wide visibility.** Players who are
+  both current members of the same lobby also see each other's picture. It
+  replaces the initials wherever players are shown: Ranks (podium and rows),
+  the Activity feed, map owner badges and the territory list, lobby leader
+  cards and team member lists. Leaving the lobby ends access on the next page
+  load. Strangers still see initials. Checked fresh on every page render
+  (`core/profile_photo.can_view_profile_photo`, `db.list_co_member_players`).
 - A12: Profile pictures use private server-only storage. Accept at most
   10 MiB and 20 million pixels; reject unreadable/animated images. Preserve
   orientation, centre-crop to a 512-pixel square, flatten transparency to white

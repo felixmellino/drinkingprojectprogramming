@@ -15,9 +15,9 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from core.activity import CAPTURE, CHUG_DUEL, DUEL, MEDAL, ActivityEvent
-from core.profile_photo import initials
 from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, format_points, utc, window_bounds
 from photo_history_ui import game_night_label, identity_colour
+from profile_picture_ui import avatar_html
 from standings_ui import ago
 from theme import icon_css
 
@@ -136,7 +136,7 @@ def duel_html(event: ActivityEvent, member_names: dict, team_names: dict, territ
 
 
 def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, territory_names: dict,
-                 me_member: str, now: datetime) -> str:
+                 me_member: str, now: datetime, picture: str | None = None) -> str:
     you = event.member == me_member
     name = "You" if you else member_names.get(event.member, "Unknown player")
     if team_names and event.competitor in team_names:
@@ -146,8 +146,7 @@ def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, ter
     avatar = f"background:{identity_colour({'membership_id': event.member})};color:#fff;"
     return (
         f'<div class="activity-row{" activity-row-you" if you else ""}">'
-        f'<span class="activity-avatar" style="{avatar}" aria-hidden="true">'
-        f'{escape(initials(member_names.get(event.member, "?")))}</span>'
+        + avatar_html(member_names.get(event.member, "?"), picture, cls="activity-avatar", style=avatar) +
         f'<span class="activity-main"><span class="activity-title"><strong>{escape(name)}</strong> '
         f'{escape(drink_verb(event.entry_id))} a {escape(drink_label(event))}</span>'
         f'<span class="activity-meta">{escape(where)}, {escape(ago(event.at, now))}</span></span>'
@@ -156,7 +155,7 @@ def checkin_html(event: ActivityEvent, member_names: dict, team_names: dict, ter
 
 
 def feed_html(events: list[ActivityEvent], *, member_names: dict, team_names: dict, territory_names: dict,
-              me_member: str, me_competitor: str, season, now: datetime) -> str:
+              me_member: str, me_competitor: str, season, now: datetime, pictures: dict | None = None) -> str:
     """Rows newest first, with a heading whenever a new game night starts."""
     names = team_names or member_names
     parts, night = [], None
@@ -183,5 +182,6 @@ def feed_html(events: list[ActivityEvent], *, member_names: dict, team_names: di
                          f'<span>{escape(name)} earned <strong>{escape(medals)}</strong>'
                          f'<small>{escape(ago(event.at, now))}</small></span></div>')
         else:
-            parts.append(checkin_html(event, member_names, team_names, territory_names, me_member, now))
+            parts.append(checkin_html(event, member_names, team_names, territory_names, me_member, now,
+                                      (pictures or {}).get(event.member)))
     return '<div class="activity-feed">' + "".join(parts) + "</div>"

@@ -78,8 +78,8 @@ def test_lobby_cards_load_in_three_rounds_not_one_chain_per_card(monkeypatch):
     def names(pairs):
         name_requests.append(list(pairs))
         return {pair:{'player_id':'player-'+pair[1],'display_name':'Mia'} for pair in pairs}
-    def pictures(viewer,owners,relationships=None):
-        picture_requests.append((viewer,owners,relationships))
+    def pictures(viewer,owners,access=None):
+        picture_requests.append((viewer,owners,access))
         return {'player-a':b'photo'}
     monkeypatch.setattr(db,'list_drink_entries',entries)
     monkeypatch.setattr(db,'list_season_transfers',lambda _: [])

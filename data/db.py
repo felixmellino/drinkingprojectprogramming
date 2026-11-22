@@ -1300,13 +1300,27 @@ def _validate_profile_picture_path(player_id: str, path: str) -> None:
         raise PermissionError("Invalid profile picture reference.")
 
 
+def list_co_member_players(viewer_id: str) -> frozenset:
+    """Players (the viewer included) who are current members of a lobby the
+    viewer is a current member of, in one request (A11, revised 22 November)."""
+    rows = (get_client().table("lobby_memberships")
+            .select("lobby_id,lobbies(lobby_memberships(player_id,left_at))")
+            .eq("player_id", viewer_id).is_("left_at", "null").execute().data)
+    return frozenset(member["player_id"] for row in rows
+                     for member in (row.get("lobbies") or {}).get("lobby_memberships") or []
+                     if not member.get("left_at"))
+
+
 def download_profile_picture(viewer_id: str, credential_version: str, owner_id: str) -> bytes | None:
     from core.profile_photo import can_view_profile_photo
 
     _profile_actor(viewer_id, credential_version)
-    relationships = [] if viewer_id == owner_id else list_friendships(viewer_id)
-    if not can_view_profile_photo(viewer_id, owner_id, relationships):
-        return None
+    if viewer_id != owner_id:
+        relationships = list_friendships(viewer_id)
+        if not can_view_profile_photo(viewer_id, owner_id, relationships):
+            # Not friends: a shared lobby also allows it (one more read only then).
+            if not can_view_profile_photo(viewer_id, owner_id, (), list_co_member_players(viewer_id)):
+                return None
     path = _profile_picture_row(owner_id)
     if not path:
         return None
@@ -1314,25 +1328,29 @@ def download_profile_picture(viewer_id: str, credential_version: str, owner_id: 
     return _profile_picture_bucket().download(path)
 
 
-def profile_picture_access(viewer_id: str, credential_version: str) -> list[dict]:
-    """The fresh credential and friendship check for one page render's pictures.
+def profile_picture_access(viewer_id: str, credential_version: str):
+    """The fresh credential, friendship and shared-lobby check for one page
+    render's pictures (a PictureAccess).
 
     A page can start it together with its other first reads and pass the result
     to download_profile_pictures in the same render. Never keep it longer.
     """
     from parallel import run_parallel
+    from core.profile_photo import PictureAccess
 
-    _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
-                                    lambda: list_friendships(viewer_id))
-    return relationships
+    _, relationships, co_members = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
+                                                lambda: list_friendships(viewer_id),
+                                                lambda: list_co_member_players(viewer_id))
+    return PictureAccess(tuple(relationships), co_members)
 
 
 def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids, *,
-                              relationships: list[dict] | None = None) -> dict[str, bytes]:
-    """Freshly authorize one map's avatars together; never retain permissions/bytes.
+                              access=None) -> dict[str, bytes]:
+    """Freshly authorize one page's avatars together; never retain permissions/bytes.
 
-    `relationships` is the result of profile_picture_access from this same render;
-    without it the credential and friendship check runs here.
+    `access` is the result of profile_picture_access from this same render;
+    without it the credential, friendship and shared-lobby check runs here.
+    At most 32 owners per call.
     """
     from parallel import run_parallel
     from core.profile_photo import can_view_profile_photo
@@ -1345,11 +1363,11 @@ def download_profile_pictures(viewer_id: str, credential_version: str, owner_ids
     if len(owners) > 32:
         raise ValueError('Too many profile pictures requested at once.')
     # The membership page has already validated login; downloads still perform
-    # their own fresh credential and friendship checks, once for this batch.
-    if relationships is None:
-        _, relationships = run_parallel(lambda: _profile_actor(viewer_id, credential_version),
-            lambda: list_friendships(viewer_id) if any(owner != viewer_id for owner in owners) else [])
-    allowed = [owner for owner in owners if can_view_profile_photo(viewer_id, owner, relationships)]
+    # their own fresh credential and audience checks, once for this batch.
+    if access is None:
+        access = profile_picture_access(viewer_id, credential_version)
+    allowed = [owner for owner in owners
+               if can_view_profile_photo(viewer_id, owner, access.relationships, access.co_members)]
     if not allowed:
         return {}
     rows = (get_client().table('profile_pictures').select('player_id,photo_ref')

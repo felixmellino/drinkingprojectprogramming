@@ -38,13 +38,15 @@ def fresh_private_bucket_checks():
 
 @pytest.fixture(autouse=True)
 def no_real_picture_access(monkeypatch, request):
-    """Lobby and Map start the picture permission check early. Pages tested with a
+    """Pages start the picture permission check early. Pages tested with a
     credential would otherwise send it to a real database when a local secrets
-    file exists. Default: no friendships. tests/test_profile_picture_db.py tests
-    the real function."""
+    file exists. Default: no friendships, no shared lobbies.
+    tests/test_profile_picture_db.py tests the real functions."""
     if request.module.__name__.endswith("test_profile_picture_db"):
         return
-    monkeypatch.setattr(db, "profile_picture_access", lambda viewer_id, credential_version: [])
+    from core.profile_photo import PictureAccess
+    monkeypatch.setattr(db, "profile_picture_access", lambda viewer_id, credential_version: PictureAccess())
+    monkeypatch.setattr(db, "list_co_member_players", lambda viewer_id: frozenset())
 
 
 @pytest.fixture(autouse=True)

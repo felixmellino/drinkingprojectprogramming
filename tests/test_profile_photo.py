@@ -76,3 +76,12 @@ def test_owner_stranger_cancelled_request_and_initials():
     assert initials('Mia Silva') == 'MS'
     assert initials('mia') == 'MI'
     assert initials(' ') == '?'
+
+
+def test_players_sharing_a_lobby_see_each_others_pictures():
+    """A11, revised 22 November 2026: current lobby mates, not only friends."""
+    lobby = frozenset({'a', 'b'})
+    assert can_view_profile_photo('a', 'b', [], lobby)
+    assert can_view_profile_photo('b', 'a', [], lobby)
+    assert not can_view_profile_photo('a', 'c', [], lobby), 'c is not in a lobby with a'
+    assert not can_view_profile_photo('c', 'a', [], lobby), 'the viewer must be a lobby mate too'

@@ -76,7 +76,7 @@ else:
         owners = [m for m in memberships if m.id in owner_ids]
         try:
             fetched = load_pictures(player_id, [m.player_id for m in owners],
-                                    relationships=access[0] if access else None)
+                                    access=access[0] if access else None)
             pictures = {m.id: fetched[m.player_id] for m in owners if m.player_id in fetched}
         except (*PICTURE_ERRORS, PermissionError, ValueError):
             pass  # An unavailable picture still has the existing initials badge.
@@ -184,7 +184,7 @@ def map_and_card():
         if (not usable_location or territory_problem) and st.button("Location help", key="map_location_help", type="tertiary"):
             explain(territory_problem or location_problem(problem, accuracy_m) or "Your position could not be verified. Turn Location off and on in Profile, then return to the map.")
         map_ui.all_territories_button(rows)
-    picked = map_ui.territory_list(rows, lobby_name=st.session_state.get("current_lobby_name", ""),
+    picked = map_ui.territory_list(rows, pictures=pictures, lobby_name=st.session_state.get("current_lobby_name", ""),
                                    team_mode=team_mode)
     if picked:                                          # a name in the list: select it and fly there
         st.session_state["map_selected"] = picked

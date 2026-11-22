@@ -10,10 +10,10 @@ from pathlib import Path
 
 import streamlit as st
 
-from core.profile_photo import initials
 from core.scoring_v1 import DRINK_LABELS, format_points
 from core.teams import competitor
 from photo_history_ui import identity_colour
+from profile_picture_ui import avatar_html
 
 
 def load_styles() -> None:
@@ -34,7 +34,7 @@ def _tie_tag(rows, index: int) -> str:
 
 
 def _podium_place(rank: int, member: str, points, names: dict, current_member: str, *, team_mode: bool,
-                  extras: str = "") -> str:
+                  extras: str = "", picture: str | None = None) -> str:
     name = names.get(member, "Unknown player")
     you = member == current_member
     size = {1: ("48px", "124px", "16px"), 2: ("40px", "92px", "14px"), 3: ("40px", "68px", "14px")}[rank]
@@ -51,7 +51,8 @@ def _podium_place(rank: int, member: str, points, names: dict, current_member: s
     tag = f'<span class="standings-podium-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if you else ""
     return (
         f'<div class="standings-podium-place standings-podium-{rank}">'
-        f'<span class="standings-podium-avatar" style="width:{avatar_size};height:{avatar_size};{avatar_fill}{avatar_ring}" aria-hidden="true">{escape(initials(name))}</span>'
+        + avatar_html(name, picture, cls="standings-podium-avatar",
+                      style=f"width:{avatar_size};height:{avatar_size};{avatar_fill}{avatar_ring}") +
         f'<span class="standings-podium-name" style="font-size:{name_size}">{escape(name)}{tag}{extras}</span>'
         f'<span class="standings-podium-points">{escape(format_points(points))}</span>'
         f'<span class="standings-podium-block" style="height:{block_height};{block_fill}">'
@@ -59,7 +60,8 @@ def _podium_place(rank: int, member: str, points, names: dict, current_member: s
     )
 
 
-def _row(rank: int, member: str, points, rows, names: dict, current_member: str, *, team_mode: bool) -> str:
+def _row(rank: int, member: str, points, rows, names: dict, current_member: str, *, team_mode: bool,
+         picture: str | None = None) -> str:
     name = names.get(member, "Unknown player")
     you = member == current_member
     row_class = " standings-row-you" if you else ""
@@ -70,7 +72,7 @@ def _row(rank: int, member: str, points, rows, names: dict, current_member: str,
     tag = f'<span class="standings-you-tag">{"YOUR TEAM" if team_mode else "YOU"}</span>' if you else ""
     return (
         f'<div class="standings-row{row_class}"><span class="standings-row-rank">{rank}</span>'
-        f'<span class="standings-row-avatar" style="{avatar_fill}" aria-hidden="true">{escape(initials(name))}</span>'
+        + avatar_html(name, picture, cls="standings-row-avatar", style=avatar_fill) +
         f'<span class="standings-row-name">{escape(name)}{tag}{_tie_tag(rows, rank - 1)}</span>'
         f'<span class="standings-row-points">{escape(format_points(points))}</span></div>'
     )
@@ -82,7 +84,8 @@ def _tap(rank: int, member: str, names: dict) -> bool:
     return st.button(f"Show {names.get(member, 'player')}'s profile", key=f"rank_tap_btn_{rank}")
 
 
-def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = False) -> str | None:
+def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = False,
+                pictures: dict | None = None) -> str | None:
     """Render rows in precisely the order returned by season_leaderboard: a
     podium for the top 3, then one card per player. Every place is tappable;
     returns the tapped member/team id (None when nothing was tapped)."""
@@ -96,7 +99,8 @@ def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = Fal
                 member, points = ranked[rank]
                 with column, st.container(key=f"rank_tap_{rank}"):
                     st.markdown(_podium_place(rank, member, points, names, current_member, team_mode=team_mode,
-                                              extras=_tie_tag(rows, rank - 1)), unsafe_allow_html=True)
+                                              extras=_tie_tag(rows, rank - 1),
+                                              picture=(pictures or {}).get(member)), unsafe_allow_html=True)
                     if _tap(rank, member, names):
                         tapped = member
     if rows[3:]:
@@ -104,8 +108,8 @@ def leaderboard(rows, names: dict, current_member: str, *, team_mode: bool = Fal
             for offset, (member, points) in enumerate(rows[3:]):
                 rank = offset + 4
                 with st.container(key=f"rank_tap_{rank}"):
-                    st.markdown(_row(rank, member, points, rows, names, current_member, team_mode=team_mode),
-                                unsafe_allow_html=True)
+                    st.markdown(_row(rank, member, points, rows, names, current_member, team_mode=team_mode,
+                                     picture=(pictures or {}).get(member)), unsafe_allow_html=True)
                     if _tap(rank, member, names):
                         tapped = member
     return tapped

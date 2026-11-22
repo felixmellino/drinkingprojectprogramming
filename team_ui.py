@@ -1,5 +1,4 @@
 """Team cards in a lobby dialog. Rules and atomic writes stay in core/data."""
-import base64
 from html import escape
 
 import streamlit as st
@@ -11,7 +10,7 @@ from action_feedback import action_button
 from core.profile_photo import initials
 from core.scoring_v1 import format_points
 from core.leaderboard import season_leaderboard
-from profile_picture_ui import load_picture, PICTURE_ERRORS
+from profile_picture_ui import avatar_html, member_pictures
 
 ERRORS = (APIError, RequestError, RuntimeError, PermissionError, ValueError)
 
@@ -56,6 +55,8 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
         st.info('Join a team below before checking in. Your team locks after your first scored check-in.')
     elif locked:
         st.caption('Your team is locked because you have scored. Team members can still edit its name and picture.')
+    # All members' pictures in one batch (A11: lobby members see each other's).
+    pictures = member_pictures(player_id, members, [m.id for m in members]) if teams else {}
     for index, team in enumerate(teams):
         if index % 2 == 0:
             columns = st.columns(2)
@@ -88,14 +89,15 @@ def open_team_lobby(player_id, lobby, season, *, finished=False):
             st.caption(f'Team {team.number}: {len(teammates)}/{lobby.team_capacity} members, {format_points(totals.get(team.id, 0))} points' + (' (your team)' if own else ''))
             for member in teammates:
                 label = names.get(member.player_id, 'Lobby member')
-                try:
-                    picture = load_picture(player_id, member.player_id)
-                except PICTURE_ERRORS:
-                    picture = None
-                # Existing profile-picture privacy remains authoritative.
-                if picture:
-                    st.markdown(f'<img src="data:image/jpeg;base64,{base64.b64encode(picture).decode("ascii")}" alt="Member picture" style="width:28px;height:28px;border-radius:50%">', unsafe_allow_html=True)
-                st.text((label if picture else f'{initials(label)}  {label}') + (' (left, slot reserved)' if member.left_at else ''))
+                suffix = ' (left, slot reserved)' if member.left_at else ''
+                st.markdown(
+                    '<div style="display:flex;align-items:center;gap:10px;margin:4px 0">'
+                    + avatar_html(label, pictures.get(member.id), cls='team-member-avatar',
+                                  style='display:inline-grid;place-items:center;flex:0 0 28px;width:28px;height:28px;'
+                                        'border-radius:50%;background:var(--surface-raised);color:var(--text);'
+                                        'font-size:11px;font-weight:700')
+                    + f'<span style="overflow-wrap:anywhere">{escape(label + suffix)}</span></div>',
+                    unsafe_allow_html=True)
             if not teammates:
                 st.caption('No members yet')
             if lobby.team_assignment == 'manual' and not own:

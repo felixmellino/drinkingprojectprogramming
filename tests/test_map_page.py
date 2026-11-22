@@ -159,7 +159,8 @@ def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypa
     page.session_state["credential_version"] = "test-credential"
     page.run()
     assert not page.exception
-    loader.assert_called_once_with('player', ['p-me','p-rival'], relationships=[])
+    from core.profile_photo import PictureAccess
+    loader.assert_called_once_with('player', ['p-me','p-rival'], access=PictureAccess())
 
 
 def chart_json(page):

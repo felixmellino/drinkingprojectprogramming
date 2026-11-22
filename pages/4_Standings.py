@@ -14,6 +14,7 @@ from core.scoring_v1 import current_time, replay_season
 from core.territories import territory_owner, territory_standings
 from drink_entry_ui import page_header
 from leaderboard_context import leaderboard_fallback
+from profile_picture_ui import member_pictures, picture_access, team_pictures
 import standings_ui
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
@@ -44,11 +45,13 @@ try:
             st.warning("That lobby or season is no longer available. Reload the page to try again.")
             st.stop()
         lobby_mode = lobby.game_mode
-    entries, transfers, memberships, players = run_parallel(
+    # The picture permission check runs with the first reads (A11).
+    entries, transfers, memberships, players, access = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_season_transfers(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_public_usernames)
+        db.list_public_usernames,
+        lambda: picture_access(player_id) if lobby_mode != "team" else None)
     players_by_id = {p['id']: p['display_name'] for p in players}
 except (APIError, RequestError, RuntimeError):
     st.error("We couldn't load the standings. Reload the page to try again.")
@@ -64,8 +67,11 @@ if team_mode:
         st.stop()
     names = {t.id: t.name for t in teams}
     membership_id = next((m.team_id for m in memberships if m.id == membership_id), None)
+    pictures = team_pictures(teams)
     if not membership_id:
         st.info("Open this lobby on the Lobby page and join a team before checking in.")
+if not team_mode:
+    pictures = member_pictures(player_id, memberships, [m.id for m in memberships], access)
 snapshot = replay_season(entries, transfers) if transfers or any(e.rule_version == "v1" for e in entries) else None
 leaderboard = snapshot.season_rows() if snapshot else season_leaderboard(entries)
 status = lobby_status(season, current_time()) if season else "active"
@@ -115,7 +121,7 @@ def ranking():
             st.caption(f"{'This' if current else 'Last'} game night, {first:%a %d} to {last:%a %d %b}. "
                        "Only drinks checked in that night count.")
             rows = night_rows
-    tapped = standings_ui.leaderboard(rows, names, membership_id, team_mode=team_mode)
+    tapped = standings_ui.leaderboard(rows, names, membership_id, team_mode=team_mode, pictures=pictures)
     if tapped is not None:
         rank, points = next((i + 1, p) for i, (m, p) in enumerate(rows) if m == tapped)
         stats = standings_ui.player_stats(tapped, entries, owners, territory_names)
