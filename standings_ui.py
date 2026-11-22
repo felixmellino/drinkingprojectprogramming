@@ -24,7 +24,9 @@ def load_styles() -> None:
 def reached_first(rows, index: int) -> bool:
     """True when the row below has the same points: this row ranks higher only
     because it reached the score first."""
-    return index + 1 < len(rows) and Decimal(str(rows[index][1])) == Decimal(str(rows[index + 1][1]))
+    # Players still on 0 have not reached anything (game night view lists them too).
+    return (index + 1 < len(rows) and Decimal(str(rows[index][1])) > 0
+            and Decimal(str(rows[index][1])) == Decimal(str(rows[index + 1][1])))
 
 
 def _tie_tag(rows, index: int) -> str:
