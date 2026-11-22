@@ -91,8 +91,9 @@ preserving scores and territory assignments.
 
 ### Drink suggestion (Anthropic API, R-C01)
 
-If `ANTHROPIC_API_KEY` is set and the player has switched on **Suggest my
-drink from the photo** (off by default; its help text names Anthropic), the
+If `ANTHROPIC_API_KEY` is set and **Suggest my drink from the photo** is on
+(on by default since 22 November 2026; its help text names Anthropic, and a
+player who switches it off sends nothing), the
 cleaned check-in photo (no metadata, at most 1024 px) is sent once over HTTPS
 to the Anthropic API to suggest the drink and size. Photos that cannot be
 submitted (window closed, cooldown running) are never sent. Only the image and a fixed instruction are sent: no

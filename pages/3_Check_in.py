@@ -233,10 +233,10 @@ if modern:
 suggestion = None
 asked = False
 if modern and capture is not None and drink_recognition.is_enabled() and not closed and not waiting:
-    # R-C01: the photo leaves the app only after the player switches suggestions on, and only
-    # for a photo that can still be submitted. The choice is kept for this visit.
+    # R-C01: suggestions are on by default; the switch says where the photo goes and turning it
+    # off stops sending. Only a photo that can still be submitted is sent. Kept for this visit.
     with st.container(key="drink_ui_suggest_consent"):
-        asked = st.toggle("Suggest my drink from the photo", value=st.session_state.get('checkin_suggest_ok', False),
+        asked = st.toggle("Suggest my drink from the photo", value=st.session_state.get('checkin_suggest_ok', True),
                           key=f"checkin_suggest_{photo_number}",
                           help="Sends this photo, without location data and at most 1024 px, to Anthropic's "
                                "Claude to preselect the drink and size. You always confirm the choice.")
