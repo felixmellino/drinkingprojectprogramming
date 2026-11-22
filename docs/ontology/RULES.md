@@ -294,14 +294,15 @@ review records, not a claim of current deployment.
 ### R-C01 Drink suggestion from the photo (21 November 2026)
 
 When the server has an Anthropic API key, the Check in page offers a
-**Suggest my drink from the photo** switch, off by default. Only after the
-player switches it on does the page send the check-in photo (metadata
-removed, scaled to at most 1024 px) to Claude, once per photo, and preselect
-the drink and size it suggests. The switch says where the photo goes and
-stays on for the rest of the visit. A photo that cannot be submitted (outside
-the game window or during the two-minute cooldown) is never sent. It is only
-a suggestion. (Opt-in and the submit check added 21 November 2026 after the
-code review.)
+**Suggest my drink from the photo** switch, on by default. While it is on,
+the page sends the check-in photo (metadata removed, scaled to at most
+1024 px) to Claude, once per photo, and preselects the drink and size it
+suggests. The switch says where the photo goes; a player who turns it off
+sends nothing, and the choice stays for the rest of the visit. A photo that
+cannot be submitted (outside the game window or during the two-minute
+cooldown) is never sent. It is only a suggestion. (The submit check was added
+21 November 2026 after the code review; on by default since 22 November 2026,
+contributor decision, replacing the opt-in of 21 November.)
 
 | Case | Outcome |
 | --- | --- |

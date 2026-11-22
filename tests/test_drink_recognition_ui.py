@@ -120,16 +120,23 @@ def test_without_a_key_claude_is_never_asked(ui, monkeypatch):
     fake.assert_not_called()
 
 
-def test_photo_is_never_sent_until_the_player_switches_suggestions_on(ui, suggest):
+def test_suggestions_are_on_by_default_and_say_where_the_photo_goes(ui, suggest):
     page = open_checkin()
     assert not page.exception
-    suggest.assert_not_called()
     toggle = page.toggle[0]
-    assert toggle.label == "Suggest my drink from the photo" and toggle.value is False
+    assert toggle.label == "Suggest my drink from the photo" and toggle.value is True
     assert "Anthropic" in toggle.proto.help
-    toggle.set_value(True).run()
     assert suggest.call_count == 1
     assert radio(page, "Drink").value == "wine" and radio(page, "Size").value == "large"
+
+
+def test_photo_is_never_sent_once_the_player_switched_suggestions_off(ui, suggest):
+    page = AppTest.from_file(ROOT / "pages/3_Check_in.py", default_timeout=10)
+    page.session_state["checkin_suggest_ok"] = False  # switched off earlier this visit
+    page.run()
+    assert not page.exception and page.toggle[0].value is False
+    suggest.assert_not_called()
+    assert radio(page, "Drink").value == "beer"
 
 
 def test_switching_suggestions_off_stops_sending(ui, suggest, monkeypatch):
@@ -147,6 +154,7 @@ def test_a_photo_that_cannot_be_submitted_is_never_sent(ui, suggest, monkeypatch
     so the photo is not sent even though suggestions are on."""
     import core.scoring_v1
     page = AppTest.from_file(ROOT / "pages/3_Check_in.py", default_timeout=10)
+    page.session_state["checkin_suggest_ok"] = False  # off while the photo is taken
     page.run()
     assert page.session_state["checkin_pending_photo"] is not None
     page.session_state["checkin_suggest_ok"] = True
