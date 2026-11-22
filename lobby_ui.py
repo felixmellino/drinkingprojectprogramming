@@ -211,7 +211,7 @@ def load_summaries(player_id, cards):
     pictures = {}
     if owners:
         try:
-            pictures = load_pictures(player_id, sorted(set(owners.values())), relationships=access)
+            pictures = load_pictures(player_id, sorted(set(owners.values())), access=access)
         except (*PICTURE_ERRORS, PermissionError, ValueError, KeyError):
             pass  # The card keeps its initials badge.
 

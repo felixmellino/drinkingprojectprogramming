@@ -40,7 +40,7 @@ def ui(monkeypatch):
     monkeypatch.setattr(db,'list_drink_entries',lambda _:state['entries'])
     monkeypatch.setattr(db,'list_drink_entries_for_seasons',lambda ids:[e for e in state['entries'] if e.season_id in ids])
     monkeypatch.setattr(db,'list_transfers_for_seasons',lambda _:[])
-    monkeypatch.setattr('team_ui.load_picture',lambda *_:None)
+    monkeypatch.setattr('team_ui.member_pictures',lambda *_:{})
     return state
 
 
@@ -218,6 +218,6 @@ def test_departed_teammate_slot_is_visible_and_full(ui):
     at = page()
     open_lobby(at)
     assert not at.exception
-    assert any('(left, slot reserved)' in text.value for text in at.text)
+    assert any('(left, slot reserved)' in item.value for item in at.markdown)
     assert_blocked(at, 'Team full', 'reserved places', inline=True)
     assert any(b.label == 'Leave lobby' for b in at.button)

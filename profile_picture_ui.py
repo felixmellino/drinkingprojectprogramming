@@ -1,11 +1,14 @@
 """Circular pictures from authorized bytes, with initials as the fallback."""
 import base64
+from functools import lru_cache
+from io import BytesIO
 from html import escape
 import streamlit as st
 from action_feedback import service_error
 from httpx import RequestError
 from postgrest.exceptions import APIError
 from storage3.utils import StorageException
+from PIL import Image
 import data.db as db
 from core.profile_photo import initials, prepare_profile_photo
 
@@ -35,9 +38,67 @@ def load_picture(viewer_id, owner_id):
     return db.download_profile_picture(viewer_id, st.session_state['credential_version'], owner_id)
 
 
-def load_pictures(viewer_id, owner_ids, relationships=None):
-    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids,
-                                        relationships=relationships)
+def load_pictures(viewer_id, owner_ids, access=None):
+    """Pictures the viewer may see, by player id (batches of 32 per request)."""
+    owners = sorted(set(owner_ids))
+    pictures = {}
+    for start in range(0, len(owners), 32):
+        pictures.update(db.download_profile_pictures(viewer_id, st.session_state['credential_version'],
+                                                     owners[start:start + 32], access=access))
+    return pictures
+
+
+def member_pictures(viewer_id, memberships, member_ids, access=None) -> dict:
+    """Avatar sources (data URLs) by membership id for the given members.
+
+    Every page that shows players uses this, so pictures appear wherever the
+    initials did before. Any failure keeps the initials (empty result)."""
+    by_member = {m.id: m.player_id for m in memberships if m.id in set(member_ids)}
+    if not by_member or not st.session_state.get('credential_version'):
+        return {}
+    try:
+        photos = load_pictures(viewer_id, by_member.values(), access=access)
+    except (*PICTURE_ERRORS, PermissionError, ValueError, KeyError):
+        return {}
+    return {member: avatar_src(photos[player]) for member, player in by_member.items() if player in photos}
+
+
+def team_pictures(teams) -> dict:
+    """Avatar sources by team id from the teams' own pictures."""
+    sources = {}
+    for team in teams:
+        if team.photo_base64:
+            try:
+                sources[team.id] = avatar_src(base64.b64decode(team.photo_base64, validate=True))
+            except ValueError:
+                pass
+    return {team: source for team, source in sources.items() if source}
+
+
+@lru_cache(maxsize=128)
+def avatar_src(photo: bytes | None, size: int = 128) -> str | None:
+    """A small square JPEG data URL for avatars, so a list of rows stays light
+    (a stored picture is 512 px). None when the bytes cannot be read."""
+    if not photo:
+        return None
+    try:
+        with Image.open(BytesIO(photo)) as image:
+            image = image.convert('RGB')
+            image.thumbnail((size, size))
+            output = BytesIO()
+            image.save(output, 'JPEG', quality=82)
+    except (OSError, ValueError, Image.DecompressionBombError):
+        return None
+    return 'data:image/jpeg;base64,' + base64.b64encode(output.getvalue()).decode('ascii')
+
+
+def avatar_html(name: str, source: str | None, *, cls: str, style: str = '') -> str:
+    """The round avatar used in lists: the picture when there is one, else initials."""
+    if source and source.startswith('data:image/jpeg;base64,'):
+        return (f'<span class="{cls}" style="{style}" aria-hidden="true">'
+                f'<img src="{source}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">'
+                '</span>')
+    return f'<span class="{cls}" style="{style}" aria-hidden="true">{escape(initials(name))}</span>'
 
 
 def picture_access(viewer_id):

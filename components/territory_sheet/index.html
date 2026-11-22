@@ -25,6 +25,7 @@ li:first-child .row{border-top:0}
 .av{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:50%;font-size:.68rem;font-weight:800;color:#fff}
 .av.theirs{background:var(--territory-theirs)}.av.yours{background:var(--territory-yours);color:var(--on-accent)}
 .av.free{background:var(--bg);color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border)}
+.av.pic{overflow:hidden}.av.pic img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .txt{flex:1;min-width:0;display:flex;flex-direction:column}
 .name{font-size:.92rem;font-weight:700;color:var(--accent-ink);overflow-wrap:anywhere}
 .sub{font-size:.75rem;color:var(--text-muted)}
@@ -64,6 +65,11 @@ function build(args) {
     const li = document.createElement("li"), b = document.createElement("button");
     b.className = "row"; b.type = "button"; b.setAttribute("aria-label", row.name + ". " + row.detail);
     const av = document.createElement("span"); av.className = "av " + row.status; av.textContent = row.avatar; av.setAttribute("aria-hidden", "true");
+    const photo = row.photo && (args.photos || {})[row.photo];
+    if (typeof photo === "string" && photo.startsWith("data:image/jpeg;base64,")) {
+      const img = document.createElement("img"); img.src = photo; img.alt = "";
+      av.textContent = ""; av.classList.add("pic"); av.append(img);
+    }
     const txt = document.createElement("span"); txt.className = "txt";
     const name = document.createElement("span"); name.className = "name"; name.textContent = row.name;
     const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = row.sub;

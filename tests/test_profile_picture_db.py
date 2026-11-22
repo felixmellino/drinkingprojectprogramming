@@ -51,11 +51,31 @@ def test_owner_save_download_replace_remove(service, monkeypatch):
 
 
 def test_outsider_denied_before_reading_storage(service, monkeypatch):
+    """Not a friend and no shared lobby: nothing about the picture is read."""
     client, _, bucket, _ = service
     monkeypatch.setattr(db, 'list_friendships', lambda _: [])
+    monkeypatch.setattr(db, 'list_co_member_players', lambda _: frozenset({'owner', 'someone-else'}))
     assert db.download_profile_picture('owner', 'hash', 'other') is None
     bucket.download.assert_not_called()
     client.table.assert_not_called()
+
+
+def test_shared_lobby_allows_the_picture_without_friendship(service, monkeypatch):
+    _, _, bucket, _ = service
+    monkeypatch.setattr(db, 'list_friendships', lambda _: [])
+    monkeypatch.setattr(db, 'list_co_member_players', lambda _: frozenset({'owner', 'other'}))
+    monkeypatch.setattr(db, '_profile_picture_row', lambda _: f'other/{uuid.uuid4()}.jpg')
+    bucket.download.return_value = b'picture'
+    assert db.download_profile_picture('owner', 'hash', 'other') == b'picture'
+
+
+def test_friend_needs_no_shared_lobby_read(service, monkeypatch):
+    _, _, bucket, _ = service
+    monkeypatch.setattr(db, 'list_friendships', lambda _: [{'sender_id': 'owner', 'recipient_id': 'other', 'status': 'accepted'}])
+    monkeypatch.setattr(db, 'list_co_member_players', lambda _: pytest.fail('friends need no lobby read'))
+    monkeypatch.setattr(db, '_profile_picture_row', lambda _: f'other/{uuid.uuid4()}.jpg')
+    bucket.download.return_value = b'picture'
+    assert db.download_profile_picture('owner', 'hash', 'other') == b'picture'
 
 
 @pytest.mark.parametrize('status,allowed', [('accepted', True), ('pending', True), ('declined', False)])
@@ -111,6 +131,7 @@ def test_wrong_owner_path_cannot_be_read(service, monkeypatch):
 def test_avatar_batch_reads_credentials_friendships_references_and_bucket_once(service,monkeypatch):
     from unittest.mock import Mock
     client,query,bucket,player=service
+    monkeypatch.setattr(db,'list_co_member_players',lambda _:frozenset())
     client.table.return_value.in_.return_value=query
     actor=Mock(return_value=player)
     friends=Mock(return_value=[{'sender_id':'owner','recipient_id':'friend','status':'accepted'}])
@@ -133,6 +154,7 @@ def test_avatar_batch_reads_credentials_friendships_references_and_bucket_once(s
 def test_avatar_batch_rejects_stale_credentials_before_storage_access(service,monkeypatch):
     client,query,bucket,_=service
     monkeypatch.setattr(db,'list_friendships',lambda _:[])
+    monkeypatch.setattr(db,'list_co_member_players',lambda _:frozenset())
     with pytest.raises(ValueError,match='sign-in changed'):
         db.download_profile_pictures('owner','stale',['owner'])
     client.table.assert_not_called()
@@ -162,13 +184,14 @@ def test_early_access_check_is_used_instead_of_a_second_check(service, monkeypat
     friends = Mock(return_value=[{'sender_id': 'owner', 'recipient_id': 'friend', 'status': 'accepted'}])
     monkeypatch.setattr(db, 'get_player', actor)
     monkeypatch.setattr(db, 'list_friendships', friends)
-    relationships = db.profile_picture_access('owner', 'hash')
+    monkeypatch.setattr(db, 'list_co_member_players', lambda _: frozenset())
+    access = db.profile_picture_access('owner', 'hash')
     assert actor.call_count == 1 and friends.call_count == 1
     path = f'friend/{uuid.uuid4()}.jpg'
     query.execute.return_value.data = [{'player_id': 'friend', 'photo_ref': path}]
     bucket.download.return_value = b'allowed'
     assert db.download_profile_pictures('owner', 'hash', ['friend', 'outsider'],
-                                        relationships=relationships) == {'friend': b'allowed'}
+                                        access=access) == {'friend': b'allowed'}
     assert actor.call_count == 1 and friends.call_count == 1, 'no second credential or friendship read'
 
 
@@ -236,3 +259,29 @@ def test_membership_names_for_many_lobbies_come_in_batches_of_50(service):
     names = db.list_membership_names([(f'm{i}', 'a') for i in range(120)])
     assert [len(call.args[1]) for call in in_.call_args_list] == [50, 50, 20]
     assert len(names) == 120 and names[('m119', 'a')]['display_name'] == 'm119'
+
+
+def test_avatar_batch_includes_lobby_mates_but_not_strangers(service, monkeypatch):
+    client, query, bucket, player = service
+    client.table.return_value.in_.return_value = query
+    monkeypatch.setattr(db, 'list_friendships', lambda _: [])
+    monkeypatch.setattr(db, 'list_co_member_players', lambda _: frozenset({'owner', 'mate'}))
+    path = f'mate/{uuid.uuid4()}.jpg'
+    query.execute.return_value.data = [{'player_id': 'mate', 'photo_ref': path}]
+    bucket.download.return_value = b'mate picture'
+    assert db.download_profile_pictures('owner', 'hash', ['mate', 'stranger']) == {'mate': b'mate picture'}
+    client.table.return_value.in_.assert_called_once_with('player_id', ['mate'])
+
+
+def test_co_members_come_from_current_memberships_in_one_request(service):
+    client, query, _, _ = service
+    query.is_.return_value = query
+    query.execute.return_value.data = [
+        {'lobby_id': 'a', 'lobbies': {'lobby_memberships': [
+            {'player_id': 'owner', 'left_at': None}, {'player_id': 'mate', 'left_at': None},
+            {'player_id': 'gone', 'left_at': '2026-11-20T10:00:00+00:00'}]}},
+        {'lobby_id': 'b', 'lobbies': None}]
+    assert db.list_co_member_players('owner') == frozenset({'owner', 'mate'})
+    assert client.table.call_count == 1
+    query.eq.assert_any_call('player_id', 'owner')
+    query.is_.assert_called_once_with('left_at', 'null')

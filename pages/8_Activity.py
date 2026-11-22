@@ -12,6 +12,7 @@ from data.profile_history import load_stat_history
 from core.scoring_v1 import current_time, utc
 from drink_entry_ui import page_header
 from parallel import run_parallel
+from profile_picture_ui import member_pictures, picture_access
 from shared import get_territories, require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
 
@@ -53,10 +54,10 @@ activity_ui.load_styles()
 activity_ui.view_switch("Feed")
 
 try:
-    entries, memberships, players, (launched_at, medals_unavailable), duels = run_parallel(
+    entries, memberships, players, (launched_at, medals_unavailable), duels, access = run_parallel(
         lambda: db.list_drink_entries(season_id),
         lambda: db.list_memberships_for_lobby(lobby_id, include_left=True),
-        db.list_public_usernames, medal_launch, duel_data)
+        db.list_public_usernames, medal_launch, duel_data, lambda: picture_access(player_id))
     team_mode = st.session_state.get("current_lobby_mode") == "team" or any(e.team_id for e in entries)
     teams = db.list_lobby_teams(player_id, lobby_id) if team_mode else []
 except (APIError, RequestError, RuntimeError, PermissionError):
@@ -111,9 +112,11 @@ team_names = {team.id: team.name for team in teams}
 me_competitor = st.session_state.get("current_team_id") if team_mode else membership_id
 
 shown = st.session_state.get("activity_shown", STEP)
+# Pictures only for the players in the rows shown (A11: lobby members see each other's).
+pictures = member_pictures(player_id, memberships, {event.member for event in events[:shown]}, access)
 st.markdown(activity_ui.feed_html(events[:shown], member_names=member_names, team_names=team_names,
                                   territory_names=territory_names, me_member=membership_id,
-                                  me_competitor=me_competitor, season=season, now=now),
+                                  me_competitor=me_competitor, season=season, now=now, pictures=pictures),
             unsafe_allow_html=True)
 if len(events) > shown:
     st.button("Load more", key="activity_load_more", on_click=load_more, args=(shown,), width="stretch")

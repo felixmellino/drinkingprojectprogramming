@@ -23,6 +23,11 @@ checks only within a bounded gallery download of at most twelve photos.
 It checks the entire requested audience before fetching any image, checks
 the private bucket once, and never caches permissions across page requests.
 The metadata listing and full-photo detail each authorize independently.
+Profile pictures (A11, revised 22 November): the owner, friends, both sides
+of a pending request and players who currently share a lobby may load a
+picture. Every page render reads friendships and shared lobbies fresh (one
+request each, in parallel with the page's other reads); nothing is cached
+across renders. Lists send a 128-pixel copy, not the stored original.
 Since 21 November the check that a photo bucket is still private runs once
 per bucket every 10 minutes per server process instead of before every
 photo (`data/db.py`, `PRIVATE_BUCKET_RECHECK_SECONDS`); a refusal is never
