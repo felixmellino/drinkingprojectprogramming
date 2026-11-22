@@ -17,20 +17,50 @@ Time Duel (three hidden-timer rounds on two phones, one-hour ×1.25 season bonus
 **Deployed URL:** https://wegopubnow.streamlit.app/
 
 **Team:**
-- Niklas Peter — 78399
-- Felix Mellino — TODO (student number)
-- Ben Schittkowski — TODO (student number)
-- Nils Cuypers — TODO (student number)
 
-Names above are inferred from git history and may be wrong — each member
-should confirm their own name and fill in their student number before
-submission.
+| Name | Student number |
+| --- | --- |
+| Felix Mellino | 79820 |
+| Nils Cuypers | 78681 |
+| Niklas Peter | 78399 |
+| Ben Schittkowski | 70689 |
 
-**Selected Block 2 solo project:** TODO — name the member whose Block 2 solo
-project WeGoPub builds on, link it, and list in two short bullet lists what
-that project already had and what the team added (accounts, lobbies, scoring
-v1, territories and map, photo check-ins, four duels, teams, friends,
-standings). See [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+**Project origin:** WeGoPub is a new application built by the team for the
+team project (the course allows starting a new application instead of
+extending a Block 2 solo project). What it does and how it is built:
+[`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
+## Quick start (run the app and the tests locally)
+
+Requires Python 3.12 or newer (CI tests 3.12 and 3.14). From a fresh clone:
+
+```bash
+git clone https://github.com/felixmellino/drinkingprojectprogramming.git
+cd drinkingprojectprogramming
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-verification.txt
+```
+
+Run the tests (no database or secrets needed; services are mocked):
+
+```bash
+python -m pytest -q
+```
+
+Run the app (needs a Supabase project: copy the example secrets file and
+fill in the URL and the server-only key, see [Local setup](#local-setup)):
+
+```bash
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+streamlit run app.py
+```
+
+On Windows, activate the environment with `.venv\Scripts\activate` and copy
+the file with `copy .streamlit\secrets.toml.example .streamlit\secrets.toml`.
+The full check (JavaScript components, rule mutations, PostgreSQL) is
+`python scripts/verify.py` after `npm ci --ignore-scripts`; see
+[Run the tests](#run-the-tests).
 
 ## Hosting (deployed app)
 
@@ -84,7 +114,7 @@ is on in `.streamlit/config.toml`); the switch is in the theme reader
 
 ## Local setup
 
-Requires Python 3.11+.
+Requires Python 3.12+.
 
 SDK upgrade and live photo-storage verification, including daily GitHub
 Actions cleanup setup: [storage verification](docs/STORAGE_SDK_VERIFICATION.md).

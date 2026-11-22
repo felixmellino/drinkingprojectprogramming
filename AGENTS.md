@@ -9,8 +9,9 @@ file before planning, implementing, reviewing, or documenting changes.
   in Block 3 and presented in weeks 11–12.
 - Teams consist of 3–4 students. Our team has four members, and each
   member must contribute code to the repository.
-- Build on one team member's Block 2 solo project. Record which project
-  was selected and explain what WeGoPub reuses and extends.
+- Build on one team member's Block 2 solo project or start a new
+  application (both allowed). WeGoPub is a new application; README.md and
+  docs/WALKTHROUGH.md say so.
 - Deploy a working application at a public URL. Keep the repository
   public and the deployed source code on `main`.
 - In `README.md`, include the deployed URL, all team members' names and
