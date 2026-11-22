@@ -203,3 +203,54 @@ def test_medal_names_read_as_a_sentence():
     from activity_ui import medal_list
     assert medal_list(["A"]) == "A" and medal_list(["A", "B"]) == "A and B"
     assert medal_list(["A", "B", "C"]) == "A, B and C"
+
+
+# --- Colour scheme: captures stand out, medals are gold, text stays readable -----------------------
+
+def _tokens(css_file):
+    import re
+    css = (ROOT / "assets" / css_file).read_text(encoding="utf-8")
+    root = css[css.index(":root {"):css.index("}", css.index(":root {"))]
+    return dict(re.findall(r"--([\w-]+):\s*(#[0-9A-Fa-f]{6}|var\(--[\w-]+\))", root))
+
+
+def _resolve(tokens, name):
+    value = tokens[name]
+    while value.startswith("var(--"):
+        value = tokens[value[6:-1]]
+    return value
+
+
+def _contrast(a, b):
+    def luminance(colour):
+        channels = [int(colour[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        channels = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+    high, low = sorted((luminance(a), luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+@pytest.mark.parametrize("theme_file", ["theme.css", "theme_dark.css"])
+def test_feed_text_is_readable_on_every_banner(theme_file):
+    """WCAG AA (4.5:1) for the small banner text, in light and dark mode."""
+    tokens = {**_tokens("theme.css"), **_tokens(theme_file)}
+    colour = lambda name: _resolve(tokens, name)  # noqa: E731
+    for text, background in [("capture-yours-ink", "capture-yours-soft"), ("brand-ink", "brand-soft"),
+                             ("capture-rival-ink", "capture-rival-soft"), ("medal-ink", "medal-soft")]:
+        assert _contrast(colour(text), colour(background)) >= 4.5, (theme_file, text, background)
+    for edge, background in [("capture-yours-edge", "capture-yours-soft"),
+                             ("capture-rival-edge", "capture-rival-soft"), ("medal-gold", "medal-soft")]:
+        assert _contrast(colour(edge), colour(background)) >= 3, ("graphics need 3:1", theme_file, edge)
+
+
+def test_every_capture_has_a_tinted_banner_and_coloured_edge_unlike_checkins():
+    css = (ROOT / "assets" / "activity.css").read_text(encoding="utf-8")
+    for tone, edge in [("yours", "capture-yours-edge"), ("lost", "territory-theirs"), ("rival", "capture-rival-edge")]:
+        rule = next(line for line in css.splitlines() if line.startswith(f".activity-capture-{tone} {{"))
+        assert "background: var(--" in rule and "var(--surface)" not in rule, tone
+        assert f"border-left-color: var(--{edge})" in rule, tone
+    medal = css[css.index(".activity-medal {"):css.index("}", css.index(".activity-medal {"))]
+    assert "var(--medal-soft)" in medal and "capture" not in medal, "medals must not look like a capture"
+    edges = {line.split("border-left-color: var(--")[1].split(")")[0]
+             for line in css.splitlines() if "border-left-color" in line}
+    assert len(edges) == 3, "you, lost and others each have their own colour"

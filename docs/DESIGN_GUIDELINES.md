@@ -169,6 +169,25 @@ Rule going forward: when a colour token is used as small text, use its
 `-ink` shade (`--accent-ink`, `--brand-ink`, `--territory-*-ink`,
 `--success-ink`).
 
+### Activity feed colours (22 November 2026)
+
+| Row | Light | Dark | Text contrast (light / dark) |
+| --- | --- | --- | --- |
+| Check-in | white card; your own has a sky ring | card on navy | unchanged |
+| You took a territory | green `--capture-yours-soft`, green edge | #163A29, #3FBF78 edge | 4.7:1 / 6.5:1 |
+| A territory was taken from you | scarlet `--brand-soft`, scarlet edge | same tokens, dark set | 5.2:1 / 6.9:1 |
+| Other players took a territory | violet `--capture-rival-soft`, violet edge | #2B2450, #A693F0 edge | 6.5:1 / 7.8:1 |
+| Medal | gold `--medal-soft`, `--medal-ink`, star `--medal-gold` | #33291A / #F4CF6E | 6.1:1 / 9.5:1 |
+
+Every capture is a tinted banner with a 4 px coloured edge, so captures stand
+out from the white check-in cards, and each kind has its own colour. Green
+for your own capture is a team choice that differs from the map's sky blue
+for "yours". Green and red alone are hard to tell apart for red-green colour
+blind players, so the sentence always says it as well ("You took …",
+"… from you"). Medals are gold so they are not mistaken for a capture.
+`tests/test_activity_ui.py` checks the contrast of every banner and edge in
+both themes.
+
 ## Sources
 
 - Untappd design critique: https://ixd.prattsi.org/2019/09/design-critique-untappd-android-app/

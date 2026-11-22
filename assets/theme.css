@@ -41,6 +41,17 @@
   --info: #7DB8FF;
   --medal-2: #C9D6DD;
   --medal-3: #D7A26B;
+  /* Activity feed captures: green = you took it, red = taken from you
+     (--brand-soft), violet = other players took one; medals are gold. */
+  --capture-yours-soft: #E6F5EC;
+  --capture-yours-edge: var(--success);
+  --capture-yours-ink: var(--success-ink);   /* 4.7:1 on --capture-yours-soft */
+  --capture-rival-soft: #F1EDFC;
+  --capture-rival-edge: #7B61D9;
+  --capture-rival-ink: #5B3FB5;              /* 6.5:1 on --capture-rival-soft */
+  --medal-soft: #FFF5D6;
+  --medal-ink: #7A5600;        /* 6.1:1 on --medal-soft */
+  --medal-gold: #B07D00;
   /* type */
   --font-display: 'Anton', Impact, sans-serif;
   --font-body: 'Barlow', system-ui, -apple-system, sans-serif;
