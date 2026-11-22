@@ -16,7 +16,8 @@ def test_streamlit_serves_only_the_static_folder():
 
 def test_frame_embeds_the_same_site_app_with_camera_and_location():
     frame = re.search(r'<iframe[^>]*id="app"[^>]*>', PAGE).group(0)
-    assert 'src="../../"' in frame, "relative: works locally and on Streamlit Cloud (/~/+/)"
+    assert 'const APP_URL = "../../";' in PAGE, "relative: works locally and on Streamlit Cloud (/~/+/)"
+    assert "app.src = APP_URL + appPath(location.search);" in PAGE
     allow = re.search(r'allow="([^"]+)"', frame).group(1)
     assert {"camera", "geolocation"} <= {item.strip() for item in allow.split(";")}
 
@@ -32,3 +33,13 @@ def test_nothing_is_loaded_from_other_sites():
 
 def test_reload_button_exists_for_a_stuck_screen():
     assert 'id="reload"' in PAGE and "location.reload()" in PAGE
+
+
+def test_laptops_are_sent_to_the_frame_by_the_theme_reader():
+    """tests/phone_frame.cjs checks the decision itself; here: it is wired in and guarded."""
+    component = (ROOT / "components" / "theme_switch" / "index.html").read_text(encoding="utf-8")
+    reader = component[component.index("} else {"):component.index("const FRAME")]
+    assert "openPhoneFrame();" in reader, "runs in the invisible reader on the first page of a visit"
+    assert '"(hover: hover) and (pointer: fine)"' in component and "innerWidth >= 700" in component
+    assert 'method: "HEAD"' in component and "response.ok" in component, "only when the frame page exists"
+    assert 'query.has("full")' in component, "?full keeps the wide view"
