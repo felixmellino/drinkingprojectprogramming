@@ -119,7 +119,8 @@ The phone and public-URL checks below still have to be done by hand.
 | --- | --- | --- |
 | Valid check-in inside a territory | Scores its points and counts for that territory | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps` (`test_scoring_v1.py`), `test_valid_check_in_scores_full_points` (`test_checkins.py`) |
 | Check-in outside every territory | Season points, no territory, never captures | `test_outside_every_territory_still_scores_total_points` (`test_checkins.py`), `test_outside_and_legacy_events_do_not_generate_income_and_zero_does_not_claim` (`test_scoring_v1.py`) |
-| Duplicate submission | Second drink within two minutes is rejected; a retried save awards once | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps`, `test_lost_save_reply_recovers_without_a_second_award` (`test_scoring_ui.py`), `test_eight_simultaneous_retries_award_one_entry_and_one_owner_income` (PostgreSQL) |
+| Standard-season cooldown and duplicate submission | A fresh capture within two minutes is rejected in standard seasons. A retried save awards points once in either season type. | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps`, `test_lost_save_reply_recovers_without_a_second_award` (`test_scoring_ui.py`), `test_eight_simultaneous_retries_award_one_entry_and_one_owner_income` (PostgreSQL) |
+| Consecutive test-season entries | A fresh capture or Chug Duel can score immediately after an accepted drink during the scoring window. | `test_test_season_can_check_in_twice_without_waiting` (`test_scoring_ui.py`), `chug_duel_postgres.cjs` |
 | Missing location | Rejected with "location unavailable" | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps`, `test_unavailable_when_no_phone_gps` (`test_location.py`) |
 | Inaccurate location | Over 50 m rejected; exactly 50 m accepted | `test_inaccurate_or_invalid_gps_accuracy_is_rejected`, `test_gps_accuracy_of_exactly_50_m_is_accepted` (`test_scoring_v1.py`) |
 | Drink outside Thursday to Sunday | Rejected; the screen shows the next opening | `test_weekly_boundaries` (`test_scoring_v1.py`), `test_outside_window_shows_next_opening_before_the_camera` (`test_scoring_ui.py`) |
@@ -134,7 +135,7 @@ The phone and public-URL checks below still have to be done by hand.
 | Attempt | Expected outcome | Automated evidence |
 | --- | --- | --- |
 | Eight simultaneous retries of the same capture | One entry and one owner-income award | `test_eight_simultaneous_retries_award_one_entry_and_one_owner_income` |
-| Eight different captures for one member at the same moment | One accepted; seven cooldown rejections | `test_competing_distinct_captures_cannot_bypass_cooldown` |
+| Eight different captures for one standard-season member at the same moment | One accepted; seven cooldown rejections | `test_competing_distinct_captures_cannot_bypass_cooldown` |
 | Two equal check-ins arriving together | Stable database order, one owner, matching Python replay | `test_simultaneous_equal_scores_have_one_order_and_python_sql_parity` |
 | Two editors submitting revision zero | One revision wins; the other conflicts | `test_two_corrections_with_same_revision_cannot_overwrite_each_other` |
 | A failure after inserting an entry | Whole transaction rolls back; retry remains possible | `test_injected_failure_rolls_back_entry_and_replay_then_retry_succeeds` |

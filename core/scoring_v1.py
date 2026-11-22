@@ -60,6 +60,10 @@ def rules_for(season: Season) -> dict:
     return season.scoring_rules
 
 
+def checkin_cooldown_seconds(rules: dict) -> int:
+    return 0 if rules.get("test_mode") is True else rules["cooldown_seconds"]
+
+
 def utc(value: datetime) -> datetime:
     # Existing rows can contain naive timestamps; historical imports use UTC.
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
@@ -113,6 +117,8 @@ def next_opening(now: datetime, season: Season) -> datetime | None:
 
 
 def cooldown_deadline(membership_id: str, entries: list[DrinkEntry], seconds: int = 120) -> datetime | None:
+    if seconds == 0:
+        return None
     latest = max((utc(entry.submitted_at) for entry in entries if entry.membership_id == membership_id), default=None)
     return latest + timedelta(seconds=seconds) if latest is not None else None
 
@@ -142,7 +148,7 @@ def create_scored_entry(membership_id: str, season: Season, drink_type: str, siz
         raise CheckinRejected("invalid_selection") from None
     if not scoring_open(submitted_at, season):
         raise CheckinRejected("scoring_closed")
-    if cooldown_remaining(membership_id, submitted_at, recent_entries, rules["cooldown_seconds"]):
+    if cooldown_remaining(membership_id, submitted_at, recent_entries, checkin_cooldown_seconds(rules)):
         raise CheckinRejected("cooldown")
     # Only the phone's GPS reading counts (R-L01); its accuracy decides R-L02.
     if device_gps is not None:

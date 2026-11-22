@@ -186,8 +186,9 @@ accept repeatedly without a daily/nightly count limit, including after a
 started abort. Show Unlimited in both allowance indicators. A lobby name or
 a caller-supplied flag cannot enable this. Existing QA seasons also qualify.
 One pending outgoing invitation and one accepted/started duel per member still
-apply, as do the scoring window, season end, photo/GPS rules, countdown,
-two-minute check-in cooldown and exactly-once point transfer. A player may
+apply, as do the scoring window, season end, photo/GPS rules, countdown
+and exactly-once point transfer. Migration 031 removes the posting cooldown
+from both check-in paths in test seasons. A player may
 repeat only after the previous game has ended. Normal seasons retain the two
 separate nightly allowances. This is enforced in Python and migration 012.
 
@@ -195,7 +196,8 @@ separate nightly allowances. This is enforced in Python and migration 012.
 
 After acceptance the host takes one shared fresh photo and supplies their
 current accepted phone GPS for both players. Apply normal photo sanitation,
-location, territory, season/window and per-member cooldown checks. Store two
+location, territory and season/window checks, plus the per-member cooldown
+in standard seasons. Store two
 linked normal drink entries in one transaction, each with its own private
 copy of the shared image. Invalid evidence or either member's cooldown
 rejects the entire start: neither gets a new entry or points. Exact GPS is
@@ -264,18 +266,19 @@ New games are blocked outside normal scoring availability.
 Source: contributor's explicit interruption and navigation answers,
 18 November 2026; accepted/start phase deadlines are operational defaults.
 
-## QA season exception (18 November 2026)
+## QA season exception (18 November 2026, cooldown updated 22 November 2026)
 
 For explicitly selected **test seasons only**, posting opens Wednesday at
 08:00 inclusive and closes Sunday at 18:00 exclusive in the season's lobby
 timezone. Create lobby / Retry lobby setup opt in with an unchecked checkbox;
 the choice is stored as `scoring_rules.test_mode=true` with start weekday 2
 and hour 8. Normal seasons retain Thursday 18:00–Sunday 18:00. All other rules
-and server validation still apply, including GPS, photos, cooldown, points
-and corrections. The snapshot stays frozen; existing seasons are not changed.
-This exception does not change minigame night boundaries.
-R-M02 additionally allows unlimited sequential minigame replays in these QA
-seasons; it does not remove cooldowns or permit overlapping games.
+and server validation still apply, including GPS, photos, points and corrections.
+Test seasons allow consecutive ordinary check-ins and Chug Duel entries
+with no posting cooldown. This applies to existing and future test seasons
+using the same frozen flag. Standard seasons keep the two-minute posting
+cooldown. R-M02 allows unlimited sequential Chug Duel replays in test seasons
+within the existing night boundaries.
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 

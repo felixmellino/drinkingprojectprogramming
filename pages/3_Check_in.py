@@ -25,8 +25,9 @@ from camera_capture import CameraCancelled, camera_photo
 from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
-from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, cooldown_deadline,
-    create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open, size_label, utc)
+from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, checkin_cooldown_seconds,
+    cooldown_deadline, create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open,
+    size_label, utc)
 from core.constants import DUPLICATE_WINDOW_SECONDS, MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
 from drink_entry_ui import gate_card_html, page_header, reward_card_html, show_cooldown
@@ -44,6 +45,7 @@ if season is None:
     st.stop()
 modern = season.scoring_version == "v1"
 rules = rules_for(season) if modern else None
+cooldown_seconds = checkin_cooldown_seconds(rules) if modern else DUPLICATE_WINDOW_SECONDS
 team_mode = st.session_state.get("current_lobby_mode") == "team"
 competitor_id = st.session_state.get("current_team_id") if team_mode else membership_id
 if team_mode and not competitor_id:
@@ -67,9 +69,8 @@ def finish_checkin(entry):
 
 
 def read_recent_entries(at, capture_id=None):
-    window = rules["cooldown_seconds"] if modern else DUPLICATE_WINDOW_SECONDS
     return db.list_drink_entries_for_membership(
-        membership_id, since=utc(at) - timedelta(seconds=window), capture_id=capture_id,
+        membership_id, since=utc(at) - timedelta(seconds=cooldown_seconds), capture_id=capture_id,
     )
 
 
@@ -91,19 +92,22 @@ closed = period_closed or (modern and not scoring_open(now, season))
 if (not closed or photo is not None) and not st.session_state.get('checkin_posted'):
     track_location()
 recent_entries = []
-if not st.session_state.get('checkin_posted') and (capture or (modern and not closed)):
+if not st.session_state.get('checkin_posted') and (capture or (modern and cooldown_seconds and not closed)):
     try:
         recent_entries = read_recent_entries(now, capture[1] if capture else None)
     except (APIError, RequestError, RuntimeError, OSError):
-        st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
+        if cooldown_seconds:
+            st.error("Your recent check-ins could not be loaded, so we cannot check the cooldown safely. Reload Check in to try again.")
+        else:
+            st.error("Your recent check-ins could not be loaded. Reload Check in to try again.")
         st.stop()
-deadline = cooldown_deadline(membership_id, recent_entries, rules["cooldown_seconds"]) if modern else None
+deadline = cooldown_deadline(membership_id, recent_entries, cooldown_seconds) if modern else None
 waiting = deadline is not None and utc(now) < deadline
 if photo is None and not st.session_state.get('checkin_posted'):
     if waiting and not closed:
         st.session_state['checkin_waiting_to_start'] = True
         page_header("Check in", compact=True)
-        show_cooldown(utc(now), deadline, rules["cooldown_seconds"])
+        show_cooldown(utc(now), deadline, cooldown_seconds)
         st.stop()
     if not closed and st.session_state.get('checkin_waiting_to_start'):
         page_header("Check in", compact=True)
@@ -163,8 +167,8 @@ if photo is None and not st.session_state.get('checkin_posted'):
     st.stop()
 
 page_header("Check in", compact=True)
-if modern and rules.get('test_mode'):
-    st.caption("Test season, open Wed 08:00 to Sun 18:00")
+if modern and rules.get('test_mode') is True:
+    st.caption("Test season · Wed 08:00 to Sun 18:00 · No check-in cooldown")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -332,7 +336,7 @@ if recovered is not None:
     finish_checkin(recovered)
 
 if waiting:
-    show_cooldown(utc(now), deadline, rules["cooldown_seconds"], has_photo=True)
+    show_cooldown(utc(now), deadline, cooldown_seconds, has_photo=True)
 
 blockers = [
     location_blocker(location_problem, accuracy_m),
