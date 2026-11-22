@@ -135,7 +135,7 @@ The phone and public-URL checks below still have to be done by hand.
 | Attempt | Expected outcome | Automated evidence |
 | --- | --- | --- |
 | Eight simultaneous retries of the same capture | One entry and one owner-income award | `test_eight_simultaneous_retries_award_one_entry_and_one_owner_income` |
-| Eight different captures for one standard-season member at the same moment | One accepted; seven cooldown rejections | `test_competing_distinct_captures_cannot_bypass_cooldown` |
+| Eight different captures for one member at the same moment | Standard season accepts one and rejects seven on cooldown. Test season accepts all eight. | `test_competing_distinct_captures_follow_season_cooldown` |
 | Two equal check-ins arriving together | Stable database order, one owner, matching Python replay | `test_simultaneous_equal_scores_have_one_order_and_python_sql_parity` |
 | Two editors submitting revision zero | One revision wins; the other conflicts | `test_two_corrections_with_same_revision_cannot_overwrite_each_other` |
 | A failure after inserting an entry | Whole transaction rolls back; retry remains possible | `test_injected_failure_rolls_back_entry_and_replay_then_retry_succeeds` |
