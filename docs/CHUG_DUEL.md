@@ -17,8 +17,9 @@ board still resumes automatically before catalogue navigation.
 Select any eligible other member of the current lobby, choose the common
 drink/size, and send an invitation. The other player accepts on their own
 device. The host takes one fresh photo of both drinks; their current GPS is
-used for both entries. The same normal scoring window, season dates, two-minute
-cooldown for each member and location acceptance rules apply. No extra
+used for both entries. The season's scoring window, dates and location
+acceptance rules apply. Standard seasons also require a two-minute posting
+cooldown for each member. No extra
 time-since-first-post or post-count gate applies to this game.
 
 The host saves the shared check-in, then both players use the split screen on
@@ -111,8 +112,9 @@ backfills existing attempts and exempts only those rows from the role-specific
 unique indexes. Caller-supplied flags are overwritten; duel identity is frozen.
 The helper still rejects simultaneous active games and one pending outgoing
 invitation remains the limit. Existing normal seasons retain their limits.
-Photo/GPS evidence, window/end boundaries, two-minute cooldown and all scoring
-and idempotency rules still apply; test points remain in their own lobby.
+With migration 031, test-season duels can start immediately after a recent
+check-in. Photo/GPS evidence, window/end boundaries, scoring and retry rules
+still apply. Test points remain in their own lobby.
 
 ## Verification
 

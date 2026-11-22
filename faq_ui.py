@@ -47,8 +47,9 @@ FAQ = (
          f"These are the base points for a new lobby. **Check in** shows your points with any active boost.\n\n"
          f"{POINTS_TABLE}\n\nA **shot** is worth **{POINTS['shot']['standard']} points** and has one serving size."),
         ("Why can’t I check in again yet?",
-         f"Wait **{STANDARD_RULES['cooldown_seconds'] // 60} minutes** after your last successful check-in "
-         "in the same lobby. **Check in** shows how much time is left."),
+         f"In a standard season, wait **{STANDARD_RULES['cooldown_seconds'] // 60} minutes** after your last "
+         "successful check-in in the same lobby. **Check in** shows how much time is left. "
+         "Test seasons have no check-in cooldown."),
         ("What if the app can’t verify my location?",
          "Turn on **Location** in **Profile** and allow location access in your browser. If the reading is "
          f"too inaccurate, step outside or closer to a window and wait for it to update. The app needs a fresh "

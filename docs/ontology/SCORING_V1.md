@@ -70,13 +70,15 @@ still apply. See [camera and QA setup](../CAMERA_AND_QA_SEASONS.md).
 
 ## P-S10-P-S11: cooldown and retry
 
-Exactly 120 seconds between accepted entries, per membership/lobby, across
+Standard seasons require exactly 120 seconds between accepted entries, per membership/lobby, across
 all categories and territories. At +119 seconds block; at +120 permit normal
 validation. Keep the current photo/selection and display the remaining wait.
 The Check-in countdown updates every second. At expiry, the app rechecks
 eligibility, shows Start check-in before opening the camera, or lets the
 player submit an existing capture once the remaining checks pass.
-Failed attempts do not restart it. A known capture ID recovers its saved
+Failed attempts do not restart it. Explicit test seasons have no cooldown
+for ordinary check-ins or Chug Duel entries, including seasons created before
+migration 031. A known capture ID recovers its saved
 result instead of re-awarding base points or owner income, including after
 window/season close. No scored entry is created after a failed photo upload.
 

@@ -150,12 +150,15 @@ async function replay(season){
    values($1,$2,$3,$4,'2026-11-20','beer','large','accepted',$5,$5::timestamptz+interval '10 minutes',true)`,
    [uid(403),season,uid(11),uid(12),now]),/duplicate key/);
  await invite(1,404,42,qa);await action(2,404,'accept');
- await assert.rejects(start(1,404),/cooldown/); // QA replays retain ordinary check-in rules
- await clock('2026-11-20T06:02:03Z');await start(1,404);await action(1,404,'arm');
- await clock('2026-11-20T06:02:06Z');await action(1,404,'finish',42);
+ await assert.rejects(start(1,404),/cooldown/); // QA still had a cooldown before 031
+ for(const file of ['014_focus_challenge.sql','015_focus_test_replays.sql','016_leave_lobby.sql','031_test_checkin_cooldown.sql']){
+  await pg.exec(fs.readFileSync('migrations/'+file,'utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)'));
+ }
+ await start(1,404);await action(1,404,'arm'); // existing QA season can start immediately
+ await clock('2026-11-20T06:00:09Z');await action(1,404,'finish',42);
  await action(1,404,'finish',41); // retries cannot transfer points twice
  await invite(1,405,42,qa);await action(2,405,'accept');
- await clock('2026-11-20T06:04:03Z');await start(1,405);await action(1,405,'abort');
+ await start(1,405);await action(1,405,'abort');
  await invite(1,406,42,qa);await action(2,406,'accept');
  await assert.rejects(invite(3,407,42,qa),/duel_busy/); // unlimited is sequential
  await action(1,406,'cancel');
@@ -164,8 +167,19 @@ async function replay(season){
  assert.deepEqual((await replay(qa)).quarters,{[uid(41)]:36,[uid(42)]:36});
  assert.equal((await q('select count(*)::int n from drink_entries where season_id=$1 and duel_transfer_to is not null',[qa])).rows[0].n,2);
  assert.deepEqual(await replay(season),normalBeforeQA);
+ const post=async (lobby, member, s, capture)=>(await q(
+  "select id from accept_scoring_checkin($1,$2,$3,$4,'beer','small',null,'outside',$5,$6)",
+  [uid(1),uid(capture),uid(member),s,uid(lobby)+'/'+uid(capture)+'.jpg',now])).rows[0];
+ // The same member can post ordinary drinks immediately after a QA duel.
+ assert.equal((await post(103,41,qa,410)).id,uid(410));
+ assert.equal((await post(103,41,qa,411)).id,uid(411));
+ assert.equal((await post(103,41,qa,411)).id,uid(411));
+ assert.equal((await q('select count(*)::int n from drink_entries where season_id=$1',[qa])).rows[0].n,8);
+ await post(100,11,season,412);
+ await assert.rejects(post(100,11,season,413),/cooldown/);
  // Authoritative closing window and public-role denial.
  await clock('2026-11-22T18:00:00Z');
+ await assert.rejects(post(103,41,qa,414),/scoring_closed/);
  await assert.rejects(invite(6,319,13,season),/scoring_closed/);
  await pg.exec('set role anon');
  await assert.rejects(q('select * from chug_duels'),/permission denied/);
@@ -178,5 +192,5 @@ async function replay(season){
  assert.deepEqual(await replay(qa),savedQA);
  assert.equal((await action(1,301,'finish',12)).winner_id,uid(11));
  assert.deepEqual(await replay(season),saved);
- console.log('PASS: migration repeat; authorization; atomic start; cooldown rollback; countdown; 6/0 transfer once; unchanged territories/income; normal role limits; expiry/abort; midnight/06:00; competing accepts; 012 QA backfill, unlimited sequential repeats, server-derived test flag, normal-limit spoof rejection, unchanged normal standings; restart persistence.');
+ console.log('PASS: migration repeat; authorization; atomic start; cooldown rollback; countdown; 6/0 transfer once; unchanged territories/income; normal role limits; expiry/abort; midnight/06:00; competing accepts; 012 QA backfill and server-derived test flag; 031 immediate QA duels and check-ins, retry deduplication, standard cooldown, QA window closure; restart persistence.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(pg)await pg.close();});

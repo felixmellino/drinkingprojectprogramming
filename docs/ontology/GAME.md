@@ -43,8 +43,9 @@ New v1 scoring runs continuously from Thursday 18:00 inclusive to Sunday
 18:00 exclusive in the lobby season's chosen timezone, during the season's
 own start/end boundaries. The database scoring-request receipt time is
 authoritative. New entries are blocked outside the window. There is no fixed
-nightly count, but accepted entries share a two-minute cooldown per player
-and lobby across all categories. Retries return their original result once.
+nightly count. In standard seasons, accepted entries share a two-minute
+cooldown per player and lobby across all categories. Test seasons allow
+back-to-back check-ins. Retries return their original result once.
 
 ## Territories and owner income
 
@@ -78,8 +79,8 @@ Friend confirmation remains a separate proposal, not an active v1 fallback.
 Chug Duel is the first playable minigame, authorised by the contributor on
 18 November 2026. In normal seasons each player can challenge once and accept
 once per lobby and night, with a 06:00 rollover in the season timezone. Explicit QA/test seasons
-instead allow unlimited sequential replays, with all normal check-in evidence,
-cooldown and scoring rules still enforced (R-M02). An opponent accepts
+allow unlimited sequential replays without a posting cooldown, with check-in
+evidence and scoring rules still enforced (R-M02). An opponent accepts
 the selected drink and size on their own device. The challenger takes one
 shared photo and provides the shared verified location, then hosts a
 split-screen board. Both players press Ready; after a countdown the first

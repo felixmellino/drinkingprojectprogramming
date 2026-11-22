@@ -232,7 +232,9 @@ dates are frozen; historical points and ownership are preserved.
 
 The new scoring provides the 1-5 category/size table, additional 25% owner
 season income, exact quarters, Thu 18:00-Sun 18:00 lobby-time eligibility,
-a shared two-minute cooldown and author corrections with downstream replay.
+a shared two-minute cooldown in standard seasons and author corrections with
+downstream replay. Test seasons allow back-to-back check-ins and Chug Duels
+after migration 031.
 History includes point breakdowns and revision records. See the
 [implementation/Data handoff](docs/SCORING_IMPLEMENTATION.md) and
 [current ontology contract](docs/ontology/SCORING_V1.md) for defaults, testing

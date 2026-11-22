@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Database:
-    def __init__(self, url):
+    def __init__(self, url, *, test_mode):
         self.url = url
         self.conn = self.connect()
         c = self.conn
@@ -47,7 +47,7 @@ class Database:
             c.execute('insert into lobby_memberships(id,player_id,lobby_id) values(%s,%s,%s)', (member, player, self.lobby))
         c.execute("insert into territories values('transaction-fixture','Transaction fixture','{}')")
         self.season = self.rpc('select * from start_scoring_season(%s,%s,%s,%s,%s)',
-                               (self.players[0], self.lobby, '1_month', 'Europe/Lisbon', Jsonb(new_rules(test_mode=True))))[0]['id']
+                               (self.players[0], self.lobby, '1_month', 'Europe/Lisbon', Jsonb(new_rules(test_mode=test_mode))))[0]['id']
 
     def connect(self):
         connection = psycopg.connect(self.url, autocommit=True, row_factory=dict_row)
@@ -96,7 +96,7 @@ class Database:
 
 
 @pytest.fixture
-def db():
+def db(request):
     url = os.environ.get('VERIFICATION_DATABASE_URL', '')
     if not url:
         pytest.fail('Set VERIFICATION_DATABASE_URL to the disposable local test service; this suite cannot be skipped.')
@@ -111,7 +111,7 @@ def db():
         admin.execute(sql.SQL('create database {}').format(sql.Identifier(name)))
         fixture = None
         try:
-            fixture = Database(make_conninfo(url, dbname=name))
+            fixture = Database(make_conninfo(url, dbname=name), test_mode=getattr(request, 'param', True))
             admin.close()  # A later test deliberately restarts the disposable server.
             yield fixture
         finally:
@@ -123,6 +123,7 @@ def db():
                 cleanup.execute(sql.SQL('drop database {} with (force)').format(sql.Identifier(name)))
 
 
+@pytest.mark.parametrize('db', [False, True], indirect=True, ids=['standard-season', 'test-season'])
 def test_eight_simultaneous_retries_award_one_entry_and_one_owner_income(db):
     db.checkin(0)
     capture = uuid4()
@@ -134,11 +135,17 @@ def test_eight_simultaneous_retries_award_one_entry_and_one_owner_income(db):
     assert rows[-1]['owner_bonus_quarters'] == 4
 
 
-def test_competing_distinct_captures_cannot_bypass_cooldown(db):
-    results = db.race([lambda c: db.checkin(0, connection=c) for _ in range(8)])
-    assert sum(status == 'ok' for status, _ in results) == 1
-    assert [reason for status, reason in results if status == 'rejected'] == ['cooldown'] * 7
-    assert len(db.rows()) == 1
+@pytest.mark.parametrize('db, expected_accepted', [(False, 1), (True, 8)], indirect=['db'],
+                         ids=['standard-season', 'test-season'])
+def test_competing_distinct_captures_follow_season_cooldown(db, expected_accepted):
+    captures = [uuid4() for _ in range(8)]
+    results = db.race([lambda c, capture=capture: db.checkin(0, capture, c) for capture in captures])
+    accepted = {row['id'] for status, row in results if status == 'ok'}
+    rejected = [reason for status, reason in results if status == 'rejected']
+    assert len(accepted) == expected_accepted
+    assert accepted <= set(captures)
+    assert rejected == ['cooldown'] * (len(captures) - expected_accepted)
+    assert {row['id'] for row in db.rows()} == accepted
 
 
 def test_simultaneous_equal_scores_have_one_order_and_python_sql_parity(db):

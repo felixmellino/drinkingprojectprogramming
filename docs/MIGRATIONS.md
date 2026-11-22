@@ -41,6 +41,7 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 28. `028_profile_medals.sql`
 29. `029_season_recap_views.sql`
 30. `030_end_test_season.sql`
+31. `031_test_checkin_cooldown.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -49,7 +50,11 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest migration:** `030_end_test_season.sql` (creator-only early closure for
+**Newest migration** is `031_test_checkin_cooldown.sql`. Apply it before deploying
+the test-season Check-in UI. It removes the posting cooldown for ordinary
+check-ins and Chug Duel entries in all explicitly flagged test seasons.
+
+**Before that:** `030_end_test_season.sql` (creator-only early closure for
 test seasons). Check that `select to_regprocedure('public.end_test_season(uuid,uuid,uuid)');`
 returns a function signature.
 
@@ -85,6 +90,6 @@ because earlier boosts remain part of the scoring history.
 
 ## Writing a new migration
 
-Give it the next free number (`030_…`), start the file with one comment line saying what
-it needs ("Requires 029"), and add it to the end of the list above. The chain test fails
+Give it the next free number (`032_…`), start the file with one comment line saying what
+it needs ("Requires 031"), and add it to the end of the list above. The chain test fails
 until you do.

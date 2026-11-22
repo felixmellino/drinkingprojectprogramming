@@ -37,19 +37,17 @@ Create a **new QA lobby** and check **Test season: Wednesday 08:00–Sunday
 incomplete setup also exposes that choice under Retry lobby setup. The
 lobby card and Check-in page label test seasons visibly for all members.
 
-The normal points table is used; only the opening day/hour changes. The
-choice is part of the existing frozen JSON rules snapshot sent to the
-season-creation RPC. The existing database scoring-window function reads
-that snapshot, so **no new migration is required**. Existing seasons,
-normal-season defaults and minigame night rules remain unchanged. Test
-points stay inside the separate QA lobby. Never change the server clock
-or edit an active season's snapshot to enable testing.
+The normal points table is used. The Wednesday opening and test flag are
+part of the frozen rules snapshot sent to the season-creation RPC. Migration
+031 uses that same flag to remove the posting cooldown for ordinary check-ins
+and Chug Duel entries in existing and future test seasons. Test points stay
+inside the separate QA lobby.
 
 QA seasons also allow unlimited sequential Chug Duel replays after migration
 012 (R-M02). Minigames shows Unlimited for both roles, including after an
 earlier win or abort. The frozen boolean test flag controls this, not the
-lobby's name. Finish/end the active game before another; photo/GPS, ordinary
-two-minute check-in cooldown, scoring window and scoring rules still apply.
+lobby's name. Finish or end the active game before starting another. Photo/GPS,
+the scoring window and scoring rules still apply.
 The ordinary Wednesday-window setting itself needs no extra migration;
 unlimited minigame attempts require 012 after 011.
 

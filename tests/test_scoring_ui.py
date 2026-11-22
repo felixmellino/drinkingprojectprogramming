@@ -206,6 +206,31 @@ def test_success_does_not_reopen_camera_and_plus_starts_new_capture(ui, monkeypa
     assert not page.exception and camera.call_count == 2 and not page.radio
 
 
+def test_test_season_can_check_in_twice_without_waiting(ui, monkeypatch):
+    state, game = ui
+    game.scoring_rules.update(test_mode=True, start_weekday=2, start_hour=8)
+    second_photo = BytesIO(state["photo"].getvalue())
+    second_photo.file_id = "second-camera-capture"
+    camera = Mock(side_effect=[state["photo"], second_photo])
+    monkeypatch.setattr("camera_capture.camera_photo", camera)
+
+    page = open_checkin()
+    set_location(page, state)
+    button(page, "Submit").click().run()
+    assert not page.exception and reward(page)
+
+    page.session_state["checkin_open_camera"] = True
+    page.run()
+    assert not page.exception and camera.call_count == 2
+    button(page, "Submit").click().run()
+    assert not page.exception and reward(page)
+    state["cooldown"].assert_not_called()
+    assert len(state["entries"]) == 2
+    first, second = state["entries"]
+    assert first.id != second.id
+    assert first.submitted_at == second.submitted_at == START
+
+
 def test_checkin_form_is_one_screen_the_photo_fills_the_free_space(ui):
     state, _ = ui
     page = open_checkin()
