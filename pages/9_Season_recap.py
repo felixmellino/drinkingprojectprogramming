@@ -1,6 +1,6 @@
 """The end-of-season story and awards card (R-S01 to R-S03).
 
-Opened from the banner or a past lobby on the Lobby page. Access is checked
+Opened from a past lobby or after ending a test season early. Access is checked
 again here: only players of that lobby, and only after the season ended.
 """
 import streamlit as st
@@ -83,14 +83,13 @@ if recap.standings:
 
 if isinstance(value, dict) and value.get("action") == "close" and value.get("opened") == opened:
     try:
-        db.finish_season_recap(player_id, season.id)  # saved, so the banner stays gone after a restart
+        db.finish_season_recap(player_id, season.id)
     except (PermissionError, ValueError):
         st.error("This season can't be finished from your account.")
         st.stop()
     except LOAD_ERRORS:
         st.error("We couldn't save that. Try Close again.")
         st.stop()
-    ui.mark_finished(season.id)
     for key in ("_recap_season_id", "_recap_animate", "_recap_opened"):
         st.session_state.pop(key, None)
     st.switch_page("pages/2_Lobby.py")

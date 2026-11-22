@@ -146,6 +146,8 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
     monkeypatch.setattr(db, 'pending_minigame_invite_count', invite_count)
     monkeypatch.setattr(db, 'list_players', lambda: [])
     monkeypatch.setattr('shared.get_territories', lambda: [])
+    recaps = Mock(return_value=set())
+    monkeypatch.setattr(db, 'finished_recap_seasons', recaps)
     for _ in range(2):  # Discard the entire session, as on another device/restart.
         at = AppTest.from_file(ROOT / 'pages/4_Standings.py')
         at.session_state['player_id'] = 'me'
@@ -155,6 +157,8 @@ def test_reopening_real_leaderboard_restores_context_during_login(ui, monkeypatc
         assert at.session_state['current_lobby_id'] == 'old'
         assert not any('Choose a lobby' in i.value for i in at.info)
         assert any('<h1>Ranks</h1>' in m.value for m in at.markdown)
+        assert not any(button.label == 'Finish season' for button in at.button)
+    recaps.assert_not_called()
     assert navigation.call_count == 2  # Once per fresh page, including restoration.
     assert invite_count.call_args_list == [call('me', ui['seasons']['old'][0].id)] * 2
 

@@ -581,8 +581,16 @@ def show_lobbies(player_id):
     if st.session_state.get('current_lobby_id') and (
             st.session_state.get('_unsaved_lobby_choice') == st.session_state['current_lobby_id']):
         st.warning('Your current lobby applies to this visit. Use Save choice to keep it for next time.')
-    # Past lobbies offer Finish season until the player has seen the recap (R-S03).
-    finished_recaps = season_recap_ui.finished_or_empty(player_id) if groups['past'] else None
+    past_lobbies = [lobby.id for lobby, _, _ in groups['past']]
+    finished_recaps, *past_memberships = run_parallel(
+        lambda: season_recap_ui.finished_or_empty(player_id) if past_lobbies else None,
+        *[partial(_guarded, partial(db.list_memberships_for_lobby, lobby_id, include_left=True))
+          for lobby_id in past_lobbies],
+    )
+    # Creator is the only implemented lobby admin. Include departed members in
+    # the lookup so a creator leaving cannot make the next member an admin.
+    admin_lobbies = {lobby_id for lobby_id, history in zip(past_lobbies, past_memberships)
+                    if not isinstance(history, LOAD_ERRORS) and lobby_creator(history) == player_id}
     cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
     summaries = load_summaries(player_id, [(lobby, season, status) for status, lobby, season in cards_to_load])
     summaries_by_lobby = {lobby.id: summary for (_, lobby, _), summary in zip(cards_to_load, summaries)}
@@ -601,10 +609,10 @@ def show_lobbies(player_id):
                           width='stretch', on_click=open_lobby, args=(lobby.id,))
                 current = st.session_state.get('current_lobby_id') == lobby.id
                 unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
-                # Bottom-left slot (assets/lobbies.css): Season awards on past lobbies, then Make current.
+                # Keep the past-season recap beside Make current (assets/lobbies.css).
                 with st.container(key=f'lobby_select_{lobby.id}', horizontal=True, gap='small'):
                     if status == 'past':
-                        season_recap_ui.lobby_button(lobby, season, finished_recaps)
+                        season_recap_ui.lobby_button(lobby, season, finished_recaps, is_admin=lobby.id in admin_lobbies)
                     if not current or unsaved:
                         label = 'Save choice' if current else 'Make current'
                         if st.button(label, key=f'make_current_{lobby.id}', help=f'Select {lobby.name} as your current lobby'):

@@ -1,4 +1,4 @@
-"""Season recap presentation: the banner, the Lobby buttons and the animated story.
+"""Season recap presentation: the Lobby buttons and the animated story.
 
 Which awards exist comes from core/season_recap.py. This module only turns them
 into words and hands them to components/season_recap, which plays the slides.
@@ -8,8 +8,6 @@ from __future__ import annotations
 import csv
 import io
 import time
-from datetime import datetime, timedelta
-from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -19,22 +17,16 @@ from postgrest.exceptions import APIError
 from streamlit.components.v1 import declare_component
 
 import data.db as db
-from core.lobby_overview import lobby_status
 from core.scoring_v1 import format_points, utc
 from core.season_recap import CAPTURES, DRINKS, MVP, TAKEOVER, TERRITORIES, Recap, csv_rows
 from theme import icon_url
 
 RECAP_PAGE = "pages/9_Season_recap.py"
-BANNER_DAYS = 14  # R-S03: the banner reminds for two weeks, the Lobby button stays
 LOAD_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 ICONS = {MVP: "trophy", TERRITORIES: "map-trifold", TAKEOVER: "arrow-clockwise", CAPTURES: "skyline",
          DRINKS: "beer-stein", "you": "user-circle"}
 TITLES = {MVP: "MVP", TERRITORIES: "Most territories held", TAKEOVER: "Biggest takeover",
           CAPTURES: "Most captures", DRINKS: "Most drinks"}
-
-BANNER_CSS = (".st-key-season_recap_banner{background:var(--accent-soft);border-radius:var(--radius-lg);"
-              "padding:12px 14px;margin-bottom:8px;gap:8px}"
-              ".season-recap-banner-text{margin:0;color:var(--drink-ink);font-size:.95rem}")
 
 _board = declare_component("season_recap", path=str(Path(__file__).parent / "components" / "season_recap"))
 
@@ -115,51 +107,21 @@ def open_recap(lobby_id: str, lobby_name: str, season_id: str, *, animate: bool)
     st.switch_page(RECAP_PAGE)
 
 
-def unfinished_recaps(rows, finished: set[str], now: datetime) -> list[tuple[str, str, str]]:
-    """(lobby_id, lobby_name, season_id) of seasons that ended in the last two
-    weeks and that this player has not finished yet, oldest first (R-S03)."""
-    due = [(utc(season.ends_at), lobby.id, lobby.name, season.id) for lobby, _m, season in rows
-           if season and lobby_status(season, now) == "past" and season.id not in finished
-           and utc(now) - utc(season.ends_at) <= timedelta(days=BANNER_DAYS)]
-    return [row[1:] for row in sorted(due)]
-
-
 def finished_or_empty(player_id: str) -> set[str] | None:
-    """None when the list can't be read (for example before migration 029):
-    then no banner is shown rather than an error on every page."""
+    """Return None when recap history is unavailable, for example before migration 029."""
     try:
         return db.finished_recap_seasons(player_id)
     except LOAD_ERRORS:
         return None
 
 
-def banner() -> None:
-    """'Your season in X is over' on every page until the player finishes it."""
-    from app_navigation import current_page
-    pending = st.session_state.get("_unfinished_recaps") or []
-    if not pending or current_page() == "season_recap":
-        return
-    lobby_id, lobby_name, season_id = pending[0]
-    with st.container(key="season_recap_banner"):
-        st.markdown(f"<style>{BANNER_CSS}</style>"
-                    f'<p class="season-recap-banner-text"><strong>Your season in {escape(lobby_name)} is over.</strong> '
-                    "See who won and collect the awards.</p>", unsafe_allow_html=True)
-        if st.button("Finish season", key="season_recap_banner_open", type="primary"):
-            open_recap(lobby_id, lobby_name, season_id, animate=True)
-
-
-def lobby_button(lobby, season, finished: set[str] | None) -> None:
-    """On a past lobby card: Finish season first, Season awards afterwards."""
+def lobby_button(lobby, season, finished: set[str] | None, *, is_admin: bool) -> None:
+    """Offer the first-view story to the lobby admin and awards to members."""
     if not season:
         return
     # When the list can't be read, never push an animation that can't be saved.
-    done = finished is None or season.id in finished
-    label, animate = ("Season awards", False) if done else ("Finish season", True)
+    animate = is_admin and finished is not None and season.id not in finished
+    label = "Finish season" if animate else "Season awards"
     # Drawn inside the card's bottom-left slot (lobby_ui), beside Make current.
-    if st.button(label, key=f"season_recap_{lobby.id}", type="secondary" if done else "primary"):
+    if st.button(label, key=f"season_recap_{lobby.id}", type="primary" if animate else "secondary"):
         open_recap(lobby.id, lobby.name, season.id, animate=animate)
-
-
-def mark_finished(season_id: str) -> None:
-    st.session_state["_unfinished_recaps"] = [row for row in st.session_state.get("_unfinished_recaps") or []
-                                              if row[2] != season_id]

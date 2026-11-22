@@ -1,5 +1,4 @@
-"""Season recap screens: wording, the recap page's access checks and Close, the banner
-and the Lobby buttons (R-S01 to R-S03)."""
+"""Season recap screens: wording, access checks, Close and the Lobby buttons."""
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -51,18 +50,6 @@ def test_ordinals():
         ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st"]
 
 
-def test_banner_lists_only_recent_unfinished_ended_seasons():
-    now = START + timedelta(days=5)
-    def row(lobby, ends):
-        return (SimpleNamespace(id=lobby, name=lobby.title()), None,
-                Season(f"s-{lobby}", lobby, ends - timedelta(days=7), ends, "1_week"))
-    rows = [row("newer", now - timedelta(days=1)), row("older", now - timedelta(days=3)),
-            row("done", now - timedelta(days=2)), row("ancient", now - timedelta(days=40)),
-            row("running", now + timedelta(days=2))]
-    assert season_recap_ui.unfinished_recaps(rows, {"s-done"}, now) == [
-        ("older", "Older", "s-older"), ("newer", "Newer", "s-newer")]
-
-
 # The recap page --------------------------------------------------------------
 
 @pytest.fixture
@@ -106,11 +93,9 @@ def test_first_open_plays_the_story_with_the_final_standings(page_env):
 
 def test_close_saves_once_and_returns_to_the_lobby(page_env):
     page_env["value"] = {"action": "close", "opened": "t1"}
-    at = open_page(_recap_animate=True, _recap_opened="t1",
-                   _unfinished_recaps=[("lobby", "Bairro Nights", "season"), ("x", "X", "other")])
+    at = open_page(_recap_animate=True, _recap_opened="t1")
     assert not at.exception
     page_env["finish"].assert_called_once_with("player-mia", "season")
-    assert at.session_state["_unfinished_recaps"] == [("x", "X", "other")]
     assert page_env["switch"].call_args.args[0] == "pages/2_Lobby.py"
 
 
@@ -161,48 +146,26 @@ def test_csv_download_has_the_standings(page_env):
     assert len(text.splitlines()) == 4
 
 
-# Banner and Lobby buttons -----------------------------------------------------
-
-def banner_page():
-    import streamlit as st
-    import season_recap_ui
-    season_recap_ui.banner()
-    st.write("page body")
-
-
-def test_banner_opens_the_oldest_unfinished_season(monkeypatch):
-    switch = Mock()
-    monkeypatch.setattr(st, "switch_page", switch)
-    at = AppTest.from_function(banner_page)
-    at.session_state["_unfinished_recaps"] = [("lobby", "Bairro <Nights>", "season"), ("x", "X", "other")]
-    at.run()
-    assert any("Your season in Bairro &lt;Nights&gt; is over." in m.value for m in at.markdown)
-    at.button(key="season_recap_banner_open").click().run()
-    assert switch.call_args.args[0] == season_recap_ui.RECAP_PAGE
-    assert at.session_state["_recap_season_id"] == "season" and at.session_state["_recap_animate"] is True
-
-
-def test_no_banner_once_everything_is_finished():
-    at = AppTest.from_function(banner_page)
-    at.session_state["_unfinished_recaps"] = []
-    at.run()
-    assert not at.button and not any("is over" in m.value for m in at.markdown)
-
-
 def lobby_page():
     import streamlit as st
     from types import SimpleNamespace
     import season_recap_ui
     season_recap_ui.lobby_button(SimpleNamespace(id="lobby", name="Bairro Nights"),
-                                 SimpleNamespace(id="season"), st.session_state["finished"])
+                                 SimpleNamespace(id="season"), st.session_state["finished"],
+                                 is_admin=st.session_state["is_admin"])
 
 
-@pytest.mark.parametrize("finished,label,animate", [
-    (set(), "Finish season", True), ({"season"}, "Season awards", False), (None, "Season awards", False)])
-def test_past_lobby_button_follows_whether_the_season_is_finished(monkeypatch, finished, label, animate):
+@pytest.mark.parametrize("is_admin,finished,label,animate", [
+    (True, set(), "Finish season", True),
+    (True, {"season"}, "Season awards", False),
+    (True, None, "Season awards", False),
+    (False, set(), "Season awards", False),
+])
+def test_past_lobby_button_follows_role_and_recap_history(monkeypatch, is_admin, finished, label, animate):
     monkeypatch.setattr(st, "switch_page", Mock())
     at = AppTest.from_function(lobby_page)
     at.session_state["finished"] = finished
+    at.session_state["is_admin"] = is_admin
     at.run()
     assert at.button[0].label == label
     at.button[0].click().run()

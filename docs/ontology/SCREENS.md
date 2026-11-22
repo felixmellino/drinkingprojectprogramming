@@ -487,9 +487,6 @@ Map owner badge update (19 November 2026, contributor request):
 
 ## Season recap (21 November 2026)
 
-- **Banner** at the top of every page while a season the player was in has
-  ended in the last two weeks and is not finished: "Your season in X is over.
-  See who won and collect the awards." + **Finish season** (oldest first).
 - **Story** (`components/season_recap`): full-width slides that advance on
   their own with progress bars at the top. Tap for the next slide, **Skip**
   for the card. Slides: "Season over" with confetti, the podium (2-1-3 bars
@@ -498,8 +495,10 @@ Map owner badge update (19 November 2026, contributor request):
 - **Awards card**: lobby and dates, top three, one row per award, your line,
   **Replay** and **Close**. **Download standings (CSV)** sits below the card.
   Close saves the season as finished and returns to the Lobby page.
-- **Lobby page**: a past lobby shows **Finish season** until then, and
-  **Season awards** (the static card) afterwards.
+- **Lobby page**: on a past lobby card, the admin sees **Finish season** until
+  closing the recap and **Season awards** afterwards. Other members see
+  **Season awards** immediately. The recap button sits beside **Make current**
+  when available.
 - **Open lobby**: only the creator sees **End season early** during a running
   test season in either lobby mode. The confirmation explains the permanent
   cutoff and the timeout for open duels. Confirming opens the recap story.
@@ -615,7 +614,7 @@ pictures need `008_profile_pictures.sql`; friend data needs the existing
 - Past Lobbies are light grey, latest finish first: name, winner's public
   username and finish timestamp. No scored entries reads **No Leader** in both
   lists. Service failure reads Standings unavailable, never an invented result.
-  Past cards keep **Make current**, beside Season awards, to view the final
+  Past cards keep **Make current**, beside the recap button, to view the final
   Map, Ranks and Activity; Check-in and Minigames say the season has ended.
 - A timed fragment refreshes the list/countdown every 60 seconds while open,
   rechecks memberships and moves expired cards at the next refresh. Server
