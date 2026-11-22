@@ -37,6 +37,9 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 24. `024_minigame_tile_badges.sql`
 25. `025_reaction_duel.sql`
 26. `026_lobby_invitations.sql`
+27. `027_territory_boosts.sql`
+28. `028_profile_medals.sql`
+29. `029_season_recap_views.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -45,13 +48,24 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest first to check:** `026_lobby_invitations.sql` (personal lobby invitations). The quick check
+**Newest migration:** `029_season_recap_views.sql` (who has finished a season recap). The quick check
 
 ```sql
-select count(*) from public.lobby_invitations;
+select count(*) from public.season_recap_views;
 ```
 
-returns a number once 026 is installed.
+returns a number once 029 is installed.
+
+**Before that:** `028_profile_medals.sql`. Apply it when rolling out medal
+announcements. It records the cutoff used to suppress historical promotions.
+The profile cards use existing season data and can display medals before this step.
+
+```sql
+select launched_at from public.profile_medal_rollout;
+```
+
+The query returns the saved cutoff. Reapplying 028 preserves that timestamp.
+Apply 027 before deploying territory boosts for newly created seasons.
 
 ## Files that are not part of a fresh install
 
@@ -66,6 +80,6 @@ because earlier boosts remain part of the scoring history.
 
 ## Writing a new migration
 
-Give it the next free number (`027_…`), start the file with one comment line saying what
-it needs ("Requires 026"), and add it to the end of the list above. The chain test fails
+Give it the next free number (`030_…`), start the file with one comment line saying what
+it needs ("Requires 029"), and add it to the end of the list above. The chain test fails
 until you do.

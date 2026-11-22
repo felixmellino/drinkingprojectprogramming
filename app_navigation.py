@@ -25,7 +25,7 @@ DESTINATIONS = [
     ("leaderboard", "Ranks", "pages/4_Standings.py", "trophy"),
     ("checkin", "Check in", "pages/3_Check_in.py", "plus-bold"),
     ("minigames", "Games", "pages/7_Minigames.py", "game-controller"),
-    ("photos", "Photos", "pages/6_Check_in_photos.py", "images"),
+    ("activity", "Activity", "pages/8_Activity.py", "list-bullets"),
 ]
 CORNER_DESTINATIONS = [
     ("profile", "Profile", "pages/1_Profile.py", "user-circle"),
@@ -33,13 +33,15 @@ CORNER_DESTINATIONS = [
 ]
 ROUTES = {"profile": "profile", "lobby": "lobby", "check_in": "checkin",
           "standings": "leaderboard", "leaderboard": "leaderboard", "map": "map",
-          "check_in_photos": "photos", "photo_history": "photos", "minigames": "minigames"}
+          "activity": "activity", "check_in_photos": "activity", "photo_history": "activity",
+          "minigames": "minigames", "season_recap": "lobby"}
 
 
 # URL name of each page (lower case) -> its file.
 PAGE_FILES = {"profile": "pages/1_Profile.py", "lobby": "pages/2_Lobby.py", "check_in": "pages/3_Check_in.py",
               "standings": "pages/4_Standings.py", "map": "pages/5_Map.py",
-              "check_in_photos": "pages/6_Check_in_photos.py", "minigames": "pages/7_Minigames.py"}
+              "check_in_photos": "pages/6_Check_in_photos.py", "minigames": "pages/7_Minigames.py",
+              "activity": "pages/8_Activity.py", "season_recap": "pages/9_Season_recap.py"}
 HISTORY_LIMIT = 20
 
 

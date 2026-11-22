@@ -21,7 +21,7 @@ from theme import component_tokens, dark_mode
 from core.territories import capture_status, territory_owner, territory_standings
 from core.scoring_v1 import replay_season, format_points
 from core.profile_photo import initials
-from map_markers import owner_markers
+from map_markers import boost_badge, interior_anchor, owner_markers
 
 # Colour = what the territory means for you (RGB). Same values as the
 # --territory-* tokens in assets/theme.css (design system "Tennis").
@@ -146,7 +146,10 @@ def territory_rows(territories, entries, me: str, names: dict) -> list[dict]:
     """One row per territory with everything the map and list show."""
     rows = []
     snapshot = replay_season(entries) if any(e.rule_version == "v1" for e in entries) else None
-    point_step = .5 if any(e.focus_attempt_id for e in entries) else 1
+    if any(e.territory_boost_id or e.focus_multiplier == 1.25 for e in entries):
+        point_step = .25
+    else:
+        point_step = .5 if any(e.focus_attempt_id for e in entries) else 1
     for territory in territories:
         owner = snapshot.owners.get(territory.id) if snapshot else territory_owner(entries, territory.id)
         standings = snapshot.territory_rows(territory.id) if snapshot else territory_standings(entries, territory.id)
@@ -213,7 +216,8 @@ def view_for(rows: list[dict], focus: str, location: tuple[float, float] | None)
 
 
 def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_m: float | None,
-               focus: str = "Bairro Alto", *, pictures=None, context="map", selected: str | None = None) -> str | None:
+               focus: str = "Bairro Alto", *, pictures=None, context="map", selected: str | None = None,
+               boost: tuple[str, str] | None = None, height: int = 600) -> str | None:
     """Draw the map and return the id of the territory the player tapped
     (None when nothing is selected; tapping empty map space clears it)."""
     features = [
@@ -252,17 +256,31 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             get_line_color=COLOURS[next(r["status"] for r in rows if r["id"] == selected)] + [255],
             line_width_min_pixels=3.5))
     markers = owner_markers(rows, pictures or {}, COLOURS)
-    for marker in markers:
-        marker["name"] = escape(marker["name"])  # never rendered as HTML, escaped anyway
+    icons = [{key: marker[key] for key in ("position", "icon", "size")} for marker in markers]
+    initials = [{key: marker[key] for key in ("position", "initials", "text_size")} for marker in markers]
     layers += [
-        pdk.Layer("IconLayer", markers, id="owner-badges", get_position="position", get_icon="icon",
+        pdk.Layer("IconLayer", icons, id="owner-badges", get_position="position", get_icon="icon",
                   get_size="size", size_units="meters", size_min_pixels=12, size_max_pixels=52,
                   pickable=False, billboard=True),
-        pdk.Layer("TextLayer", markers, id="owner-initials", get_position="position", get_text="initials",
+        pdk.Layer("TextLayer", initials, id="owner-initials", get_position="position", get_text="initials",
                   get_size="text_size", size_units="meters", size_min_pixels=6, size_max_pixels=16,
                   get_color=[255, 255, 255, 255], font_weight=800, billboard=True,
                   get_text_anchor="'middle'", get_alignment_baseline="'center'", pickable=False),
     ]
+    if boost is not None:
+        territory_id, label = boost
+        boosted = next((feature for feature in features if feature["properties"]["id"] == territory_id), None)
+        if boosted is not None:
+            position, _ = interior_anchor(boosted["geometry"])
+            layers += [
+                pdk.Layer("GeoJsonLayer", [boosted], id="boost-outline", pickable=False,
+                          filled=True, stroked=True, get_fill_color=[255, 194, 91, 65],
+                          get_line_color=[255, 198, 98, 255], line_width_min_pixels=2.5),
+                pdk.Layer("IconLayer", [{"position": position, "label": label, "icon": boost_badge(label)}],
+                          id="boost-label", get_position="position", get_icon="icon", get_size=49,
+                          size_units="'pixels'", size_min_pixels=49, size_max_pixels=49,
+                          billboard=True, pickable=False),
+            ]
     # No territory names on the map (too crowded with 48 areas): tap one for its card.
     if location is not None:
         here = [{"lng": location[1], "lat": location[0], "radius": accuracy_m or 0}]
@@ -282,7 +300,7 @@ def render_map(rows: list[dict], location: tuple[float, float] | None, accuracy_
             # "Positron" normally, "Dark Matter" when the player turned on dark mode.
             map_style=map_style(),
         ),
-        height=600,
+        height=height,
         # A tap selects one territory and reruns the page, so the bottom card
         # can show its tug-of-war (replaces the old hover tooltip).
         on_select="rerun",

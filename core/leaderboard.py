@@ -28,10 +28,15 @@ def season_leaderboard(entries: list[DrinkEntry], transfers=()) -> list[tuple[st
     if transfers or any(entry.rule_version == "v1" for entry in entries):
         from core.scoring_v1 import replay_season
         return replay_season(entries, transfers).season_rows()
+    # R-R01: equal totals rank by who reached that total first, i.e. whose last
+    # scoring drink came earlier, the same order replay_leader uses for the leader.
     totals: dict[str, int] = {}
-    for _ts, membership_id, points in _season_events(entries):
+    reached: dict[str, int] = {}
+    for position, (_ts, membership_id, points) in enumerate(
+            sorted(_season_events(entries), key=lambda event: event[0])):
         totals[membership_id] = totals.get(membership_id, 0) + points
-    return sorted(totals.items(), key=lambda item: item[1], reverse=True)
+        reached[membership_id] = position
+    return sorted(totals.items(), key=lambda item: (-item[1], reached[item[0]]))
 
 
 # -- Game night ranking (Ranks tab: Season | Game night) ----------------------

@@ -2,6 +2,7 @@
 import base64
 from html import escape
 import streamlit as st
+from action_feedback import service_error
 from httpx import RequestError
 from postgrest.exceptions import APIError
 from storage3.utils import StorageException
@@ -34,8 +35,24 @@ def load_picture(viewer_id, owner_id):
     return db.download_profile_picture(viewer_id, st.session_state['credential_version'], owner_id)
 
 
-def load_pictures(viewer_id, owner_ids):
-    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids)
+def load_pictures(viewer_id, owner_ids, relationships=None):
+    return db.download_profile_pictures(viewer_id, st.session_state['credential_version'], owner_ids,
+                                        relationships=relationships)
+
+
+def picture_access(viewer_id):
+    """Start the picture permission check early (with a page's first reads).
+
+    Returns None when there is no signed-in credential or the check failed;
+    load_pictures then runs its own check as before.
+    """
+    credential = st.session_state.get('credential_version')
+    if not credential:
+        return None
+    try:
+        return db.profile_picture_access(viewer_id, credential)
+    except (*PICTURE_ERRORS, PermissionError, ValueError):
+        return None
 
 
 def show_picture_identity(viewer_id, owner_id, username, *, size=64):
@@ -75,9 +92,9 @@ def show_picture_editor(player, *, saved_photo=_NOT_LOADED):
                 try:
                     db.save_profile_picture(player.id, st.session_state['credential_version'], selected.getvalue())
                 except ValueError as exc:
-                    st.error(str(exc))
-                except PICTURE_ERRORS:
-                    st.error("Your picture couldn't be saved. Please try again later.")
+                    service_error(exc, "Your picture could not be saved. Reopen Edit profile to check its saved state before retrying.", popup=True)
+                except PICTURE_ERRORS as error:
+                    service_error(error, "Your picture couldn't be saved. Reopen Edit profile to check the saved picture, then select your image again and retry.", popup=True)
                 else:
                     st.session_state['_picture_input_version'] = version + 1
                     st.session_state['_picture_saved'] = True
@@ -93,8 +110,8 @@ def show_picture_editor(player, *, saved_photo=_NOT_LOADED):
     if saved and st.button('Remove picture'):
         try:
             db.remove_profile_picture(player.id, st.session_state['credential_version'])
-        except PICTURE_ERRORS:
-            st.error("Your picture couldn't be removed. Please try again.")
+        except PICTURE_ERRORS as error:
+            service_error(error, "Your picture couldn't be removed. Reopen Edit profile to check whether it remains, then try Remove picture again if needed.", popup=True)
         else:
             st.session_state['_picture_input_version'] = version + 1
             st.session_state['_picture_removed'] = True

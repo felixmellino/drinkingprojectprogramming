@@ -3,8 +3,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const html=fs.readFileSync('components/phone_location/index.html','utf8');
 const code=html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
-function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={}){
- const store=new Map(stored?[['wegopub-location',stored]]:[]),messages=[],listeners={},calls={get:0,watch:0,clear:0},elements={};
+function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok',unsupported=false}={}){
+ const store=new Map(stored?[['wegopub-location',stored]]:[]),messages=[],alerts=[],listeners={},calls={get:0,watch:0,clear:0},elements={};
  const el=()=>({textContent:'',className:'',disabled:false,offsetHeight:64,attrs:{},handlers:{},
   classList:{add(){},contains(){return false;}},setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k];},
   addEventListener(name,fn){this.handlers[name]=fn;}});
@@ -18,10 +18,11 @@ function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={
   permissions:permission==='none'?undefined:{query:async()=>({state:permission})}};
  const localStorage=storageBlocked?{getItem(){throw new Error('blocked');},setItem(){throw new Error('blocked');}}
   :{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)};
- const window={parent,addEventListener:(name,fn)=>listeners[name]=fn};
+ if(unsupported)delete navigator.geolocation;
+ const window={parent,alert:text=>alerts.push(text),addEventListener:(name,fn)=>listeners[name]=fn};
  vm.runInNewContext(code,{document,window,navigator,localStorage,Date,Math,setInterval(){return 1;},clearInterval(){}});
  const values=()=>JSON.parse(JSON.stringify(messages.filter(m=>m.type==='streamlit:setComponentValue').map(m=>m.value)));
- return {elements,calls,store,values,bodyClasses,listeners,
+ return {elements,calls,store,values,bodyClasses,listeners,alerts,
   render:async(mode,extra={})=>{listeners.message({source:parent,data:{type:'streamlit:render',args:{mode,tokens:':root{}',...extra}}});await new Promise(r=>setTimeout(r,5));}};
 }
 
@@ -100,5 +101,10 @@ function setup({stored=null,permission='prompt',storageBlocked=false,geo='ok'}={
  assert.equal(f.elements.switch.attrs['aria-checked'],'false');assert.equal(f.calls.clear,1);
  f=setup({stored:'on',permission:'denied'});await f.render('switch',{compact:true,follow:true});
  assert.deepEqual(f.values(),[{error:'denied'}],'The Map learns that the browser blocks location');assert.equal(f.calls.watch,0);
+ // Unsupported compact switches remain clickable: tapping explains how to recover.
+ f=setup({unsupported:true});await f.render('switch',{compact:true,follow:true});
+ assert.deepEqual(f.values(),[{error:'unsupported'}]);assert.equal(f.elements.switch.disabled,false);
+ assert(f.elements.status.textContent.includes('HTTPS'));
+ f.elements.switch.handlers.click();assert(f.alerts[0].includes('Safari or Chrome'));
  console.log('Location component checks passed: no prompt before opting in, probe after, switch asks on tap, on/off remembered, denied and timeout handled.');
 })().catch(e=>{console.error(e);process.exit(1);});

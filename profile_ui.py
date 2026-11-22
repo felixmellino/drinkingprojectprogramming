@@ -6,6 +6,9 @@ import streamlit as st
 from httpx import RequestError
 from postgrest.exceptions import APIError
 import data.db as db
+from action_feedback import explain
+from core.medals import RANKS, medal_cards
+from data.profile_history import load_stat_history
 from core.profile_stats import all_time_stats, season_finished
 from core.scoring_v1 import format_points
 from device_login import log_out, queue_storage, set_identity
@@ -14,7 +17,6 @@ from friends_ui import dismiss_friends, show_friends
 from profile_picture_ui import show_picture_identity, show_picture_editor
 from phone_location import location_switch
 from theme import dark_mode_switch, empty_state, menu_icons
-from parallel import run_parallel
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 OPTIONS = [
@@ -68,10 +70,12 @@ def show_profile(player):
         elif view == "security":
             show_security(player)
     except ValueError as exc:
-        st.error(str(exc))
+        explain(str(exc))
     except APIError as exc:
-        st.error("That username is already taken." if exc.code == "23505"
-                 else "We couldn't save or load your details. Please try again.")
+        if exc.code == "23505":
+            explain("That username is already taken. Enter a different username.")
+        else:
+            st.error("We couldn't save or load your details. Refresh Profile to check your saved details before retrying.")
     except (RequestError, RuntimeError, OSError):
         st.error("We couldn't save or load your details. Please try again.")
 
@@ -196,31 +200,27 @@ def show_stats(player_id):
     st.caption("All-time personal stats, including lobbies you have left")
     memberships = db.list_memberships_for_player(player_id, include_left=True)
     now = datetime.now(timezone.utc)
-    finished_season_ids = set()
-    entries = []
-    transfers = []
-    season_groups = run_parallel(*[lambda m=m: db.list_seasons_for_lobby(m.lobby_id) for m in memberships])
-    seasons = [season for group in season_groups for season in group]
-    finished_season_ids = {s.id for s in seasons if season_finished(s, now)}
-    def season_records(season):
-        return run_parallel(lambda: db.list_drink_entries(season.id),
-                            lambda: db.list_season_transfers(season.id))
-    for drinks, moves in run_parallel(*[lambda s=s: season_records(s) for s in seasons]):
-        entries.extend(drinks)
-        transfers.extend(moves)
-    stats = all_time_stats(memberships, entries, finished_season_ids=finished_season_ids, transfers=transfers)
+    history = load_stat_history(m.lobby_id for m in memberships)
+    stats = all_time_stats(
+        memberships,
+        [entry for _, entries, _ in history for entry in entries],
+        finished_season_ids={s.id for s, _, _ in history if season_finished(s, now)},
+        transfers=[move for _, _, moves in history for move in moves],
+    )
     css = (Path(__file__).parent / "assets" / "profile_stats.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-    cards = [
-        ("Total points", format_points(stats.points), "Your points across all lobbies"),
-        ("Drinks", str(stats.drinks), "Accepted check-ins"),
-        ("Lobbies played", str(stats.lobbies), "Lobbies you scored in"),
-        ("Total Wins", str(stats.wins), "Completed season victories"),
-    ]
     markup = '<section class="profile-stats" aria-label="All-time statistics from active and finished lobbies">'
-    for label, value, detail in cards:
-        markup += (f'<article class="profile-stat"><span>{escape(label)}</span>'
-                   f'<strong>{escape(value)}</strong><small>{escape(detail)}</small></article>')
+    for label, total, rank, goal in medal_cards(stats):
+        value = format_points(total)
+        progress = (f"{value} / {goal} toward {RANKS[rank + 1]}" if goal is not None
+                    else "Highest rank reached")
+        markup += (f'<article class="profile-stat">'
+                   f'<div class="profile-rank-badge profile-medal-{rank}">'
+                   f'<div class="profile-stat-rank"><span>Rank</span> {RANKS[rank]}</div>'
+                   '<span class="profile-medal" aria-hidden="true">'
+                   '<span class="profile-medal-face"></span></span></div>'
+                   f'<span>{escape(label)}</span><strong>{escape(value)}</strong>'
+                   f'<small>{escape(progress)}</small></article>')
     st.markdown(markup + "</section>", unsafe_allow_html=True)
     st.caption("Your drink points plus personal territory-owner bonuses from individual lobbies. "
                "Team scores and team owner bonuses are excluded. Accepted check-ins count immediately; "

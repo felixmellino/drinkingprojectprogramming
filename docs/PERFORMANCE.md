@@ -1,4 +1,135 @@
-# Full-app performance audit — 20 November 2026
+# WeGoPub performance audits
+
+## Fewer waiting rounds on Lobby and Map — 21 November 2026
+
+Live tab switches (deployed app, signed in): Lobby 3.0–3.5 s, Map 2.6–3.4 s,
+Games 1.5–2.0 s, Activity 1.55 s, Ranks 0.95–1.7 s, Profile 1.1–1.35 s. Python
+work is under 0.1 s per page; the time is database round trips that wait for
+each other, each costing about 0.3 s from Streamlit Cloud. Every tab switch
+also has about 1 s of fixed cost (switch round trip, login check, navigation).
+
+Changes, measured locally against the live database with the real pages
+(read-only, writes blocked; median of warm runs; same rendered output):
+
+| Page | Requests | Time |
+| --- | ---: | ---: |
+| Lobby (9 lobbies) | 44 → 20 | 1,308 → 775 ms |
+| Map | 9 → 8, 5 → 3 waiting rounds | 512 → 290 ms |
+
+- Lobby cards load in three rounds for all cards together (`lobby_ui.load_summaries`):
+  scores plus the picture permission check, then all leader names in one
+  request (`db.list_membership_names`), then one picture batch. Before, each
+  card ran its own chain of name, roster, credential, friendship, picture row,
+  bucket and download reads.
+- Map starts the picture permission check (`db.profile_picture_access`) in its
+  first round of reads.
+- The private-bucket check runs once per bucket every 10 minutes per server
+  process instead of before every photo (see SECURITY.md).
+
+Not changed yet: bottom navigation still uses a button plus `st.switch_page`
+(an extra round trip per tab switch; `st.page_link` would avoid it), and the
+Lobby page reads pending invitations after the memberships instead of together.
+
+## Follow-up audit — 21 November 2026
+
+The measurements below distinguish live service requests, synthetic Streamlit
+rendering and the public browser. Live reads used the configured Supabase
+project. The sampled gallery had 21 visible rows and the selected season had
+37 check-ins. Reports contain counts, timings and response sizes.
+
+### Where the time goes
+
+| Live operation | Observed median | What it covers |
+| --- | ---: | --- |
+| First Supabase REST request | 136–315 ms | Separate runs, including client connection setup |
+| Account, membership and season reads | 76–104 ms | One request per read, measured from this machine |
+| Season entries | 86–102 ms | 37 entries, 35 kB |
+| Lobby selected in Games | 193 B | Previously 3,683 B for the entire directory; network time varied |
+| Recent Check-in query | 2 B | Previously 902 B for this member; no cooldown-window entries in this sample |
+| Lifetime history, six lobbies/seasons | 321 → 200 ms | 18 → 3 requests, identical returned seasons, entries and transfers |
+| Gallery listing | 243–323 ms | Three requests before the photos themselves |
+| Twelve gallery previews, cold → reused | 644 → 278 ms | 16 → 3 requests and 1.97 MB → 5.4 kB from Supabase |
+| Open original photo | 475 ms | Five requests, previously six; the original still comes from Storage |
+| Profile photo metadata for a user without an avatar | 158–198 ms | Two requests; an avatar would add a Storage read |
+| Public Streamlit HTML | 406 ms | HTTP only; up to 1.9 s in the runs |
+| Public Streamlit screen / open login form | 8.6–9.3 s / 1.8–2.9 s | Three fresh Chrome sessions in the app's embedded frame on the deployed version |
+| CARTO style and one Lisbon vector tile | 86 ms / 21 ms | The browser may request several tiles |
+| Google Fonts CSS and one font file | 93 ms / 50 ms | Browser font loading is separate |
+| Brevo endpoint | 74 ms | HTTP 401 from a request without credentials; delivery was exercised with test doubles |
+
+The gallery comparison is for the same twelve previews with three samples.
+The cache is local to each browser session and keeps at most 48 previews for
+45 seconds. Membership, team, consent, expiry and stored photo reference are
+read fresh before reusing a preview. The gallery discards cached previews when
+access changes. Opening a photo still reads its original. A cold gallery still
+downloads the originals from Storage. The database transfer for the cold
+gallery and the Streamlit hosting path are the largest remaining gaps measured.
+
+The app bundles historical reads across lobbies, players and seasons with
+bounded filters and pagination. The Check-in page reads only the relevant
+cooldown or duplicate window and explicitly includes an outstanding capture ID
+to recover an older committed submission. Closed or already posted check-ins
+skip the cooldown read when there is no capture to recover. Games overlaps its
+Chug Duel and invitation reads. The Lobby overview loads the player's lobby
+records and seasons together, and opening a lobby skips a redundant full rerun.
+The remembered-device bridge reads saved sign-in once per session and still
+handles explicit writes and clears. The theme reader avoids a round trip when
+the browser has no saved preference.
+
+Actual page code with synthetic 50 ms reads and three warm renders per page
+measured Lobbies at 444 → 392 ms, Games at 322 → 285 ms, and Activity at
+389 → 344 ms. Profile, Ranks, the sample Map, Check-in and Photos were within
+7 ms of baseline in this fixture. Its photo and check-in rows have very little
+data, so the script does not represent the live Storage bytes or long check-in
+histories.
+
+A separate CPU test gave all 48 real territory outlines the same synthetic
+owner. Marker preparation took 603 → 302 ms on the first run and 566 → 31 ms
+at the warm median with identical marker output. Geometry cache keys include
+the actual coordinates. Badge layers send their own required fields, which
+avoids duplicating photo data in the initials layer. The GPS component starts
+while the other map work is pending. The GPS acceptance boundary comes from
+the original territory data.
+
+### Reproduce and verify
+
+```sh
+python scripts/audit_app_performance.py --live --external --output /tmp/wegopub-perf.json
+python scripts/benchmark_app_pages.py
+python scripts/benchmark_page_performance.py --map-markers
+python -m pytest -q
+python scripts/verify.py --group components database mutations
+```
+
+1,199 Python tests and 13 component, migration, SQL and mutation checks
+passed. Eight concurrent transaction cases passed on disposable native
+PostgreSQL plus a separate real server restart and state check. The native
+test copy used PostgreSQL's built-in UUID generator because the local
+distribution omits pgcrypto. The repository migration chain also passed
+unchanged with the normal test harness. Chrome exercised navigation at 390
+and 1,280 pixels, gallery paging, profile stats, a rejected check-in followed
+by successful location recovery and scoring, and Chug, Quiz and Time Duel
+browser cases. Live service checks were read-only. Production writes,
+physical phone camera/GPS permissions and delivery to a real mailbox were
+outside those checks.
+
+The first public Chrome probe looked in Streamlit's wrapper page. A second
+probe verified the signed-out screen and login form inside the app frame and
+provided the timings above. The local app showed its signed-out home in
+about 1.5 s before the bridge changes and 1.0 s after, in individual browser
+samples. A phone run through
+the deployed check-in flow is still part of release verification. The changes
+on the efficiency branch need the usual review and deployment. They require
+no migration.
+
+The next storage improvement is to generate a private thumbnail on upload
+and keep the original for the detail view. It would also need retry, deletion
+and retention coverage for both objects and a fallback for existing photos.
+For production start time, compare a cold and a warm browser session against
+the Streamlit deployment logs. Record the time to the first interactive
+screen, separately from the initial HTTP response.
+
+## Original audit — 20 November 2026
 
 This audit starts from main `ad4c9cf` on `codex/app-performance-audit` and
 also integrates main `80b010a` (including login hardening and the latest layout)

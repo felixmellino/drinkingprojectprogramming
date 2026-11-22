@@ -1,5 +1,26 @@
 # Screens
 
+## Rejected actions and recovery (21 November 2026)
+
+Contributor decision: keep action buttons clickable. On an attempted action
+with missing prerequisites or a rejected submission, show an English popup
+with the specific reason and the next step. Keep messages short; optional
+technical/context details belong in an expander. Show all current blockers
+when more than one prerequisite is missing. Within an existing dialog (teams,
+lobby forms, friendship requests, password/privacy), show the explanation in
+that dialog because Streamlit cannot nest dialogs.
+
+Keep useful status information (location status, countdowns, season opening,
+saved results) visible. A missing workflow must have an explanation too:
+expired corrections, unavailable opponents, used evening roles, ended seasons
+and restricted editing must not silently disappear. Background loading errors
+stay inline rather than opening a popup on every automatic refresh. During
+camera initialization or an answer being saved, a temporarily disabled control
+must have a visible status explaining what to wait for.
+
+These changes explain existing rules; they do not change eligibility, limits,
+scoring, privacy or server authorization. See [the verification matrix](../ERROR_FEEDBACK.md).
+
 ## Minigames catalogue (19 November 2026)
 
 The Minigames page is a colourful grid of square tiles, three rows of two on
@@ -236,12 +257,14 @@ a phone still needs the configured app; mocked tests do not grant permissions.
 ## Bottom navigation (requested 17 November 2026)
 
 - Authenticated pages use five tabs, like an iPhone app (redesigned
-  19 November 2026): **Map | Ranks | + Check in | Games | Photos**.
+  19 November 2026): **Map | Ranks | + Check in | Games | Activity**.
+  Activity replaced the Photos tab on 21 November 2026; the photo gallery is
+  now the Photos view inside it (see "Activity feed" below).
 - Profile and Lobbies are equally sized round icon buttons in the top-right
   corner of signed-in pages, with Lobbies directly below Profile
   (20 November 2026). The phone Map leaves room for both.
 - The round plus in the middle opens the camera-first Check-in. Ranks opens
-  the Leaderboard, Games the Minigames, Photos the Photo history. The Lobbies
+  the Leaderboard, Games the Minigames, Activity the activity feed. The Lobbies
   button uses the people icon, shows a “Lobbies” tooltip, and lights up on the
   Lobby page. Hints that send a player there carry an “Open Lobbies” button.
 - Icons are Phosphor SVGs (`assets/icons`, MIT licence): outline normally,
@@ -273,8 +296,9 @@ a phone still needs the configured app; mocked tests do not grant permissions.
   do not disclose whether an email is registered. Show success/error clearly and
   offer Back to log in; a reset does not automatically authenticate. Codes expire
   after 15 minutes. No upgrade option is shown.
-- Login includes an optional Remember password checkbox, keeping the device
-  signed in for 30 days. Logout cancels remembered access on that device.
+- Login includes an optional Remember Me checkbox with an Info button that
+  explains how to stay signed in on this device for 30 days. Logout cancels
+  remembered access on that device.
 - All game pages require authentication. Account rules are in `RULES.md` (A1–A7).
 - A note explains that only the username is visible to other players;
   real names and other personal information remain private.
@@ -424,9 +448,49 @@ Map owner badge update (19 November 2026, contributor request):
   or scroll to zoom). On a laptop the map stays a rounded panel with the same
   bar, chips and sheet on top.
 
+## Activity feed (21 November 2026)
+
+- The **Activity** tab (`pages/8_Activity.py`) opens with a pill switch **Feed | Photos**.
+  Feed is the selected lobby's season timeline, newest first, grouped under
+  "Game night …" headings, 30 events at a time with **Load more**.
+- Version 1 shows two kinds of event (`core/activity.py`):
+  - **Check-in**: one card per accepted drink: avatar and a sentence with the
+    name in bold, a verb and size and drink ("**Ana** knocked back a large beer").
+    The verb varies (drank, downed, chugged, polished off, ...; list in
+    `activity_ui.VERBS`) but stays the same for a check-in on every reload.
+    Below it the territory (or "Outside territories") and how long ago ("Bairro Alto, 9 min ago"), and "+points".
+    Your own cards have a sky outline. In team lobbies the team follows the name.
+  - **Capture**: a banner directly above the drink that caused it: "Ben took
+    **Shortys** from you", "You claimed **Nova SBE**". Sky when you gain a
+    territory, scarlet when you lose one, neutral when two rivals trade it.
+    Ties never capture (R-R01); team lobbies name the team.
+- Nothing is stored for the feed: it is rebuilt from the saved drink entries
+  with the same replay as Ranks and the Map, so a correction also corrects the
+  feed. Rejected or unscored entries never appear.
+- Empty: "No activity yet. The first drink of the season starts the feed." + Check in.
+- Later event kinds (achievements, duel results, joins) are planned but not built.
+
+## Season recap (21 November 2026)
+
+- **Banner** at the top of every page while a season the player was in has
+  ended in the last two weeks and is not finished: "Your season in X is over.
+  See who won and collect the awards." + **Finish season** (oldest first).
+- **Story** (`components/season_recap`): full-width slides that advance on
+  their own with progress bars at the top. Tap for the next slide, **Skip**
+  for the card. Slides: "Season over" with confetti, the podium (2-1-3 bars
+  rising), one slide per award (icon, title, winner, detail), "Your season".
+  Reduced motion skips straight to the card.
+- **Awards card**: lobby and dates, top three, one row per award, your line,
+  **Replay** and **Close**. **Download standings (CSV)** sits below the card.
+  Close saves the season as finished and returns to the Lobby page.
+- **Lobby page**: a past lobby shows **Finish season** until then, and
+  **Season awards** (the static card) afterwards.
+- Errors: a stranger sees "You can only see the awards of a season you played
+  in."; a running season says its awards appear when it ends.
+
 ## Memories
 
-- Implemented as Photo history, the **Photos** tab (gallery look since 20 November
+- Implemented as Photo history, now the **Photos** view of the Activity tab (gallery look since 20 November
   2026): title "Photos", text tabs **All | Mine**, then each game night as a dense
   grid of portrait tiles (3 columns edge to edge on the phone, 4 on wider screens,
   2px gaps). Each tile shows the photo, the player's name and the points on a soft

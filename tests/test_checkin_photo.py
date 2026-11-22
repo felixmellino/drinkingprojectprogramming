@@ -87,10 +87,10 @@ def test_database_client_rejects_unencrypted_remote_connection(monkeypatch):
 
 
 def test_photo_download_rechecks_membership_after_it_is_removed(monkeypatch):
-    monkeypatch.setattr(db, "_photo_audience", lambda *args: lambda row: True)
-    membership = SimpleNamespace(lobby_id="photo-lobby")
+    monkeypatch.setattr(db, "_photo_audience", lambda *args, **kwargs: lambda row: True)
+    membership = SimpleNamespace(lobby_id="photo-lobby", player_id="reader")
     memberships = [membership]
-    monkeypatch.setattr(db, "list_memberships_for_player", lambda _: list(memberships))
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: list(memberships))
     client = Mock()
     query = client.table.return_value.select.return_value
     query.eq.return_value = query
@@ -108,7 +108,7 @@ def test_photo_download_rechecks_membership_after_it_is_removed(monkeypatch):
 
 
 def test_photo_download_rejects_outsider_before_requesting_image(monkeypatch):
-    monkeypatch.setattr(db, "list_memberships_for_player", lambda _: [SimpleNamespace(lobby_id="other-lobby")])
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: [SimpleNamespace(lobby_id="photo-lobby", player_id="someone-else")])
     client = Mock()
     get_client = Mock(return_value=client)
     monkeypatch.setattr(db, "get_client", get_client)
@@ -120,8 +120,8 @@ def test_photo_download_rejects_outsider_before_requesting_image(monkeypatch):
 
 
 def test_photo_download_rejects_public_bucket(monkeypatch):
-    monkeypatch.setattr(db, "_photo_audience", lambda *args: lambda row: True)
-    monkeypatch.setattr(db, "list_memberships_for_player", lambda _: [SimpleNamespace(lobby_id="photo-lobby")])
+    monkeypatch.setattr(db, "_photo_audience", lambda *args, **kwargs: lambda row: True)
+    monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: [SimpleNamespace(lobby_id="photo-lobby", player_id="reader")])
     client = Mock()
     query = client.table.return_value.select.return_value
     query.eq.return_value = query

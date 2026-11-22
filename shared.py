@@ -18,6 +18,7 @@ from httpx import RequestError
 from app_navigation import bottom_navigation, minigame_invite_badge
 from theme import apply_theme
 from lobby_selection import restore_selection
+from season_recap_ui import banner as season_recap_banner
 from parallel import run_parallel
 
 
@@ -86,10 +87,11 @@ def require_login() -> str:
     if not navigation_rendered:
         bottom_navigation()
     minigame_invite_badge()
+    season_recap_banner()
     return st.session_state["player_id"]
 
 
-MEMBERSHIP_PAGES = {"map", "standings", "minigames", "check_in", "check_in_photos"}
+MEMBERSHIP_PAGES = {"map", "standings", "minigames", "check_in", "check_in_photos", "activity"}
 
 
 def _membership_key():
@@ -154,7 +156,7 @@ def require_active_membership() -> tuple[str, str, str]:
         st.stop()
     st.session_state.pop("_validated_season", None)
     if not st.session_state.get("current_season_id"):
-        st.info("Start or select a season on the Lobby page first.")
+        st.info("Your selected lobby has no season ready. Open Lobbies, finish its setup with Retry lobby setup, or make another active lobby current.")
         lobby_button()
         st.stop()
     prefetched = st.session_state.pop("_membership_prefetch", None)
@@ -166,13 +168,16 @@ def require_active_membership() -> tuple[str, str, str]:
                 st.session_state["current_membership_id"], st.session_state.get("current_lobby_id"),
                 st.session_state["current_season_id"])
     except (APIError, RequestError, RuntimeError):
-        st.error("Lobby and season access could not be checked. Try again.")
+        st.error("Lobby and season access could not be checked. Reopen Lobbies and try again.")
+        lobby_button()
         st.stop()
     if selected is None:
         st.error("Your selected lobby membership is no longer available. Choose a lobby again.")
+        lobby_button()
         st.stop()
     if season is None:
-        st.error("This season does not belong to the selected lobby. Choose a season again.")
+        st.error("This season does not belong to the selected lobby. Reopen Lobbies and make the intended lobby current again.")
+        lobby_button()
         st.stop()
     st.session_state["current_team_id"] = selected.team_id
     st.session_state["_validated_season"] = season
@@ -221,6 +226,7 @@ def _load_and_sync(version: str) -> list[Territory]:
 
 
 def show_logged_in_as():
-    st.sidebar.caption(f"Logged in as **{st.session_state.get('player_display_name', '?')}**")
-    if "current_lobby_name" in st.session_state:
-        st.sidebar.caption(f"Lobby: **{st.session_state['current_lobby_name']}**")
+    """Kept for the pages that call it. It used to write "Logged in as" into the
+    sidebar, which the app always hides; writing there made the sidebar flash
+    open on every load, so it now shows nothing (the Profile button names you)."""
+    return None

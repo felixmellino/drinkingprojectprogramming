@@ -42,6 +42,35 @@ base commit; local uncommitted edits are also tested. Without Git, the commit
 and working-tree fields are null. Provenance is captured before checks start.
 The individual assertions and failure tracebacks appear in the terminal/CI log.
 
+## Minigame interface checks (21 November 2026)
+
+The four opened games share their heading, setup card, three-step guide and
+collapsed match history in `duel_lobby_ui.py`. Their actions and rule modules
+stay separate. Time Duel also receives the app's light/dark component tokens.
+
+Run the relevant UI and gameplay regressions:
+
+```bash
+python -m pytest tests/test_chug_duel_ui.py tests/test_time_duel_ui.py tests/test_reaction_duel.py tests/test_minigames_ui.py tests/test_dark_mode.py tests/test_time_duel.py tests/test_quiz_duel.py tests/test_chug_duel.py -q
+```
+
+For visual checks, start this synthetic app in a separate terminal, then run
+the browser check (after installing the development dependencies above):
+
+```bash
+python -m streamlit run tests/fixtures/minigame_lobbies_app.py --server.headless true --server.port 8790 --server.address 127.0.0.1 --browser.gatherUsageStats false
+node tests/minigame_lobbies_browser.cjs node_modules/playwright
+node tests/chug_duel_browser.cjs node_modules/playwright
+node tests/reaction_component.cjs
+```
+
+The fixture uses synthetic players and no database connection. Screenshots go
+to `.venv/minigame-previews/`. Checks cover all four lobbies on phone and desktop,
+light and dark themes, readable history, touch target widths and the Time Duel
+Ready/Start/Stop bridge. The Chug and Reaction checks cover existing controls,
+countdown, early taps, saved results and missed tries. These local checks do
+not replace the public deployment/two-phone checks below.
+
 ## What each layer proves
 
 | Layer | Accepted actions | Rejected actions | Boundaries and recovery |
@@ -80,6 +109,25 @@ checks demonstrate sensitivity to those five faults only, not every possible bug
 `.coveragerc` measures all application Python, including pages and UI modules,
 and excludes tests, verification scripts and development dependencies. It does
 not inflate the result by counting executed test code as product coverage.
+
+## Pre-submission checklist: which test proves each case
+
+Every case on the `AGENTS.md` "Before submitting" list has an automated test.
+The phone and public-URL checks below still have to be done by hand.
+
+| Case | Expected outcome | Test (file) |
+| --- | --- | --- |
+| Valid check-in inside a territory | Scores its points and counts for that territory | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps` (`test_scoring_v1.py`), `test_valid_check_in_scores_full_points` (`test_checkins.py`) |
+| Check-in outside every territory | Season points, no territory, never captures | `test_outside_every_territory_still_scores_total_points` (`test_checkins.py`), `test_outside_and_legacy_events_do_not_generate_income_and_zero_does_not_claim` (`test_scoring_v1.py`) |
+| Duplicate submission | Second drink within two minutes is rejected; a retried save awards once | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps`, `test_lost_save_reply_recovers_without_a_second_award` (`test_scoring_ui.py`), `test_eight_simultaneous_retries_award_one_entry_and_one_owner_income` (PostgreSQL) |
+| Missing location | Rejected with "location unavailable" | `test_new_entry_checks_window_cooldown_and_location_and_discards_gps`, `test_unavailable_when_no_phone_gps` (`test_location.py`) |
+| Inaccurate location | Over 50 m rejected; exactly 50 m accepted | `test_inaccurate_or_invalid_gps_accuracy_is_rejected`, `test_gps_accuracy_of_exactly_50_m_is_accepted` (`test_scoring_v1.py`) |
+| Drink outside Thursday to Sunday | Rejected; the screen shows the next opening | `test_weekly_boundaries` (`test_scoring_v1.py`), `test_outside_window_shows_next_opening_before_the_camera` (`test_scoring_ui.py`) |
+| Drink after midnight | Friday and Sunday small hours count for the same game night; Monday 00:30 is closed | `test_drink_after_midnight_counts_for_the_same_game_night` (`test_scoring_v1.py`) |
+| Territory changing hands | Only a strictly higher total takes it | `test_full_capture_sequence_and_no_self_income` (`test_scoring_v1.py`), `test_territory_owner_changes_hands_on_overtake` (`test_territories.py`) |
+| Tie | The player who reached the score first stays ahead | `test_same_event_season_tie_keeps_previously_higher_ranked_owner` (`test_scoring_v1.py`), `test_tie_does_not_displace_season_leader` (`test_leaderboard.py`) |
+| Second minigame in the same evening | Blocked until the next game night (QA seasons excepted) | `test_second_play_same_window_same_membership_is_blocked` (`test_minigames.py`), `test_repeated_test_duels_allowed_but_normal_lobby_and_closed_window_rejected` (`test_chug_duel.py`) |
+| Rejected actions leave points unchanged | No rejected entry adds points or changes owners | `test_rejected_history_cannot_silently_award_points` (`test_scoring_invariants.py`) |
 
 ## What a critical examiner can try
 

@@ -7,6 +7,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import data.db as db
+from core.checkins import CheckinRejected
 from core.friends import transition
 from core.lobbies import create_season
 from core.models import Lobby, LobbyMembership
@@ -34,9 +35,19 @@ def ui(monkeypatch):
     monkeypatch.setattr('shared.show_logged_in_as', lambda: None)
     monkeypatch.setattr(db, 'list_memberships_for_player', lambda _, **kwargs: state['members'])
     monkeypatch.setattr(db, 'list_lobbies', lambda: state['lobbies'])
+    monkeypatch.setattr(db, 'list_lobbies_for_ids', lambda ids: [l for l in state['lobbies'] if l.id in ids])
+    monkeypatch.setattr(db, 'list_seasons_for_lobbies', lambda ids: [s for lid in ids for s in state['seasons'].get(lid, [])])
     monkeypatch.setattr(db, 'list_seasons_for_lobby', lambda lid: state['seasons'].get(lid, []))
     monkeypatch.setattr(db, 'list_drink_entries', lambda _: state['entries'])
     monkeypatch.setattr(db, 'membership_display_name', lambda mid, lid: state['names'].get(mid, mid))
+
+    def membership_names(pairs):
+        # Every lobby in this fixture has the members listed in state['lobby_members'].
+        state['name_requests'].append(list(pairs))
+        return {(mid, lid): {'player_id': next((m.player_id for m in state['lobby_members'][lid] if m.id == mid), mid),
+                             'display_name': state['names'].get(mid, mid)} for mid, lid in pairs}
+    state['name_requests'] = []
+    monkeypatch.setattr(db, 'list_membership_names', membership_names)
     state['lobby_members'] = {l.id: [m for m in members if m.lobby_id == l.id] + [Obj(id='leo', player_id='leo-id', joined_at=now + timedelta(seconds=5))] for l in lobbies}
     state['users'] = [{'id': 'me', 'display_name': 'MyUsername'}, {'id': 'leo-id', 'display_name': 'Leo'}]
     state['relationships'] = []
@@ -51,8 +62,8 @@ def ui(monkeypatch):
         state['relationships'].append({**row, 'updated_at': datetime.now(timezone.utc).isoformat()})
     state['change'] = Mock(side_effect=change)
     monkeypatch.setattr(db, 'change_friendship', state['change'])
-    state['picture'] = Mock(return_value=None)
-    monkeypatch.setattr('lobby_ui.load_picture', state['picture'])
+    state['picture'] = Mock(return_value={})
+    monkeypatch.setattr('lobby_ui.load_pictures', state['picture'])
     return state
 
 
@@ -70,6 +81,67 @@ def click(at, label):
 
 def choose_current(at, lobby_id):
     return at.button(key=f'make_current_{lobby_id}').click().run()
+
+
+def test_past_card_keeps_lobby_details_and_opens_its_season_recap(ui, monkeypatch):
+    import season_recap_ui
+
+    open_recap = Mock()
+    monkeypatch.setattr(season_recap_ui, 'open_recap', open_recap)
+    at = page()
+    assert not at.exception
+    assert at.button(key='open_lobby_past').label == 'View lobby →'
+    assert at.button(key='season_recap_past').label == 'Finish season'
+    assert not any(button.key in {'make_current_past', 'season_recap_new'} for button in at.button)
+    at.button(key='season_recap_past').click().run()
+    open_recap.assert_called_once_with('past', 'Finished lobby', ui['seasons']['past'][0].id, animate=True)
+
+
+@pytest.mark.parametrize('failure, expected', [
+    (CheckinRejected('invalid_timezone'), 'timezone is not supported'),
+    (RuntimeError('offline'), 'season setup could not be confirmed'),
+    (PermissionError('membership changed'), 'membership could not be confirmed'),
+])
+def test_failed_new_season_keeps_current_lobby_and_specific_recovery(ui, monkeypatch, failure, expected):
+    def insert_lobby(lobby):
+        ui['lobbies'].append(lobby)
+        ui['lobby_members'][lobby.id] = []
+
+    def insert_member(member):
+        ui['members'].append(member)
+        ui['lobby_members'][member.lobby_id].append(member)
+
+    monkeypatch.setattr(db, 'insert_lobby', insert_lobby)
+    monkeypatch.setattr(db, 'insert_membership', insert_member)
+    monkeypatch.setattr(db, 'start_scoring_season', Mock(side_effect=failure))
+    at = page()
+    original_season = at.session_state['current_season_id']
+    at.button(key='open_create_lobby').click().run()
+    next(field for field in at.text_input if field.label == 'Lobby name').input('Needs setup')
+    click(at, 'Create lobby')
+    assert not at.exception
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert at.session_state['current_season_id'] == original_season
+    assert at.session_state['_opened_lobby_id'] == ui['lobbies'][-1].id
+    assert any(expected in item.value for item in at.success)
+    assert any('Retry lobby setup' in item.value for item in at.success)
+    ui['save_choice'].assert_not_called()
+
+
+@pytest.mark.parametrize('failure', [
+    ValueError('This lobby is full. Join or create another lobby.'),
+    PermissionError('Your membership changed. Refresh lobbies before retrying.'),
+])
+def test_rejected_join_keeps_current_lobby_and_explains_exact_failure(ui, monkeypatch, failure):
+    monkeypatch.setattr(db, 'insert_membership', Mock(side_effect=failure))
+    at = page()
+    click(at, 'Join with a code')
+    next(field for field in at.text_input if field.label == 'Invite code').input('PRIVATE')
+    click(at, 'Join lobby')
+    assert not at.exception
+    assert any(item.value == str(failure) for item in at.error)
+    assert at.session_state['current_lobby_id'] == 'new'
+    assert not any(member.lobby_id == 'secret' for member in ui['members'])
 
 
 def test_joined_lobbies_visible_newest_first_auto_selected_with_no_dropdown(ui):
@@ -105,8 +177,9 @@ def test_leader_uses_existing_tie_rule_public_name_and_private_photo_fallback(ui
     assert 'Winner: <strong>Leo</strong>' in cards(at)[2]
     assert 'lobby-avatar' in cards(at)[0] and '>LE</span>' in cards(at)[0]
     assert 'data:image' not in cards(at)[0]
-    assert ui['picture'].call_args.args == ('me', 'leo-id')
-    ui['picture'].return_value = b'synthetic-picture'
+    assert ui['picture'].call_args.args == ('me', ['leo-id'])
+    assert len(ui['name_requests'][-1]) == 3, 'all three cards ask for their leader in one request'
+    ui['picture'].return_value = {'leo-id': b'synthetic-picture'}
     at.run()
     assert 'data:image/jpeg;base64,' in cards(at)[0]
 

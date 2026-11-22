@@ -11,19 +11,21 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
+from action_feedback import service_error
 from core.checkins import CheckinRejected
 from core.leaderboard import season_leader, season_leaderboard
 from core.lobby_overview import latest_season, lobby_status, time_left
 from core.profile_photo import initials
 from core.scoring_v1 import utc
-from profile_picture_ui import PICTURE_ERRORS, load_picture
+from profile_picture_ui import PICTURE_ERRORS, load_pictures, picture_access
 from friends_ui import friendship_action
 from parallel import run_parallel
 from core.lobbies import lobby_creator
 from theme import button_icons, empty_state
 from lobby_selection import clear_selection, select_lobby, remember_choice
-from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog
+from lobby_forms_ui import create_dialog, join_dialog, dismiss_dialog, welcome_dialog
 from lobby_invite_ui import show_invite_player, show_pending_lobby_invites
+import season_recap_ui
 import standings_ui
 
 LOAD_ERRORS = (APIError, RequestError, RuntimeError)
@@ -66,11 +68,12 @@ def card(lobby, season, status, now, leader_name=None, photo=None, ranking_avail
                 f'<p>Invite code: <strong>{escape(lobby.invite_code)}</strong></p></article>', unsafe_allow_html=True)
 
 
-def show_lobby_members(player_id, lobby_id):
+def show_lobby_members(player_id, lobby_id, *, members=None):
     """Show public usernames and only the viewer's own friendship state."""
     st.subheader('Lobby members')
     try:
-        members = db.list_memberships_for_lobby(lobby_id)
+        if members is None:
+            members = db.list_memberships_for_lobby(lobby_id)
         if not any(m.player_id == player_id for m in members):
             st.error('You are no longer a member of this lobby.')
             return
@@ -135,42 +138,105 @@ def show_overview_actions(player_id):
             dismiss_members()
             st.session_state['_lobby_dialog'] = 'join'
 
-    if st.session_state.get('_lobby_dialog') == 'create':
+    if st.session_state.get('_lobby_dialog') == 'welcome':
+        welcome_dialog()
+    elif st.session_state.get('_lobby_dialog') == 'create':
         create_dialog(player_id)
     elif st.session_state.get('_lobby_dialog') == 'join':
         join_dialog(player_id)
 
 
-def load_summary(player_id, lobby, season, status):
-    """Fetch a card's independent data without rendering from a worker thread."""
-    leader_name, photo, available = None, None, True
-    entries = []
-    if season:
+def _season_scores(season):
+    """One card's entries and stake transfers, and whether they loaded."""
+    if not season:
+        return [], [], True
+    try:
+        entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
+                                          lambda: db.list_season_transfers(season.id))
+        return entries, transfers, True
+    except LOAD_ERRORS:
+        return [], [], False
+
+
+def _guarded(call):
+    """Run one read; return its error instead of raising, so other cards still load."""
+    try:
+        return call()
+    except LOAD_ERRORS as error:
+        return error
+
+
+def _team_leader(player_id, lobby, leader):
+    teams = db.list_lobby_teams(player_id, lobby.id)
+    winning = next((team for team in teams if team.id == leader), None)
+    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
+    return (winning.name if winning else 'Team'), photo
+
+
+def load_summaries(player_id, cards):
+    """Every card's data in three rounds instead of one chain of reads per card.
+
+    Round 1: each card's entries and transfers, together with the profile
+    picture permission check. Round 2: all individual leaders' names in one
+    request, plus each team card's teams. Round 3: the active leaders' pictures
+    in one batch. `cards` is a list of (lobby, season, status); the result is
+    (entries, available, leader_name, photo) for each card, in the same order.
+    """
+    wants_pictures = any(status == 'active' and lobby.game_mode == 'individual' and season
+                         for lobby, season, status in cards)
+    loads = [partial(_season_scores, season) for _, season, _ in cards]
+    if wants_pictures:
+        loads.append(partial(picture_access, player_id))
+    loaded = run_parallel(*loads) if loads else []
+    scores = loaded[:len(cards)]
+    access = loaded[len(cards)] if wants_pictures else None
+    leaders = [season_leader(entries, transfers) if available else None
+               for entries, transfers, available in scores]
+
+    individual = [(leader, lobby.id) for (lobby, _, _), leader in zip(cards, leaders)
+                  if leader and lobby.game_mode == 'individual']
+    team_cards = [index for index, ((lobby, _, _), leader) in enumerate(zip(cards, leaders))
+                  if leader and lobby.game_mode == 'team']
+    round_two = run_parallel(
+        partial(_guarded, lambda: db.list_membership_names(individual)),
+        *[partial(_guarded, partial(_team_leader, player_id, cards[i][0], leaders[i])) for i in team_cards])
+    names, team_results = round_two[0], dict(zip(team_cards, round_two[1:]))
+
+    owners = {}
+    if not isinstance(names, LOAD_ERRORS):
+        owners = {lobby.id: names[(leader, lobby.id)]['player_id']
+                  for (lobby, _, status), leader in zip(cards, leaders)
+                  if leader and status == 'active' and lobby.game_mode == 'individual'
+                  and (leader, lobby.id) in names}
+    pictures = {}
+    if owners:
         try:
-            entries, transfers = run_parallel(lambda: db.list_drink_entries(season.id),
-                                              lambda: db.list_season_transfers(season.id))
-            leader = season_leader(entries, transfers)
-            if leader:
-                if lobby.game_mode == 'team':
-                    teams = db.list_lobby_teams(player_id, lobby.id)
-                    winning = next((team for team in teams if team.id == leader), None)
-                    leader_name = winning.name if winning else 'Team'
-                    photo = base64.b64decode(winning.photo_base64) if winning and winning.photo_base64 else None
-                if status == 'active' and lobby.game_mode == 'individual':
-                    leader_name, members = run_parallel(
-                        lambda: db.membership_display_name(leader, lobby.id),
-                        lambda: db.list_memberships_for_lobby(lobby.id))
-                    owner = next((m.player_id for m in members if m.id == leader), None)
-                    if owner:
-                        try:
-                            photo = load_picture(player_id, owner)
-                        except PICTURE_ERRORS:
-                            pass
-                elif lobby.game_mode == 'individual':
-                    leader_name = db.membership_display_name(leader, lobby.id)
-        except LOAD_ERRORS:
-            available = False
-    return entries, available, leader_name, photo
+            pictures = load_pictures(player_id, sorted(set(owners.values())), relationships=access)
+        except (*PICTURE_ERRORS, PermissionError, ValueError, KeyError):
+            pass  # The card keeps its initials badge.
+
+    summaries = []
+    for index, ((lobby, _, _), leader, (entries, _, available)) in enumerate(zip(cards, leaders, scores)):
+        leader_name, photo = None, None
+        if available and leader and lobby.game_mode == 'team':
+            result = team_results[index]
+            if isinstance(result, LOAD_ERRORS):
+                available = False
+            else:
+                leader_name, photo = result
+        elif available and leader:
+            if isinstance(names, LOAD_ERRORS):
+                available = False
+            else:
+                leader_name = names.get((leader, lobby.id), {}).get('display_name', 'Lobby member')
+                photo = pictures.get(owners.get(lobby.id))
+        summaries.append((entries, available, leader_name, photo))
+    return summaries
+
+
+def load_summary(player_id, lobby, season, status):
+    """One card's data; see load_summaries."""
+    return load_summaries(player_id, [(lobby, season, status)])[0]
 
 
 def show_summary(player_id, lobby, season, status, now, *, loaded=None):
@@ -192,8 +258,13 @@ def retry_setup(player_id, lobby):
             try:
                 db.start_scoring_season(player_id, lobby.id, duration, zone,
                                         **({'test_mode': True} if test_mode else {}))
-            except (PermissionError, CheckinRejected, *LOAD_ERRORS):
-                st.error('Lobby setup failed. Check the timezone and database setup, then refresh.')
+            except CheckinRejected as error:
+                from core.action_feedback import checkin_message
+                st.error(checkin_message(error.reason))
+            except PermissionError:
+                st.error('Your lobby access could not be confirmed. Close this window, refresh your lobbies and reopen a lobby you belong to.')
+            except LOAD_ERRORS as error:
+                service_error(error, 'The season setup could not be confirmed. Close this window, refresh Lobbies and check whether its season started before trying again.')
             else:
                 st.session_state['_lobby_choice_pending'] = lobby.id
                 st.rerun()
@@ -276,6 +347,7 @@ def show_lobby_management(player_id, lobby, season, memberships=None):
         try:
             memberships = db.list_memberships_for_lobby(lobby.id, include_left=True)
         except LOAD_ERRORS:
+            st.warning('Lobby management controls could not be loaded. Close this window and use Refresh lobbies to retry.')
             return
     if lobby_creator(memberships) != player_id:
         return
@@ -358,7 +430,8 @@ def lobby_leaderboard(player_id, lobby, membership, season):
 def show_lobby_details(player_id, lobby, season):
     # Recheck on each dialog interaction, including friendship reruns.
     try:
-        membership = next((m for m in db.list_memberships_for_lobby(lobby.id) if m.player_id == player_id), None)
+        members = db.list_memberships_for_lobby(lobby.id)
+        membership = next((m for m in members if m.player_id == player_id), None)
         if membership is None:
             st.error('You are no longer a member of this lobby.')
             close_members_button()
@@ -374,7 +447,7 @@ def show_lobby_details(player_id, lobby, season):
     st.caption('Invite code')
     st.code(lobby.invite_code, language=None)
     with st.container(key='lobby_members', border=False):
-        show_lobby_members(player_id, lobby.id)
+        show_lobby_members(player_id, lobby.id, members=members)
     st.divider()
     if season:
         lobby_leaderboard(player_id, lobby, membership, season)
@@ -401,6 +474,22 @@ def make_current(player_id, lobby, membership, season):
     return True
 
 
+def open_lobby(lobby_id):
+    dismiss_dialog()
+    st.session_state['_opened_lobby_id'] = lobby_id
+
+
+def load_lobby_seasons(lobby_ids):
+    try:
+        seasons = db.list_seasons_for_lobbies(lobby_ids)
+    except LOAD_ERRORS:
+        return None  # Let the overview retry per lobby so a partial outage stays visible.
+    by_lobby = {lobby_id: [] for lobby_id in lobby_ids}
+    for season in seasons:
+        by_lobby[season.lobby_id].append(season)
+    return {lobby_id: latest_season(items) for lobby_id, items in by_lobby.items()}
+
+
 @st.fragment(run_every='60s')
 def show_lobbies(player_id):
     css = (Path(__file__).parent / 'assets/lobbies.css').read_text()
@@ -424,8 +513,13 @@ def show_lobbies(player_id):
         clear_selection()
         empty_state('lobbies', 'users-three', 'Start a lobby', 'Create one for your group or join with a code above.')
         return
+    lobby_ids = list(dict.fromkeys(membership.lobby_id for membership in memberships))
     try:
-        lobbies = {l.id: l for l in db.list_lobbies()}
+        lobby_rows, seasons_by_lobby = run_parallel(
+            lambda: db.list_lobbies_for_ids(lobby_ids),
+            lambda: load_lobby_seasons(lobby_ids),
+        )
+        lobbies = {lobby.id: lobby for lobby in lobby_rows}
     except LOAD_ERRORS:
         st.error('Your lobbies could not be loaded. Use Refresh lobbies to try again.')
         return
@@ -437,8 +531,9 @@ def show_lobbies(player_id):
         except LOAD_ERRORS as error:
             return error
     shown = [(membership, lobbies[membership.lobby_id]) for membership in memberships if membership.lobby_id in lobbies]
-    # One request per lobby, all at the same time.
-    for (membership, lobby), season in zip(shown, run_parallel(*[partial(fetch_season, lobby.id) for _, lobby in shown])):
+    seasons = (run_parallel(*(partial(fetch_season, lobby.id) for _, lobby in shown))
+               if seasons_by_lobby is None else [seasons_by_lobby[lobby.id] for _, lobby in shown])
+    for (membership, lobby), season in zip(shown, seasons):
         if isinstance(season, LOAD_ERRORS):
             st.warning(f'Dates for {lobby.name} are unavailable. Use Refresh lobbies to try again.')
             continue
@@ -463,9 +558,10 @@ def show_lobbies(player_id):
     if st.session_state.get('current_lobby_id') and (
             st.session_state.get('_unsaved_lobby_choice') == st.session_state['current_lobby_id']):
         st.warning('Your current lobby applies to this visit. Use Save choice to keep it for next time.')
+    # Past lobbies offer Finish season until the player has seen the recap (R-S03).
+    finished_recaps = season_recap_ui.finished_or_empty(player_id) if groups['past'] else None
     cards_to_load = [(status, lobby, season) for status, rows in groups.items() for lobby, _, season in rows]
-    summaries = run_parallel(*[partial(load_summary, player_id, lobby, season, status)
-                               for status, lobby, season in cards_to_load])
+    summaries = load_summaries(player_id, [(lobby, season, status) for status, lobby, season in cards_to_load])
     summaries_by_lobby = {lobby.id: summary for (_, lobby, _), summary in zip(cards_to_load, summaries)}
     for status, heading in (('active', 'Active Lobbies'), ('past', 'Past Lobbies'),
                             ('upcoming', 'Upcoming Lobbies'), ('setup', 'Incomplete setup')):
@@ -478,12 +574,11 @@ def show_lobbies(player_id):
         for lobby, membership, season in rows:
             with st.container(key=f'lobby_card_{lobby.id}', gap=None):
                 show_summary(player_id, lobby, season, status, now, loaded=summaries_by_lobby[lobby.id])
-                if st.button('View lobby →', key=f'open_lobby_{lobby.id}',
-                             help=f'Open {lobby.name}', width='stretch'):
-                    dismiss_dialog()
-                    st.session_state['_opened_lobby_id'] = lobby.id
-                    st.rerun()
-                if status != 'past':
+                st.button('View lobby →', key=f'open_lobby_{lobby.id}', help=f'Open {lobby.name}',
+                          width='stretch', on_click=open_lobby, args=(lobby.id,))
+                if status == 'past':
+                    season_recap_ui.lobby_button(lobby, season, finished_recaps)
+                else:
                     current = st.session_state.get('current_lobby_id') == lobby.id
                     unsaved = st.session_state.get('_unsaved_lobby_choice') == lobby.id
                     if not current or unsaved:

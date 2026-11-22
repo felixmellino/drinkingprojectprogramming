@@ -55,3 +55,14 @@ def test_season_leaderboard_sums_and_sorts():
         make_entry("e3", "B", 8, datetime(2026, 11, 19, 20, 10)),
     ]
     assert season_leaderboard(entries) == [("A", 15), ("B", 8)]
+
+
+def test_legacy_tie_ranks_whoever_reached_the_score_first():
+    """R-R01 for pre-v1 seasons: Ranks and the recap agree with the lobby card's winner."""
+    entries = [
+        make_entry("e1", "B", 4, datetime(2026, 11, 19, 20, 0)),   # B plays first ...
+        make_entry("e2", "A", 10, datetime(2026, 11, 19, 20, 5)),  # ... but A reaches 10 first
+        make_entry("e3", "B", 6, datetime(2026, 11, 19, 20, 10)),  # B only ties at 10 later
+    ]
+    assert season_leader(entries) == "A"
+    assert season_leaderboard(entries) == [("A", 10), ("B", 10)]

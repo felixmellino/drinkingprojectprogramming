@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from core.scoring_v1 import base_points, rules_for, scoring_open, utc
+from core.action_feedback import checkin_message, role_limit_message
 
 RESET_HOUR = 6
 RESERVED_STATUSES = {"accepted", "started", "completed", "aborted"}
@@ -74,19 +75,20 @@ def component_action(value, duel: dict) -> tuple[str, str | None] | None:
 
 
 ERRORS = {
-    'focus_busy': 'Finish the running Focus Challenge before starting a duel.',
-    "permission_denied": "You cannot perform this duel action.",
-    "duel_limit": "An evening allowance is already used or reserved. Refresh the list.",
+    'focus_busy': 'A saved Focus Challenge is still running. Wait for that legacy attempt to expire, then reopen Minigames; its old play screen is no longer available.',
+    "permission_denied": "This account cannot perform this duel action. Reopen your lobby and choose a duel you are participating in.",
+    "duel_limit": role_limit_message("Chug Duel"),
     "duel_pending": "You already have an open invitation. Cancel it before sending another.",
     "duel_unavailable": "This invitation or game has expired or changed. Refresh the list.",
-    "duel_busy": "A player is already in an accepted or running duel.",
+    "duel_busy": "A player is already in an accepted or running duel. Finish that duel or wait for it to expire, then try again.",
     "duel_team": "Choose a player from another team. Both players need a team.",
     "duel_early": "Wait for the countdown to finish before submitting a result.",
-    "duel_entry_locked": "Duel drinks are agreed by both players and cannot be corrected separately.",
-    "scoring_closed": "Duels are closed outside the season's scoring window.",
+    "duel_entry_locked": "Duel drinks are agreed by both players and cannot be corrected separately. Open Minigames to review the agreed drink.",
+    "scoring_closed": "Duels are closed outside the season's scoring window. Open Check in to see the next opening; choose a new lobby if the season has ended.",
     "cooldown": "One of you has a recent check-in. Wait two minutes after both players' last posts.",
     "invalid_selection": "Choose a supported drink and size.",
     "invalid_photo": "Take a fresh shared photo before starting.",
-    "location_unavailable": "A current, accurate phone location is required.",
+    "location_unavailable": "A current, accurate phone location is required. Open Profile → Location, allow access and turn it on; move outside if accuracy is worse than 50 m.",
+    "location_uncertain": checkin_message('location_uncertain'),
     "invalid_territory": "The verified territory could not be accepted. Refresh and retry.",
 }

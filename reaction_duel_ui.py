@@ -8,16 +8,18 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 
 import data.db as db
-from core.reaction_duel import FINAL, STAKES, component_action, time_label, validate_pair
+from action_feedback import action_button, service_error
+from core.action_feedback import duel_closed_message, opponent_message, stake_problems
+from core.reaction_duel import CONFIG, FINAL, STAKES, component_action, time_label, validate_pair
 from core.scoring_v1 import format_points
 from reaction_duel_component import reaction_board
+from duel_lobby_ui import game_setup, game_guide, recent_matches
 
 SERVICE_ERRORS = (APIError, RequestError, RuntimeError, OSError)
 
 
-def _error(error):
-    st.error(str(error) if isinstance(error, (ValueError, PermissionError, RuntimeError))
-             else "Reaction Duel is unavailable right now. It reloads by itself.")
+def _error(error, *, popup=False):
+    service_error(error, "Reaction Duel is unavailable right now. Keep this page open for an automatic retry, or reopen the game if the problem continues.", popup=popup)
 
 
 def _act(player, duel, action, revision=None, elapsed_ms=None, *, rerun=True):
@@ -26,7 +28,7 @@ def _act(player, duel, action, revision=None, elapsed_ms=None, *, rerun=True):
         if rerun:
             st.rerun()
     except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-        _error(error)
+        _error(error, popup=rerun)
 
 
 def _play(player, duel):
@@ -66,6 +68,9 @@ def _result(duel, member, labels):
                  f'<td class="{"win" if r["winner_id"] == other else ""}">{time_label(theirs)}</td></tr>')
     st.markdown(f'<table class="reaction-rounds"><tr><th>Round</th><th>You</th>'
                 f'<th>{escape(labels.get(other, "Opponent"))}</th></tr>{rows}</table>', unsafe_allow_html=True)
+    if any(r.get(key) is None or r[key] >= CONFIG['miss_ms'] for r in duel['round_results']
+           for key in ('challenger_ms', 'opponent_ms')):
+        game_note(f"Missed means no valid tap was recorded within the {CONFIG['reaction_response_ms'] / 1000:g}-second response window, or the try expired. It counts as a missed round.")
     if duel["status"] == "draw":
         game_note("Same rounds and same total time." if duel["reason"] == "rounds" else "Time ran out before anyone played.")
     if st.button("Done", key="reaction_done", type="primary", width="stretch"):
@@ -73,14 +78,29 @@ def _result(duel, member, labels):
         st.rerun()
 
 
+def _home_footer(duels, member, labels):
+    game_guide("reaction", rules="Stake 1–10 available season points per player. "
+               "A missed tap loses that round; false starts repeat the try. "
+               "Tied rounds are decided by total reaction time; an exact tie returns both stakes. "
+               "One challenge and one acceptance per evening, resetting at 06:00. Test seasons allow replays.")
+    recent = [d for d in duels if d["status"] in {"completed", "draw"}]
+    with recent_matches("reaction", recent):
+        for duel in recent[:10]:
+            other = duel["opponent_id"] if duel["challenger_id"] == member else duel["challenger_id"]
+            result = ("Won" if duel.get("winner_id") == member else "Lost") if duel.get("winner_id") else "Draw"
+            if st.button(f"{result} vs {labels.get(other, 'Player')}, {duel['stake']} points",
+                         key="reaction_result_" + duel["id"], type="tertiary", width="stretch"):
+                st.session_state["reaction_focused_id"] = duel["id"]
+                st.rerun()
+
+
 def _home(player, member, lobby, season, members, labels, state):
     from minigames_ui import game_header, game_note
-    game_header("Reaction Duel", "1 vs 1\u20033 tries\u2003best of 3", "reaction_back")
-    game_note(f"{format_points(state['available_points'])} points available")
+    game_header("Reaction Duel", "", "reaction_back")
     duels = state["duels"]
     pending = [d for d in duels if d["status"] == "invited"]
     for duel in pending:
-        with st.container(border=True):
+        with st.container(border=True, key="duel_invite_reaction_" + duel["id"]):
             st.markdown(f'<p class="duel-vs">{escape(labels.get(duel["challenger_id"], "Player"))} <span>vs</span> '
                         f'{escape(labels.get(duel["opponent_id"], "Player"))}</p>'
                         f'<p class="duel-what">Stake {duel["stake"]} points</p>', unsafe_allow_html=True)
@@ -102,6 +122,7 @@ def _home(player, member, lobby, season, members, labels, state):
         if st.button("Continue your duel", key="reaction_resume", type="primary", width="stretch"):
             st.session_state.pop("reaction_hidden", None)
             st.rerun()
+        _home_footer(duels, member, labels)
         return
     own = next(m for m in members if m.id == member)
     opponents = []
@@ -111,36 +132,29 @@ def _home(player, member, lobby, season, members, labels, state):
             opponents.append(other.id)
         except ValueError:
             continue
-    if not state["open"]:
-        game_note("Opens with the scoring window.")
-    elif not opponents:
-        game_note("Needs another player." if lobby.game_mode != "team" else "Needs a rival team.")
-    elif not state["outgoing"]:
-        game_note("You already challenged tonight. Resets at 06:00.")
-    elif not any(d["challenger_id"] == member for d in pending):
-        opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
-                            format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
-                            key="pill_radio_reaction_opponent")
-        stake = st.radio("Stake (points)", STAKES, horizontal=True, key="pill_radio_reaction_stake")
-        if st.button("Challenge", type="primary", key="reaction_challenge", width="stretch",
-                     disabled=opponent is None or state["available_points"] < stake):
-            request = st.session_state.setdefault("reaction_invitation_id", str(uuid4()))
-            try:
-                db.invite_reaction_duel(player, season.id, request, opponent, stake)
-                st.session_state.pop("reaction_invitation_id", None)
-                st.rerun()
-            except (ValueError, PermissionError) + SERVICE_ERRORS as error:
-                _error(error)
-    recent = [d for d in duels if d["status"] in {"completed", "draw"}]
-    if recent:
-        with st.expander("Recent"):
-            for duel in recent[:10]:
-                other = duel["opponent_id"] if duel["challenger_id"] == member else duel["challenger_id"]
-                result = ("Won" if duel.get("winner_id") == member else "Lost") if duel.get("winner_id") else "Draw"
-                if st.button(f"{result} vs {labels.get(other, 'Player')}, {duel['stake']} points",
-                             key="reaction_result_" + duel["id"], type="tertiary"):
-                    st.session_state["reaction_focused_id"] = duel["id"]
-                    st.rerun()
+    if not any(d["challenger_id"] == member for d in pending):
+        with game_setup("reaction", detail=f"{format_points(state['available_points'])} points available"):
+            if not state["open"]:
+                game_note(duel_closed_message(season))
+            elif not opponents:
+                game_note(opponent_message(own, lobby))
+            elif not state["outgoing"]:
+                game_note(f"You already challenged tonight. Try again after 06:00 ({season.timezone_name}); finishing the duel does not reset this limit.")
+            elif not any(d["challenger_id"] == member for d in pending):
+                opponent = st.radio("Who", opponents, index=0 if len(opponents) == 1 else None,
+                                    format_func=lambda m: labels.get(m, "Lobby member"), horizontal=True,
+                                    key="pill_radio_reaction_opponent")
+                stake = st.radio("Stake (points)", STAKES, horizontal=True, width="stretch", key="pill_radio_reaction_stake")
+                if action_button("Challenge", type="primary", key="reaction_challenge", width="stretch",
+                                 problems=stake_problems(opponent, stake, state["available_points"])):
+                    request = st.session_state.setdefault("reaction_invitation_id", str(uuid4()))
+                    try:
+                        db.invite_reaction_duel(player, season.id, request, opponent, stake)
+                        st.session_state.pop("reaction_invitation_id", None)
+                        st.rerun()
+                    except (ValueError, PermissionError) + SERVICE_ERRORS as error:
+                        _error(error, popup=True)
+    _home_footer(duels, member, labels)
 
 
 def render_reaction(player, member, lobby, season, members, labels):

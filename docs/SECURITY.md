@@ -23,6 +23,13 @@ checks only within a bounded gallery download of at most twelve photos.
 It checks the entire requested audience before fetching any image, checks
 the private bucket once, and never caches permissions across page requests.
 The metadata listing and full-photo detail each authorize independently.
+Since 21 November the check that a photo bucket is still private runs once
+per bucket every 10 minutes per server process instead of before every
+photo (`data/db.py`, `PRIVATE_BUCKET_RECHECK_SECONDS`); a refusal is never
+remembered. Access checks themselves (credential, friendships, membership,
+consent) still run fresh on every page render. Lobby and Map start the
+profile-picture credential and friendship check together with their other
+first reads and use it in the same render only.
 Display thumbnails do not replace the stored originals or alter retention.
 
 Apply `migrations/013_checkin_photo_privacy.sql` before deploying these
@@ -77,6 +84,23 @@ verification result and territory, and have empty exact-coordinate fields.
 The photo setup migration clears exact coordinates from legacy entries too,
 preserving scores and territory assignments.
 
+### Drink suggestion (Anthropic API, R-C01)
+
+If `ANTHROPIC_API_KEY` is set and the player has switched on **Suggest my
+drink from the photo** (off by default; its help text names Anthropic), the
+cleaned check-in photo (no metadata, at most 1024 px) is sent once over HTTPS
+to the Anthropic API to suggest the drink and size. Photos that cannot be
+submitted (window closed, cooldown running) are never sent. Only the image and a fixed instruction are sent: no
+name, email, lobby or location. People in the background of a photo are
+sent too, so players are asked to photograph only their drink. The key is
+server-only, read from secrets in `drink_recognition.py` (the only file
+that calls Anthropic), and should have a spend limit in the Anthropic
+console. Each player gets at most 10 recognitions per rolling hour, so
+retaking photos cannot run up the bill; the count is per server process and
+resets on restart, so the console spend limit stays the hard cap. API error
+details are never shown to the player. Without the key
+nothing is sent. Tests use a fake client and never call the API.
+
 Each capture has one entry ID and storage path. Retrying a submission uses
 that ID and cannot insert another scored row. A failed upload records no
 points. If an upload succeeds and a database save fails, retrying can finish
@@ -116,11 +140,23 @@ or security issue has been detected. See `PERFORMANCE.md` for test boundaries.
 
 The security review on 17 November 2026 found advisories affecting the old
 Streamlit, Pillow and pytest pins. Their replacements require Python 3.11
-or newer. Run the full test suite after installing `requirements.txt` and
+or newer. Run the full test suite after installing `requirements-verification.txt` and
 check the resolved packages with `pip-audit` before deployment.
 The updated environment audit checked 70 installed packages and reported no
 known advisories. This is a dated check; repeat it before deployment and after
 dependency changes.
+
+Check of 21 November 2026, on Python 3.11.18:
+- `pip-audit==2.10.1` over all 63 packages installed from
+  `requirements-verification.txt` reported no known vulnerabilities. Only the
+  environment's own outdated `pip` and `setuptools` were flagged; they were
+  upgraded, and CI already installs `pip==26.3`.
+- `pytest` moved from `requirements.txt` to `requirements-verification.txt`, so
+  the deployed app no longer installs test tools.
+- A scan of every commit on every branch for Supabase keys (JWT and
+  `sb_secret_`), Brevo keys and filled-in `SUPABASE_KEY`/`SMTP_PASSWORD`
+  values found none. No secrets file is tracked, and `.streamlit/secrets.toml`
+  is ignored by git.
 
 ## Team decisions and deployment verification
 

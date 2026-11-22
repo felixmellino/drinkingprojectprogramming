@@ -14,6 +14,7 @@ import data.db as db
 import minigames_ui as ui
 from core.models import Lobby, LobbyMembership
 from tests.test_scoring_v1 import START, season
+from tests.feedback_helpers import assert_blocked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,7 +35,7 @@ def service(monkeypatch):
     members = [LobbyMembership("a", "pa", "lobby", START), LobbyMembership("b", "pb", "lobby", START)]
     state = {"duels": [], "board": None, "photo": None, "location": ((38.7, -9.1), 10, None), "starts": 0}
     monkeypatch.setattr(db, "list_seasons_for_lobby", lambda _: [game])
-    monkeypatch.setattr(db, "list_lobbies", lambda: [lobby])
+    monkeypatch.setattr(db, "get_lobby", lambda _: lobby)
     monkeypatch.setattr(db, "list_memberships_for_lobby", lambda _: members)
     monkeypatch.setattr(db, "list_public_usernames", lambda: [{"id": "pa", "display_name": "Alice"}, {"id": "pb", "display_name": "Bob"}])
     monkeypatch.setattr(db, "list_chug_duels", lambda *args: deepcopy(state["duels"]))
@@ -188,7 +189,7 @@ def test_invite_accept_on_other_session_shared_capture_and_result(service):
     assert not host.exception and button(host, "Start duel")
     service["location"] = (None, None, "denied")
     host.run()
-    assert button(host, "Start duel").disabled
+    assert_blocked(host, "Start duel", "blocked", "browser settings")
     assert service["starts"] == 0
     service["location"] = ((38.7, -9.1), 10, None)
     host.run()
@@ -333,22 +334,49 @@ def test_quiz_screen_challenges_the_only_opponent_in_one_tap(service, monkeypatc
     assert invite.call_args.args[0] == "pa" and invite.call_args.args[3:] == ("b", 3)
 
 
-def test_quiz_stake_is_one_tap_and_too_little_points_disable_the_button(service, monkeypatch):
+def test_quiz_stake_is_one_tap_and_too_little_points_explain_the_blocker(service, monkeypatch):
     page, invite = open_quiz(service, monkeypatch, available_points=4)
     assert not button(page, "Challenge").disabled
     page.radio(key="pill_radio_quiz_stake").set_value(7).run()
-    assert button(page, "Challenge").disabled
+    assert_blocked(page, "Challenge", "7", "4", "lower stake")
     assert not invite.called
 
 
-def test_quiz_screen_is_short(service, monkeypatch):
+def test_quiz_setup_stays_short_with_a_separate_compact_guide(service, monkeypatch):
     page, _ = open_quiz(service, monkeypatch)
     import re
-    visible = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown if "<style>" not in m.value).split()
-    assert len(visible) < 25, visible and not page.metric and not page.caption and not page.info
+    intro = " ".join(re.sub(r"<[^>]+>", " ", m.value) for m in page.markdown
+                     if 'class="duel-heading"' in m.value or 'class="duel-setup-heading"' in m.value).split()
+    guide = next(m.value for m in page.markdown if 'class="duel-guide"' in m.value)
+    assert len(intro) < 30 and len(re.sub(r"<[^>]+>", " ", guide).split()) < 65
+    assert guide.count('<li>') == 3
+    assert [e.label for e in page.expander] == ['Rules & limits', 'Recent matches']
+    assert not page.metric and not page.caption and not page.info
 
 
 def test_quiz_used_tonight_hides_the_form(service, monkeypatch):
     page, _ = open_quiz(service, monkeypatch, outgoing=False)
     assert not any(b.label == "Challenge" for b in page.button)
     assert "already challenged" in notes(page)
+
+
+def test_quiz_missing_opponent_does_not_send_an_invitation(service, monkeypatch):
+    service['members'].append(LobbyMembership('c', 'pc', 'lobby', START))
+    page, invite = open_quiz(service, monkeypatch)
+    assert_blocked(page, 'Challenge', 'No opponent selected', 'Choose a player')
+    invite.assert_not_called()
+
+
+@pytest.mark.parametrize('accuracy', [51, 120])
+def test_chug_inaccurate_location_explains_limit_before_start(service, accuracy):
+    host = open_page()
+    button(host, 'Challenge').click().run()
+    guest = open_page('pb', 'b')
+    button(guest, 'Accept').click().run()
+    photo = BytesIO()
+    Image.new('RGB', (4, 4)).save(photo, 'JPEG')
+    service['photo'] = photo
+    service['location'] = ((38.7, -9.1), accuracy, None)
+    host.run()
+    assert_blocked(host, 'Start duel', str(accuracy), '50 m', 'outside')
+    assert service['starts'] == 0

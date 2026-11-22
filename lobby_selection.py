@@ -8,6 +8,7 @@ from core.lobby_overview import latest_season, lobby_status
 from core.scoring_v1 import utc
 from leaderboard_context import newest_active
 from parallel import run_parallel
+from season_recap_ui import finished_or_empty, unfinished_recaps
 
 SELECTION_KEYS = ('current_membership_id', 'current_lobby_id', 'current_lobby_name',
                   'current_season_id', 'current_lobby_mode', 'current_team_id',
@@ -59,9 +60,12 @@ def restore_selection(player_id):
         return
     lobbies = {l.id: l for l in db.list_lobbies()} if memberships else {}
     joined = [m for m in memberships if m.lobby_id in lobbies]
-    seasons = run_parallel(*[lambda m=m: latest_season(db.list_seasons_for_lobby(m.lobby_id))
-                             for m in joined])
+    finished, *seasons = run_parallel(lambda: finished_or_empty(player_id),
+                                      *[lambda m=m: latest_season(db.list_seasons_for_lobby(m.lobby_id))
+                                        for m in joined])
     rows = [(lobbies[m.lobby_id], m, season) for m, season in zip(joined, seasons)]
+    # Ended seasons this player has not finished yet: the banner on every page (R-S03).
+    st.session_state['_unfinished_recaps'] = unfinished_recaps(rows, finished, now) if finished is not None else []
     chosen = next((row for row in rows if row[0].id == saved
                    and lobby_status(row[2], now) != 'past'), None)
     if chosen is None:

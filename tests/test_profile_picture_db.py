@@ -152,3 +152,87 @@ def test_orphan_cleanup_keeps_current_and_recent_uploads(service, monkeypatch):
     bucket.remove.assert_not_called()
     assert db.cleanup_profile_pictures(apply=True) == 1
     bucket.remove.assert_called_once_with([f'owner/{abandoned}'])
+
+
+def test_early_access_check_is_used_instead_of_a_second_check(service, monkeypatch):
+    from unittest.mock import Mock
+    client, query, bucket, player = service
+    client.table.return_value.in_.return_value = query
+    actor = Mock(return_value=player)
+    friends = Mock(return_value=[{'sender_id': 'owner', 'recipient_id': 'friend', 'status': 'accepted'}])
+    monkeypatch.setattr(db, 'get_player', actor)
+    monkeypatch.setattr(db, 'list_friendships', friends)
+    relationships = db.profile_picture_access('owner', 'hash')
+    assert actor.call_count == 1 and friends.call_count == 1
+    path = f'friend/{uuid.uuid4()}.jpg'
+    query.execute.return_value.data = [{'player_id': 'friend', 'photo_ref': path}]
+    bucket.download.return_value = b'allowed'
+    assert db.download_profile_pictures('owner', 'hash', ['friend', 'outsider'],
+                                        relationships=relationships) == {'friend': b'allowed'}
+    assert actor.call_count == 1 and friends.call_count == 1, 'no second credential or friendship read'
+
+
+def test_early_access_check_rejects_a_stale_sign_in(service, monkeypatch):
+    monkeypatch.setattr(db, 'list_friendships', lambda _: [])
+    with pytest.raises(ValueError, match='sign-in changed'):
+        db.profile_picture_access('owner', 'stale')
+
+
+def test_private_bucket_is_checked_once_per_ten_minutes(service, monkeypatch):
+    client, _, _, _ = service
+    clock = [1000.0]
+    monkeypatch.setattr(db, 'monotonic', lambda: clock[0])
+    db._profile_picture_bucket()
+    db._profile_picture_bucket()
+    assert client.storage.get_bucket.call_count == 1
+    clock[0] += db.PRIVATE_BUCKET_RECHECK_SECONDS - 1
+    db._profile_picture_bucket()
+    assert client.storage.get_bucket.call_count == 1
+    clock[0] += 1  # exactly ten minutes after the check: check again
+    client.storage.get_bucket.return_value = SimpleNamespace(public=True)
+    with pytest.raises(RuntimeError, match='private storage bucket'):
+        db._profile_picture_bucket()
+    with pytest.raises(RuntimeError, match='private storage bucket'):
+        db._profile_picture_bucket()  # a refusal is never remembered as a pass
+    assert client.storage.get_bucket.call_count == 3
+
+
+def test_private_bucket_checks_are_separate_per_bucket(service, monkeypatch):
+    client, _, _, _ = service
+    db._profile_picture_bucket()
+    db._private_photo_bucket()
+    assert [call.args[0] for call in client.storage.get_bucket.call_args_list] == [
+        db.PROFILE_PICTURE_BUCKET, db.CHECKIN_PHOTO_BUCKET]
+
+
+def test_membership_names_come_in_one_request_and_only_for_their_lobby(service):
+    client, query, _, _ = service
+    client.table.return_value.select.return_value.in_.return_value = query
+    query.execute.return_value.data = [
+        {'id': 'm1', 'lobby_id': 'a', 'player_id': 'p1', 'players': {'display_name': 'Mia'}},
+        {'id': 'm2', 'lobby_id': 'other', 'player_id': 'p2', 'players': {'display_name': 'Leo'}},
+        {'id': 'm3', 'lobby_id': 'c', 'player_id': 'p3', 'players': None},
+    ]
+    names = db.list_membership_names([('m1', 'a'), ('m2', 'b'), ('m3', 'c'), ('m1', 'a')])
+    assert names == {('m1', 'a'): {'player_id': 'p1', 'display_name': 'Mia'},
+                     ('m3', 'c'): {'player_id': 'p3', 'display_name': 'Lobby member'}}
+    client.table.return_value.select.return_value.in_.assert_called_once_with('id', ['m1', 'm2', 'm3'])
+
+
+def test_membership_names_without_pairs_sends_nothing(service):
+    client, _, _, _ = service
+    assert db.list_membership_names([]) == {}
+    client.table.assert_not_called()
+
+
+def test_membership_names_for_many_lobbies_come_in_batches_of_50(service):
+    """A player leading 51+ lobbies used to crash the Lobby page (ValueError)."""
+    client, query, _, _ = service
+    in_ = client.table.return_value.select.return_value.in_
+    in_.return_value = query
+    query.execute.side_effect = lambda: SimpleNamespace(data=[
+        {'id': i, 'lobby_id': 'a', 'player_id': f'p-{i}', 'players': {'display_name': i}}
+        for i in in_.call_args.args[1]])
+    names = db.list_membership_names([(f'm{i}', 'a') for i in range(120)])
+    assert [len(call.args[1]) for call in in_.call_args_list] == [50, 50, 20]
+    assert len(names) == 120 and names[('m119', 'a')]['display_name'] == 'm119'

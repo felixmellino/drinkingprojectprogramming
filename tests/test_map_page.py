@@ -1,6 +1,7 @@
 """The Map page with its real widgets, a fake database and a simulated phone."""
 import re
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -45,6 +46,17 @@ def phone(monkeypatch):
 
 def open_map():
     return AppTest.from_file(ROOT / "pages/5_Map.py", default_timeout=10).run()
+
+
+@pytest.mark.parametrize('problem, words', [('denied', ['blocked', 'browser settings']),
+                                         ('unsupported', ['cannot share', 'HTTPS']),
+                                         ('timeout', ['too long', 'off and on'])])
+def test_location_help_explains_the_actual_failure_on_tap(phone, problem, words):
+    from tests.feedback_helpers import assert_blocked
+    phone['location'] = {'error': problem}
+    page = open_map()
+    assert not page.error
+    assert_blocked(page, 'Location help', *words)
 
 
 def test_map_replays_the_season_once_for_all_areas(phone, monkeypatch):
@@ -147,7 +159,7 @@ def test_map_uses_authorized_pictures_and_survives_photo_failure(phone, monkeypa
     page.session_state["credential_version"] = "test-credential"
     page.run()
     assert not page.exception
-    loader.assert_called_once_with('player', ['p-me','p-rival'])
+    loader.assert_called_once_with('player', ['p-me','p-rival'], relationships=[])
 
 
 def chart_json(page):
@@ -164,9 +176,37 @@ def test_map_sends_only_territory_ids_and_selects_on_tap(phone, monkeypatch):
     assert chart.selection_mode and not chart.tooltip                # a tap selects; no white tooltip
     layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
     assert layers["owner-badges"]["pickable"] is False             # taps reach the territory under a badge
+    assert all(set(marker) == {"position", "icon", "size"} for marker in layers["owner-badges"]["data"])
+    assert all(set(marker) == {"position", "initials", "text_size"} for marker in layers["owner-initials"]["data"])
     props = layers["territories"]["data"]["features"][0]["properties"]
     assert props["id"] == TERRITORY.id
     assert "<b>rival</b>" not in chart.json and "rival" not in str(props)  # names stay server-side
+
+
+@pytest.mark.parametrize("seconds", [-1, 90])
+def test_lobby_map_shows_only_unexpired_boosts(phone, monkeypatch, seconds):
+    from unittest.mock import Mock
+
+    def active_membership():
+        import streamlit as st
+
+        st.session_state["_validated_season"] = SimpleNamespace(scoring_rules={"territory_boost": True})
+        return "me", "lobby", "season"
+
+    now = datetime(2026, 11, 21, 21, tzinfo=timezone.utc)
+    active = Mock(return_value=(TERRITORY.id, now + timedelta(seconds=seconds)))
+    monkeypatch.setattr("shared.require_active_membership", active_membership)
+    monkeypatch.setattr(db, "active_territory_boost", active)
+    monkeypatch.setattr("core.scoring_v1.current_time", lambda: now)
+    page = open_map()
+    assert not page.exception
+    active.assert_called_once_with("player", "season")
+    layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
+    if seconds > 0:
+        assert layers["boost-outline"]["data"][0]["properties"]["id"] == TERRITORY.id
+        assert layers["boost-label"]["data"][0]["label"] == "1.25x\n01:30"
+    else:
+        assert "boost-label" not in layers
 
 
 def test_selected_territory_reads_only_known_ids():
@@ -176,6 +216,24 @@ def test_selected_territory_reads_only_known_ids():
     assert map_ui.selected_territory(event, {"territory-a"}) is None                     # unknown id ignored
     assert map_ui.selected_territory(SimpleNamespace(selection={}), {"territory-a"}) is None
     assert map_ui.selected_territory(None, {"territory-a"}) is None
+
+
+def test_demo_boost_displays_and_expires():
+    page = AppTest.from_file(ROOT / "scripts/territory_multiplier_demo.py", default_timeout=10).run()
+    assert not page.exception
+    layers = {layer["id"]: layer for layer in chart_json(page)["layers"]}
+    assert layers["boost-outline"]["data"][0]["properties"]["id"] == "shortys"
+    assert re.fullmatch(r"1\.25x\n\d{2}:\d{2}", layers["boost-label"]["data"][0]["label"])
+    icon = layers["boost-label"]["data"][0]["icon"]
+    assert icon["anchorY"] > icon["height"] * 0.9
+    assert any("5 season points and 5 territory points" in item.value for item in page.markdown)
+
+    page.session_state["boost_demo_ends_at"] = 0
+    page.run()
+    assert not page.exception
+    assert "Territory boost expired" in page.info[0].value
+    assert "boost-outline" not in {layer["id"] for layer in chart_json(page)["layers"]}
+    assert any("4 season points and 4 territory points" in item.value for item in page.markdown)
 
 
 

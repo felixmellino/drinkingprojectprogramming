@@ -11,6 +11,7 @@ import reaction_duel_ui as reaction_ui
 from core.reaction_duel import CONFIG, STAKES, component_action, outcome, time_label, validate_stake
 from tests.test_chug_duel_ui import service, open_page, button  # noqa: F401  (pytest fixture)
 from tests.test_scoring_v1 import START
+from tests.feedback_helpers import assert_blocked
 
 
 def test_python_and_sql_share_the_same_rules():
@@ -108,7 +109,8 @@ def test_stake_above_the_available_points_cannot_be_sent(reaction):
     state['available_points'] = 2
     page = open_page(selected='reaction')
     page.radio(key='pill_radio_reaction_stake').set_value(3).run()
-    assert button(page, 'Challenge').disabled and not invite.called
+    assert_blocked(page, 'Challenge', '3', '2', 'lower stake')
+    invite.assert_not_called()
 
 
 def test_opponent_accepts_and_a_tap_is_sent_with_the_saved_revision(reaction):
@@ -153,4 +155,18 @@ def test_missing_migration_shows_one_clear_message(reaction, monkeypatch):
         raise RuntimeError('Reaction Duel needs database migration 025 before it can open.')
     monkeypatch.setattr(reaction_ui.db, 'reaction_status', missing)
     page = open_page(selected='reaction')
-    assert not page.exception and 'migration 025' in page.error[0].value
+    assert not page.exception and 'app organizer' in page.error[0].value
+    assert any('migration 025' in item.value for item in page.markdown)
+
+
+def test_hidden_duel_keeps_guide_and_history_and_can_resume(reaction):
+    state, _, _ = reaction
+    run = dict(id='r1', revision=2, status='running', phase='reaction', step=0, reaction_ms=[])
+    state['duels'] = [_duel('accepted') | {'run': run}]
+    page = open_page(selected='reaction')
+    button(page, 'Back to games').click().run()
+    button(page, 'Open Reaction Duel').click().run()
+    assert not page.exception and button(page, 'Continue your duel')
+    assert any(e.label == 'Recent matches' for e in page.expander)
+    button(page, 'Continue your duel').click().run()
+    assert not page.exception and button(page, 'Back to games')

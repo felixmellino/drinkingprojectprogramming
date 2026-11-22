@@ -51,6 +51,17 @@ def test_frozen_snapshot_is_independent_of_new_seasons_and_mutable_defaults():
     assert new_rules()["points"]["beer"]["small"] == 1
 
 
+@pytest.mark.parametrize("focus,expected", [(None, 2.5), (1.25, 2.5), (1.5, 3)])
+def test_correction_keeps_territory_boost_without_stacking(focus, expected):
+    saved = replace(entry("boosted", "me", "beer", "large", 0), territory_boost_id="boost",
+                    focus_attempt_id="focus" if focus else None, focus_multiplier=focus,
+                    time_duel_id="time")
+    updated = corrected_entry(saved, season(), "beer", "medium", START)
+    assert updated.territory_boost_id == saved.territory_boost_id
+    assert updated.points_awarded == expected
+    assert updated.time_bonus == 0
+
+
 @pytest.mark.parametrize("offset,opened", [(-1, False), (0, True), (3600, True),
     (3 * 86400 - 1, True), (3 * 86400, False), (4 * 86400, False)])
 def test_weekly_boundaries(offset, opened):
@@ -84,6 +95,28 @@ def test_active_season_start_and_end_intersect_weekly_window():
 
 def test_next_opening_after_sunday_close_is_next_thursday():
     assert next_opening(START + timedelta(days=3), season()) == START + timedelta(days=7)
+
+
+def test_drink_after_midnight_counts_for_the_same_game_night():
+    """Pre-submission checklist: a drink after midnight. The window runs Thursday
+    18:00 to Sunday 18:00 lobby time, so the small hours of Friday, Saturday and
+    Sunday belong to the game night that started on Thursday."""
+    game = season()  # Europe/Lisbon, which is UTC in November
+    thursday_evening = START + timedelta(hours=4)               # Thu 22:00
+    friday_small_hours = START + timedelta(hours=6, minutes=30)  # Fri 00:30
+    sunday_small_hours = START + timedelta(days=2, hours=7, minutes=30)  # Sun 01:30
+    monday_small_hours = START + timedelta(days=3, hours=6, minutes=30)  # Mon 00:30
+    for moment in (friday_small_hours, sunday_small_hours):
+        assert scoring_open(moment, game)
+        assert window_bounds(moment, game) == window_bounds(thursday_evening, game)
+    after_midnight = create_scored_entry("A", game, "beer", "large", "photo", INSIDE, 10.0,
+                                         friday_small_hours, [TERRITORY], [], entry_id="late-night")
+    assert after_midnight.points_awarded == 3
+    # Sunday night after 18:00 is closed, so its small hours are closed too.
+    assert not scoring_open(monday_small_hours, game)
+    with pytest.raises(CheckinRejected, match="scoring_closed"):
+        create_scored_entry("A", game, "beer", "large", "photo", INSIDE, 10.0,
+                            monday_small_hours, [TERRITORY], [], entry_id="monday")
 
 
 def test_new_entry_checks_window_cooldown_and_location_and_discards_gps():

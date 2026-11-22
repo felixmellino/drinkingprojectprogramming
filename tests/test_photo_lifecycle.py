@@ -153,6 +153,28 @@ def test_batch_rechecks_membership_consent_and_reference_on_every_call(store):
     assert store.downloads == 1 and store.rows['entry']['points_awarded'] == 5
 
 
+def test_cached_thumbnail_still_requires_fresh_membership_consent_reference_and_retention(store):
+    cache = {"entry": b"cached preview"}
+    def read():
+        return db.download_checkin_photos("reader", "lobby", ["entry"], cached_thumbnails=cache)
+
+    assert read() == cache
+    store.preferences["author"]["share_checkin_photos"] = False
+    with pytest.raises(PermissionError):
+        read()
+    store.preferences["author"]["share_checkin_photos"] = True
+    reader = store.members.pop(1)
+    with pytest.raises(PermissionError):
+        read()
+    store.members.append(reader)
+    store.rows["entry"]["seasons"]["ends_at"] = END.isoformat()
+    assert read() == {"entry": None}
+    store.rows["entry"]["seasons"]["ends_at"] = (END + timedelta(seconds=1)).isoformat()
+    store.rows["entry"]["photo_ref"] = None
+    assert read() == {"entry": None}
+    assert store.downloads == 0
+
+
 @pytest.mark.parametrize('change', ['expiry','foreign_season','foreign_member','wrong_path','missing_object'])
 def test_batch_unavailable_photos_are_empty_without_cross_lobby_storage_access(store,change):
     if change == 'expiry': store.rows['entry']['seasons']['ends_at'] = END.isoformat()
@@ -309,9 +331,11 @@ def delete_button(page):
 
 
 def test_owner_can_confirm_deletion_through_photo_page(store, monkeypatch):
+    from tests.feedback_helpers import assert_blocked
     page = photo_page(monkeypatch)
     assert not page.exception
-    assert delete_button(page).disabled
+    assert_blocked(page, 'Delete my photo', 'not been confirmed', 'Tick')
+    assert store.files and store.rows['entry']['points_awarded'] == 5
     page.checkbox[0].check().run()
     assert not delete_button(page).disabled
     delete_button(page).click().run()

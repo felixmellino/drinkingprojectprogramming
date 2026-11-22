@@ -8,8 +8,10 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 #react{height:min(48vh,330px);width:100%;font-size:32px;background:var(--surface);border:3px solid var(--border)}#react.go{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 #flash .big{font:700 64px var(--font-body);font-variant-numeric:tabular-nums;color:var(--accent-ink);margin:12px 0}#flash .try{font-size:18px;color:var(--text-muted);margin:0}
 #overview{white-space:pre-line;font-size:18px;line-height:1.7;font-variant-numeric:tabular-nums;margin:12px 0}#saving{min-height:22px;font-size:14px;color:var(--accent-ink)}
-#falsestart{position:fixed;inset:0;z-index:5;background:#D92D20;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
-#falsestart h1{font:700 44px var(--font-body);letter-spacing:.02em;margin:0}#falsestart p{font-size:20px;margin:0}#falsestart .small{font-size:15px;opacity:.85;margin-top:18px}
+#falsestart{position:fixed;inset:0;z-index:5;background:var(--brand-soft);color:var(--brand-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px}
+#falsestart h1{font:400 44px var(--font-display);letter-spacing:.02em;margin:0}#falsestart p{font-size:18px;margin:0;max-width:340px}#falsestart .small{font-size:15px;margin-top:18px}
+#trial{color:var(--text-muted);font-size:13px;font-weight:600}#react{font-family:var(--font-display);font-weight:400;border-width:2px;border-radius:24px}
+#flash .big{font-family:var(--font-display);font-weight:400}#saving:empty{min-height:0}
 </style></head><body><main>
 <h1 id="title">Reaction Duel</h1>
 <section id="ready" class="panel" hidden><h2>Get ready</h2></section>
@@ -18,7 +20,7 @@ button{font:600 17px var(--font-body);color:var(--text);border:2px solid var(--b
 <section id="result" class="panel" hidden><h2 id="resultTitle"></h2><div id="overview" aria-label="Reaction times"></div><p id="resultText"></p></section>
 <div id="saving" role="status" aria-live="polite"></div>
 </main>
-<div id="falsestart" role="alert" hidden tabindex="0"><h1>FALSE START</h1><p>This try does not count.</p><p class="small">Tap to continue</p></div>
+<div id="falsestart" role="alert" hidden tabindex="0"><h1>Too soon!</h1><p>This try restarts.</p><p>Wait for TAP NOW, then react.</p><p class="small">Tap to continue</p></div>
 <script>
 let game=null,anchorEpoch=0,anchorMono=0,signature='',pending=null,sentKey='',flash=null,showRed=false;
 const $=id=>document.getElementById(id),views=['ready','reaction','flash','result'];

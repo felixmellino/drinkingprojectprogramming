@@ -7,55 +7,36 @@ from __future__ import annotations
 
 import base64
 import math
+from functools import lru_cache
 from io import BytesIO
 
-from PIL import Image, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 from core.location import point_in_polygon
 from core.profile_photo import initials
-
-LNG_M = 86_900
-LAT_M = 110_574
-BORDER_TOLERANCE_M = 0.5  # Same hand-drawn border tolerance as territory data QA.
-
-
-def _ring(boundary):
-    return [(p[0] * LNG_M, p[1] * LAT_M) for p in boundary["coordinates"][0]]
+from core.territory_geometry import LAT_M, LNG_M, adjacent, projected_ring
 
 
 def area(boundary):
-    ring = _ring(boundary)
+    ring = projected_ring(boundary)
     # Translate before multiplying to avoid cancellation with world coordinates.
     ox, oy = ring[0]
     return abs(sum((a[0] - ox) * (b[1] - oy) - (b[0] - ox) * (a[1] - oy)
                    for a, b in zip(ring, ring[1:]))) / 2
 
 
-def adjacent(first, second):
-    """Shared border of >0.5 m; corner-only contact and street gaps don't group.
-
-    Projecting segment endpoints also handles a shared edge split into
-    different numbers of vertices in the two hand-drawn polygons.
-    """
-    for a, b in zip(_ring(first), _ring(first)[1:]):
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        length = math.hypot(dx, dy)
-        if length <= BORDER_TOLERANCE_M:
-            continue
-        for c, d in zip(_ring(second), _ring(second)[1:]):
-            distances = [abs(dx * (p[1] - a[1]) - dy * (p[0] - a[0])) / length for p in (c, d)]
-            if max(distances) > BORDER_TOLERANCE_M:
-                continue
-            positions = [((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length for p in (c, d)]
-            overlap = min(length, max(positions)) - max(0, min(positions))
-            if overlap > BORDER_TOLERANCE_M:
-                return True
-    return False
-
-
 def interior_anchor(boundary):
     """Choose an inside point with room for a badge, even in a concave area."""
-    ring = _ring(boundary)
+    ring = tuple(tuple(point) for point in boundary["coordinates"][0])
+    position, clearance = _interior_anchor(ring)
+    return list(position), clearance
+
+
+@lru_cache(maxsize=128)
+def _interior_anchor(coordinates):
+    # Borders are static between edits. Cache geometry only, never owner or photo data.
+    boundary = {"coordinates": [coordinates]}
+    ring = projected_ring(boundary)
     left, right = min(p[0] for p in ring), max(p[0] for p in ring)
     bottom, top = min(p[1] for p in ring), max(p[1] for p in ring)
     candidates = [(left + (right - left) * (x + .5) / 20,
@@ -63,7 +44,7 @@ def interior_anchor(boundary):
                   for x in range(20) for y in range(20)]
     best, clearance = None, -1
     for x, y in candidates:
-        if not point_in_polygon(y / LAT_M, x / LNG_M, boundary["coordinates"][0]):
+        if not point_in_polygon(y / LAT_M, x / LNG_M, coordinates):
             continue
         distance = math.inf
         for a, b in zip(ring, ring[1:]):
@@ -78,7 +59,7 @@ def interior_anchor(boundary):
         a, b = max(zip(ring, ring[1:]), key=lambda edge: math.dist(*edge))
         best = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
         clearance = 0
-    return [best[0] / LNG_M, best[1] / LAT_M], clearance
+    return (best[0] / LNG_M, best[1] / LAT_M), clearance
 
 
 def badge_image(photo, colour):
@@ -103,6 +84,27 @@ def badge_image(photo, colour):
     output = BytesIO()
     image.save(output, format="PNG")
     return "data:image/png;base64," + base64.b64encode(output.getvalue()).decode("ascii")
+
+
+@lru_cache(maxsize=32)
+def boost_badge(label):
+    multiplier, timer = label.split("\n")
+    image = Image.new("RGBA", (156, 180))
+    draw = ImageDraw.Draw(image)
+    ink = "#2e200f"
+    gold = "#ffce76"
+    draw.polygon([(43, 117), (113, 117), (78, 174)], fill=gold, outline=ink, width=5)
+    draw.ellipse((3, 3, 153, 153), fill=gold, outline=ink, width=5)
+    # Join the face and tip without drawing a seam across the pin.
+    draw.polygon([(61, 145), (95, 145), (78, 169)], fill=gold)
+    draw.text((78, 58), multiplier, font=ImageFont.load_default(size=40), fill=ink, anchor="mm")
+    draw.ellipse((25, 88, 47, 110), outline=ink, width=3)
+    draw.line((36, 92, 36, 99, 41, 102), fill=ink, width=3)
+    draw.text((55, 99), timer, font=ImageFont.load_default(size=32), fill=ink, anchor="lm")
+    output = BytesIO()
+    image.save(output, format="PNG")
+    return {"url": "data:image/png;base64," + base64.b64encode(output.getvalue()).decode("ascii"),
+            "width": image.width, "height": image.height, "anchorY": 174}
 
 
 def owner_markers(rows, pictures, colours):

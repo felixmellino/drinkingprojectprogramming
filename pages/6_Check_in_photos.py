@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from time import monotonic
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -9,12 +10,15 @@ from httpx import RequestError
 from postgrest.exceptions import APIError
 from storage3.utils import StorageException
 
+import activity_ui
 import data.db as db
+from action_feedback import action_button, explain
+from core.action_feedback import checkin_message
 from core.constants import PHOTO_RETENTION_DAYS
 from core.checkins import CheckinRejected
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, base_points, can_correct, current_time, format_points, size_label, utc)
 from drink_entry_ui import page_header, section_heading
-from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata, photo_thumbnail
+from photo_history_ui import full_photo, history_pages, game_night_label, memory_tile, photo_metadata
 from shared import require_active_membership, require_login, show_logged_in_as
 from theme import empty_state
 
@@ -31,6 +35,8 @@ def show_time(timestamp: str, zone_name: str) -> str:
 
 
 STEP = 24  # photos shown at first and added by each "Load more"
+THUMBNAIL_TTL = 45
+THUMBNAIL_LIMIT = 48
 
 
 def load_more(count):
@@ -49,8 +55,10 @@ player_id = require_login()
 show_logged_in_as()
 _, lobby_id, _ = require_active_membership()
 
-page_header("Photos")
+page_header("Activity")
+activity_ui.view_switch("Photos")  # Feed | Photos: this gallery is a view of the Activity tab
 if st.session_state.pop("photo_deleted", False):
+    st.session_state.pop("_gallery_thumbnails", None)
     st.success("Photo deleted. Your score is unchanged.")
 if st.session_state.pop("checkin_corrected", False):
     st.success("Correction saved. Ownership and all affected owner income have been recalculated.")
@@ -95,21 +103,37 @@ if len(entries) > 1 and detail_id is None:
 
     visible = [item for _, _, items in visible_nights for item in items]
     ids = [item['id'] for item in visible]
-    photos = {}
+    scope = (player_id, lobby_id)
+    previous_scope, cache = st.session_state.get("_gallery_thumbnails", (None, {}))
+    now = monotonic()
+    cache = {entry_id: (fetched_at, image) for entry_id, (fetched_at, image) in cache.items()
+             if previous_scope == scope and now - fetched_at < THUMBNAIL_TTL
+             and entries_by_id.get(entry_id, {}).get("has_photo")}
+    thumbnails = {entry_id: image for entry_id, (_, image) in cache.items()}
+    photos = dict.fromkeys(ids)
     try:
         # The list can hold more photos than one authorization batch allows: every slice of at most
         # MAX_PHOTO_BATCH photos gets its own fresh audience snapshot, never a cached listing.
         for start in range(0, len(ids), db.MAX_PHOTO_BATCH):
             batch = ids[start:start + db.MAX_PHOTO_BATCH]
             try:
-                originals = db.download_checkin_photos(player_id, lobby_id, batch)
-                # Decode one thumbnail at a time and drop the originals, to bound memory for large camera images.
-                photos.update({entry_id: photo_thumbnail(originals.get(entry_id)) for entry_id in batch})
+                fetched = db.download_checkin_photos(player_id, lobby_id, batch, cached_thumbnails=thumbnails)
+                photos.update(fetched)
+                for entry_id, image in fetched.items():
+                    if image is None:
+                        cache.pop(entry_id, None)
+                    elif entry_id not in cache:
+                        cache[entry_id] = (now, image)
             except (APIError, RequestError, RuntimeError, StorageException):
-                photos.update(dict.fromkeys(batch))   # this slice failed; the others still show
+                continue  # this slice failed; the others still show
     except PermissionError:
+        st.session_state.pop("_gallery_thumbnails", None)
         st.warning("Photo access changed. Refresh to load the current photo history.")
         st.stop()
+    # Keep the newest visible previews when a player loads a very long gallery.
+    st.session_state["_gallery_thumbnails"] = (
+        scope, {entry_id: cache[entry_id] for entry_id in ids[:THUMBNAIL_LIMIT] if entry_id in cache},
+    )
     if any(photos.get(item['id']) is None and item.get('has_photo',True) for item in visible):
         st.warning('Some photos could not be loaded. Their details are still available.')
 
@@ -117,7 +141,7 @@ if len(entries) > 1 and detail_id is None:
         label = f"{len(night_entries)} check-in{'s' if len(night_entries) != 1 else ''}"
         st.markdown(f'<div class="memory-night-label"><strong>{game_night_label(start, end)}</strong>'
                     f'<span>{label}</span></div>', unsafe_allow_html=True)
-        with st.container(key=f"memory_grid_{start.date().isoformat()}"):
+        with st.container(key=f"memory_grid_{night_entries[0]['id']}"):
             for item in night_entries:
                 with st.container(key=f"memory_tile_{item['id']}"):
                     photo = photos[item['id']]
@@ -163,7 +187,7 @@ if entry.get("rule_version") == "v1":
         territory_points = model.points_awarded if model.location_check_result == "matched" else 0
         st.text(f"Drinker: +{format_points(model.points_awarded + model.time_bonus)} season points and +{format_points(territory_points)} territory points")
         if model.focus_attempt_id:
-            st.caption('Focus boost ×1.5. This check-in keeps its earned multiplier after the boost ends.')
+            st.caption(f'Focus boost ×{model.focus_multiplier or 1.5:g}. This check-in keeps its earned multiplier after the boost ends.')
         if model.owner_bonus_quarters:
             income = format_points(Decimal(model.owner_bonus_quarters) / 4)
             st.text(f"Additional owner income: +{income} season points to {entry['income_recipient']}")
@@ -203,26 +227,34 @@ if entry.get("rule_version") == "v1":
                         horizontal=True, width="stretch", key=f"{key}_size")
             st.info(f"Corrected base award: {base_points(chosen_drink, chosen_size, season.scoring_rules)} points")
             unchanged = chosen_drink == model.drink_type and chosen_size == model.size
-            if st.button("Save correction", key=f"{key}_save", type="primary", width="stretch", disabled=unchanged):
+            if action_button("Save correction", key=f"{key}_save", type="primary", width="stretch",
+                             problems=["The drink and size are unchanged. Choose a different drink or size before saving a correction." if unchanged else None]):
                 try:
                     db.correct_checkin(player_id, lobby_id, model.id, chosen_drink, chosen_size, model.revision)
                 except PermissionError:
-                    st.error("Only the submitter can correct this entry.")
+                    explain("Only the person who submitted this drink can correct it. Open one of your own check-ins to make a correction.")
                 except CheckinRejected as error:
-                    if error.reason == "correction_conflict":
-                        st.error("This entry changed in another session. Refresh and review it before retrying.")
-                    else:
-                        st.error("The correction window has closed or this selection is invalid. Refresh to see the saved result.")
+                    explain(checkin_message(error.reason))
+                except ValueError as error:
+                    explain(str(error))
                 except (APIError, RequestError, RuntimeError):
-                    st.error("The correction result is uncertain. Refresh and check the saved entry before retrying.")
+                    explain("The correction result is uncertain. Refresh and check the saved entry before retrying.")
                 else:
                     st.session_state["checkin_corrected"] = True
                     st.rerun()
+    elif entry["is_owner"]:
+        if model.duel_id:
+            st.caption(checkin_message("duel_entry_locked"))
+        else:
+            st.caption(checkin_message("correction_closed"))
+    else:
+        st.caption("Only the person who submitted this drink can correct it. Open one of your own check-ins to make a correction.")
 
 else:
     with st.container(key="drink_ui_panel_details"):
         section_heading("02", "Drink & points", "Original details for this historical check-in.")
         photo_metadata(entry)
+        st.caption("Drink and size corrections are unavailable in historical seasons. You can still view the original details and delete your own saved photo.")
 
 # Keep deletion available even when the download failed, so partial deletions
 # can still be retried. This action never changes the scored entry.
@@ -230,13 +262,15 @@ if entry["is_owner"] and entry["has_photo"]:
     with st.expander("Manage your photo"):
         st.caption("Permanently remove the image. Your check-in, points and owner income stay.")
         confirmed = st.checkbox("Permanently delete this photo", key=f"confirm_delete_{entry['id']}")
-        if st.button("Delete my photo", disabled=not confirmed):
+        if action_button("Delete my photo", problems=["Deletion has not been confirmed. Tick Permanently delete this photo, then press Delete my photo again. Your points will be kept." if not confirmed else None]):
             try:
                 db.delete_checkin_photo(player_id, lobby_id, entry["id"])
             except PermissionError:
-                st.error("Only the photo's owner can delete it.")
+                explain("Only the photo's owner can delete it. Open one of your own photos to delete it.")
             except (APIError, RequestError, RuntimeError, StorageException):
-                st.error("We couldn't finish deleting the photo. Try again.")
+                explain("We couldn't confirm deletion. Refresh Photos to check whether the image remains, then retry if needed.")
             else:
                 st.session_state["photo_deleted"] = True
                 st.rerun()
+elif not entry['is_owner'] and entry['has_photo']:
+    st.caption("Only the person who owns this photo can delete it. Use the Mine filter to find photos you can manage.")
