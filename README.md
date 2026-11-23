@@ -1,4 +1,4 @@
-# wegopubprogramming (WeGoPub)
+# drinkingprojectprogramming (WeGoPub)
 
 WeGoPub: a social drinking-game app where players log drinks with a photo
 and GPS location, capture territories on a map, and compete on a season
@@ -53,8 +53,8 @@ extending a Block 2 solo project). What it does and how it is built:
 Requires Python 3.12 or newer (CI tests 3.12 and 3.14). From a fresh clone:
 
 ```bash
-git clone https://github.com/felixmellino/wegopubprogramming.git
-cd wegopubprogramming
+git clone https://github.com/felixmellino/drinkingprojectprogramming.git
+cd drinkingprojectprogramming
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-verification.txt
@@ -103,7 +103,7 @@ get the normal app. Beside the phone: **Reload app** (if a screen ever hangs),
 is on in `.streamlit/config.toml`); the switch is in the theme reader
 (`components/theme_switch/index.html`). Camera and location are the laptop's.
 
-- **Source:** repository `felixmellino/wegopubprogramming`, branch
+- **Source:** repository `felixmellino/drinkingprojectprogramming`, branch
   `main`, main file `app.py`. Every merge into `main` redeploys the app
   automatically within a few minutes.
 - **Python:** 3.14 (chosen when the app was created; it can only be changed by
