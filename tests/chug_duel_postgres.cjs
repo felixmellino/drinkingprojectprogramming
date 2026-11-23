@@ -187,6 +187,23 @@ async function replay(season){
  assert.equal((await post(103,41,qa,414)).id,uid(414));
  await assert.rejects(post(100,11,season,417),/scoring_closed/);
  await assert.rejects(invite(6,319,13,season),/scoring_closed/);
+ // Migration 033: test seasons play Chug Duel on any day; standard seasons keep the window.
+ // The Games badge function in 033 also reads the Quiz, Time and Reaction tables, which
+ // this Chug-only fixture does not install, so its body is checked by migration_chain.cjs.
+ const anyDay=fs.readFileSync('migrations/033_test_chug_any_day.sql','utf8').replaceAll('statement_timestamp()','(select at_time from test_clock)');
+ await pg.exec('set check_function_bodies=off;'+anyDay+';reset check_function_bodies;');
+ await pg.exec('set check_function_bodies=off;'+anyDay+';reset check_function_bodies;'); // repeatable
+ assert.equal((await start(1,415)).status,'started'); // accepted before the cutoff, still playable
+ await action(1,415,'arm');await clock('2026-11-22T18:00:09Z');
+ assert.equal((await action(1,415,'finish',42)).status,'completed');
+ await clock('2026-11-23T12:00:00Z'); // Monday
+ await invite(1,416,42,qa);await action(2,416,'accept');
+ assert.equal((await start(1,416)).status,'started');
+ await action(1,416,'arm');await clock('2026-11-23T12:00:09Z');
+ assert.equal((await action(1,416,'finish',41)).winner_id,uid(41));
+ await assert.rejects(invite(1,430,12,season),/scoring_closed/); // standard season still closed on Monday
+ await clock((await q('select ends_at from seasons where id=$1',[qa])).rows[0].ends_at.toISOString());
+ await assert.rejects(invite(1,431,42,qa),/scoring_closed/); // and the test season still ends
  await pg.exec('set role anon');
  await assert.rejects(q('select * from chug_duels'),/permission denied/);
  await assert.rejects(invite(1,320,12,season),/permission denied/);
@@ -198,5 +215,5 @@ async function replay(season){
  assert.deepEqual(await replay(qa),savedQA);
  assert.equal((await action(1,301,'finish',12)).winner_id,uid(11));
  assert.deepEqual(await replay(season),saved);
- console.log('PASS: migration repeat; authorization; atomic start; cooldown rollback; countdown; 6/0 transfer once; unchanged territories/income; normal role limits; expiry/abort; midnight/06:00; competing accepts; QA backfill and server-derived test flag; consecutive QA entries; retry deduplication; standard cooldown; weekly duel cutoff with ordinary QA check-ins still open; restart persistence.');
+ console.log('PASS: migration repeat; authorization; atomic start; cooldown rollback; countdown; 6/0 transfer once; unchanged territories/income; normal role limits; expiry/abort; midnight/06:00; competing accepts; QA backfill and server-derived test flag; consecutive QA entries; retry deduplication; standard cooldown; weekly duel cutoff before 033, then QA Chug Duel any day until season end (033); restart persistence.');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(pg)await pg.close();});

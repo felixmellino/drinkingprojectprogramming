@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from core.scoring_v1 import base_points, rules_for, scoring_open, utc
+from core.scoring_v1 import base_points, checkin_open, rules_for, utc
 from core.action_feedback import checkin_message, role_limit_message
 
 RESET_HOUR = 6
@@ -27,6 +27,12 @@ def unlimited_plays(season) -> bool:
     return rules_for(season).get("test_mode") is True
 
 
+def duel_open(now: datetime, season) -> bool:
+    """Test seasons allow Chug Duel on any day of the season (migration 033);
+    standard seasons keep the weekly scoring window."""
+    return checkin_open(now, season)
+
+
 def allowances(member_id: str, night: str, duels: list[dict], *, season=None) -> tuple[bool, bool]:
     """Normal nightly role limits; QA seasons can repeat after a game ends."""
     if season is not None and unlimited_plays(season):
@@ -49,7 +55,7 @@ def validate_pair(challenger, opponent, lobby) -> None:
 
 def validate_invitation(challenger, opponent, lobby, season, drink, size, now, duels):
     validate_pair(challenger, opponent, lobby)
-    if season.lobby_id != lobby.id or not scoring_open(now, season):
+    if season.lobby_id != lobby.id or not duel_open(now, season):
         raise ValueError("Duels are available only while this season's scoring is open.")
     points = base_points(drink, size, rules_for(season))
     outgoing, _ = allowances(challenger.id, night_id(now, season.timezone_name), duels, season=season)

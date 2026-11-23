@@ -31,12 +31,11 @@ def test_quiz_below_minimum_gives_an_attainable_solution(service, monkeypatch, a
     invite.assert_not_called()
 
 
-@pytest.mark.parametrize('chug, expected', [(False, 'Mon 23 Nov at 08:00'), (True, 'Wed 25 Nov at 08:00')])
-def test_qa_opening_uses_season_start_except_for_chug(chug, expected):
+def test_qa_opening_uses_season_start_for_every_duel():
     start = datetime(2026, 11, 23, 8, tzinfo=timezone.utc)
     game = replace(season(), starts_at=start, ends_at=start + timedelta(days=7), scoring_rules=new_rules(test_mode=True))
-    text = duel_closed_message(game, now=start - timedelta(days=1), allow_test_anytime=not chug)
-    assert expected in text and game.timezone_name in text
+    text = duel_closed_message(game, now=start - timedelta(days=1))
+    assert 'Mon 23 Nov at 08:00' in text and game.timezone_name in text
 
 
 @pytest.mark.parametrize('module', ['core.chug_duel', 'core.quiz_duel', 'core.time_duel'])

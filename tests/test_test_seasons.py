@@ -7,6 +7,7 @@ import pytest
 import data.db as db
 from core.scoring_v1 import checkin_open, create_scored_entry, new_rules, next_opening, scoring_open
 from core.checkins import CheckinRejected
+from core.chug_duel import duel_open
 from tests.test_scoring_v1 import season
 from tests.test_checkins import INSIDE, TERRITORY
 
@@ -20,7 +21,7 @@ def qa_season(zone='Europe/Lisbon'):
 @pytest.mark.parametrize('at,allowed', [(WEDNESDAY-timedelta(microseconds=1), False),
     (WEDNESDAY, True), (WEDNESDAY+timedelta(days=4,hours=10)-timedelta(microseconds=1), True),
     (WEDNESDAY+timedelta(days=4,hours=10), False)])
-def test_chug_weekly_window_boundaries_in_test_season(at, allowed):
+def test_frozen_weekly_window_boundaries_in_test_rules(at, allowed):
     assert scoring_open(at, qa_season()) is allowed
 
 
@@ -34,12 +35,29 @@ def test_normal_window_and_existing_snapshot_unchanged():
     assert normal == new_rules()
 
 
-def test_chug_test_window_uses_lobby_timezone_and_next_opening():
+def test_test_rules_window_uses_lobby_timezone_and_next_opening():
     game = qa_season('America/New_York')
     assert not scoring_open(WEDNESDAY, game)  # 03:00 in New York.
     opening = next_opening(WEDNESDAY, game)
     assert opening.hour == 8 and opening.weekday() == 2
     assert scoring_open(opening, game)
+
+
+@pytest.mark.parametrize('days,hour', [(0, 0), (4, 18), (5, 10), (6, 23)])
+def test_chug_duel_open_any_day_in_test_season_only(days, hour):
+    game = qa_season()
+    at = WEDNESDAY.replace(hour=hour) + timedelta(days=days)
+    assert duel_open(at, game)
+    assert not duel_open(at, replace(game, scoring_rules=new_rules()))
+
+
+def test_chug_duel_in_test_season_stays_inside_season_bounds():
+    game = qa_season()
+    tick = timedelta(microseconds=1)
+    assert not duel_open(game.starts_at - tick, game)
+    assert duel_open(game.starts_at, game)
+    assert duel_open(game.ends_at - tick, game)
+    assert not duel_open(game.ends_at, game)
 
 
 @pytest.mark.parametrize('days,hour', [(0, 0), (4, 18), (5, 10), (6, 23)])

@@ -64,8 +64,8 @@ new entries, save no points and show the next opening where one exists.
 
 Existing and new seasons with the frozen JSON boolean `test_mode=true`
 accept ordinary check-ins at any time within their season bounds.
-Migration 032 applies the exception at database receipt. Test Chug Duel
-still uses its frozen Wednesday 08:00–Sunday 18:00 window. See
+Migration 032 applies the exception at database receipt. Migration 033 opens
+test-season Chug Duel on any day within the season bounds as well. See
 [camera and QA setup](../CAMERA_AND_QA_SEASONS.md).
 
 ## P-S10-P-S11: cooldown and retry

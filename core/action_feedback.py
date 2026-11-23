@@ -46,11 +46,11 @@ def stake_problems(opponent, stake, available_points, *, min_stake=1):
     ]
 
 
-def duel_closed_message(season, *, now=None, allow_test_anytime=True):
+def duel_closed_message(season, *, now=None):
     now = now or current_time()
     if utc(now) >= utc(season.ends_at):
         return "This season has ended. Create or join a new lobby to play another duel."
-    if allow_test_anytime and rules_for(season).get('test_mode'):
+    if rules_for(season).get('test_mode'):
         local = utc(season.starts_at).astimezone(ZoneInfo(season.timezone_name))
         if utc(now) < utc(season.starts_at):
             return f"This test season has not started. Return {local:%a %d %b at %H:%M} ({season.timezone_name}) to play."
