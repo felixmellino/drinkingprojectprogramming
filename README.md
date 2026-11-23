@@ -1,9 +1,24 @@
-# drinkingprojectprogramming (WeGoPub)
+# wegopubprogramming (WeGoPub)
 
 WeGoPub: a social drinking-game app where players log drinks with a photo
 and GPS location, capture territories on a map, and compete on a season
 leaderboard. Game design lives in [`docs/ontology/`](docs/ontology/) and
 [`AGENTS.md`](AGENTS.md).
+
+## Objectives
+
+- **Turn a night out into a territory game.** Lisbon is split into 48
+  territories. Whoever scores the most points in a territory owns it; the
+  player with the most points at the end of a roughly month-long season wins.
+- **Make check-ins trustworthy without a referee.** A fresh camera photo and an
+  automatic GPS check replace a friend confirming the drink; points come only
+  from the selected drink and size, on game nights (Thursday 18:00 to Sunday 18:00).
+- **Keep friends playing together.** Lobbies (individual or teams), friends,
+  four live duels (Chug, Quiz, Time, Reaction), an activity feed, a photo gallery and a season
+  recap with awards.
+- **Build it to course standards.** Rules in plain, tested Python (`core/`), all
+  database access in one module (`data/db.py`), atomic database functions for
+  scoring, private photo storage, and automated tests on every pull request.
 
 Quiz Duel (100 English questions, generated multiplication/logic, reserved
 3–10 point stakes): [implementation and setup](docs/QUIZ_DUEL.md).
@@ -18,12 +33,15 @@ Time Duel (three hidden-timer rounds on two phones, one-hour ×1.25 season bonus
 
 **Team:**
 
-| Name | Student number |
-| --- | --- |
-| Felix Mellino | 79820 |
-| Nils Cuypers | 78681 |
-| Niklas Peter | 78399 |
-| Ben Schittkowski | 70689 |
+| Name | Student number | GitHub account(s) in the commit history |
+| --- | --- | --- |
+| Felix Mellino | 79820 | `felixmellino` |
+| Nils Cuypers | 78681 | `nilscuypers18-ops` |
+| Niklas Peter | 78399 | `niklasptr`, `niklaspeter02` |
+| Ben Schittkowski | 70689 | `Ben10Nova` |
+
+All four members contributed code through branches and pull requests
+(`git shortlog -sn main` lists the commits per account).
 
 **Project origin:** WeGoPub is a new application built by the team for the
 team project (the course allows starting a new application instead of
@@ -35,8 +53,8 @@ extending a Block 2 solo project). What it does and how it is built:
 Requires Python 3.12 or newer (CI tests 3.12 and 3.14). From a fresh clone:
 
 ```bash
-git clone https://github.com/felixmellino/drinkingprojectprogramming.git
-cd drinkingprojectprogramming
+git clone https://github.com/felixmellino/wegopubprogramming.git
+cd wegopubprogramming
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-verification.txt
@@ -85,7 +103,7 @@ get the normal app. Beside the phone: **Reload app** (if a screen ever hangs),
 is on in `.streamlit/config.toml`); the switch is in the theme reader
 (`components/theme_switch/index.html`). Camera and location are the laptop's.
 
-- **Source:** repository `felixmellino/drinkingprojectprogramming`, branch
+- **Source:** repository `felixmellino/wegopubprogramming`, branch
   `main`, main file `app.py`. Every merge into `main` redeploys the app
   automatically within a few minutes.
 - **Python:** 3.14 (chosen when the app was created; it can only be changed by
