@@ -18,8 +18,9 @@ declare
   timing uuid := gen_random_uuid();
   reaction uuid := gen_random_uuid();
   focus uuid := gen_random_uuid();
+  -- Monday in a prior week, outside both standard and QA Chug Duel windows.
   receipt timestamptz := (date_trunc('week', statement_timestamp() at time zone 'UTC')
-                          - interval '4 days' + interval '20 hours') at time zone 'UTC';
+                          - interval '7 days' + interval '12 hours') at time zone 'UTC';
   planned_end timestamptz := statement_timestamp() + interval '1 day';
   deadline timestamptz := statement_timestamp() + interval '15 minutes';
   cutoff timestamptz;
@@ -39,10 +40,27 @@ begin
     (focus_member,focus_player,lobby,receipt-interval '1 hour'),
     (regular_member,creator,regular_lobby,receipt-interval '2 hours');
   insert into seasons(id,lobby_id,starts_at,ends_at,length_choice,timezone_name,scoring_version,scoring_rules) values
-    (test_season,lobby,receipt-interval '1 hour',planned_end,'1_month','UTC','v1',rules || '{"test_mode":true}'),
+    (test_season,lobby,receipt-interval '1 hour',planned_end,'1_month','UTC','v1',
+      rules || '{"test_mode":true,"start_weekday":2,"start_hour":8}'),
     (regular_season,regular_lobby,receipt-interval '1 hour',planned_end,'1_month','UTC','v1',rules);
   perform fixture_boost_checkin(creator,creator_member,lobby,test_season,capture,receipt::text,null);
   perform fixture_boost_checkin(other_player,other_member,lobby,test_season,gen_random_uuid(),receipt::text,null);
+
+  for rejection in select * from (values
+    (regular_member,regular_lobby,regular_season,receipt),
+    (creator_member,lobby,test_season,receipt-interval '1 hour 1 second'),
+    (creator_member,lobby,test_season,planned_end)
+  ) closed(member,lid,sid,at_time) loop
+    begin
+      perform fixture_boost_checkin(creator,rejection.member,rejection.lid,rejection.sid,
+        gen_random_uuid(),rejection.at_time::text,null);
+      raise exception 'Check-in was accepted outside its permitted times';
+    exception when raise_exception then
+      if sqlerrm <> 'scoring_closed' then raise; end if;
+    end;
+  end loop;
+  assert (select count(*) from drink_entries where season_id=test_season and points_awarded=4) = 2;
+  assert not exists (select 1 from drink_entries where season_id=regular_season);
 
   for rejection in select * from (values
     (other_player,lobby,test_season,'permission_denied'),

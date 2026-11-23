@@ -78,6 +78,10 @@ assert.equal(order[0],'schema.sql');
  assert.deepEqual((await reopened.query(`select s.ended_early, r.status, t.points
   from seasons s join reaction_duels r on r.season_id=s.id join quiz_transfers t on t.id=r.id
   where s.ended_early`)).rows, [{ended_early:true,status:'completed',points:3}]);
+ assert.deepEqual((await reopened.query(`select count(*)::int as entries, sum(d.points_awarded) as points
+  from drink_entries d join seasons s on s.id=d.season_id join lobbies l on l.id=s.lobby_id
+  where l.invite_code='ENDTEST' and extract(isodow from d.submitted_at at time zone 'UTC')=1`)).rows,
+  [{entries:2,points:'8.000'}]);
  await reopened.close();
  console.log('Migration chain passed: '+order.length+' files in documented order, every migration file accounted for, functions, tables and private access present.');
  await pg.close();

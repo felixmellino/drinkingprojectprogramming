@@ -288,9 +288,9 @@ History includes point breakdowns and revision records. See the
 [current ontology contract](docs/ontology/SCORING_V1.md) for defaults, testing
 commands and the remaining live checks. The three-page PDF is the historical
 team-review proposal. Camera and phone GPS now start automatically when
-Check-in opens. For Wednesday testing, create a new lobby with **Test season**
-selected; its window is Wednesday 08:00–Sunday 18:00. Normal and existing
-seasons retain their rules. See [camera and QA seasons](docs/CAMERA_AND_QA_SEASONS.md).
+Check-in opens. Select **Test season** when creating a demo lobby. Ordinary
+check-ins are open throughout the configured season after migration 032,
+including in existing test lobbies. See [camera and QA seasons](docs/CAMERA_AND_QA_SEASONS.md).
 
 ### Run the app
 

@@ -61,7 +61,8 @@ weighted as shown below.
    tasks remain playable after a miss (contributor revision, 19 November 2026).
    Explicit test seasons also allow Focus without uploads and unlimited
    sequential replays, including pre-Focus QA snapshots (migration 015).
-   QA games can run throughout an active season; drink scoring keeps its window.
+   Ordinary drink check-ins are open throughout an active QA season (migration 032).
+   Chug Duel uses the season's frozen weekly window.
 3. Once the core is stable, prioritize additions that make the game
    better and can be demonstrated and tested. The territory owner
    advantage, team events, and special effects depend on rules agreed by

@@ -145,8 +145,8 @@ These presentation choices introduce no new scoring or database rules.
   submission; the territory preview does not reserve eligibility or ownership.
 - Create lobby and Retry lobby setup have an unchecked Test season option.
   A selected test season is labelled on its lobby card and Check-in page.
-  Its frozen scoring window is Wednesday 08:00–Sunday 18:00 in the lobby
-  timezone. Normal seasons keep Thursday 18:00–Sunday 18:00.
+  Ordinary check-ins are open throughout an active test season.
+  Standard check-ins run Thursday 18:00–Sunday 18:00 in the lobby timezone.
 - Photo history opens a newest-first gallery of the lobby's retained entries,
   with username, territory, image, drink/size, base season and territory awards,
   applicable owner income and photo-receipt/submission time. One continuous list shows
