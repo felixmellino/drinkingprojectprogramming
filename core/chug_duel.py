@@ -84,7 +84,7 @@ ERRORS = {
     "duel_team": "Choose a player from another team. Both players need a team.",
     "duel_early": "Wait for the countdown to finish before submitting a result.",
     "duel_entry_locked": "Duel drinks are agreed by both players and cannot be corrected separately. Open Minigames to review the agreed drink.",
-    "scoring_closed": "Duels are closed outside the season's scoring window. Open Check in to see the next opening; choose a new lobby if the season has ended.",
+    "scoring_closed": "Chug Duel is closed. Reopen Chug Duel in Games to see its next opening.",
     "cooldown": "One of you has a recent check-in. Wait two minutes after both players' last posts.",
     "invalid_selection": "Choose a supported drink and size.",
     "invalid_photo": "Take a fresh shared photo before starting.",

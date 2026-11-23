@@ -46,8 +46,7 @@ test seasons without a Focus snapshot. No uploads are required; failed and
 successful attempts can be replayed sequentially without a nightly limit.
 Names, string values and normal seasons never enable the exception. Migration
 015 supplies the fixed v1 configuration for older QA snapshots without editing
-them. QA games may run any time during an active season, including outside the
-weekly scoring window; drink submissions still require their normal window.
+them. Focus can run any time during an active QA season.
 
 Count the member's accepted v1 drink entries in this lobby/season and the same
 06:00-based evening, irrespective of type/size. Their shared Chug Duel entry
@@ -266,19 +265,20 @@ New games are blocked outside normal scoring availability.
 Source: contributor's explicit interruption and navigation answers,
 18 November 2026; accepted/start phase deadlines are operational defaults.
 
-## QA season exception (18 November 2026, cooldown updated 22 November 2026)
+## QA season check-ins (updated 23 November 2026)
 
-For explicitly selected **test seasons only**, posting opens Wednesday at
-08:00 inclusive and closes Sunday at 18:00 exclusive in the season's lobby
-timezone. Create lobby / Retry lobby setup opt in with an unchecked checkbox;
-the choice is stored as `scoring_rules.test_mode=true` with start weekday 2
-and hour 8. Normal seasons retain Thursday 18:00–Sunday 18:00. All other rules
-and server validation still apply, including GPS, photos, points and corrections.
+Ordinary check-ins are open 24/7 in explicitly marked test seasons, from
+`starts_at` inclusive to `ends_at` exclusive. Ending a test season early
+closes check-ins immediately (R-S04). Create lobby and Retry lobby setup
+offer an unchecked Test season option. The rule applies to existing and new
+seasons with the frozen JSON boolean `scoring_rules.test_mode=true`.
+Standard seasons use Thursday 18:00–Sunday 18:00 in the lobby timezone.
+Photo, GPS, points, and correction rules still apply.
+
 Test seasons allow consecutive ordinary check-ins and Chug Duel entries
-with no posting cooldown. This applies to existing and future test seasons
-using the same frozen flag. Standard seasons keep the two-minute posting
-cooldown. R-M02 allows unlimited sequential Chug Duel replays in test seasons
-within the existing night boundaries.
+with no posting cooldown. Standard seasons have a two-minute posting
+cooldown. R-M02 allows unlimited sequential Chug Duel replays during the
+test season's frozen Wednesday 08:00–Sunday 18:00 window in the lobby timezone.
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 

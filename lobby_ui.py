@@ -251,7 +251,7 @@ def retry_setup(player_id, lobby):
             duration = st.radio('Lobby duration', ['1_week', '1_month', '3_months'],
                                 format_func=lambda value: value.replace('_', ' '), horizontal=True)
             zone = st.text_input('Lobby timezone', value='Europe/Lisbon')
-            test_mode = st.checkbox('Test season: Wednesday 08:00–Sunday 18:00',
+            test_mode = st.checkbox('Test season (check in any day)',
                                     key=f'retry_test_season_{lobby.id}')
             retry = st.form_submit_button('Start lobby')
         if retry:

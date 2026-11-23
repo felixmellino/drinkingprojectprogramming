@@ -26,7 +26,7 @@ from core.checkin_photo import InvalidCheckinPhoto, prepare_checkin_photo
 from core.checkins import CheckinRejected, create_drink_entry
 from core.checkin_feedback import captured_territory
 from core.scoring_v1 import (DRINK_LABELS, SIZE_LABELS, TERRITORY_MULTIPLIER, base_points, checkin_cooldown_seconds,
-    cooldown_deadline, create_scored_entry, current_time, format_points, next_opening, rules_for, scoring_open,
+    checkin_open, cooldown_deadline, create_scored_entry, current_time, format_points, next_opening, rules_for,
     size_label, utc)
 from core.constants import DUPLICATE_WINDOW_SECONDS, MAX_GPS_ACCURACY_M
 from core.location import evaluate_location
@@ -88,7 +88,9 @@ capture = st.session_state.get('checkin_capture')
 # a photo that can't count. A photo already taken keeps the warnings below.
 now = current_time()
 period_closed = not utc(season.starts_at) <= utc(now) < utc(season.ends_at)
-closed = period_closed or (modern and not scoring_open(now, season))
+closed = not checkin_open(now, season) if modern else period_closed
+test_mode = modern and rules.get('test_mode') is True
+opening = next_opening(now, season) if closed and modern and not test_mode else None
 if (not closed or photo is not None) and not st.session_state.get('checkin_posted'):
     track_location()
 recent_entries = []
@@ -118,7 +120,6 @@ if photo is None and not st.session_state.get('checkin_posted'):
 if photo is None and not st.session_state.get('checkin_posted') and closed:
     page_header("Check in", compact=True)
     zone = ZoneInfo(season.timezone_name)
-    opening = next_opening(now, season) if modern else None
     if opening:
         local = opening.astimezone(zone)
         card = gate_card_html("Game night opens", f"{local:%a %H:%M}",
@@ -167,8 +168,8 @@ if photo is None and not st.session_state.get('checkin_posted'):
     st.stop()
 
 page_header("Check in", compact=True)
-if modern and rules.get('test_mode') is True:
-    st.caption("Test season · Wed 08:00 to Sun 18:00 · No check-in cooldown")
+if test_mode:
+    st.caption("Test season · Check in any day while the season is active · No cooldown")
 
 saved_result = st.session_state.pop("checkin_saved_result", None)
 if saved_result is not None:
@@ -204,7 +205,6 @@ if st.session_state.get('checkin_posted'):
     st.stop()
 
 if closed:
-    opening = next_opening(now, season) if modern else None
     if opening:
         st.warning(f"Scoring is closed. Opens {opening:%a %d %b %Y at %H:%M:%S %Z} ({season.timezone_name}).")
     elif utc(now) < utc(season.starts_at):

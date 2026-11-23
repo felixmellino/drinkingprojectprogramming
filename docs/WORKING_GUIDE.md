@@ -273,9 +273,9 @@ and deletion controls. Keep inline image bytes so private images never get a
 public Streamlit media URL. Test the routes, photo gate, gallery paging,
 entry selection and membership denial alongside the existing workflow tests.
 
-Create lobby / Retry setup can explicitly select a QA season, with a frozen
-Wednesday 08:00–Sunday 18:00 window. Normal seasons keep Thursday 18:00–Sunday
-18:00. See `docs/CAMERA_AND_QA_SEASONS.md` for setup and verification.
+Create lobby / Retry setup can explicitly select a QA season. Ordinary check-ins
+are open throughout an active QA season. QA Chug Duel uses the frozen Wednesday
+08:00–Sunday 18:00 window. See `docs/CAMERA_AND_QA_SEASONS.md` for setup and verification.
 
 ## Profile friends (Identity block)
 

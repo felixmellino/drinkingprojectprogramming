@@ -30,42 +30,38 @@ existing byte/pixel/decode limits, strips metadata and retains a stable
 capture identity across GPS reruns. Existing submission, lost-reply recovery,
 cooldown and access checks remain in place. No additional package is required.
 
-## Enable Wednesday testing
+## Enable test check-ins
 
-Create a **new QA lobby** and check **Test season: Wednesday 08:00–Sunday
-18:00** before submitting Create lobby. The checkbox defaults to off. An
+Create a QA lobby and check **Test season (check in any day)** before
+submitting Create lobby. The checkbox defaults to off. An
 incomplete setup also exposes that choice under Retry lobby setup. The
 lobby card and Check-in page label test seasons visibly for all members.
 
-The normal points table is used. The Wednesday opening and test flag are
-part of the frozen rules snapshot sent to the season-creation RPC. Migration
-031 uses that same flag to remove the posting cooldown for ordinary check-ins
-and Chug Duel entries in existing and future test seasons. Test points stay
-inside the separate QA lobby.
+Migration 032 allows ordinary check-ins throughout the configured season,
+including in existing test lobbies. Check-ins still require a photo and
+verified phone GPS and use the standard points table. Migration 031 uses
+the same frozen test flag to remove the posting cooldown for ordinary
+check-ins and Chug Duel entries.
 
 QA seasons also allow unlimited sequential Chug Duel replays after migration
 012 (R-M02). Minigames shows Unlimited for both roles, including after an
 earlier win or abort. The frozen boolean test flag controls this, not the
-lobby's name. Finish or end the active game before starting another. Photo/GPS,
-the scoring window and scoring rules still apply.
-The ordinary Wednesday-window setting itself needs no extra migration;
-unlimited minigame attempts require 012 after 011.
+lobby's name. Finish or end the active game before starting another. Photo,
+GPS and the frozen Wednesday 08:00–Sunday 18:00 window still apply to Chug Duel.
 
 ## Verification
 
 Run the normal Python suite with `python -m pytest -q`.
 `tests/test_camera_capture.py` checks transport validation and metadata removal;
-`tests/test_test_seasons.py` checks exact cutoffs, timezone behavior and the
-frozen database payload. Streamlit AppTests exercise creating both kinds of
-season and starting location before capture.
+`tests/test_test_seasons.py` checks off-hours availability, season cutoffs,
+the Chug Duel window and the frozen database payload. Streamlit AppTests
+exercise creating both kinds of season and submitting test check-ins on Monday.
+The migration-chain test exercises the same eligibility through the scoring RPC.
 
 `node tests/camera_component.cjs` checks the actual camera JavaScript with
 synthetic media objects: automatic opening, no reopen on GPS rerenders,
 capture/crop/mirroring, front/back switch, close, permission denial/retry, navigation and background cancellation.
-It never requests a real camera. The optional isolated PostgreSQL suite in
-`tests/scoring_postgres.cjs` also checks the server's Wednesday 08:00/Sunday
-18:00 boundaries and QA-rule persistence after restart; see
-`docs/SCORING_IMPLEMENTATION.md` for setup.
+It never requests a real camera.
 
 A synthetic browser preview can verify the interface, but real iPhone/Android
 camera permission, video startup and GPS still need the deployed HTTPS app.

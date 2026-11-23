@@ -101,10 +101,17 @@ def window_bounds(now: datetime, season: Season) -> tuple[datetime, datetime]:
 
 
 def scoring_open(now: datetime, season: Season) -> bool:
+    """Check the weekly scoring window used by standard check-ins and Chug Duel."""
     start, end = window_bounds(now, season)
     at = utc(now)
     return (utc(season.starts_at) <= at < utc(season.ends_at)
             and utc(start) <= at < utc(end))
+
+
+def checkin_open(now: datetime, season: Season) -> bool:
+    if rules_for(season).get("test_mode") is True:
+        return utc(season.starts_at) <= utc(now) < utc(season.ends_at)
+    return scoring_open(now, season)
 
 
 def next_opening(now: datetime, season: Season) -> datetime | None:
@@ -146,7 +153,7 @@ def create_scored_entry(membership_id: str, season: Season, drink_type: str, siz
         points = base_points(drink_type, size, rules)
     except ValueError:
         raise CheckinRejected("invalid_selection") from None
-    if not scoring_open(submitted_at, season):
+    if not checkin_open(submitted_at, season):
         raise CheckinRejected("scoring_closed")
     if cooldown_remaining(membership_id, submitted_at, recent_entries, checkin_cooldown_seconds(rules)):
         raise CheckinRejected("cooldown")

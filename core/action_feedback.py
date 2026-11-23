@@ -58,8 +58,8 @@ def duel_closed_message(season, *, now=None, allow_test_anytime=True):
     opening = next_opening(now, season)
     if opening:
         local = opening.astimezone(ZoneInfo(season.timezone_name))
-        return f"Duels are closed right now. Return {local:%a %d %b at %H:%M} ({season.timezone_name}) when scoring opens."
-    return "Duels are closed right now. Open Check in to see the scoring schedule or choose another active lobby."
+        return f"Duels are closed right now. Return {local:%a %d %b at %H:%M} ({season.timezone_name}) to play."
+    return "Duels are closed for the rest of this season. Choose another active lobby to play."
 
 
 def role_limit_message(game, timezone_name="the lobby timezone", *, role="challenge or acceptance"):

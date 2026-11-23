@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 import data.db as db
-from core.scoring_v1 import new_rules, scoring_open, next_opening, create_scored_entry
+from core.scoring_v1 import checkin_open, create_scored_entry, new_rules, next_opening, scoring_open
 from core.checkins import CheckinRejected
 from tests.test_scoring_v1 import season
 from tests.test_checkins import INSIDE, TERRITORY
@@ -20,7 +20,7 @@ def qa_season(zone='Europe/Lisbon'):
 @pytest.mark.parametrize('at,allowed', [(WEDNESDAY-timedelta(microseconds=1), False),
     (WEDNESDAY, True), (WEDNESDAY+timedelta(days=4,hours=10)-timedelta(microseconds=1), True),
     (WEDNESDAY+timedelta(days=4,hours=10), False)])
-def test_test_window_boundaries(at, allowed):
+def test_chug_weekly_window_boundaries_in_test_season(at, allowed):
     assert scoring_open(at, qa_season()) is allowed
 
 
@@ -34,7 +34,7 @@ def test_normal_window_and_existing_snapshot_unchanged():
     assert normal == new_rules()
 
 
-def test_test_window_uses_lobby_timezone_and_next_opening():
+def test_chug_test_window_uses_lobby_timezone_and_next_opening():
     game = qa_season('America/New_York')
     assert not scoring_open(WEDNESDAY, game)  # 03:00 in New York.
     opening = next_opening(WEDNESDAY, game)
@@ -42,14 +42,28 @@ def test_test_window_uses_lobby_timezone_and_next_opening():
     assert scoring_open(opening, game)
 
 
-def test_wednesday_test_checkin_accepted_but_normal_rejected():
+@pytest.mark.parametrize('days,hour', [(0, 0), (4, 18), (5, 10), (6, 23)])
+def test_off_hours_checkin_scores_in_test_season_only(days, hour):
     game = qa_season()
+    at = WEDNESDAY.replace(hour=hour) + timedelta(days=days)
     saved = create_scored_entry('member', game, 'beer', 'small', 'photo.jpg', INSIDE, 10,
-        WEDNESDAY, [TERRITORY], [], entry_id='capture')
+        at, [TERRITORY], [], entry_id='capture')
     assert saved.points_awarded == 1
+    assert saved.territory_id == TERRITORY.id
     with pytest.raises(CheckinRejected, match='scoring_closed'):
         create_scored_entry('member', replace(game, scoring_rules=new_rules()), 'beer', 'small',
-            'photo.jpg', INSIDE, 10, WEDNESDAY, [TERRITORY], [], entry_id='normal')
+            'photo.jpg', INSIDE, 10, at, [TERRITORY], [], entry_id='normal')
+
+
+def test_test_checkin_requires_active_season_and_boolean_flag():
+    game = qa_season()
+    tick = timedelta(microseconds=1)
+    assert not checkin_open(game.starts_at - tick, game)
+    assert checkin_open(game.starts_at, game)
+    assert checkin_open(game.ends_at - tick, game)
+    assert not checkin_open(game.ends_at, game)
+    game.scoring_rules['test_mode'] = 'true'
+    assert not checkin_open(game.starts_at, game)
 
 
 def test_rpc_receives_and_restores_frozen_test_rules(monkeypatch):
@@ -64,4 +78,4 @@ def test_rpc_receives_and_restores_frozen_test_rules(monkeypatch):
     restored = db.start_scoring_season('player', 'lobby', '1_month', 'Europe/Lisbon', test_mode=True)
     sent = client.rpc.call_args.args[1]['frozen_rules']
     assert sent == restored.scoring_rules == game.scoring_rules
-    assert scoring_open(WEDNESDAY, restored)
+    assert checkin_open(WEDNESDAY + timedelta(days=5), restored)

@@ -41,8 +41,8 @@ FAQ = (
          "**Check in** previews your points before you submit."),
         ("When can I check in?",
          "During an active season, standard scoring runs continuously from **Thursday at 18:00** until "
-         "**Sunday at 18:00**, in the lobby’s timezone. Test lobbies open on **Wednesday at 08:00** "
-         "and close at the same Sunday cutoff."),
+         "**Sunday at 18:00**, in the lobby’s timezone. In test lobbies, ordinary check-ins are open "
+         "every day until the season ends."),
         ("How many points is my drink worth?",
          f"These are the base points for a new lobby. **Check in** shows your points with any active boost.\n\n"
          f"{POINTS_TABLE}\n\nA **shot** is worth **{POINTS['shot']['standard']} points** and has one serving size."),
