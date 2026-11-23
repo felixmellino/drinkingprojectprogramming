@@ -47,14 +47,15 @@ QA seasons also allow unlimited sequential Chug Duel replays after migration
 012 (R-M02). Minigames shows Unlimited for both roles, including after an
 earlier win or abort. The frozen boolean test flag controls this, not the
 lobby's name. Finish or end the active game before starting another. Photo,
-GPS and the frozen Wednesday 08:00–Sunday 18:00 window still apply to Chug Duel.
+GPS still apply to Chug Duel. Since migration 033 it is open on any day of the
+test season; standard seasons keep the weekly window.
 
 ## Verification
 
 Run the normal Python suite with `python -m pytest -q`.
 `tests/test_camera_capture.py` checks transport validation and metadata removal;
 `tests/test_test_seasons.py` checks off-hours availability, season cutoffs,
-the Chug Duel window and the frozen database payload. Streamlit AppTests
+Chug Duel on any day of a test season and the frozen database payload. Streamlit AppTests
 exercise creating both kinds of season and submitting test check-ins on Monday.
 The migration-chain test exercises the same eligibility through the scoring RPC.
 

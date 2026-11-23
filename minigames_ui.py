@@ -14,10 +14,10 @@ from action_feedback import action_button, explain, service_error
 from core.action_feedback import duel_closed_message, location_problem, opponent_message, role_limit_message
 from camera_capture import CameraCancelled, camera_photo
 from chug_duel_component import duel_board
-from core.chug_duel import allowances, component_action, night_id, unlimited_plays, validate_pair, ERRORS
+from core.chug_duel import allowances, component_action, duel_open, night_id, unlimited_plays, validate_pair, ERRORS
 from core.checkin_photo import InvalidCheckinPhoto
 from core.checkins import CheckinRejected
-from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, scoring_open, size_label, volume_for
+from core.scoring_v1 import DRINK_LABELS, SIZE_LABELS, base_points, current_time, rules_for, size_label, volume_for
 from drink_entry_ui import page_header
 from theme import page_subtitle
 from duel_lobby_ui import game_header, game_setup, game_guide, recent_matches
@@ -352,8 +352,8 @@ def render_minigames(player, member, lobby, season):
 
         if not active:
             with game_setup("chug"):
-                if not scoring_open(now, season):
-                    game_note(duel_closed_message(season, now=now, allow_test_anytime=False))
+                if not duel_open(now, season):
+                    game_note(duel_closed_message(season, now=now))
                 elif outgoing and not active:   # one thing at a time: answer or finish the open duel first
                     opponents = []
                     for candidate in members:

@@ -68,7 +68,7 @@ def test_only_boolean_frozen_test_mode_enables_unlimited_plays(flag, unlimited):
     assert allowances("b", "2026-11-19", [duel], season=game) == (True, unlimited)
 
 
-def test_repeated_test_duels_allowed_but_normal_lobby_and_closed_window_rejected():
+def test_test_duels_repeat_on_any_day_but_normal_season_keeps_window():
     a, b, lobby = pair()
     played = [dict(game_night="2026-11-19", challenger_id="a", opponent_id="b", status=status)
               for status in ("completed", "aborted", "completed")]
@@ -76,8 +76,12 @@ def test_repeated_test_duels_allowed_but_normal_lobby_and_closed_window_rejected
     assert validate_invitation(a, b, lobby, qa, "beer", "large", START, played) == 3
     with pytest.raises(ValueError, match="already used"):
         validate_invitation(a, b, replace(lobby, name="Test lobby"), season(), "beer", "large", START, played)
+    monday = START + timedelta(days=3)   # outside the weekly window
+    assert validate_invitation(a, b, lobby, qa, "beer", "large", monday, played) == 3
     with pytest.raises(ValueError, match="scoring is open"):
-        validate_invitation(a, b, lobby, qa, "beer", "large", START + timedelta(days=3), played)
+        validate_invitation(a, b, lobby, season(), "beer", "large", monday, [])
+    with pytest.raises(ValueError, match="scoring is open"):
+        validate_invitation(a, b, lobby, qa, "beer", "large", qa.ends_at, played)
 
 
 def test_transfer_changes_only_season_and_survives_input_ordering():

@@ -43,6 +43,7 @@ migrations 001, 002, 003 and 006), so those four are not run again.
 30. `030_end_test_season.sql`
 31. `031_test_checkin_cooldown.sql`
 32. `032_test_checkin_availability.sql`
+33. `033_test_chug_any_day.sql`
 
 `tests/migration_chain.cjs` installs exactly this list on an empty PostgreSQL and
 fails if a step breaks or if a migration file is missing from this page.
@@ -51,7 +52,10 @@ fails if a step breaks or if a migration file is missing from this page.
 
 Run only the files you have not applied yet, in the order of the list above.
 Most of them are safe to run twice, but do not rely on it.
-**Newest migration** is `032_test_checkin_availability.sql`. Apply it before
+**Newest migration** is `033_test_chug_any_day.sql`. Apply it before deploying
+the Games UI that offers Chug Duel on any day of an active test season.
+
+**Before that:** `032_test_checkin_availability.sql`. Apply it before
 deploying the Check-in UI that accepts drinks throughout active test seasons.
 
 **Before that:** `031_test_checkin_cooldown.sql` removes the posting cooldown for
@@ -93,6 +97,6 @@ because earlier boosts remain part of the scoring history.
 
 ## Writing a new migration
 
-Give it the next free number (`032_…`), start the file with one comment line saying what
+Give it the next free number (`034_…`), start the file with one comment line saying what
 it needs ("Requires 031"), and add it to the end of the list above. The chain test fails
 until you do.

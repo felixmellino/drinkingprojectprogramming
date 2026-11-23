@@ -277,8 +277,10 @@ Photo, GPS, points, and correction rules still apply.
 
 Test seasons allow consecutive ordinary check-ins and Chug Duel entries
 with no posting cooldown. Standard seasons have a two-minute posting
-cooldown. R-M02 allows unlimited sequential Chug Duel replays during the
-test season's frozen Wednesday 08:00–Sunday 18:00 window in the lobby timezone.
+cooldown. R-M02 allows unlimited sequential Chug Duel replays in test seasons.
+Since 23 November 2026 (contributor decision, migration 033) Chug Duel is open
+on any day of an active test season, like check-ins and the other duels, so the
+demo lobby can play every day. Standard seasons keep Thursday 18:00–Sunday 18:00.
 
 This file will hold every decided game rule with an ID and its allowed, rejected and boundary cases.
 
